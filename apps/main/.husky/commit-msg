@@ -1,0 +1,7 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Enforce Conventional Commits format.
+# Pattern: <type>(<scope>): <description>
+# Types: feat|fix|chore|docs|style|refactor|perf|test|build|ci|revert
+npx --no-install commitlint --edit "$1"

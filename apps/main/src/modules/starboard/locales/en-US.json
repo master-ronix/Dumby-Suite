@@ -1,0 +1,6 @@
+{
+  "module.name": "Starboard",
+  "module.selftest.success": "Starboard self-test completed successfully.",
+  "module.selftest.failure": "Starboard self-test failed.",
+  "module.status.summary": "Starboard has run {{totalRuns}} self-test(s)."
+}

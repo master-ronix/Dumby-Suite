@@ -1,0 +1,40 @@
+import type { ModuleManifest } from '../../modules/manifest.schema.js';
+
+/**
+ * Birthdays module manifest (illustrative skeleton #15, tier: standard).
+ * Proves framework capability only: one service, one repository, one
+ * module-owned table, one event, one job, one task, one route, one
+ * locale, one dashboard schema, one eraser, one exporter. No Discord
+ * commands, no product business logic (spec section 9).
+ */
+export const BirthdaysManifest: ModuleManifest = {
+  name: 'birthdays',
+  version: '1.0.0',
+  description: 'Birthdays illustrative module skeleton — self-test and status only.',
+  tier: 'standard',
+  hardcoded: false,
+
+  required: false,
+  depends: ["guild-settings"],
+  provides: ['birthdays.selftest'],
+  intents: [],
+  partials: [],
+  commands: [],
+  events: ['birthdays.selftest.executed'],
+  services: ['BirthdaysService'],
+  repositories: ['BirthdaysRepository'],
+  jobs: ['birthdays-selftest-job'],
+  tasks: ['birthdays-selftest-heartbeat'],
+  routes: ['GET /api/modules/birthdays/selftest'],
+  middleware: [],
+  migrations: ['create_mod_birthdays_selftest'],
+  locales: ['en-US'],
+  config: {},
+  eventsCatalog: [
+    {
+      name: 'birthdays.selftest.executed',
+      description: 'Emitted every time the Birthdays module completes a self-test run.',
+    },
+  ],
+  crossModuleReads: [],
+};
