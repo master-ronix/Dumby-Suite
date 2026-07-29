@@ -1,0 +1,57 @@
+name: Deploy — Production
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_sha:
+        description: "Git SHA to deploy (must already be staged and smoke-tested)"
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.image_sha }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: v1.29.0
+      - name: Configure kubeconfig
+        run: echo "${{ secrets.KUBECONFIG_PRODUCTION }}" | base64 -d > /tmp/kubeconfig.yaml
+      - name: Run DB migrations
+        run: |
+          kubectl --kubeconfig /tmp/kubeconfig.yaml -n dumby-production \
+            run dumby-migrate-$(date +%s) \
+            --image=${{ vars.IMAGE_REGISTRY }}/dumby:${{ github.event.inputs.image_sha }} \
+            --restart=Never \
+            --env="DATABASE_URL=${{ secrets.DATABASE_URL }}" \
+            --command -- tsx src/entry/migrate.ts up
+      - name: Apply K8s manifests
+        run: |
+          kubectl --kubeconfig /tmp/kubeconfig.yaml apply \
+            -k deploy/k8s/overlays/production
+      - name: Update image tag
+        run: |
+          kubectl --kubeconfig /tmp/kubeconfig.yaml -n dumby-production \
+            set image deployment/dumby dumby=${{ vars.IMAGE_REGISTRY }}/dumby:${{ github.event.inputs.image_sha }}
+      - name: Wait for rollout
+        # terminationGracePeriodSeconds is 190s → allow the full drain window.
+        run: |
+          kubectl --kubeconfig /tmp/kubeconfig.yaml -n dumby-production \
+            rollout status deployment/dumby --timeout=240s

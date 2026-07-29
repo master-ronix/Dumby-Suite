@@ -1,0 +1,6 @@
+{
+  "module.name": "Reminders",
+  "module.selftest.success": "Reminders self-test completed successfully.",
+  "module.selftest.failure": "Reminders self-test failed.",
+  "module.status.summary": "Reminders has run {{totalRuns}} self-test(s)."
+}

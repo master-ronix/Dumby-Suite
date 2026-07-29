@@ -1,0 +1,6 @@
+{
+  "module.name": "Utility",
+  "module.selftest.success": "Utility self-test completed successfully.",
+  "module.selftest.failure": "Utility self-test failed.",
+  "module.status.summary": "Utility has run {{totalRuns}} self-test(s)."
+}

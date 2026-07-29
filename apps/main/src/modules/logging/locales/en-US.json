@@ -1,0 +1,6 @@
+{
+  "module.name": "Logging",
+  "module.selftest.success": "Logging self-test completed successfully.",
+  "module.selftest.failure": "Logging self-test failed.",
+  "module.status.summary": "Logging has run {{totalRuns}} self-test(s)."
+}

@@ -1,0 +1,6 @@
+{
+  "module.name": "Integrations",
+  "module.selftest.success": "Integrations self-test completed successfully.",
+  "module.selftest.failure": "Integrations self-test failed.",
+  "module.status.summary": "Integrations has run {{totalRuns}} self-test(s)."
+}
