@@ -1,0 +1,168 @@
+name: CI
+
+on:
+  push:
+    branches: [main, staging]
+  pull_request:
+    branches: [main, staging]
+
+permissions:
+  contents: read
+
+# Fail-fast chain: typecheck → lint → format → test → build.
+# Each job depends on the previous so a cheap early failure short-circuits
+# the rest (directive.md §39 / blueprint.md §37 "CI fail-fast sequence").
+
+jobs:
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Typecheck dumby
+        run: pnpm --filter @workspace/dumby typecheck
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    needs: typecheck
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @workspace/dumby lint
+
+  format:
+    name: Format Check
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    needs: typecheck
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Check formatting
+        run: pnpm --filter @workspace/dumby format
+
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    needs: [lint, format]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Run unit tests
+        working-directory: apps/main
+        run: pnpm test:unit
+      - name: Coverage enforcement
+        working-directory: apps/main
+        run: pnpm test:coverage
+
+  integration:
+    name: Integration Tests
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    needs: [lint, format]
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: dumby_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Run migrations
+        working-directory: apps/main
+        run: pnpm migrate
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/dumby_test
+      - name: Run integration tests
+        working-directory: apps/main
+        run: pnpm test:integration
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/dumby_test
+          REDIS_URL: redis://localhost:6379/1
+          QUEUE_REDIS_URL: redis://localhost:6379/2
+          DISCORD_ADAPTER: mock
+          BOT_TOKEN: dummy
+          BOT_APPLICATION_ID: "000000000000000000"
+          BOT_OWNER_IDS: "000000000000000001"
+          DEV_GUILD_ID: "000000000000000002"
+          INTERNAL_API_KEY: ci-api-key-not-real
+          JWT_SIGNING_KEY: ci-jwt-key-not-real-must-be-long-enough-for-hs256
+          ENCRYPTION_KEY_CURRENT: "0000000000000000000000000000000000000000000000000000000000000000"
+          SESSION_SECRET: ci-session-secret
+          NODE_ENV: test
+
+  build:
+    name: Docker Build
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    needs: [test, integration]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build Docker image (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: apps/main
+          file: apps/main/Dockerfile
+          push: false
+          tags: dumby:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
