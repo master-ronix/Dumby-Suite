@@ -1,0 +1,6 @@
+{
+  "module.name": "Birthdays",
+  "module.selftest.success": "Birthdays self-test completed successfully.",
+  "module.selftest.failure": "Birthdays self-test failed.",
+  "module.status.summary": "Birthdays has run {{totalRuns}} self-test(s)."
+}

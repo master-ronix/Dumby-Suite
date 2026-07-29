@@ -35,6 +35,7 @@ minimumReleaseAgeExclude:
   - stripe-replit-sync
 
 packages:
+  - apps/*
   - artifacts/*
   - lib/*
   - lib/integrations/*
@@ -70,8 +71,11 @@ autoInstallPeers: false
 
 onlyBuiltDependencies:
   - '@swc/core'
+  - argon2
   - esbuild
+  - msgpackr-extract
   - msw
+  - protobufjs
   - unrs-resolver
 
 overrides:
