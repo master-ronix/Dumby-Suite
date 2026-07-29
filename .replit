@@ -39,13 +39,25 @@ outputType = "console"
 name = "Dumby Bot"
 author = "agent"
 
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/dumby run start"
+waitForPort = 8080
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow]]
+name = "Dumby Bot"
+author = "agent"
+
 [workflows.workflow.metadata]
 outputType = "console"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "pnpm --filter @workspace/dumby run start"
-waitForPort = 8000
+waitForPort = 9000
 
 [agent]
 stack = "PNPM_WORKSPACE"
@@ -61,12 +73,15 @@ channel = "stable-25_05"
 [userenv]
 
 [userenv.shared]
-ENCRYPTION_KEY_CURRENT = "abba7f9b68a17dff3a9fa4520c722585bbc349b046ca58bf7f7b4e6e89a2bb09"
-INTERNAL_API_KEY = "9ea7d16a2c5d7654b298c7c8f4c299551560e9f9120bdc753124442e99354390"
-JWT_SIGNING_KEY = "c59fde3df1f96a97ee3dc807814d27c1bafe6deb00b56d17e62a5b4d7ab828ae"
+ENCRYPTION_KEY_CURRENT = "f13cb5beeedfe080c9787bec83366c1586939af995d81ec6b01862f002838bf4"
+INTERNAL_API_KEY = "24d98b9d3ecf9b94ae0128c0e3afe6312adeabdf7885c8f6"
+JWT_SIGNING_KEY = "d8532d4298491a9895f803563dc975b9f4809b7cf27a0ba7f2cc3500c259c96b"
 QUEUE_REDIS_URL = "redis://127.0.0.1:6379/1"
 REDIS_URL = "redis://127.0.0.1:6379/0"
-API_PORT = "8000"
-HEALTH_PORT = "8091"
-METRICS_PORT = "8092"
 DISCORD_ADAPTER = "live"
+API_PORT = "9000"
+CLAI_PORT = "9084"
+HEALTH_PORT = "9081"
+METRICS_PORT = "9082"
+PEP_PORT = "9083"
+SWASTIK_PORT = "9085"
