@@ -1,6 +1,6 @@
-# [Project name]
+# Dumby Suite
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A modular Discord bot framework (Unified Modular Bot System) plus its Replit workspace tooling. The bot framework lives in `apps/main/`; Replit web artifacts live in `artifacts/`.
 
 ## Run & Operate
 

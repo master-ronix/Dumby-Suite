@@ -1,0 +1,1 @@
+- [Dumby build state](dumby-build-state.md) — full Phase 0-8 Discord bot framework lives in apps/main; 457 tests pass, typecheck clean.

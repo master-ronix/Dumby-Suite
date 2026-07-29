@@ -1,0 +1,6 @@
+{
+  "module.name": "Economy",
+  "module.selftest.success": "Economy self-test completed successfully.",
+  "module.selftest.failure": "Economy self-test failed.",
+  "module.status.summary": "Economy has run {{totalRuns}} self-test(s)."
+}

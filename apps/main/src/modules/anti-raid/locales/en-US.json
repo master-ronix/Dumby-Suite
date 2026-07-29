@@ -1,0 +1,6 @@
+{
+  "module.name": "Anti Raid",
+  "module.selftest.success": "Anti Raid self-test completed successfully.",
+  "module.selftest.failure": "Anti Raid self-test failed.",
+  "module.status.summary": "Anti Raid has run {{totalRuns}} self-test(s)."
+}

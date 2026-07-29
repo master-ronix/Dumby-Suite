@@ -1,0 +1,6 @@
+{
+  "module.name": "Leveling",
+  "module.selftest.success": "Leveling self-test completed successfully.",
+  "module.selftest.failure": "Leveling self-test failed.",
+  "module.status.summary": "Leveling has run {{totalRuns}} self-test(s)."
+}

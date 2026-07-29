@@ -1,0 +1,6 @@
+{
+  "module.name": "Reaction Roles",
+  "module.selftest.success": "Reaction Roles self-test completed successfully.",
+  "module.selftest.failure": "Reaction Roles self-test failed.",
+  "module.status.summary": "Reaction Roles has run {{totalRuns}} self-test(s)."
+}
