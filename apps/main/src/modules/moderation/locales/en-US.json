@@ -1,0 +1,6 @@
+{
+  "module.name": "Moderation",
+  "module.selftest.success": "Moderation self-test completed successfully.",
+  "module.selftest.failure": "Moderation self-test failed.",
+  "module.status.summary": "Moderation has run {{totalRuns}} self-test(s)."
+}
