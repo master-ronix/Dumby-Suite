@@ -1,4 +1,4 @@
-modules = ["nodejs-24"]
+modules = ["nodejs-24", "postgresql-16"]
 
 [deployment]
 router = "application"
@@ -11,6 +11,26 @@ env = { "CI" = "true" }
 [workflows]
 runButton = "Project"
 
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Redis (Dumby)"
+
+[[workflows.workflow]]
+name = "Redis (Dumby)"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "redis-server --port 6379 --bind 127.0.0.1 --save '' --appendonly no"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
 [agent]
 stack = "PNPM_WORKSPACE"
 expertMode = true
@@ -18,3 +38,15 @@ expertMode = true
 [postMerge]
 path = "scripts/post-merge.sh"
 timeoutMs = 20000
+
+[nix]
+channel = "stable-25_05"
+
+[userenv]
+
+[userenv.shared]
+ENCRYPTION_KEY_CURRENT = "c66a6400641176ae3f488efb3416d0c9fcee98584025d98cfb24725447892b57"
+INTERNAL_API_KEY = "a485d7c2ce9f76aebc833919ba8854769cd63e53f07db2942106127fc35f0d1b"
+JWT_SIGNING_KEY = "5b8bb075267a0474f2b7d56e6c0e91af8c098cd41a939105bcaea42006f2ce16"
+QUEUE_REDIS_URL = "redis://127.0.0.1:6379/1"
+REDIS_URL = "redis://127.0.0.1:6379/0"
