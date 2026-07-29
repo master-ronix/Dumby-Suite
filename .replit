@@ -18,14 +18,14 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Redis (Dumby)"
+args = "Redis Server"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
 args = "Dumby Bot"
 
 [[workflows.workflow]]
-name = "Redis (Dumby)"
+name = "Redis Server"
 author = "agent"
 
 [[workflows.workflow.tasks]]
@@ -42,9 +42,22 @@ author = "agent"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "pnpm --filter @workspace/dumby run start"
+waitForPort = 8080
 
 [workflows.workflow.metadata]
 outputType = "console"
+
+[[workflows.workflow]]
+name = "Dumby Bot"
+author = "agent"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/dumby run start"
+waitForPort = 9000
 
 [agent]
 stack = "PNPM_WORKSPACE"
@@ -60,13 +73,15 @@ channel = "stable-25_05"
 [userenv]
 
 [userenv.shared]
-ENCRYPTION_KEY_CURRENT = "c66a6400641176ae3f488efb3416d0c9fcee98584025d98cfb24725447892b57"
-INTERNAL_API_KEY = "a485d7c2ce9f76aebc833919ba8854769cd63e53f07db2942106127fc35f0d1b"
-JWT_SIGNING_KEY = "5b8bb075267a0474f2b7d56e6c0e91af8c098cd41a939105bcaea42006f2ce16"
+ENCRYPTION_KEY_CURRENT = "f13cb5beeedfe080c9787bec83366c1586939af995d81ec6b01862f002838bf4"
+INTERNAL_API_KEY = "24d98b9d3ecf9b94ae0128c0e3afe6312adeabdf7885c8f6"
+JWT_SIGNING_KEY = "d8532d4298491a9895f803563dc975b9f4809b7cf27a0ba7f2cc3500c259c96b"
 QUEUE_REDIS_URL = "redis://127.0.0.1:6379/1"
 REDIS_URL = "redis://127.0.0.1:6379/0"
-DEVELOPMENT_GUILD_ID = "1349762667828744233"
 DISCORD_ADAPTER = "live"
-API_PORT = "18080"
-HEALTH_PORT = "18081"
-METRICS_PORT = "18082"
+API_PORT = "9000"
+CLAI_PORT = "9084"
+HEALTH_PORT = "9081"
+METRICS_PORT = "9082"
+PEP_PORT = "9083"
+SWASTIK_PORT = "9085"
