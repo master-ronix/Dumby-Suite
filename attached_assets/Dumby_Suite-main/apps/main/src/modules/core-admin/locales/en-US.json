@@ -1,0 +1,6 @@
+{
+  "module.name": "Core Admin",
+  "module.selftest.success": "Core Admin self-test completed successfully.",
+  "module.selftest.failure": "Core Admin self-test failed.",
+  "module.status.summary": "Core Admin has run {{totalRuns}} self-test(s)."
+}

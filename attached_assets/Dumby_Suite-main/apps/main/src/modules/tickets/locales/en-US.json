@@ -1,0 +1,6 @@
+{
+  "module.name": "Tickets",
+  "module.selftest.success": "Tickets self-test completed successfully.",
+  "module.selftest.failure": "Tickets self-test failed.",
+  "module.status.summary": "Tickets has run {{totalRuns}} self-test(s)."
+}

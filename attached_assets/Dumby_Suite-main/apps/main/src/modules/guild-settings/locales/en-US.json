@@ -1,0 +1,6 @@
+{
+  "module.name": "Guild Settings",
+  "module.selftest.success": "Guild Settings self-test completed successfully.",
+  "module.selftest.failure": "Guild Settings self-test failed.",
+  "module.status.summary": "Guild Settings has run {{totalRuns}} self-test(s)."
+}
