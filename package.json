@@ -9,6 +9,13 @@
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
   },
   "private": true,
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "argon2",
+      "msgpackr-extract",
+      "protobufjs"
+    ]
+  },
   "dependencies": {
     "@replit/connectors-sdk": "^0.4.1"
   },
