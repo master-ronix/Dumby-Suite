@@ -3,6 +3,7 @@ import type { Logger } from '../logging/logger.js';
 import type { QueueManager } from '../queue/queue-manager.js';
 import type { DbClient } from '../db/client.js';
 import type { Redis } from 'ioredis';
+import type { Client } from 'discord.js';
 import type { ModuleLoader } from '../modules/loader.js';
 import { type SHUTDOWN_STEPS, shutdownStepNumber } from '../bootstrap/stages.js';
 
@@ -19,6 +20,8 @@ export interface ShutdownDeps {
   redis: Redis;
   queueRedis: Redis;
   db: DbClient;
+  /** Only present when DISCORD_ADAPTER=live; absent in mock mode. */
+  discordClient?: Client | undefined;
   /** Resolves once any in-flight command handlers have finished, or the timeout below elapses. */
   drainInFlightCommands: (timeoutMs: number) => Promise<void>;
 }
@@ -46,6 +49,7 @@ export async function gracefulShutdown(deps: ShutdownDeps, signal: string): Prom
 
   await runStep(deps, 'STOP_ACCEPTING_GATEWAY_EVENTS', async () => {
     acceptingGatewayEvents = false;
+    await deps.discordClient?.destroy();
   });
 
   await runStep(deps, 'DRAIN_IN_FLIGHT_COMMANDS', () =>

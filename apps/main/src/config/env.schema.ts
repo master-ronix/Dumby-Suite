@@ -22,7 +22,7 @@ const csvIds = () =>
         .filter((id) => id.length > 0),
     );
 
-export const envSchema = z
+const baseEnvSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
     LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
@@ -93,7 +93,36 @@ export const envSchema = z
   })
   .strict();
 
+export const envSchema = baseEnvSchema.refine(
+  (env) => env.DISCORD_ADAPTER !== 'live' || env.BOT_TOKEN.length > 0,
+  {
+    message: 'BOT_TOKEN is required when DISCORD_ADAPTER=live',
+    path: ['BOT_TOKEN'],
+  },
+);
+
 export type Env = z.infer<typeof envSchema>;
+
+/** Every key this schema declares — the app's actual config surface. */
+export const ENV_KEYS: readonly string[] = Object.keys(baseEnvSchema.shape);
+
+/**
+ * A real process.env always carries hundreds of OS/shell/tooling keys
+ * (PATH, HOME, NIX_*, npm_*, REPLIT_*, ...) that were never part of this
+ * app's config and were never meant to be. envSchema.strict() correctly
+ * rejects genuinely-unexpected keys in a curated config object (see
+ * env-schema.test.ts), but calling parseEnv(process.env) directly would
+ * reject on that OS noise too. Pick only the declared keys first, then
+ * validate — this preserves .strict()'s typo protection for the app's own
+ * keys without requiring process.env to be an exact, closed set.
+ */
+export function pickEnvKeys(raw: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const picked: NodeJS.ProcessEnv = {};
+  for (const key of ENV_KEYS) {
+    if (raw[key] !== undefined) picked[key] = raw[key];
+  }
+  return picked;
+}
 
 export class ConfigValidationError extends Error {
   constructor(readonly fieldErrors: Record<string, string[]>) {

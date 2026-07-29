@@ -1,13 +1,15 @@
 /**
  * Command deployer — publishes slash command definitions to Discord's
- * API at Stage 13 (COMMAND_REGISTER), and optionally to a dev guild
- * for faster propagation during development (Cluster: Frame).
+ * API at Stage 13 (COMMAND_REGISTER) inventory time, with the actual
+ * network calls issued once the live adapter is ready (Cluster: Frame).
  *
- * Strategy: delete-then-reregister on every deploy (global commands
- * take up to 1 hour to propagate; guild commands are instant).
- * In production, global commands are deployed. In development, guild
- * commands are used against DEV_GUILD_ID.
+ * Strategy: delete-then-reregister (bulk PUT overwrite) on every deploy.
+ * Global commands (Discord's source of truth for every guild the bot is
+ * in) are always registered — propagation takes up to ~1 hour. When
+ * devGuildId is configured, the same set is additionally mirrored to that
+ * guild for instant propagation during development/manual verification.
  */
+import { Routes } from 'discord.js';
 import type { CommandRegistry } from './command-registry.js';
 import type { Logger } from '../logging/logger.js';
 
@@ -18,10 +20,24 @@ export interface DeployerConfig {
   nodeEnv: string;
 }
 
+/**
+ * Minimal subset of discord.js's REST client CommandDeployer needs. Kept as
+ * an interface (rather than importing discord.js's REST class directly)
+ * so unit tests can construct a CommandDeployer without one — deploy()
+ * and undeploy() then only log the command inventory, making no network
+ * calls. Bootstrap wires a real `new REST().setToken(...)` instance here
+ * when DISCORD_ADAPTER=live.
+ */
+export interface DiscordRestClient {
+  put(route: `/${string}`, options: { body: unknown[] }): Promise<unknown>;
+}
+
 export interface CommandDeployerDeps {
   registry: CommandRegistry;
   logger: Logger;
   config: DeployerConfig;
+  /** Present only in live mode. Absent in mock/test mode (no-op, logging only). */
+  rest?: DiscordRestClient;
 }
 
 export class CommandDeployer {
@@ -29,11 +45,10 @@ export class CommandDeployer {
 
   /**
    * Deploy all registered commands to Discord.
-   * Uses guild commands in development (instant propagation), global in production.
-   * When DISCORD_ADAPTER=mock, this is a no-op.
+   * When `rest` is absent (mock/test mode), this only logs the inventory.
    */
   async deploy(): Promise<void> {
-    const { registry, logger, config } = this.deps;
+    const { registry, logger, config, rest } = this.deps;
     const commands = registry.toApiPayloads();
 
     if (commands.length === 0) {
@@ -46,14 +61,33 @@ export class CommandDeployer {
       env: config.nodeEnv,
     });
 
-    // In this V1 build, actual Discord API calls are made when discord.js
-    // client is available and the adapter is 'live'. The CommandDeployer
-    // is wired by the bootstrap; see src/entry/main.ts for the live path.
+    if (rest) {
+      await rest.put(Routes.applicationCommands(config.applicationId), { body: commands });
+      logger.info('command-deployer-global-registered', { commandCount: commands.length });
+
+      if (config.devGuildId) {
+        await rest.put(Routes.applicationGuildCommands(config.applicationId, config.devGuildId), {
+          body: commands,
+        });
+        logger.info('command-deployer-guild-registered', {
+          commandCount: commands.length,
+          guildId: config.devGuildId,
+        });
+      }
+    }
+
     logger.info('command-deployer-complete', { commandCount: commands.length });
   }
 
   async undeploy(): Promise<void> {
-    const { logger } = this.deps;
+    const { logger, config, rest } = this.deps;
     logger.info('command-deployer-undeploy', { note: 'clearing all registered slash commands' });
+
+    if (rest) {
+      await rest.put(Routes.applicationCommands(config.applicationId), { body: [] });
+      if (config.devGuildId) {
+        await rest.put(Routes.applicationGuildCommands(config.applicationId, config.devGuildId), { body: [] });
+      }
+    }
   }
 }

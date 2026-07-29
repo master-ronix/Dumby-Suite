@@ -1,6 +1,13 @@
 import knexFactory, { type Knex } from 'knex';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 import { CircuitBreaker } from '../resilience/circuit-breaker.js';
 import type { Logger } from '../logging/logger.js';
+
+// Same resolution as src/db/knexfile.ts — anchored to this file's directory
+// so bootstrap's Stage 06 (MIGRATION_RUN) finds the core migrations
+// regardless of process.cwd().
+const migrationsDir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'migrations');
 
 interface TimedQuery {
   __knexQueryUid?: string;
@@ -29,6 +36,11 @@ export class DbClient {
         statement_timeout: options.statementTimeoutMs,
       },
       pool: { min: 2, max: options.poolMax },
+      migrations: {
+        directory: migrationsDir,
+        extension: 'ts',
+        tableName: 'knex_migrations',
+      },
     });
 
     this.knex.on('query', (query: TimedQuery) => {

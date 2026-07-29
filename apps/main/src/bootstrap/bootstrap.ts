@@ -1,6 +1,6 @@
 import { Container } from '../di/container.js';
 import { CORE_TOKENS } from '../di/tokens.js';
-import { parseEnv, ConfigValidationError } from '../config/env.schema.js';
+import { parseEnv, pickEnvKeys, ConfigValidationError } from '../config/env.schema.js';
 import { ConfigService } from '../config/config.service.js';
 import { createLogger } from '../logging/logger.js';
 import { MetricsRegistry } from '../metrics/registry.js';
@@ -17,10 +17,15 @@ import { buildApiServer, buildHealthServer, buildMetricsServer } from '../http/s
 import { PowerEngineDispatcher } from '../http/power-engine-dispatcher.js';
 import { registerAllModules } from '../modules/register-all.js';
 import { InFlightTracker } from '../shutdown/in-flight-tracker.js';
-import { registerShutdownSignalHandlers } from '../shutdown/shutdown.js';
+import { registerShutdownSignalHandlers, isAcceptingGatewayEvents } from '../shutdown/shutdown.js';
 import { Redis } from 'ioredis';
 import { CommandRegistry } from '../commands/command-registry.js';
 import { CommandRouter } from '../commands/command-router.js';
+import type { CommandInteraction } from '../commands/command-router.js';
+import { Events, REST, type Client } from 'discord.js';
+import { buildDiscordClient, computeIntentsBitfield, computePartials } from '../discord/client-builder.js';
+import { LiveGatewayAdapter } from '../discord/gateway.live-adapter.js';
+import { CommandDeployer } from '../commands/command-deployer.js';
 
 /**
  * The 18-stage bootstrap sequence (Cluster: Grace). Each numbered comment
@@ -43,7 +48,7 @@ export async function bootstrap(): Promise<void> {
   progress.advanceTo('CONFIG_LOAD');
   let env;
   try {
-    env = parseEnv(process.env);
+    env = parseEnv(pickEnvKeys(process.env));
   } catch (err) {
     if (err instanceof ConfigValidationError) {
        
@@ -148,12 +153,56 @@ export async function bootstrap(): Promise<void> {
   // Domain event subscriptions are wired inside each module's onLoad; nothing
   // additional to register centrally in V1.
 
-  // Stage 15: DISCORD_LOGIN (MockGatewayAdapter only)
+  // Stage 15: DISCORD_LOGIN — live: real client.login(BOT_TOKEN); mock: MockGatewayAdapter
+  // never opens a real socket (see src/discord/gateway.mock-adapter.ts).
   progress.advanceTo('DISCORD_LOGIN');
-  // MockGatewayAdapter never opens a real socket; see src/discord/gateway.mock-adapter.ts.
+  let discordClient: Client | undefined;
+  if (config.get('DISCORD_ADAPTER') === 'live') {
+    const modules = moduleRegistry.all();
+    const intents = computeIntentsBitfield(modules.map((m) => m.manifest.intents));
+    const partials = computePartials(modules.map((m) => m.manifest.partials));
+    discordClient = buildDiscordClient({ intents, partials, logger });
 
-  // Stage 16: CLIENT_READY (simulated ready + shard assignment)
+    discordClient.on(Events.InteractionCreate, (interaction) => {
+      if (!interaction.isChatInputCommand()) return;
+      if (!isAcceptingGatewayEvents()) return;
+      void commandRouter.dispatch(interaction as unknown as CommandInteraction).catch(async (err) => {
+        logger.error('interaction-dispatch-failed', { command: interaction.commandName, error: String(err) });
+        try {
+          if (interaction.deferred || interaction.replied) {
+            await interaction.editReply({ content: 'Something went wrong running that command.' });
+          } else {
+            await interaction.reply({ content: 'Something went wrong running that command.', ephemeral: true });
+          }
+        } catch (replyErr) {
+          logger.error('interaction-error-reply-failed', { error: String(replyErr) });
+        }
+      });
+    });
+
+    const liveAdapter = new LiveGatewayAdapter(discordClient, config.get('BOT_TOKEN'), config.get('SHARD_COUNT'));
+    await liveAdapter.login();
+  }
+
+  // Stage 16: CLIENT_READY
   progress.advanceTo('CLIENT_READY');
+  if (discordClient) {
+    const applicationId = discordClient.application?.id ?? '';
+    const rest = new REST({ version: '10' }).setToken(config.get('BOT_TOKEN'));
+    const commandDeployer = new CommandDeployer({
+      registry: commandRegistry,
+      logger,
+      config: {
+        botToken: config.get('BOT_TOKEN'),
+        applicationId,
+        devGuildId: config.get('DEVELOPMENT_GUILD_ID'),
+        nodeEnv: config.get('NODE_ENV'),
+      },
+      rest,
+    });
+    await commandDeployer.deploy();
+    logger.info('discord-client-ready', { applicationId, guildCount: discordClient.guilds.cache.size });
+  }
 
   // Stage 17: MODULE_READY
   progress.advanceTo('MODULE_READY');
@@ -209,6 +258,7 @@ export async function bootstrap(): Promise<void> {
     redis,
     queueRedis,
     db,
+    discordClient,
     drainInFlightCommands: (timeoutMs) => inFlightTracker.waitForDrain(timeoutMs),
   });
 
