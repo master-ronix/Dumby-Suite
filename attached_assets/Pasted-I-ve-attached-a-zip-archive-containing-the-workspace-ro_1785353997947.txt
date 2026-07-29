@@ -1,0 +1,13 @@
+I've attached a zip archive containing the `workspace/` root for a project called Dumby (a modular Discord bot framework). Do the following, in order, and begin immediately — I don't need a plan back first, I need you to start:
+
+1. **Extract the archive.** It may unpack with `workspace/` as a top-level folder, or its contents may already be workspace-rooted — check both. Anchor yourself by locating `master-prompt.md` (e.g. `find . -iname "master-prompt.md"`). If you can't find it, stop and tell me exactly what the archive actually contains instead of guessing.
+
+2. **Read that file — `docs/master-prompt.md` — in full**, before writing anything. It's the complete execution brief for this build; don't summarize it back to me, don't skip sections. It tells you, in its own §0.5, when and how to consult the other seven documents sitting alongside it (`blueprint.md`, `directive.md`, `documentation.md`, `interface.md`, `directory.md`, `concept.md`, `change-log.md`) — follow that guidance rather than front-loading all of them now.
+
+3. **Check your own environment before you start building:** confirm you actually have working file-creation and command-execution tools, and check whether you have outbound network access (needed for package installation and any live Discord/Postgres/Redis connection). No code execution at all → tell me now rather than proceeding conversationally. Execution but no network → say so plainly, write all the source code regardless (that part never needs network), and be explicit about which of the master prompt's "definition of done" checks you actually ran versus only verified by inspection.
+
+4. **Execute the master prompt's Phase 0 through Phase 8 build plan directly, in order, inside `apps/main/`.** Work autonomously — don't pause between phases to ask permission. Only stop and ask me something if you hit a genuine blocker: an ambiguity the master prompt doesn't resolve, or a missing credential (a real Discord bot token, a live database URL) you have no way to obtain. For anything like that, use clearly-labeled placeholder values and tell me exactly what I need to supply before this runs for real.
+
+5. **Report back after each phase** — what got built, what passed its own checks, what was deliberately deferred and why — then continue straight into the next phase in the same reply. This is a large build; expect it to take several messages. If you're running low on room to keep working in this session, stop at a clean phase boundary, write a short `PROGRESS.md` at the workspace root describing exactly what's done and what's next, and tell me so I can start fresh and hand it back to you.
+
+Start with step 1 now.
