@@ -20,13 +20,29 @@ author = "agent"
 task = "workflow.run"
 args = "Redis Server"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Dumby Bot"
+
 [[workflows.workflow]]
 name = "Redis Server"
 author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "redis-server --port 6379 --bind 127.0.0.1 --save \"\" --appendonly no"
+args = "redis-server --port 6379 --bind 127.0.0.1 --save '' --appendonly no"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow]]
+name = "Dumby Bot"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/dumby run start"
+waitForPort = 8080
 
 [workflows.workflow.metadata]
 outputType = "console"
@@ -45,8 +61,8 @@ channel = "stable-25_05"
 [userenv]
 
 [userenv.shared]
-ENCRYPTION_KEY_CURRENT = "4297eb46e5f3a78eae03033ec0c9565757c02e2ac1635ae1244f4c641b9156eb"
-INTERNAL_API_KEY = "9d522a2fa85e65ec03dfd77ab25aae30e91a29a409d0fdc6"
-JWT_SIGNING_KEY = "d9c6165b55fa3a388de02669601c78251a64acb97ab3517ce3788b9c7d28aaf5"
+ENCRYPTION_KEY_CURRENT = "f13cb5beeedfe080c9787bec83366c1586939af995d81ec6b01862f002838bf4"
+INTERNAL_API_KEY = "24d98b9d3ecf9b94ae0128c0e3afe6312adeabdf7885c8f6"
+JWT_SIGNING_KEY = "d8532d4298491a9895f803563dc975b9f4809b7cf27a0ba7f2cc3500c259c96b"
 QUEUE_REDIS_URL = "redis://127.0.0.1:6379/1"
 REDIS_URL = "redis://127.0.0.1:6379/0"
