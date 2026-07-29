@@ -128,13 +128,20 @@ export async function bootstrap(): Promise<void> {
   container.registerValue(CORE_TOKENS.CommandRouter, commandRouter);
   container.freeze();
 
+  // Modules load against a child of the frozen root container: they can
+  // resolve any CORE_TOKENS service through the parent chain, and freely
+  // register their own module.<name>.* tokens (di-container.test.ts:
+  // "freezing a parent does not freeze children") without ever being able
+  // to overwrite a CORE_TOKENS entry on the frozen root itself.
+  const moduleContainer = container.createChild();
+
   // Stage 10: MODULE_DISCOVER
   progress.advanceTo('MODULE_DISCOVER');
   registerAllModules(moduleRegistry);
 
   // Stage 11: MODULE_VALIDATE
   progress.advanceTo('MODULE_VALIDATE');
-  const moduleLoader = new ModuleLoader(moduleRegistry, container, logger);
+  const moduleLoader = new ModuleLoader(moduleRegistry, moduleContainer, logger);
   moduleLoader.validateAll();
 
   // Stage 12: MODULE_LOAD

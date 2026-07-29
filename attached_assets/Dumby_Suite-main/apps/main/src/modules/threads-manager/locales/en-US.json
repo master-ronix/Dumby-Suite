@@ -1,6 +1,0 @@
-{
-  "module.name": "Threads Manager",
-  "module.selftest.success": "Threads Manager self-test completed successfully.",
-  "module.selftest.failure": "Threads Manager self-test failed.",
-  "module.status.summary": "Threads Manager has run {{totalRuns}} self-test(s)."
-}

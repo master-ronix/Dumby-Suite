@@ -1,8 +1,0 @@
-#!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
-
-# Typecheck, lint, and format-check on every commit.
-cd apps/main
-pnpm typecheck
-pnpm lint
-pnpm format

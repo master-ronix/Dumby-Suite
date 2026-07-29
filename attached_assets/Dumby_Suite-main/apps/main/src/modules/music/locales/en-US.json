@@ -1,6 +1,0 @@
-{
-  "module.name": "Music",
-  "module.selftest.success": "Music self-test completed successfully.",
-  "module.selftest.failure": "Music self-test failed.",
-  "module.status.summary": "Music has run {{totalRuns}} self-test(s)."
-}

@@ -1,6 +1,0 @@
-{
-  "module.name": "Polls",
-  "module.selftest.success": "Polls self-test completed successfully.",
-  "module.selftest.failure": "Polls self-test failed.",
-  "module.status.summary": "Polls has run {{totalRuns}} self-test(s)."
-}
