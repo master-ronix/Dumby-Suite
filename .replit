@@ -20,6 +20,10 @@ author = "agent"
 task = "workflow.run"
 args = "Redis (Dumby)"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Dumby Bot"
+
 [[workflows.workflow]]
 name = "Redis (Dumby)"
 author = "agent"
@@ -27,6 +31,17 @@ author = "agent"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "redis-server --port 6379 --bind 127.0.0.1 --save '' --appendonly no"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow]]
+name = "Dumby Bot"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "pnpm --filter @workspace/dumby run start"
 
 [workflows.workflow.metadata]
 outputType = "console"
@@ -50,3 +65,8 @@ INTERNAL_API_KEY = "a485d7c2ce9f76aebc833919ba8854769cd63e53f07db2942106127fc35f
 JWT_SIGNING_KEY = "5b8bb075267a0474f2b7d56e6c0e91af8c098cd41a939105bcaea42006f2ce16"
 QUEUE_REDIS_URL = "redis://127.0.0.1:6379/1"
 REDIS_URL = "redis://127.0.0.1:6379/0"
+DEVELOPMENT_GUILD_ID = "1349762667828744233"
+DISCORD_ADAPTER = "live"
+API_PORT = "18080"
+HEALTH_PORT = "18081"
+METRICS_PORT = "18082"
