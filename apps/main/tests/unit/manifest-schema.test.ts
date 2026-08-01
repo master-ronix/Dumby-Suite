@@ -64,7 +64,9 @@ describe('parseManifest', () => {
   });
 
   test('rejects a name that is not kebab-case', () => {
-    expect(() => parseManifest({ ...minValid, name: 'My Module' })).toThrow(ManifestValidationError);
+    expect(() => parseManifest({ ...minValid, name: 'My Module' })).toThrow(
+      ManifestValidationError,
+    );
   });
 
   test('rejects a version that is not semver', () => {
@@ -99,20 +101,49 @@ describe('parseManifest', () => {
       commands: [{ name: 'ban', description: 'Ban a user', rbacRequirement: 'MOD' }],
     });
     expect(m.commands[0]?.rbacRequirement).toBe('MOD');
+    expect(m.commands[0]?.guildOnly).toBe(true);
+  });
+
+  test('defaults commands to guildOnly true and allows explicit opt-out in the contract', () => {
+    const m = parseManifest({
+      ...minValid,
+      commands: [
+        { name: 'guild-command', description: 'Guild command' },
+        { name: 'dm-aware-command', description: 'DM aware command', guildOnly: false },
+      ],
+    });
+    expect(m.commands[0]?.guildOnly).toBe(true);
+    expect(m.commands[1]?.guildOnly).toBe(false);
+  });
+
+  test('defaults command execution and permission metadata to the safe public Core shape', () => {
+    const m = parseManifest({
+      ...minValid,
+      commands: [{ name: 'health', description: 'Health check' }],
+    });
+    expect(m.commands[0]?.requiresDefer).toBe(false);
+    expect(m.commands[0]?.ephemeral).toBe(false);
+    expect(m.commands[0]?.nsfw).toBe(false);
+    expect(m.commands[0]?.permissions.discord).toEqual([]);
+    expect(m.commands[0]?.defaultMemberPermissions).toBeUndefined();
   });
 
   test('rejects a command rbacRequirement with an invalid role', () => {
-    expect(() => parseManifest({
-      ...minValid,
-      commands: [{ name: 'cmd', description: 'desc', rbacRequirement: 'SUPERUSER' }],
-    })).toThrow(ManifestValidationError);
+    expect(() =>
+      parseManifest({
+        ...minValid,
+        commands: [{ name: 'cmd', description: 'desc', rbacRequirement: 'SUPERUSER' }],
+      }),
+    ).toThrow(ManifestValidationError);
   });
 
   test('eventsCatalog entries must match domain.entity.action pattern', () => {
-    expect(() => parseManifest({
-      ...minValid,
-      eventsCatalog: [{ name: 'bad-name', description: 'test' }],
-    })).toThrow(ManifestValidationError);
+    expect(() =>
+      parseManifest({
+        ...minValid,
+        eventsCatalog: [{ name: 'bad-name', description: 'test' }],
+      }),
+    ).toThrow(ManifestValidationError);
   });
 
   test('valid eventsCatalog entry passes', () => {
@@ -124,16 +155,20 @@ describe('parseManifest', () => {
   });
 
   test('crossModuleReads accessor must end with ForCrossModuleRead', () => {
-    expect(() => parseManifest({
-      ...minValid,
-      crossModuleReads: [{ targetModule: 'guild-settings', accessor: 'getConfig' }],
-    })).toThrow(ManifestValidationError);
+    expect(() =>
+      parseManifest({
+        ...minValid,
+        crossModuleReads: [{ targetModule: 'guild-settings', accessor: 'getConfig' }],
+      }),
+    ).toThrow(ManifestValidationError);
   });
 
   test('valid crossModuleReads entry passes', () => {
     const m = parseManifest({
       ...minValid,
-      crossModuleReads: [{ targetModule: 'guild-settings', accessor: 'getConfigForCrossModuleRead' }],
+      crossModuleReads: [
+        { targetModule: 'guild-settings', accessor: 'getConfigForCrossModuleRead' },
+      ],
     });
     expect(m.crossModuleReads[0]?.targetModule).toBe('guild-settings');
   });

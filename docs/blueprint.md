@@ -3111,7 +3111,7 @@ required fields, and the dev ID also appears in the licensing record below, bind
 every uploaded module unambiguously to its registered developer from the manifest
 itself, independent of anything Swastik's own database separately tracks.
 
-Swastik's licensing system is **a dataset column, not an autonomous decision-maker**:
+Swastik's licensing system is **a dataset column, not an independent approval engine**:
 a developer's `approvalStatus` holds `'pending'`, `'approved'`, or `'declined'`, and
 that single column is the developer's entire proof of license — Swastik takes no
 further independent action beyond checking it before permitting a deployment.
@@ -7572,4 +7572,3 @@ contract enforcing isolation, and a deliberate, load-bearing wall between the tw
 every other mechanism in this reference — from the bootstrap sequence to the
 permission engine to the deployment pipeline — exists to keep intact as the system
 grows from its first module to its hundredth.
-

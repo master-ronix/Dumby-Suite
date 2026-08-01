@@ -2,8 +2,7 @@
  * End-to-end test (Cluster: Clay). Exercises a full request path
  * through a live server: PowerEngineDispatcher validation, the guarded
  * handler's side effect, and — the part a unit test can't see — the
- * resulting audit_logs row landing in real Postgres. Targets
- * docker-compose.yml; cannot execute inside the build sandbox.
+ * resulting audit_logs row landing in real Postgres. Targets docker-compose.yml.
  */
 import knexFactory from 'knex';
 import knexConfig from '../src/db/knexfile.js';
@@ -39,9 +38,12 @@ async function main(): Promise<void> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ actorId: OWNER_ID, source: 'dashboard', reason: '' }),
   });
-  if (rejectedRes.status !== 403) throw new Error(`expected 403 for empty reason, got ${rejectedRes.status}`);
+  if (rejectedRes.status !== 403)
+    throw new Error(`expected 403 for empty reason, got ${rejectedRes.status}`);
 
-  console.log('4. Confirm a "rejected" audit_logs row was ALSO written for the rejected attempt...');
+  console.log(
+    '4. Confirm a "rejected" audit_logs row was ALSO written for the rejected attempt...',
+  );
   const rejectedAuditRows = await knex('audit_logs')
     .where({ action: 'guild.restore', outcome: 'rejected' })
     .orderBy('createdAt', 'desc')
@@ -56,7 +58,8 @@ async function main(): Promise<void> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ actorId: OWNER_ID, source: 'dashboard', reason: 'e2e-test cleanup' }),
   });
-  if (restoreRes.status !== 200) throw new Error(`expected 200 on cleanup restore, got ${restoreRes.status}`);
+  if (restoreRes.status !== 200)
+    throw new Error(`expected 200 on cleanup restore, got ${restoreRes.status}`);
 
   await knex.destroy();
   console.log('\nE2E scenario passed.');

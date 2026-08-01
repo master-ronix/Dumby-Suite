@@ -1,0 +1,15 @@
+{
+  "Dumby module manifest": {
+    "scope": "typescript",
+    "prefix": "dumby-manifest",
+    "body": [
+      "export const manifest = {",
+      "  name: '$1',",
+      "  version: '0.1.0',",
+      "  tier: 'standard',",
+      "  required: false,",
+      "};"
+    ],
+    "description": "Start a Dumby module manifest."
+  }
+}

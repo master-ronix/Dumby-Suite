@@ -19,7 +19,10 @@ export class ModuleDependencyCycleError extends Error {
 }
 
 export class UnknownModuleDependencyError extends Error {
-  constructor(readonly moduleName: string, readonly missingDependency: string) {
+  constructor(
+    readonly moduleName: string,
+    readonly missingDependency: string,
+  ) {
     super(`Module "${moduleName}" depends on unknown module "${missingDependency}"`);
     this.name = 'UnknownModuleDependencyError';
   }

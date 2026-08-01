@@ -75,7 +75,10 @@ export class Container {
     if (this.frozen) {
       throw new FrozenNamespaceError(tokenName(token));
     }
-    this.registrations.set(token, { factory: factory as Factory<unknown>, lifetime: options.lifetime ?? 'singleton' });
+    this.registrations.set(token, {
+      factory: factory as Factory<unknown>,
+      lifetime: options.lifetime ?? 'singleton',
+    });
     // A fresh registration invalidates any previously cached instance for
     // this token on this container (relevant for hot-swap / test isolation).
     this.singletonCache.delete(token);

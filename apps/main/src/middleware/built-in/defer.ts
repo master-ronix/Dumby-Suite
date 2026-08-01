@@ -17,7 +17,8 @@ export class DeferMiddleware implements Middleware {
   constructor(private readonly config: DeferConfig) {}
 
   async execute(ctx: MiddlewareContext, next: NextFn): Promise<void> {
-    const interaction = ctx.meta['interaction'] as { deferReply?: (opts?: { ephemeral?: boolean }) => Promise<void> } | undefined;
+    const interaction = ctx.meta['interaction'] as
+      { deferReply?: (opts?: { ephemeral?: boolean }) => Promise<void> } | undefined;
 
     if (interaction?.deferReply && this.config.requiresDefer(ctx.commandName)) {
       await interaction.deferReply({ ephemeral: this.config.isEphemeral(ctx.commandName) });

@@ -1,5 +1,9 @@
 import { test, expect } from 'vitest';
-import { InternalEventBus, isValidEventName, isProtectedEventDomain } from '../../src/events/event-bus.js';
+import {
+  InternalEventBus,
+  isValidEventName,
+  isProtectedEventDomain,
+} from '../../src/events/event-bus.js';
 import { EventCycleError } from '../../src/errors/taxonomy.js';
 
 test('event name validation enforces {domain}.{entity}.{action}', () => {
@@ -20,15 +24,27 @@ test('emit() throws TypeError for an invalid event name instead of silently no-o
 test('subscribers fire in descending priority order', async () => {
   const bus = new InternalEventBus();
   const order: string[] = [];
-  bus.on('guild.member.joined', () => {
-    order.push('low');
-  }, 0);
-  bus.on('guild.member.joined', () => {
-    order.push('high');
-  }, 100);
-  bus.on('guild.member.joined', () => {
-    order.push('mid');
-  }, 50);
+  bus.on(
+    'guild.member.joined',
+    () => {
+      order.push('low');
+    },
+    0,
+  );
+  bus.on(
+    'guild.member.joined',
+    () => {
+      order.push('high');
+    },
+    100,
+  );
+  bus.on(
+    'guild.member.joined',
+    () => {
+      order.push('mid');
+    },
+    50,
+  );
   await bus.emit('guild.member.joined', {});
   expect(order).toStrictEqual(['high', 'mid', 'low']);
 });
@@ -53,9 +69,9 @@ test('onAny() receives every event with its name and payload', async () => {
   await bus.emit('guild.member.joined', { id: 1 });
   await bus.emit('guild.role.updated', { id: 2 });
   expect(seen).toStrictEqual([
-        { eventName: 'guild.member.joined', payload: { id: 1 } },
-        { eventName: 'guild.role.updated', payload: { id: 2 } },
-      ]);
+    { eventName: 'guild.member.joined', payload: { id: 1 } },
+    { eventName: 'guild.role.updated', payload: { id: 2 } },
+  ]);
 });
 
 test('unsubscribe function returned by on() stops future delivery', async () => {
@@ -74,13 +90,21 @@ test('a throwing subscriber is caught per-subscriber and does not stop later sub
   const order: string[] = [];
   const errors: unknown[] = [];
   const bus = new InternalEventBus({ onSubscriberError: (err) => errors.push(err) });
-  bus.on('guild.member.joined', () => {
-    order.push('first');
-    throw new Error('boom');
-  }, 10);
-  bus.on('guild.member.joined', () => {
-    order.push('second');
-  }, 5);
+  bus.on(
+    'guild.member.joined',
+    () => {
+      order.push('first');
+      throw new Error('boom');
+    },
+    10,
+  );
+  bus.on(
+    'guild.member.joined',
+    () => {
+      order.push('second');
+    },
+    5,
+  );
   await bus.emit('guild.member.joined', {});
   expect(order).toStrictEqual(['first', 'second']);
   expect(errors.length).toBe(1);

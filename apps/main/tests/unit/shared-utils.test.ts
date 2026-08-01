@@ -1,5 +1,13 @@
 import { test, expect, describe } from 'vitest';
-import { sleep, isObject, chunk, unique, tryParseJson, truncate, allSettledValues } from '../../src/shared/utils/index.js';
+import {
+  sleep,
+  isObject,
+  chunk,
+  unique,
+  tryParseJson,
+  truncate,
+  allSettledValues,
+} from '../../src/shared/utils/index.js';
 
 describe('sleep', () => {
   test('resolves after approximately the given number of milliseconds', async () => {
@@ -136,10 +144,7 @@ describe('allSettledValues', () => {
   });
 
   test('handles all rejections', async () => {
-    const { values, errors } = await allSettledValues([
-      Promise.reject('a'),
-      Promise.reject('b'),
-    ]);
+    const { values, errors } = await allSettledValues([Promise.reject('a'), Promise.reject('b')]);
     expect(values).toStrictEqual([]);
     expect(errors).toStrictEqual(['a', 'b']);
   });

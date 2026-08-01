@@ -66,9 +66,11 @@ test('execute() resolves normally and records success for a passing call', async
 
 test('execute() propagates the underlying error and still counts the failure', async () => {
   const cb = new CircuitBreaker({ failureThreshold: 1, resetTimeoutMs: 1000 });
-  await expect(() => cb.execute(async () => {
+  await expect(() =>
+    cb.execute(async () => {
       throw new Error('downstream failure');
-    })).rejects.toThrow(/downstream failure/);
+    }),
+  ).rejects.toThrow(/downstream failure/);
   expect(cb.getState()).toBe('OPEN');
 });
 

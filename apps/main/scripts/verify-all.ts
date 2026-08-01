@@ -1,11 +1,5 @@
 /**
- * Full end-to-end verification, meant to run on a real machine with
- * Docker and npm-registry network access — NOT inside the constrained
- * build sandbox this repository was authored in (see
- * STATUS_AND_VERIFICATION.md for exactly what was and wasn't runnable
- * there). Mirrors the "Completion condition" checklist: install, build,
- * typecheck, lint, unit tests, migrations, seed, health endpoints,
- * metrics, and a handful of live API checks.
+ * Full end-to-end verification for a machine with Docker and network access.
  */
 import { execSync } from 'node:child_process';
 
@@ -20,7 +14,7 @@ function run(label: string, cmd: string): void {
 
 async function waitFor(url: string, timeoutMs: number): Promise<void> {
   const start = Date.now();
-   
+
   while (true) {
     try {
       const res = await fetch(url);
@@ -37,25 +31,33 @@ async function waitFor(url: string, timeoutMs: number): Promise<void> {
 
 async function main(): Promise<void> {
   run('pnpm install', 'pnpm install');
+  run('build', 'pnpm build');
   run('typecheck', 'pnpm typecheck');
   run('lint', 'pnpm lint');
   run('unit tests', 'pnpm test:unit');
-  run('docker compose up (build + start)', 'docker compose up -d --build');
+  run('docker compose up state services', 'docker compose up -d --build postgres redis');
+  run('migrate', 'pnpm migrate');
+  run('docker compose up Swastik', 'docker compose up -d --build swastik');
+
+  console.log('\n=== waiting for Swastik ===');
+  await waitFor(`http://localhost:${process.env.SWASTIK_PORT ?? '8085'}/swastik/status`, 60_000);
+  console.log('Swastik status endpoint returned 200.');
+
+  run('docker compose up runtime', 'docker compose up -d --build app');
 
   console.log('\n=== waiting for health endpoints ===');
   await waitFor(`http://localhost:${HEALTH_PORT}/health/liveness`, 60_000);
   await waitFor(`http://localhost:${HEALTH_PORT}/health/startup`, 60_000);
   await waitFor(`http://localhost:${HEALTH_PORT}/health/readiness`, 60_000);
   console.log('All three health probes returned 200.');
-
-  run('migrate', 'pnpm migrate');
   run('seed', 'pnpm seed');
 
   console.log('\n=== metrics endpoint ===');
   const metricsRes = await fetch(`http://localhost:${METRICS_PORT}/metrics`);
   if (!metricsRes.ok) throw new Error(`GET /metrics returned ${metricsRes.status}`);
   const metricsBody = await metricsRes.text();
-  if (!metricsBody.includes('dumby_')) throw new Error('metrics body missing expected dumby_ prefixed series');
+  if (!metricsBody.includes('dumby_'))
+    throw new Error('metrics body missing expected dumby_ prefixed series');
   console.log('Metrics endpoint OK.');
 
   console.log('\n=== representative API checks ===');

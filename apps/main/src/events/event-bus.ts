@@ -19,7 +19,10 @@ export function isValidEventName(name: string): boolean {
 }
 
 export type EventHandler<T = unknown> = (payload: T) => void | Promise<void>;
-export type WildcardHandler = (envelope: { eventName: string; payload: unknown }) => void | Promise<void>;
+export type WildcardHandler = (envelope: {
+  eventName: string;
+  payload: unknown;
+}) => void | Promise<void>;
 
 interface Subscription {
   id: number;
@@ -89,7 +92,11 @@ export class InternalEventBus {
     };
   }
 
-  async emit<T = unknown>(eventName: string, payload: T, _options: EmitOptions = {}): Promise<void> {
+  async emit<T = unknown>(
+    eventName: string,
+    payload: T,
+    _options: EmitOptions = {},
+  ): Promise<void> {
     assertValidEventName(eventName);
 
     const parent = this.als.getStore();
@@ -112,12 +119,20 @@ export class InternalEventBus {
         await this.invoke(sub, () => (sub.handler as EventHandler)(payload), eventName);
       }
       for (const sub of wildcard) {
-        await this.invoke(sub, () => (sub.handler as WildcardHandler)({ eventName, payload }), eventName);
+        await this.invoke(
+          sub,
+          () => (sub.handler as WildcardHandler)({ eventName, payload }),
+          eventName,
+        );
       }
     });
   }
 
-  private async invoke(sub: Subscription, call: () => void | Promise<void>, eventName: string): Promise<void> {
+  private async invoke(
+    sub: Subscription,
+    call: () => void | Promise<void>,
+    eventName: string,
+  ): Promise<void> {
     try {
       await call();
     } catch (err) {

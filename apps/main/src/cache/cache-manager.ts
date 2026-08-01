@@ -80,7 +80,11 @@ export class CacheManager {
       const l2Raw = await this.redis.get(key);
       if (l2Raw !== null) {
         if (l2Raw === NEGATIVE_SENTINEL) {
-          this.l1.set(key, NEGATIVE_SENTINEL as unknown, options?.negativeTtlMs ?? this.negativeTtlMs);
+          this.l1.set(
+            key,
+            NEGATIVE_SENTINEL as unknown,
+            options?.negativeTtlMs ?? this.negativeTtlMs,
+          );
           return null;
         }
         const parsed = JSON.parse(l2Raw) as T;
@@ -93,34 +97,30 @@ export class CacheManager {
 
     // True miss — acquire lock and recompute.
     const owner = randomUUID();
-    const outcome = await this.guard.withLock(
-      `lock:${key}`,
-      owner,
-      async () => {
-        const value = await recompute();
-        const ttlMs = options?.ttlMs ?? this.defaultTtlMs;
-        const negTtlMs = options?.negativeTtlMs ?? this.negativeTtlMs;
+    const outcome = await this.guard.withLock(`lock:${key}`, owner, async () => {
+      const value = await recompute();
+      const ttlMs = options?.ttlMs ?? this.defaultTtlMs;
+      const negTtlMs = options?.negativeTtlMs ?? this.negativeTtlMs;
 
-        if (value === undefined || value === null) {
-          try {
-            await this.redis.set(key, NEGATIVE_SENTINEL, 'PX', negTtlMs);
-          } catch (err) {
-            this.logger.warn('cache-l2-write-error', { key, err });
-          }
-          this.l1.set(key, NEGATIVE_SENTINEL as unknown, negTtlMs);
-          return null;
-        }
-
-        const serialized = JSON.stringify(value);
+      if (value === undefined || value === null) {
         try {
-          await this.redis.set(key, serialized, 'PX', ttlMs);
+          await this.redis.set(key, NEGATIVE_SENTINEL, 'PX', negTtlMs);
         } catch (err) {
           this.logger.warn('cache-l2-write-error', { key, err });
         }
-        this.l1.set(key, value as unknown, ttlMs);
-        return value;
-      },
-    );
+        this.l1.set(key, NEGATIVE_SENTINEL as unknown, negTtlMs);
+        return null;
+      }
+
+      const serialized = JSON.stringify(value);
+      try {
+        await this.redis.set(key, serialized, 'PX', ttlMs);
+      } catch (err) {
+        this.logger.warn('cache-l2-write-error', { key, err });
+      }
+      this.l1.set(key, value as unknown, ttlMs);
+      return value;
+    });
 
     if (outcome.acquired) return outcome.result as T | null;
 

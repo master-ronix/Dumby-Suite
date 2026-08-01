@@ -15,7 +15,9 @@ export async function up(knex: Knex): Promise<void> {
     table.string('source').notNullable();
     table.string('action').notNullable();
     table.text('reason').notNullable();
-    table.enu('outcome', ['allowed', 'rejected'], { useNative: true, enumName: 'audit_outcome' }).notNullable();
+    table
+      .enu('outcome', ['allowed', 'rejected'], { useNative: true, enumName: 'audit_outcome' })
+      .notNullable();
     table.string('rejectionReason').nullable();
     table.jsonb('metadata').notNullable().defaultTo('{}');
     table.timestamp('createdAt', { useTz: true }).notNullable().defaultTo(knex.fn.now());

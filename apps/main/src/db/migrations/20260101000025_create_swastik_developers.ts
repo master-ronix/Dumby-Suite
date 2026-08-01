@@ -7,7 +7,10 @@ export async function up(knex: Knex): Promise<void> {
     table.string('discordUserId').notNullable();
     table.string('displayName').notNullable();
     table
-      .enu('status', ['active', 'suspended'], { useNative: true, enumName: 'swastik_developer_status' })
+      .enu('status', ['active', 'suspended'], {
+        useNative: true,
+        enumName: 'swastik_developer_status',
+      })
       .notNullable()
       .defaultTo('active');
     addTimestamps(knex, table);

@@ -26,8 +26,8 @@ pnpm --filter @workspace/dumby run dev
 # Run migrations
 pnpm --filter @workspace/dumby run migrate
 
-# Scaffold a new module
-pnpm --filter @workspace/dumby run scaffold:module
+# Deploy modules through Swastik
+pnpm --filter @workspace/dumby run swastik:deploy
 ```
 
 ## Stack

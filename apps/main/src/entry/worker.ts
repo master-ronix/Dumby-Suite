@@ -12,7 +12,6 @@ import { bootstrap } from '../bootstrap/bootstrap.js';
 // A dedicated worker-only bootstrap path (skipping Discord login stages)
 // is a documented fast-follow — see apps/main/docs/adr/004-three-tier-scope.md.
 bootstrap().catch((err: unknown) => {
-   
   console.error('Fatal worker bootstrap error:', err);
   process.exit(1);
 });

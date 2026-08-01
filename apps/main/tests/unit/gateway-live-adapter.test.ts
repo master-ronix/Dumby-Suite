@@ -58,7 +58,11 @@ test('getShardAssignment reflects the real client guild cache post-login', async
   const p = adapter.login();
   emitReady();
   await p;
-  expect(adapter.getShardAssignment(0)).toEqual({ shardId: 0, shardCount: 1, guildIds: ['1', '2', '3'] });
+  expect(adapter.getShardAssignment(0)).toEqual({
+    shardId: 0,
+    shardCount: 1,
+    guildIds: ['1', '2', '3'],
+  });
 });
 
 test('getShardAssignment rejects an out-of-range shardId', () => {

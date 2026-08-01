@@ -8,7 +8,11 @@ import path from 'node:path';
 // vs. bootstrap.ts's runtime knex instance in src/db/client.ts).
 const migrationsDir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'migrations');
 
-function buildConfig(connectionString: string, poolMax: number, statementTimeoutMs: number): Knex.Config {
+function buildConfig(
+  connectionString: string,
+  poolMax: number,
+  statementTimeoutMs: number,
+): Knex.Config {
   return {
     client: 'pg',
     connection: {
@@ -18,15 +22,16 @@ function buildConfig(connectionString: string, poolMax: number, statementTimeout
     pool: { min: 2, max: poolMax },
     migrations: {
       directory: migrationsDir,
-      extension: 'ts',
+      extension: import.meta.url.endsWith('.ts') ? 'ts' : 'js',
       tableName: 'knex_migrations',
+      loadExtensions: [import.meta.url.endsWith('.ts') ? '.ts' : '.js'],
     },
   };
 }
 
 const databaseUrl = process.env['DATABASE_URL'] ?? '';
 const poolMax = Number(process.env['DATABASE_POOL_MAX'] ?? 10);
-const statementTimeoutMs = Number(process.env['DATABASE_STATEMENT_TIMEOUT'] ?? 15_000);
+const statementTimeoutMs = Number(process.env['DATABASE_STATEMENT_TIMEOUT_MS'] ?? 10_000);
 
 const config: Record<string, Knex.Config> = {
   development: buildConfig(databaseUrl, poolMax, statementTimeoutMs),

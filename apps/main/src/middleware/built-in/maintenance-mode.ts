@@ -34,8 +34,16 @@ export class InMemoryMaintenanceModeState implements MaintenanceModeState {
     this.allowed = new Set(allowedCommands);
   }
 
-  isActive(): boolean { return this.active; }
-  activate(): void { this.active = true; }
-  deactivate(): void { this.active = false; }
-  allowedCommands(): readonly string[] { return [...this.allowed]; }
+  isActive(): boolean {
+    return this.active;
+  }
+  activate(): void {
+    this.active = true;
+  }
+  deactivate(): void {
+    this.active = false;
+  }
+  allowedCommands(): readonly string[] {
+    return [...this.allowed];
+  }
 }

@@ -7,3 +7,4 @@ resources:
   - configmap.yaml
   - hpa.yaml
   - serviceaccount.yaml
+  - swastik-volumes.yaml

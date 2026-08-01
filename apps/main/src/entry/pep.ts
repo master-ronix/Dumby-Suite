@@ -7,19 +7,19 @@
  * registry or gateway client.
  */
 import Fastify from 'fastify';
-import { parseEnv } from '../config/env.schema.js';
+import { parseEnv, pickEnvKeys } from '../config/env.schema.js';
 import { createLogger } from '../logging/logger.js';
 import { DbClient } from '../db/client.js';
 import { Redis } from 'ioredis';
 import { PowerEngineDispatcher } from '../http/power-engine-dispatcher.js';
 
-const env = parseEnv(process.env);
+const env = parseEnv(pickEnvKeys(process.env));
 const logger = createLogger(env.LOG_LEVEL);
 
 const db = new DbClient({
   connectionString: env.DATABASE_URL,
   poolMax: env.DATABASE_POOL_MAX,
-  statementTimeoutMs: env.DATABASE_STATEMENT_TIMEOUT,
+  statementTimeoutMs: env.DATABASE_STATEMENT_TIMEOUT_MS,
   slowQueryThresholdMs: env.SLOW_QUERY_THRESHOLD_MS,
   criticalQueryThresholdMs: env.CRITICAL_QUERY_THRESHOLD_MS,
   logger,
@@ -65,7 +65,8 @@ app.post<{ Params: { functionName: string }; Body: unknown }>(
   },
 );
 
-app.listen({ port: env.PEP_PORT, host: '127.0.0.1' })
+app
+  .listen({ port: env.PEP_PORT, host: '127.0.0.1' })
   .then(() => {
     logger.info('pep-started', { port: env.PEP_PORT });
   })

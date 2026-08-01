@@ -11,7 +11,7 @@
 **Method.** Four independent evidence sources were cross-checked against each other for every entry below, and no claim here rests on only one of them:
 
 1. **The project's own production changelog** (`05_Changelog`), a prompt-by-prompt ledger covering v1.0.0 → v3.0.0 with exact line counts and named deliverables for each step.
-2. **Seven audits** (`03_Audits_and_Reviews`) — a spec-vs-implementation audit, a weakness audit, two forensic audits plus a reconciliation of both against external review, a merged 4-report vulnerability register, and a deep-think audit — each of which names or line-count-matches the exact draft it examined.
+2. **Seven audits** (`03_Audits_and_Reviews`) — a spec-vs-implementation audit, a weakness audit, two provenance audits plus a reconciliation of both against external review, a merged 4-report vulnerability register, and a deep-think audit — each of which names or line-count-matches the exact draft it examined.
 3. **Eight directives** (`04_Prompts_and_Directives`) — the upgrade instructions that targeted each major jump, several with their own "deep-think" gap analysis attached.
 4. **Direct, full-file diffs** run version-to-version for every transition from v4.0.0 onward, plus direct `grep`/section-comparison checks for earlier transitions — used to verify or correct what the surrounding documents claimed, not to replace it.
 

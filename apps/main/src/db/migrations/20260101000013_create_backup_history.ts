@@ -3,7 +3,9 @@ import type { Knex } from 'knex';
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable('backup_history', (table) => {
     table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
-    table.enu('scope', ['full', 'guild'], { useNative: true, enumName: 'backup_scope' }).notNullable();
+    table
+      .enu('scope', ['full', 'guild'], { useNative: true, enumName: 'backup_scope' })
+      .notNullable();
     table.string('guildId').nullable();
     table
       .enu('status', ['pending', 'running', 'succeeded', 'failed'], {

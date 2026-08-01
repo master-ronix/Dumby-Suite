@@ -1,5 +1,8 @@
 import { test, expect } from 'vitest';
-import { SlidingWindowRateLimiter, FallbackRateLimiter } from '../../src/ratelimit/sliding-window.js';
+import {
+  SlidingWindowRateLimiter,
+  FallbackRateLimiter,
+} from '../../src/ratelimit/sliding-window.js';
 
 test('allows up to maxHits requests within the window', () => {
   let now = 0;
@@ -53,7 +56,9 @@ test('constructor rejects invalid maxHits/windowMs', () => {
 });
 
 test('FallbackRateLimiter uses the primary limiter when it is healthy', async () => {
-  const primary = { checkAndIncrement: async () => ({ allowed: true, remaining: 4, retryAfterMs: 0 }) };
+  const primary = {
+    checkAndIncrement: async () => ({ allowed: true, remaining: 4, retryAfterMs: 0 }),
+  };
   const fallback = new SlidingWindowRateLimiter(5, 10_000);
   let engaged = false;
   const wrapper = new FallbackRateLimiter(primary, fallback, () => (engaged = true));
@@ -94,7 +99,12 @@ test('FallbackRateLimiter reports recovery once the primary succeeds again', asy
   };
   const fallback = new SlidingWindowRateLimiter(5, 10_000);
   let recovered = false;
-  const wrapper = new FallbackRateLimiter(primary, fallback, () => {}, () => (recovered = true));
+  const wrapper = new FallbackRateLimiter(
+    primary,
+    fallback,
+    () => {},
+    () => (recovered = true),
+  );
 
   await wrapper.checkAndIncrement('user-1');
   expect(wrapper.isUsingFallback()).toBe(true);

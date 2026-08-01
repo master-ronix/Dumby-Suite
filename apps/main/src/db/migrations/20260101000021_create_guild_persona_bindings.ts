@@ -5,7 +5,12 @@ export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable('guild_persona_bindings', (table) => {
     table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
     table.string('guildId').notNullable().references('id').inTable('guilds').onDelete('CASCADE');
-    table.uuid('personaId').notNullable().references('id').inTable('persona_identities').onDelete('CASCADE');
+    table
+      .uuid('personaId')
+      .notNullable()
+      .references('id')
+      .inTable('persona_identities')
+      .onDelete('CASCADE');
     table.string('channelId').nullable();
     table.jsonb('voicePolicy').notNullable().defaultTo('{}');
     addTimestamps(knex, table);

@@ -34,7 +34,9 @@ export class DumbyError extends Error {
   }
 
   /** Shape returned by every JSON API error response. */
-  toJSON(): { error: { code: string; message: string; retryable: boolean; metadata: Record<string, unknown> } } {
+  toJSON(): {
+    error: { code: string; message: string; retryable: boolean; metadata: Record<string, unknown> };
+  } {
     return {
       error: {
         code: this.code,
@@ -108,6 +110,9 @@ export class RateLimitedError extends DumbyError {
   }
 }
 
+/** Blueprint §28.1 name alias — RateLimitExceededError is the canonical name. */
+export const RateLimitExceededError = RateLimitedError;
+
 export class MaintenanceModeError extends DumbyError {
   constructor(reason?: string) {
     super('System is in maintenance mode', {
@@ -150,6 +155,38 @@ export class EventCycleError extends DumbyError {
   }
 }
 
+export class ExternalServiceError extends DumbyError {
+  constructor(message: string, cause?: unknown) {
+    super(message, {
+      code: 'DUMBY_EXTERNAL_SERVICE_ERROR',
+      httpStatus: 502,
+      retryable: true,
+      cause,
+    });
+  }
+}
+
+export class ConfigurationError extends DumbyError {
+  constructor(message: string, metadata: Record<string, unknown> = {}) {
+    super(message, {
+      code: 'DUMBY_CONFIGURATION_ERROR',
+      httpStatus: 500,
+      retryable: false,
+      metadata,
+    });
+  }
+}
+
+export class InternalError extends DumbyError {
+  constructor(message = 'An unexpected internal error occurred') {
+    super(message, {
+      code: 'DUMBY_INTERNAL_ERROR',
+      httpStatus: 500,
+      retryable: false,
+    });
+  }
+}
+
 export class UnauthorizedError extends DumbyError {
   constructor(message = 'Unauthorized') {
     super(message, { code: 'DUMBY_UNAUTHORIZED', httpStatus: 401, retryable: false });
@@ -180,6 +217,43 @@ export function isModuleDisabledResult(value: unknown): value is ModuleDisabledR
     'kind' in value &&
     (value as { kind: unknown }).kind === MODULE_DISABLED
   );
+}
+
+export class CommandCeilingExceededError extends DumbyError {
+  readonly projected: number;
+  readonly ceiling: number;
+
+  constructor(projected: number, ceiling: number) {
+    super(`Command ceiling would be exceeded: projected ${projected}, max ${ceiling}`, {
+      code: 'DUMBY_COMMAND_CEILING_EXCEEDED',
+      httpStatus: 400,
+      retryable: false,
+      metadata: { projected, ceiling },
+    });
+    this.projected = projected;
+    this.ceiling = ceiling;
+  }
+}
+
+export class CollisionPendingError extends DumbyError {
+  readonly moduleSlug: string;
+  readonly guildId: string;
+  readonly collisionCount: number;
+
+  constructor(moduleSlug: string, guildId: string, collisionCount: number) {
+    super(
+      `Module "${moduleSlug}" has ${collisionCount} unresolved collision(s) in guild ${guildId}`,
+      {
+        code: 'DUMBY_COLLISION_PENDING',
+        httpStatus: 409,
+        retryable: false,
+        metadata: { moduleSlug, guildId, collisionCount },
+      },
+    );
+    this.moduleSlug = moduleSlug;
+    this.guildId = guildId;
+    this.collisionCount = collisionCount;
+  }
 }
 
 export function isDumbyError(value: unknown): value is DumbyError {

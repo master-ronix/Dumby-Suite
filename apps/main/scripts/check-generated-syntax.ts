@@ -10,9 +10,15 @@ import { readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-const EXPECTED_MISSING_PACKAGES = ["Cannot find package 'knex'", "Cannot find package 'bullmq'", "Cannot find package 'pg'"];
+const EXPECTED_MISSING_PACKAGES = [
+  "Cannot find package 'knex'",
+  "Cannot find package 'bullmq'",
+  "Cannot find package 'pg'",
+];
 
-async function checkDir(dir: string): Promise<{ total: number; clean: number; expectedDepErrors: number; failures: string[] }> {
+async function checkDir(
+  dir: string,
+): Promise<{ total: number; clean: number; expectedDepErrors: number; failures: string[] }> {
   const files = walk(dir);
   let clean = 0;
   let expectedDepErrors = 0;
@@ -63,7 +69,9 @@ async function main(): Promise<void> {
     modClean += result.clean + result.expectedDepErrors;
     modFailures = modFailures.concat(result.failures);
   }
-  console.log(`Generated modules: ${modTotal} files across ${moduleDirs.length} modules, ${modClean} syntactically valid, ${modFailures.length} real errors`);
+  console.log(
+    `Generated modules: ${modTotal} files across ${moduleDirs.length} modules, ${modClean} syntactically valid, ${modFailures.length} real errors`,
+  );
   for (const f of modFailures) console.error(`  FAIL: ${f}`);
 
   if (migrations.failures.length > 0 || modFailures.length > 0) {

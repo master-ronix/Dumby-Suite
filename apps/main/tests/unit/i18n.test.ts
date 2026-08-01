@@ -24,27 +24,28 @@ describe('I18nManager', () => {
 
   test('interpolates {{param}} placeholders', () => {
     const mgr = new I18nManager();
-    mgr.register('leveling', { 'en-US': { 'levelup': 'You reached level {{level}}!' } });
+    mgr.register('leveling', { 'en-US': { levelup: 'You reached level {{level}}!' } });
     expect(mgr.t('leveling', 'levelup', { level: 5 })).toBe('You reached level 5!');
   });
 
   test('interpolates multiple params', () => {
     const mgr = new I18nManager();
-    mgr.register('economy', { 'en-US': { 'transfer': '{{from}} sent {{amount}} coins to {{to}}' } });
-    expect(mgr.t('economy', 'transfer', { from: 'Alice', amount: 100, to: 'Bob' }))
-      .toBe('Alice sent 100 coins to Bob');
+    mgr.register('economy', { 'en-US': { transfer: '{{from}} sent {{amount}} coins to {{to}}' } });
+    expect(mgr.t('economy', 'transfer', { from: 'Alice', amount: 100, to: 'Bob' })).toBe(
+      'Alice sent 100 coins to Bob',
+    );
   });
 
   test('falls back to en-US when requested locale is unavailable', () => {
     const mgr = new I18nManager();
-    mgr.register('economy', { 'en-US': { 'balance': 'Balance' } });
+    mgr.register('economy', { 'en-US': { balance: 'Balance' } });
     expect(mgr.t('economy', 'balance', {}, 'fr-FR')).toBe('Balance');
   });
 
   test('re-registering a module replaces the previous bundle', () => {
     const mgr = new I18nManager();
-    mgr.register('economy', { 'en-US': { 'msg': 'First' } });
-    mgr.register('economy', { 'en-US': { 'msg': 'Second' } });
+    mgr.register('economy', { 'en-US': { msg: 'First' } });
+    mgr.register('economy', { 'en-US': { msg: 'Second' } });
     expect(mgr.t('economy', 'msg')).toBe('Second');
   });
 });
@@ -110,7 +111,11 @@ describe('formatTimestamp', () => {
 
   test('accepts custom DateTimeFormat options', () => {
     const date = new Date('2026-01-15T00:00:00Z');
-    const result = formatTimestamp(date, 'en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    const result = formatTimestamp(date, 'en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
     expect(result).toContain('2026');
   });
 });

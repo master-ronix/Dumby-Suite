@@ -11,8 +11,8 @@
 interface Entry<V> {
   key: string;
   value: V;
-  expiresAt: number;         // epoch ms
-  byteSize: number;          // approximate serialized size
+  expiresAt: number; // epoch ms
+  byteSize: number; // approximate serialized size
   prev: Entry<V> | null;
   next: Entry<V> | null;
 }

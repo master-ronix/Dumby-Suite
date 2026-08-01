@@ -52,9 +52,7 @@ export abstract class BaseRepository<Row extends EntityRow> {
   }
 
   async hardDeleteById(id: string): Promise<number> {
-    return (await this.table()
-      .where({ id })
-      .delete()) as number;
+    return (await this.table().where({ id }).delete()) as number;
   }
 }
 
@@ -65,7 +63,10 @@ export abstract class BaseRepository<Row extends EntityRow> {
  * silently mutating history.
  */
 export abstract class InsertOnlyRepository<Row extends { id: string }> {
-  protected constructor(protected readonly knex: Knex, protected readonly tableName: string) {}
+  protected constructor(
+    protected readonly knex: Knex,
+    protected readonly tableName: string,
+  ) {}
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   protected table(): Knex.QueryBuilder<any, any[]> {
@@ -82,10 +83,14 @@ export abstract class InsertOnlyRepository<Row extends { id: string }> {
   }
 
   update(): never {
-    throw new Error(`Table "${this.tableName}" is insert-only: update() is forbidden by repository design.`);
+    throw new Error(
+      `Table "${this.tableName}" is insert-only: update() is forbidden by repository design.`,
+    );
   }
 
   delete(): never {
-    throw new Error(`Table "${this.tableName}" is insert-only: delete() is forbidden by repository design.`);
+    throw new Error(
+      `Table "${this.tableName}" is insert-only: delete() is forbidden by repository design.`,
+    );
   }
 }

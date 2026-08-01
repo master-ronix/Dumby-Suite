@@ -12,19 +12,37 @@ export const moduleTierSchema = z.enum(['admin', 'core', 'standard', 'marketplac
 export const commandManifestSchema = z.object({
   name: z.string().min(1),
   description: z.string().min(1),
-  rbacRequirement: z.enum(['RESTRICTED', 'MEMBER', 'HELPER', 'MOD', 'ADMIN', 'OWNER']).nullable().optional(),
+  guildOnly: z.boolean().default(true),
+  requiresDefer: z.boolean().default(false),
+  ephemeral: z.boolean().default(false),
+  nsfw: z.boolean().default(false),
+  permissions: z
+    .object({
+      discord: z.array(z.string()).default([]),
+    })
+    .default({ discord: [] }),
+  defaultMemberPermissions: z.string().nullable().optional(),
+  rbacRequirement: z
+    .enum(['RESTRICTED', 'MEMBER', 'HELPER', 'MOD', 'ADMIN', 'OWNER'])
+    .nullable()
+    .optional(),
 });
 
 export const eventCatalogEntrySchema = z.object({
   name: z
     .string()
-    .regex(/^[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*){2}$/, 'event name must be {domain}.{entity}.{action}'),
+    .regex(
+      /^[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*){2}$/,
+      'event name must be {domain}.{entity}.{action}',
+    ),
   description: z.string().min(1),
 });
 
 export const crossModuleReadSchema = z.object({
   targetModule: z.string().min(1),
-  accessor: z.string().regex(/ForCrossModuleRead$/, 'accessor name must end with "ForCrossModuleRead"'),
+  accessor: z
+    .string()
+    .regex(/ForCrossModuleRead$/, 'accessor name must end with "ForCrossModuleRead"'),
 });
 
 export const moduleManifestSchema = z
@@ -68,7 +86,10 @@ export const moduleManifestSchema = z
 export type ModuleManifest = z.infer<typeof moduleManifestSchema>;
 
 export class ManifestValidationError extends Error {
-  constructor(readonly moduleName: string, readonly issues: readonly string[]) {
+  constructor(
+    readonly moduleName: string,
+    readonly issues: readonly string[],
+  ) {
     super(`Manifest validation failed for "${moduleName}": ${issues.join('; ')}`);
     this.name = 'ManifestValidationError';
   }
@@ -77,7 +98,10 @@ export class ManifestValidationError extends Error {
 export function parseManifest(raw: unknown): ModuleManifest {
   const result = moduleManifestSchema.safeParse(raw);
   if (!result.success) {
-    const name = typeof raw === 'object' && raw !== null && 'name' in raw ? String((raw as { name: unknown }).name) : '(unknown)';
+    const name =
+      typeof raw === 'object' && raw !== null && 'name' in raw
+        ? String((raw as { name: unknown }).name)
+        : '(unknown)';
     throw new ManifestValidationError(
       name,
       result.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`),

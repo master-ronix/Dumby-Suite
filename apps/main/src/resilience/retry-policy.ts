@@ -14,7 +14,10 @@ export interface RetryPolicyOptions {
 }
 
 export class RetryExhaustedError extends Error {
-  constructor(readonly attempts: number, readonly lastError: unknown) {
+  constructor(
+    readonly attempts: number,
+    readonly lastError: unknown,
+  ) {
     super(`Retry exhausted after ${attempts} attempt(s)`);
     this.name = 'RetryExhaustedError';
   }
@@ -35,7 +38,10 @@ export class RetryPolicy {
     return Math.floor(this.random() * exp);
   }
 
-  async execute<T>(fn: (attempt: number) => Promise<T>, sleep: (ms: number) => Promise<void> = defaultSleep): Promise<T> {
+  async execute<T>(
+    fn: (attempt: number) => Promise<T>,
+    sleep: (ms: number) => Promise<void> = defaultSleep,
+  ): Promise<T> {
     let lastError: unknown;
     for (let attempt = 0; attempt < this.options.maxAttempts; attempt += 1) {
       try {

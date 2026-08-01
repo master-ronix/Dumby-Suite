@@ -5,7 +5,12 @@ export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable('swastik_builds', (table) => {
     table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
     table.string('moduleSlug').notNullable();
-    table.uuid('developerId').notNullable().references('id').inTable('swastik_developers').onDelete('CASCADE');
+    table
+      .uuid('developerId')
+      .notNullable()
+      .references('id')
+      .inTable('swastik_developers')
+      .onDelete('CASCADE');
     table.string('version').notNullable();
     table.string('buildId').notNullable();
     table

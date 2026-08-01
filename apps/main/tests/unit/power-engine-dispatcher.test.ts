@@ -8,12 +8,17 @@ import {
 const trusted = { trustedSources: ['dashboard', 'swastik-internal'] };
 
 test('validatePowerEngineRequest rejects a missing actorId', () => {
-  const result = validatePowerEngineRequest({ actorId: '', source: 'dashboard', reason: 'ok' }, trusted);
+  const result = validatePowerEngineRequest(
+    { actorId: '', source: 'dashboard', reason: 'ok' },
+    trusted,
+  );
   expect(result).toStrictEqual({ valid: false, rejectionReason: 'MISSING_ACTOR_ID' });
 });
 
 test('validatePowerEngineRequest rejects an empty (or whitespace-only) reason', () => {
-  expect(validatePowerEngineRequest({ actorId: 'u1', source: 'dashboard', reason: '' }, trusted).valid).toBe(false);
+  expect(
+    validatePowerEngineRequest({ actorId: 'u1', source: 'dashboard', reason: '' }, trusted).valid,
+  ).toBe(false);
   const whitespaceResult = validatePowerEngineRequest(
     { actorId: 'u1', source: 'dashboard', reason: '   ' },
     trusted,
@@ -31,7 +36,12 @@ test('validatePowerEngineRequest rejects an untrusted source', () => {
 });
 
 test('validatePowerEngineRequest accepts a fully valid request', () => {
-  expect(validatePowerEngineRequest({ actorId: 'u1', source: 'dashboard', reason: 'incident response' }, trusted)).toStrictEqual({ valid: true });
+  expect(
+    validatePowerEngineRequest(
+      { actorId: 'u1', source: 'dashboard', reason: 'incident response' },
+      trusted,
+    ),
+  ).toStrictEqual({ valid: true });
 });
 
 test('dispatch() runs the handler and writes exactly one "allowed" audit row on success', async () => {
@@ -80,10 +90,18 @@ test('every attempt is audited unconditionally, including a run of mixed allowed
   const auditWriter = new InMemoryAuditWriter();
   const dispatcher = new PowerEngineDispatcher(trusted, auditWriter);
 
-  await dispatcher.dispatch('a', { actorId: 'u1', source: 'dashboard', reason: 'x' }, async () => 1);
+  await dispatcher.dispatch(
+    'a',
+    { actorId: 'u1', source: 'dashboard', reason: 'x' },
+    async () => 1,
+  );
   await dispatcher.dispatch('b', { actorId: 'u1', source: 'evil', reason: 'x' }, async () => 2);
   await dispatcher.dispatch('c', { actorId: '', source: 'dashboard', reason: 'x' }, async () => 3);
 
   expect(auditWriter.entries.length).toBe(3);
-  expect(auditWriter.entries.map((e) => e.outcome)).toStrictEqual(['allowed', 'rejected', 'rejected']);
+  expect(auditWriter.entries.map((e) => e.outcome)).toStrictEqual([
+    'allowed',
+    'rejected',
+    'rejected',
+  ]);
 });

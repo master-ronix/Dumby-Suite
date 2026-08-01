@@ -4,15 +4,14 @@
  */
 import { createRequire } from 'node:module';
 import knex from 'knex';
-import { parseEnv } from '../config/env.schema.js';
+import { parseEnv, pickEnvKeys } from '../config/env.schema.js';
 import knexConfig from '../db/knexfile.js';
 
 const command = process.argv[2] ?? 'status';
-const env = parseEnv(process.env);
+const env = parseEnv(pickEnvKeys(process.env));
 const nodeEnv: string = env.NODE_ENV;
 const config = knexConfig[nodeEnv] ?? knexConfig['development'];
 if (!config) {
-   
   console.error(`No knex config found for environment: ${nodeEnv}`);
   process.exit(1);
 }
@@ -22,17 +21,17 @@ async function run(): Promise<void> {
   try {
     if (command === 'up') {
       const [batch, migrations] = await db.migrate.latest();
-       
+
       console.log(`Ran batch ${batch}:`, migrations);
     } else if (command === 'down') {
       const [batch, migrations] = await db.migrate.rollback();
-       
+
       console.log(`Rolled back batch ${batch}:`, migrations);
     } else {
       const list = await db.migrate.list();
-       
+
       console.log('Pending:', list[0]);
-       
+
       console.log('Completed:', list[1]);
     }
   } finally {
@@ -44,7 +43,6 @@ async function run(): Promise<void> {
 void createRequire;
 
 run().catch((err: unknown) => {
-   
   console.error(err);
   process.exit(1);
 });

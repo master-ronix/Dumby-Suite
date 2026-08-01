@@ -1,1 +1,0 @@
-- [Dumby build state](dumby-build-state.md) — Dumby bot framework lives in apps/main/; 33 tests 446 passing; 3 cache files were missing from the zip and had to be created.

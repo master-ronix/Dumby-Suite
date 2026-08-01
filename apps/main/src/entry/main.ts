@@ -8,7 +8,6 @@
 import { bootstrap } from '../bootstrap/bootstrap.js';
 
 bootstrap().catch((err: unknown) => {
-   
   console.error('Fatal bootstrap error:', err);
   process.exit(1);
 });

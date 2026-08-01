@@ -25,9 +25,9 @@ const TTL_REGISTRY: Record<string, number> = {
   'guild:module-catalog': 300,
   'guild:roles': 120,
   'user:blacklist': 120,
-  'cooldown': 60,
+  cooldown: 60,
   'paginate:session': 900,
-  'form': 60,
+  form: 60,
 };
 
 const DEFAULT_TTL_SECONDS = 60;

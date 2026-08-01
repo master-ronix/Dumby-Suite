@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { Container } from '../di/container.js';
 import { CORE_TOKENS } from '../di/tokens.js';
 import { parseEnv, pickEnvKeys, ConfigValidationError } from '../config/env.schema.js';
@@ -15,7 +16,7 @@ import { PermissionResolver } from '../permissions/resolver.js';
 import { BootstrapProgress } from './stages.js';
 import { buildApiServer, buildHealthServer, buildMetricsServer } from '../http/server.js';
 import { PowerEngineDispatcher } from '../http/power-engine-dispatcher.js';
-import { registerAllModules } from '../modules/register-all.js';
+import { loadModulesFromSwastikVolume } from '../modules/swastik-loader.js';
 import { InFlightTracker } from '../shutdown/in-flight-tracker.js';
 import { registerShutdownSignalHandlers, isAcceptingGatewayEvents } from '../shutdown/shutdown.js';
 import { Redis } from 'ioredis';
@@ -23,7 +24,11 @@ import { CommandRegistry } from '../commands/command-registry.js';
 import { CommandRouter } from '../commands/command-router.js';
 import type { CommandInteraction } from '../commands/command-router.js';
 import { Events, REST, type Client } from 'discord.js';
-import { buildDiscordClient, computeIntentsBitfield, computePartials } from '../discord/client-builder.js';
+import {
+  buildDiscordClient,
+  computeIntentsBitfield,
+  computePartials,
+} from '../discord/client-builder.js';
 import { LiveGatewayAdapter } from '../discord/gateway.live-adapter.js';
 import { CommandDeployer } from '../commands/command-deployer.js';
 
@@ -39,8 +44,11 @@ export async function bootstrap(): Promise<void> {
   // Stage 01: PROCESS_SETUP
   progress.advanceTo('PROCESS_SETUP');
   process.title = 'dumby-headless-backend';
+  process.on('uncaughtException', (err) => {
+    console.error('uncaughtException', err);
+    process.exit(1);
+  });
   process.on('unhandledRejection', (reason) => {
-     
     console.error('unhandledRejection', reason);
   });
 
@@ -51,7 +59,6 @@ export async function bootstrap(): Promise<void> {
     env = parseEnv(pickEnvKeys(process.env));
   } catch (err) {
     if (err instanceof ConfigValidationError) {
-       
       console.error('Fatal: environment validation failed', err.fieldErrors);
       process.exit(1);
     }
@@ -80,7 +87,7 @@ export async function bootstrap(): Promise<void> {
   const db = new DbClient({
     connectionString: config.get('DATABASE_URL'),
     poolMax: config.get('DATABASE_POOL_MAX'),
-    statementTimeoutMs: config.get('DATABASE_STATEMENT_TIMEOUT'),
+    statementTimeoutMs: config.get('DATABASE_STATEMENT_TIMEOUT_MS'),
     slowQueryThresholdMs: config.get('SLOW_QUERY_THRESHOLD_MS'),
     criticalQueryThresholdMs: config.get('CRITICAL_QUERY_THRESHOLD_MS'),
     logger,
@@ -120,7 +127,18 @@ export async function bootstrap(): Promise<void> {
   const moduleRegistry = new ModuleRegistry();
   const permissionResolver = new PermissionResolver();
   const commandRegistry = new CommandRegistry();
-  const commandRouter = new CommandRouter(commandRegistry, logger);
+  const isModuleEnabledInGuild = async (moduleId: string, guildId: string): Promise<boolean> => {
+    const row = await db
+      .knex('guild_module_states')
+      .where({ guildId, moduleSlug: moduleId, enabled: true, state: 'active' })
+      .whereNull('deletedAt')
+      .first('id');
+    return row !== undefined;
+  };
+  const commandRouter = new CommandRouter(commandRegistry, logger, {
+    devGuildId: config.get('DEV_GUILD_ID'),
+    isModuleEnabledInGuild,
+  });
   container.registerValue(CORE_TOKENS.EventBus, eventBus);
   container.registerValue(CORE_TOKENS.ModuleRegistry, moduleRegistry);
   container.registerValue(CORE_TOKENS.PermissionResolver, permissionResolver);
@@ -137,7 +155,16 @@ export async function bootstrap(): Promise<void> {
 
   // Stage 10: MODULE_DISCOVER
   progress.advanceTo('MODULE_DISCOVER');
-  registerAllModules(moduleRegistry);
+  const swastikModules = await loadModulesFromSwastikVolume({
+    liveVolumePath: config.get('SWASTIK_LIVE_VOLUME_PATH'),
+    registry: moduleRegistry,
+    logger,
+  });
+  logger.info('module-discovery-complete', {
+    source: 'swastik-live-volume',
+    liveVolumePath: config.get('SWASTIK_LIVE_VOLUME_PATH'),
+    swastikModules: swastikModules.loaded,
+  });
 
   // Stage 11: MODULE_VALIDATE
   progress.advanceTo('MODULE_VALIDATE');
@@ -173,21 +200,35 @@ export async function bootstrap(): Promise<void> {
     discordClient.on(Events.InteractionCreate, (interaction) => {
       if (!interaction.isChatInputCommand()) return;
       if (!isAcceptingGatewayEvents()) return;
-      void commandRouter.dispatch(interaction as unknown as CommandInteraction).catch(async (err) => {
-        logger.error('interaction-dispatch-failed', { command: interaction.commandName, error: String(err) });
-        try {
-          if (interaction.deferred || interaction.replied) {
-            await interaction.editReply({ content: 'Something went wrong running that command.' });
-          } else {
-            await interaction.reply({ content: 'Something went wrong running that command.', ephemeral: true });
+      void commandRouter
+        .dispatch(interaction as unknown as CommandInteraction)
+        .catch(async (err) => {
+          logger.error('interaction-dispatch-failed', {
+            command: interaction.commandName,
+            error: String(err),
+          });
+          try {
+            if (interaction.deferred || interaction.replied) {
+              await interaction.editReply({
+                content: 'Something went wrong running that command.',
+              });
+            } else {
+              await interaction.reply({
+                content: 'Something went wrong running that command.',
+                ephemeral: true,
+              });
+            }
+          } catch (replyErr) {
+            logger.error('interaction-error-reply-failed', { error: String(replyErr) });
           }
-        } catch (replyErr) {
-          logger.error('interaction-error-reply-failed', { error: String(replyErr) });
-        }
-      });
+        });
     });
 
-    const liveAdapter = new LiveGatewayAdapter(discordClient, config.get('BOT_TOKEN'), config.get('SHARD_COUNT'));
+    const liveAdapter = new LiveGatewayAdapter(
+      discordClient,
+      config.get('BOT_TOKEN'),
+      config.get('SHARD_COUNT'),
+    );
     await liveAdapter.login();
   }
 
@@ -202,19 +243,36 @@ export async function bootstrap(): Promise<void> {
       config: {
         botToken: config.get('BOT_TOKEN'),
         applicationId,
-        devGuildId: config.get('DEVELOPMENT_GUILD_ID'),
+        devGuildId: config.get('DEV_GUILD_ID'),
         nodeEnv: config.get('NODE_ENV'),
       },
       rest,
+      enabledGuildResolver: async (moduleSlug) => {
+        const rows = await db
+          .knex('guild_module_states')
+          .select<{ guildId: string }[]>('guildId')
+          .where({ moduleSlug, enabled: true, state: 'active' })
+          .whereNull('deletedAt');
+        return rows.map((row) => row.guildId);
+      },
     });
     await commandDeployer.deploy();
-    logger.info('discord-client-ready', { applicationId, guildCount: discordClient.guilds.cache.size });
+    logger.info('discord-client-ready', {
+      applicationId,
+      guildCount: discordClient.guilds.cache.size,
+    });
   }
 
   // Stage 17: MODULE_READY
   progress.advanceTo('MODULE_READY');
-  await moduleLoader.readyAll(loadReport.order);
-  progress.setRequiredModulesHealthy(loadReport.fatal.length === 0);
+  const readyReport = await moduleLoader.readyAll(loadReport.order);
+  progress.setRequiredModulesHealthy(readyReport.requiredFailed.length === 0);
+  if (readyReport.requiredFailed.length > 0) {
+    logger.error('required-modules-ready-failed', {
+      modules: readyReport.requiredFailed,
+      allReadyFailures: readyReport.failed,
+    });
+  }
 
   // Stage 18: STARTUP_COMPLETE
   progress.advanceTo('STARTUP_COMPLETE');
@@ -227,19 +285,22 @@ export async function bootstrap(): Promise<void> {
     metrics,
     config,
     adminDeps: {
-      dispatcher: new PowerEngineDispatcher({ trustedSources: config.get('PEP_TRUSTED_SOURCES') }, {
-        write: async (entry) => {
-          await db.knex('audit_logs').insert({
-            actorId: entry.actorId,
-            source: entry.source,
-            reason: entry.reason,
-            action: entry.action,
-            outcome: entry.outcome,
-            rejectionReason: entry.rejectionReason ?? null,
-            metadata: JSON.stringify({}),
-          });
+      dispatcher: new PowerEngineDispatcher(
+        { trustedSources: config.get('PEP_TRUSTED_SOURCES') },
+        {
+          write: async (entry) => {
+            await db.knex('audit_logs').insert({
+              actorId: entry.actorId,
+              source: entry.source,
+              reason: entry.reason,
+              action: entry.action,
+              outcome: entry.outcome,
+              rejectionReason: entry.rejectionReason ?? null,
+              metadata: JSON.stringify({}),
+            });
+          },
         },
-      }),
+      ),
       db,
       config,
       auditWriter: {

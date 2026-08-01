@@ -66,7 +66,11 @@ export class EventLoopLagMonitor {
   }
 
   /** Should this particular emission be shed given current lag? Protected domains are never shed. */
-  shouldShed(eventName: string, sheddable: boolean, isProtected: (name: string) => boolean): boolean {
+  shouldShed(
+    eventName: string,
+    sheddable: boolean,
+    isProtected: (name: string) => boolean,
+  ): boolean {
     if (!sheddable) return false;
     if (isProtected(eventName)) return false;
     return this.isLagged();

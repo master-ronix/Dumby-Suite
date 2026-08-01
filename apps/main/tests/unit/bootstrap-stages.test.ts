@@ -10,25 +10,25 @@ import {
 test('there are exactly 18 bootstrap stages in the mandated order', () => {
   expect(BOOTSTRAP_STAGES.length).toBe(18);
   expect(BOOTSTRAP_STAGES).toStrictEqual([
-        'PROCESS_SETUP',
-        'CONFIG_LOAD',
-        'HEALTH_SERVER_INIT',
-        'OBSERVABILITY_INIT',
-        'DATABASE_CONNECT',
-        'MIGRATION_RUN',
-        'CACHE_CONNECT',
-        'QUEUE_INIT',
-        'DI_BOOTSTRAP',
-        'MODULE_DISCOVER',
-        'MODULE_VALIDATE',
-        'MODULE_LOAD',
-        'COMMAND_REGISTER',
-        'EVENT_REGISTER',
-        'DISCORD_LOGIN',
-        'CLIENT_READY',
-        'MODULE_READY',
-        'STARTUP_COMPLETE',
-      ]);
+    'PROCESS_SETUP',
+    'CONFIG_LOAD',
+    'HEALTH_SERVER_INIT',
+    'OBSERVABILITY_INIT',
+    'DATABASE_CONNECT',
+    'MIGRATION_RUN',
+    'CACHE_CONNECT',
+    'QUEUE_INIT',
+    'DI_BOOTSTRAP',
+    'MODULE_DISCOVER',
+    'MODULE_VALIDATE',
+    'MODULE_LOAD',
+    'COMMAND_REGISTER',
+    'EVENT_REGISTER',
+    'DISCORD_LOGIN',
+    'CLIENT_READY',
+    'MODULE_READY',
+    'STARTUP_COMPLETE',
+  ]);
 });
 
 test('there are exactly 9 shutdown steps in the mandated order', () => {

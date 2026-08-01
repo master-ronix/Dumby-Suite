@@ -22,7 +22,10 @@ export interface AdminTierGateResult {
 
 const SILENT_REJECTION_MESSAGE = 'Unknown command.';
 
-export function checkAdminTierGate(actorId: string, botOwnerIds: readonly string[]): AdminTierGateResult {
+export function checkAdminTierGate(
+  actorId: string,
+  botOwnerIds: readonly string[],
+): AdminTierGateResult {
   return {
     allowed: botOwnerIds.includes(actorId),
     mustAudit: true,

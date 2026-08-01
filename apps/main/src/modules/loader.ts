@@ -3,6 +3,8 @@ import type { Logger } from '../logging/logger.js';
 import { topologicalLoadOrder, classifyLoadFailures, type ModuleNode } from './topo-sort.js';
 import { validateTierRules } from './tier-rules.js';
 import type { ModuleRegistry } from './registry.js';
+import { CORE_TOKENS } from '../di/tokens.js';
+import type { CommandRegistry } from '../commands/command-registry.js';
 
 export interface ModuleLoadReport {
   order: readonly string[];
@@ -10,8 +12,16 @@ export interface ModuleLoadReport {
   degraded: readonly string[];
 }
 
+export interface ModuleReadyReport {
+  failed: readonly string[];
+  requiredFailed: readonly string[];
+}
+
 export class ModuleValidationFailedError extends Error {
-  constructor(readonly moduleName: string, readonly violations: readonly string[]) {
+  constructor(
+    readonly moduleName: string,
+    readonly violations: readonly string[],
+  ) {
     super(`Module "${moduleName}" fails tier validation: ${violations.join('; ')}`);
     this.name = 'ModuleValidationFailedError';
   }
@@ -75,6 +85,10 @@ export class ModuleLoader {
       const mod = this.registry.get(name);
       if (!mod) continue;
       try {
+        this.container.tryResolve<CommandRegistry>(CORE_TOKENS.CommandRegistry)?.registerModule(
+          mod.manifest.name,
+          mod.manifest.tier,
+        );
         await mod.onLoad?.(this.container);
       } catch (err) {
         this.logger.error('module-load-failed', { module: name, error: String(err) });
@@ -89,8 +103,11 @@ export class ModuleLoader {
     return { order, fatal, degraded };
   }
 
-  /** Stage 17: MODULE_READY. onReady failures disable that module non-fatally — bootstrap continues. */
-  async readyAll(order: readonly string[]): Promise<string[]> {
+  /**
+   * Stage 17: MODULE_READY. onReady failures do not crash bootstrap, but
+   * required-module failures must keep readiness false until remediated.
+   */
+  async readyAll(order: readonly string[]): Promise<ModuleReadyReport> {
     const readyFailures: string[] = [];
     for (const name of order) {
       const mod = this.registry.get(name);
@@ -102,7 +119,10 @@ export class ModuleLoader {
         readyFailures.push(name);
       }
     }
-    return readyFailures;
+    return {
+      failed: readyFailures,
+      requiredFailed: readyFailures.filter((name) => this.registry.get(name)?.manifest.required),
+    };
   }
 
   /** Shutdown step 3: onUnload in reverse load order. */

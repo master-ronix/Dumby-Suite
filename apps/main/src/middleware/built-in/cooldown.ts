@@ -31,7 +31,11 @@ export class CooldownMiddleware implements Middleware {
 
     const remaining = await this.store.getRemainingMs(ctx.userId, ctx.commandName);
     if (remaining > 0) {
-      throw new MiddlewareRejectError(429, `Cooldown active. Try again in ${Math.ceil(remaining / 1000)}s`, false);
+      throw new MiddlewareRejectError(
+        429,
+        `Cooldown active. Try again in ${Math.ceil(remaining / 1000)}s`,
+        false,
+      );
     }
 
     await next();

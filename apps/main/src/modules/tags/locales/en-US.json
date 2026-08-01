@@ -1,6 +1,0 @@
-{
-  "module.name": "Tags",
-  "module.selftest.success": "Tags self-test completed successfully.",
-  "module.selftest.failure": "Tags self-test failed.",
-  "module.status.summary": "Tags has run {{totalRuns}} self-test(s)."
-}

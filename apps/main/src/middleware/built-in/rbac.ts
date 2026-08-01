@@ -33,7 +33,7 @@ export class RBACMiddleware implements Middleware {
       return;
     }
 
-    const actual = await this.resolver.getHighestRole(ctx.userId, ctx.guildId) ?? 'MEMBER';
+    const actual = (await this.resolver.getHighestRole(ctx.userId, ctx.guildId)) ?? 'MEMBER';
     if (!roleMeetsRequirement(actual, required)) {
       throw new MiddlewareRejectError(403, `Requires role ${required}; you have ${actual}`, false);
     }

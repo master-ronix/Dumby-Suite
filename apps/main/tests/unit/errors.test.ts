@@ -16,8 +16,8 @@ import {
 test('DumbyError.toJSON returns the standard API error envelope', () => {
   const err = new DumbyError('boom', { code: 'X', httpStatus: 500, metadata: { a: 1 } });
   expect(err.toJSON()).toStrictEqual({
-        error: { code: 'X', message: 'boom', retryable: false, metadata: { a: 1 } },
-      });
+    error: { code: 'X', message: 'boom', retryable: false, metadata: { a: 1 } },
+  });
 });
 
 test('ValidationError defaults to 400 and carries field errors', () => {

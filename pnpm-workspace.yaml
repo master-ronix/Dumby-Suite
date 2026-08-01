@@ -72,10 +72,12 @@ autoInstallPeers: false
 onlyBuiltDependencies:
   - '@swc/core'
   - argon2
+  - cpu-features
   - esbuild
   - msgpackr-extract
   - msw
   - protobufjs
+  - ssh2
   - unrs-resolver
 
 overrides:
@@ -162,3 +164,11 @@ overrides:
   # drizzle-kit uses esbuild internally on an older version that's vulnerable, this overrides it
   "@esbuild-kit/esm-loader": "npm:tsx@^4.21.0"
   esbuild: "0.27.3"
+
+allowBuilds:
+  argon2: true
+  cpu-features: true
+  esbuild: true
+  msgpackr-extract: true
+  protobufjs: true
+  ssh2: true

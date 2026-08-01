@@ -15,17 +15,17 @@
 import Fastify from 'fastify';
 import { randomBytes } from 'node:crypto';
 import argon2 from 'argon2';
-import { parseEnv } from '../config/env.schema.js';
+import { parseEnv, pickEnvKeys } from '../config/env.schema.js';
 import { createLogger } from '../logging/logger.js';
 import { DbClient } from '../db/client.js';
 
-const env = parseEnv(process.env);
+const env = parseEnv(pickEnvKeys(process.env));
 const logger = createLogger(env.LOG_LEVEL);
 
 const db = new DbClient({
   connectionString: env.DATABASE_URL,
   poolMax: env.DATABASE_POOL_MAX,
-  statementTimeoutMs: env.DATABASE_STATEMENT_TIMEOUT,
+  statementTimeoutMs: env.DATABASE_STATEMENT_TIMEOUT_MS,
   slowQueryThresholdMs: env.SLOW_QUERY_THRESHOLD_MS,
   criticalQueryThresholdMs: env.CRITICAL_QUERY_THRESHOLD_MS,
   logger,
@@ -64,15 +64,22 @@ app.post<{ Body: { label: string; registeredBy: string } }>(
 /** Revoke a credential by ID. */
 app.delete<{ Params: { id: string } }>('/credentials/:id', async (request, reply) => {
   const { id } = request.params;
-  const rows = await db.knex('api_sessions').where({ id }).update({ revokedAt: new Date(), updatedAt: new Date() });
+  const rows = await db
+    .knex('api_sessions')
+    .where({ id })
+    .update({ revokedAt: new Date(), updatedAt: new Date() });
   if (rows === 0) return reply.code(404).send({ error: 'Credential not found' });
   logger.info('credential-revoked', { id });
   return reply.code(204).send();
 });
 
-app.listen({ port: 8086, host: env.CREDENTIALS_SERVICE_BIND_HOST })
+app
+  .listen({ port: 8086, host: env.CREDENTIALS_SERVICE_BIND_HOST })
   .then(() => {
-    logger.info('credentials-service-started', { host: env.CREDENTIALS_SERVICE_BIND_HOST, port: 8086 });
+    logger.info('credentials-service-started', {
+      host: env.CREDENTIALS_SERVICE_BIND_HOST,
+      port: 8086,
+    });
   })
   .catch((err: unknown) => {
     logger.fatal('credentials-service-start-failed', { error: String(err) });

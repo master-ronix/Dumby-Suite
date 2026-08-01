@@ -11,8 +11,7 @@ Governs             : The construction of workspace/apps/main — the actual Dum
 Companion Location  : This file lives in workspace/docs/, alongside the seven source
                        documents it synthesizes. It replaces none of them — it is the
                        execution layer on top of them.
-Intended Reader     : A Claude model (or any competent engineering agent) tasked with
-                       actually building Dumby, in a fresh session, with workspace/docs/
+Intended Reader     : Engineers tasked with building Dumby with workspace/docs/
                        available to read and workspace/apps/main/ available to write to.
 Status              : Execute this directly. Where this prompt is silent on a detail,
                        the source documents govern — go read the cited section.

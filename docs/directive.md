@@ -12,7 +12,7 @@ Controlling Source : blueprint.md — "DUMBY FRAMEWORK: Complete Engineering &
                       Implementation Reference" (v4.5.0 architecture)
 Supporting Context : documentation.md, directory.md, interface.md (informational only)
 Status              : Living document — revise on architectural change; see §52
-Nature              : Guidance for engineers and AI coding agents. Not a system prompt.
+Nature              : Guidance for engineers. Not a system prompt.
                       Not a runtime artifact. Not self-enforcing. See §0.1.
 ```
 
@@ -102,13 +102,13 @@ designed, built, reviewed, deployed, and evolved.
 It is **derived from, and subordinate to**, `blueprint.md` ("DUMBY FRAMEWORK — Complete
 Engineering & Implementation Reference"), which remains the canonical architectural
 specification. This directive translates that architecture into imperative,
-actionable engineering rules, quality gates, and checklists a team or an AI coding
-agent can build directly against.
+actionable engineering rules, quality gates, and checklists a team can build directly
+against.
 
 **What this document is not:**
 
 - It is **not a system prompt**. It does not run, execute, or address any model or
-  agent at inference time. It is read by engineers and by AI coding agents *as
+  tool at runtime. It is read by engineers *as
   documentation*, the same way a `CONTRIBUTING.md` or `ARCHITECTURE.md` file is read.
 - It is **not a self-enforcing mechanism**. Nothing in this document polices the
   codebase automatically. Wherever a rule below says something is "enforced," it means
@@ -191,7 +191,7 @@ never as authoring guidance for it.
 |---|---|---|
 | Core engineer (new to the codebase) | "What are the non-negotiable rules for working in `src/core/`?" | Part I, then Part III |
 | Platform / SRE operator | "How do I run, scale, and operate this without getting paged unnecessarily?" | Part VI, Part VII |
-| AI coding agent tasked with a subsystem | "What does 'done' look like for the piece I've been asked to build?" | The relevant Part, then §46 |
+| Subsystem engineer | "What does 'done' look like for the piece I've been asked to build?" | The relevant Part, then §46 |
 | Tech lead / reviewer | "How do I audit a PR or a fork for architectural compliance?" | §46 (Compliance Checklist), then the cited section |
 
 ## §0.6 Definition of "Done" for the Core
@@ -2667,6 +2667,5 @@ this directive to be corrected, not as an ambiguity to be argued around case-by-
 
 *End of DUMBY CORE ENGINEERING DIRECTIVE. This document translates `blueprint.md`'s
 architecture into actionable, verifiable engineering rules for the Application Core.
-It is guidance for engineers and AI coding agents — read it, build against it, review
+It is guidance for engineers — read it, build against it, review
 against it — not an instruction set that executes on its own.*
-

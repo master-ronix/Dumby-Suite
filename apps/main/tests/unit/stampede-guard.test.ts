@@ -41,9 +41,11 @@ test('the lock is released after the function completes, allowing a later caller
 
 test('the lock is released even if the guarded function throws', async () => {
   const guard = new StampedeGuard(new InMemoryLockStore());
-  await expect(guard.withLock('hot-key', 'owner-a', async () => {
-        throw new Error('recompute failed');
-      })).rejects.toThrow();
+  await expect(
+    guard.withLock('hot-key', 'owner-a', async () => {
+      throw new Error('recompute failed');
+    }),
+  ).rejects.toThrow();
   const second = await guard.withLock('hot-key', 'owner-b', async () => 'recovered');
   expect(second).toStrictEqual({ acquired: true, result: 'recovered' });
 });

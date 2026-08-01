@@ -12,7 +12,9 @@ export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable('rbac_grants', (table) => {
     table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
     table.string('guildId').notNullable().references('id').inTable('guilds').onDelete('CASCADE');
-    table.enu('level', ['role', 'group', 'set'], { useNative: true, enumName: 'rbac_grant_level' }).notNullable();
+    table
+      .enu('level', ['role', 'group', 'set'], { useNative: true, enumName: 'rbac_grant_level' })
+      .notNullable();
     table.string('levelRefId').notNullable();
     table
       .enu('grantType', ['permit', 'blacklist', 'whitelist', 'quota', 'cooldown'], {

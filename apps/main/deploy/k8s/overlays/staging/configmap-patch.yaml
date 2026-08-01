@@ -5,4 +5,4 @@ metadata:
 data:
   NODE_ENV: staging
   LOG_LEVEL: debug
-  TRACE_SAMPLE_RATE: "1.0"
+  TRACE_SAMPLE_RATE: '1.0'

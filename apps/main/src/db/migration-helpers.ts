@@ -26,9 +26,8 @@ export async function createPartialUniqueNotDeleted(
 ): Promise<void> {
   const name = indexName ?? `${tableName}_${columns.join('_')}_not_deleted_uq`;
   const columnList = columns.map(() => '??').join(', ');
-  await knex.raw(`create unique index if not exists ?? on ?? (${columnList}) where "deletedAt" is null`, [
-    name,
-    tableName,
-    ...columns,
-  ]);
+  await knex.raw(
+    `create unique index if not exists ?? on ?? (${columnList}) where "deletedAt" is null`,
+    [name, tableName, ...columns],
+  );
 }

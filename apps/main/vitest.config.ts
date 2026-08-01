@@ -3,7 +3,13 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     include: ['tests/unit/**/*.test.ts'],
-    exclude: ['tests/integration/**', 'tests/e2e/**', 'tests/smoke/**', 'tests/load/**', 'tests/chaos/**'],
+    exclude: [
+      'tests/integration/**',
+      'tests/e2e/**',
+      'tests/smoke/**',
+      'tests/load/**',
+      'tests/chaos/**',
+    ],
     environment: 'node',
     globals: false,
     coverage: {
@@ -13,13 +19,6 @@ export default defineConfig({
         'src/entry/**',
         'src/monetization/**',
         'src/**/*.d.ts',
-        // Illustrative catalog module scaffolds — require live DB/queue to execute.
-        // These are explicitly out of scope for unit testing (master-prompt.md ADR 004:
-        // "22 catalog modules: no commands, no schemas, no services — skeletons only").
-        'src/modules/*/eraser.ts',
-        'src/modules/*/exporter.ts',
-        'src/modules/*/job.ts',
-        'src/modules/*/repository.ts',
         // Database layer — requires live PostgreSQL to execute.
         'src/db/migrations/**',
         'src/db/client.ts',
@@ -27,8 +26,6 @@ export default defineConfig({
         'src/db/repositories/**',
         // Module registry list — re-exports only, no logic.
         'src/modules/register-all.ts',
-        // Template — illustrative scaffold, not executable.
-        'src/modules/_template/**',
         // Testing helpers — not production code.
         'src/shared/testing/**',
       ],

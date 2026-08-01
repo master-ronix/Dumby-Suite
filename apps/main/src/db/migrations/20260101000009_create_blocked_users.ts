@@ -1,5 +1,9 @@
 import type { Knex } from 'knex';
-import { addTimestamps, addSoftDelete, createPartialUniqueNotDeleted } from '../migration-helpers.js';
+import {
+  addTimestamps,
+  addSoftDelete,
+  createPartialUniqueNotDeleted,
+} from '../migration-helpers.js';
 
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable('blocked_users', (table) => {
@@ -13,7 +17,12 @@ export async function up(knex: Knex): Promise<void> {
     table.index(['userId']);
     table.index(['guildId']);
   });
-  await createPartialUniqueNotDeleted(knex, 'blocked_users', ['userId', 'guildId'], 'blocked_users_user_guild_not_deleted_uq');
+  await createPartialUniqueNotDeleted(
+    knex,
+    'blocked_users',
+    ['userId', 'guildId'],
+    'blocked_users_user_guild_not_deleted_uq',
+  );
 }
 
 export async function down(knex: Knex): Promise<void> {

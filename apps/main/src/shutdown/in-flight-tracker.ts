@@ -23,9 +23,15 @@ export class InFlightTracker {
     return this.count;
   }
 
-  async waitForDrain(timeoutMs: number, sleep: (ms: number) => Promise<void> = defaultSleep): Promise<void> {
+  async waitForDrain(
+    timeoutMs: number,
+    sleep: (ms: number) => Promise<void> = defaultSleep,
+  ): Promise<void> {
     if (this.count === 0) return;
-    await Promise.race([new Promise<void>((resolve) => this.resolvers.push(resolve)), sleep(timeoutMs)]);
+    await Promise.race([
+      new Promise<void>((resolve) => this.resolvers.push(resolve)),
+      sleep(timeoutMs),
+    ]);
   }
 }
 

@@ -53,7 +53,11 @@ export class QueueManager {
     const concurrency = opts.concurrency ?? this.options.defaultConcurrency;
     const worker = new Worker<T>(opts.name, opts.processor, { connection, concurrency });
     worker.on('failed', (job, err) => {
-      this.options.logger.error('job-failed', { queue: opts.name, jobId: job?.id, error: String(err) });
+      this.options.logger.error('job-failed', {
+        queue: opts.name,
+        jobId: job?.id,
+        error: String(err),
+      });
     });
 
     const events = new QueueEvents(opts.name, { connection });
@@ -62,7 +66,13 @@ export class QueueManager {
       opts.maxConcurrency ?? concurrency * 4,
     );
 
-    this.entries.set(opts.name, { queue: queue as unknown as Queue, worker: worker as unknown as Worker, events, autoscaler, previousDepth: 0 });
+    this.entries.set(opts.name, {
+      queue: queue as unknown as Queue,
+      worker: worker as unknown as Worker,
+      events,
+      autoscaler,
+      previousDepth: 0,
+    });
     return queue;
   }
 
@@ -120,7 +130,11 @@ export class QueueManager {
   async tickAutoscaler(): Promise<void> {
     for (const [name, entry] of this.entries) {
       const depth = await this.getDepth(name);
-      const decision = entry.autoscaler.evaluate(entry.worker.concurrency, depth, entry.previousDepth);
+      const decision = entry.autoscaler.evaluate(
+        entry.worker.concurrency,
+        depth,
+        entry.previousDepth,
+      );
       entry.previousDepth = depth;
       if (decision.action !== 'hold') {
         entry.worker.concurrency = decision.newConcurrency;
@@ -142,7 +156,10 @@ export class QueueManager {
       const failedLastHour = failedJobs.filter((j) => (j.finishedOn ?? 0) >= oneHourAgo).length;
       const result = this.dlqMonitor.evaluate(name, failedLastHour);
       if (result.shouldAlert) {
-        this.options.logger.error('dlq-alert-threshold-exceeded', { queue: result.queue, failedCountLastHour: result.failedCountLastHour });
+        this.options.logger.error('dlq-alert-threshold-exceeded', {
+          queue: result.queue,
+          failedCountLastHour: result.failedCountLastHour,
+        });
       }
     }
   }

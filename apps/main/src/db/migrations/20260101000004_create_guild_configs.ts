@@ -1,5 +1,9 @@
 import type { Knex } from 'knex';
-import { addTimestamps, addSoftDelete, createPartialUniqueNotDeleted } from '../migration-helpers.js';
+import {
+  addTimestamps,
+  addSoftDelete,
+  createPartialUniqueNotDeleted,
+} from '../migration-helpers.js';
 
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable('guild_configs', (table) => {

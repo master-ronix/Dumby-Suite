@@ -10,6 +10,8 @@ import type { MetricsRegistry } from '../metrics/registry.js';
 import type { DbClient } from '../db/client.js';
 import type { CommandRegistry } from '../commands/command-registry.js';
 import type { CommandRouter } from '../commands/command-router.js';
+import type { CommandCeilingService } from '../commands/command-ceiling.js';
+import type { CollisionResolutionService } from '../commands/collision-resolution.js';
 
 /**
  * CORE_TOKENS is the frozen namespace: after bootstrap Stage 09
@@ -28,6 +30,10 @@ export const CORE_TOKENS = {
   Metrics: createToken<MetricsRegistry>('core.Metrics'),
   CommandRegistry: createToken<CommandRegistry>('core.CommandRegistry'),
   CommandRouter: createToken<CommandRouter>('core.CommandRouter'),
+  CommandCeilingService: createToken<CommandCeilingService>('core.CommandCeilingService'),
+  CollisionResolutionService: createToken<CollisionResolutionService>(
+    'core.CollisionResolutionService',
+  ),
 } as const;
 
 /**

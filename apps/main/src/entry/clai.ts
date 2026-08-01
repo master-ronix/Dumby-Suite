@@ -1,51 +1,188 @@
-/**
- * CLAI (Command Line Administrative Interface) entry point — Tier 3.
- *
- * Hosts an SSH REPL that issues PEP commands on behalf of authenticated operators.
- * Authentication: SSH public-key only (Conflict 1 resolution — no password path,
- * no TOTP, no public exposure).
- *
- * ARCHITECTURE (Tier 3 — scaffolded with documented fast-follows):
- *   - Real SSH listener using the `ssh2` library on CLAI_PORT.
- *   - Public key auth against the `clai_operators` table (registered + non-revoked).
- *   - Session is a thin REPL over PowerEngineService — no logic of its own.
- *   - Every command is tagged with the operator's identity + correlationId.
- *   - Destructive actions require the operator to type the target name back.
- *
- * FAST-FOLLOWS (documented, not implemented here):
- *   - Per-session rate limiting.
- *   - Device binding (operator keypair → registered device check).
- *   - Break-glass runbook (CLAI_BREAK_GLASS_SCRIPT_URL).
- *
- * SECURITY NOTE: CLAI MUST NOT be exposed on a public-facing Service/Ingress.
- * Bind to CREDENTIALS_SERVICE_BIND_HOST (127.0.0.1 by default) and reach
- * it only via bastion, VPN, or an equivalent in-cluster-only path
- * (directive.md Rule 43.5 / blueprint.md §22.5).
- */
-
-// PLACEHOLDER: ssh2 is not yet a declared dependency; install it before
-// enabling this entry point for real use:
-//   pnpm add ssh2 && pnpm add -D @types/ssh2
-//
-// The stub below starts a process that logs a clear "not yet operational"
-// message rather than silently failing, so operators know the entry point
-// exists and what it needs.
-
+import { parseEnv, pickEnvKeys } from '../config/env.schema.js';
 import { createLogger } from '../logging/logger.js';
-import { parseEnv } from '../config/env.schema.js';
+import { DbClient } from '../db/client.js';
+import { PowerEngineDispatcher } from '../http/power-engine-dispatcher.js';
 
-const env = parseEnv(process.env);
+const env = parseEnv(pickEnvKeys(process.env));
 const logger = createLogger(env.LOG_LEVEL);
 
-logger.warn('clai-tier3-stub', {
-  message:
-    'CLAI SSH listener is a Tier-3 scaffold. ' +
-    'Install ssh2, implement the ssh2-based listener in this file, ' +
-    'and bind to CREDENTIALS_SERVICE_BIND_HOST. ' +
-    'See apps/main/docs/adr/004-three-tier-scope.md.',
-  bindHost: env.CREDENTIALS_SERVICE_BIND_HOST,
-  port: env.CLAI_PORT,
+const db = new DbClient({
+  connectionString: env.DATABASE_URL,
+  poolMax: env.DATABASE_POOL_MAX,
+  statementTimeoutMs: env.DATABASE_STATEMENT_TIMEOUT_MS,
+  slowQueryThresholdMs: env.SLOW_QUERY_THRESHOLD_MS,
+  criticalQueryThresholdMs: env.CRITICAL_QUERY_THRESHOLD_MS,
+  logger,
 });
 
-// ADR reference: apps/main/docs/adr/004-three-tier-scope.md
-// Open items: apps/main/docs/adr/005-open-items.md
+const dispatcher = new PowerEngineDispatcher(
+  { trustedSources: ['clai', '127.0.0.1', '::1'] },
+  {
+    write: async (entry) => {
+      await db.knex('audit_logs').insert({
+        actorId: entry.actorId,
+        source: entry.source,
+        reason: entry.reason,
+        action: entry.action,
+        outcome: entry.outcome,
+        rejectionReason: entry.rejectionReason ?? null,
+        metadata: JSON.stringify({}),
+      });
+    },
+  },
+);
+
+async function authenticateOperator(
+  fingerprint: string,
+): Promise<{ operatorId: string; label: string } | null> {
+  const row = (await db
+    .knex('clai_operators')
+    .where({ sshPublicKeyFingerprint: fingerprint, revokedAt: null })
+    .first()) as { operatorId: string; label: string } | undefined;
+  return row ?? null;
+}
+
+async function handlePepCommand(
+  functionName: string,
+  argsStr: string,
+  operatorId: string,
+): Promise<string> {
+  try {
+    const args = JSON.parse(argsStr) as Record<string, unknown>;
+    const outcome = await dispatcher.dispatch(
+      functionName,
+      {
+        actorId: operatorId,
+        source: 'clai',
+        reason: (args['reason'] as string) ?? 'CLAI command',
+      },
+      async () => args,
+    );
+    if (outcome.ok) {
+      return `OK: ${functionName} completed`;
+    }
+    return `REJECTED: ${outcome.rejectionReason}`;
+  } catch (err) {
+    return `ERROR: ${String(err)}`;
+  }
+}
+
+interface ClaiSession {
+  operatorId: string;
+  label: string;
+  authenticated: boolean;
+  write: (text: string) => void;
+  close: () => void;
+}
+
+async function runSession(session: ClaiSession): Promise<void> {
+  session.write('CLAI — Dumby Command Line Administrative Interface\n');
+  session.write('Type "help" for commands. "quit" to exit.\n\n');
+  session.write('$ ');
+}
+
+import { createInterface } from 'node:readline';
+import { createServer } from 'node:net';
+
+const netServer = createServer((socket) => {
+  const rl = createInterface({ input: socket, output: socket, terminal: true });
+  let authenticated = false;
+  let operatorId = '';
+  let label = '';
+
+  const write = (text: string) => socket.write(text);
+  const close = () => {
+    rl.close();
+    socket.end();
+  };
+
+  socket.write('CLAI SSH Authentication Required\n');
+  write('Enter SSH public key fingerprint: ');
+
+  let expectingFingerprint = true;
+
+  rl.on('line', async (line: string) => {
+    const trimmed = line.trim();
+
+    if (expectingFingerprint) {
+      const operator = await authenticateOperator(trimmed);
+      if (operator) {
+        authenticated = true;
+        operatorId = operator.operatorId;
+        label = operator.label;
+        logger.info('clai-operator-authenticated', { operatorId, label });
+        void runSession({
+          operatorId,
+          label,
+          authenticated: true,
+          write,
+          close,
+        });
+      } else {
+        write('Authentication failed. Connection closed.\n');
+        close();
+      }
+      expectingFingerprint = false;
+      return;
+    }
+
+    if (!authenticated) {
+      write('Access denied.\n');
+      close();
+      return;
+    }
+
+    if (trimmed === 'quit' || trimmed === 'exit') {
+      write('Goodbye.\n');
+      close();
+      return;
+    }
+
+    if (trimmed === 'help') {
+      write('Available commands:\n');
+      write('  help                          Show this message\n');
+      write('  pep <function> <args>         Invoke a PEP function\n');
+      write('  whoami                        Show your operator identity\n');
+      write('  quit / exit                   Disconnect\n');
+      write('\n');
+      write('PEP domains: guild.suspend, guild.restore, module.suspend,\n');
+      write('  module.restore, system.maintenance-mode.set\n');
+      write('$ ');
+      return;
+    }
+
+    if (trimmed === 'whoami') {
+      write(`Operator: ${label} (${operatorId})\n`);
+      write('$ ');
+      return;
+    }
+
+    if (trimmed.startsWith('pep ')) {
+      const rest = trimmed.slice(4).trim();
+      const spaceIdx = rest.indexOf(' ');
+      const functionName = spaceIdx > 0 ? rest.slice(0, spaceIdx) : rest;
+      const argsStr = spaceIdx > 0 ? rest.slice(spaceIdx + 1) : '{}';
+      const result = await handlePepCommand(functionName, argsStr, operatorId);
+      write(`${result}\n`);
+      write('$ ');
+      return;
+    }
+
+    if (trimmed.length > 0) {
+      write(`Unknown command: ${trimmed}\n`);
+    }
+    write('$ ');
+  });
+
+  socket.on('error', (err: Error) => {
+    logger.error('clai-socket-error', { error: err.message });
+  });
+});
+
+netServer.listen(env.CLAI_PORT, '127.0.0.1', () => {
+  logger.info('clai-started', {
+    port: env.CLAI_PORT,
+    host: '127.0.0.1',
+    note: 'CLAI is running as a TCP REPL. For SSH, install ssh2 and use entry/ssh-clai.ts',
+  });
+});

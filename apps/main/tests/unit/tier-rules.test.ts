@@ -20,7 +20,13 @@ test('marketplace-tier module without a category is a violation', () => {
 });
 
 test('marketplace-tier module with a category is valid', () => {
-  expect(isTierValid({ name: 'third-party-fun', tier: 'marketplace', marketplaceCategory: 'entertainment' })).toBe(true);
+  expect(
+    isTierValid({
+      name: 'third-party-fun',
+      tier: 'marketplace',
+      marketplaceCategory: 'entertainment',
+    }),
+  ).toBe(true);
 });
 
 test('core-tier commands may not declare an RBAC requirement', () => {
@@ -33,11 +39,13 @@ test('core-tier commands may not declare an RBAC requirement', () => {
 });
 
 test('core-tier commands with no RBAC requirement are fine', () => {
-  expect(isTierValid({
-          name: 'guild-settings',
-          tier: 'core',
-          commands: [{ name: 'set-prefix', rbacRequirement: null }],
-        })).toBe(true);
+  expect(
+    isTierValid({
+      name: 'guild-settings',
+      tier: 'core',
+      commands: [{ name: 'set-prefix', rbacRequirement: null }],
+    }),
+  ).toBe(true);
 });
 
 test('only admin-tier modules may set devGuildOnly', () => {

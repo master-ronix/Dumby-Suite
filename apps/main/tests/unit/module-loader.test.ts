@@ -1,6 +1,10 @@
 import { test, expect } from 'vitest';
 import { Container } from '../../src/di/container.js';
-import { ModuleRegistry, ModuleAlreadyRegisteredError, type LoadedModule } from '../../src/modules/registry.js';
+import {
+  ModuleRegistry,
+  ModuleAlreadyRegisteredError,
+  type LoadedModule,
+} from '../../src/modules/registry.js';
 import {
   ModuleLoader,
   ModuleValidationFailedError,
@@ -8,6 +12,10 @@ import {
 } from '../../src/modules/loader.js';
 import type { Logger } from '../../src/logging/logger.js';
 import type { ModuleManifest } from '../../src/modules/manifest.schema.js';
+import { loadModulesFromSwastikVolume } from '../../src/modules/swastik-loader.js';
+import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 interface FakeLogger extends Logger {
   calls: Array<{ level: string; msg: string; ctx: unknown }>;
@@ -15,9 +23,11 @@ interface FakeLogger extends Logger {
 
 function fakeLogger(): FakeLogger {
   const calls: Array<{ level: string; msg: string; ctx: unknown }> = [];
-  const record = (level: string) => (msg: string, ctx: unknown = {}) => {
-    calls.push({ level, msg, ctx });
-  };
+  const record =
+    (level: string) =>
+    (msg: string, ctx: unknown = {}) => {
+      calls.push({ level, msg, ctx });
+    };
   return {
     calls,
     child: () => fakeLogger(),
@@ -72,19 +82,47 @@ test('ModuleRegistry stores and retrieves modules by name', () => {
 test('ModuleRegistry rejects registering the same module name twice', () => {
   const registry = new ModuleRegistry();
   registry.register({ manifest: fakeManifest({ name: 'utility' }) });
-  expect(() => registry.register({ manifest: fakeManifest({ name: 'utility' }) })).toThrow(ModuleAlreadyRegisteredError);
+  expect(() => registry.register({ manifest: fakeManifest({ name: 'utility' }) })).toThrow(
+    ModuleAlreadyRegisteredError,
+  );
+});
+
+test('loadModulesFromSwastikVolume dynamically loads promoted modules from the live volume', async () => {
+  const registry = new ModuleRegistry();
+  const volumeRoot = mkdtempSync(join(tmpdir(), 'dumby-swastik-live-'));
+  const moduleRoot = join(volumeRoot, 'utility');
+  mkdirSync(moduleRoot);
+  writeFileSync(
+    join(moduleRoot, 'manifest.json'),
+    JSON.stringify(fakeManifest({ name: 'utility', tier: 'core' })),
+  );
+  writeFileSync(join(moduleRoot, 'index.js'), 'export const onLoad = () => undefined;\n');
+
+  const result = await loadModulesFromSwastikVolume({
+    liveVolumePath: volumeRoot,
+    registry,
+    logger: fakeLogger(),
+  });
+
+  expect(result.loaded).toStrictEqual(['utility']);
+  expect(result.failed).toStrictEqual([]);
+  expect(registry.get('utility')?.manifest.tier).toBe('core');
 });
 
 test('ModuleLoader.validateAll throws ModuleValidationFailedError for a bad manifest', () => {
   const registry = new ModuleRegistry();
-  registry.register({ manifest: fakeManifest({ name: 'sneaky-admin', tier: 'admin', devGuildOnly: false }) });
+  registry.register({
+    manifest: fakeManifest({ name: 'sneaky-admin', tier: 'admin', devGuildOnly: false }),
+  });
   const loader = new ModuleLoader(registry, new Container(), fakeLogger());
   expect(() => loader.validateAll()).toThrow(ModuleValidationFailedError);
 });
 
 test('ModuleLoader.validateAll passes for a well-formed set of modules', () => {
   const registry = new ModuleRegistry();
-  registry.register({ manifest: fakeManifest({ name: 'guild-settings', tier: 'core', required: true }) });
+  registry.register({
+    manifest: fakeManifest({ name: 'guild-settings', tier: 'core', required: true }),
+  });
   registry.register({ manifest: fakeManifest({ name: 'utility', tier: 'core', required: true }) });
   const loader = new ModuleLoader(registry, new Container(), fakeLogger());
   expect(() => loader.validateAll()).not.toThrow();
@@ -139,27 +177,59 @@ test('ModuleLoader.loadAll degrades (does not throw) when an optional module fai
   expect(report.fatal).toStrictEqual([]);
 });
 
-test('ModuleLoader.readyAll never throws, even if onReady fails, and reports the failing modules', async () => {
+test('ModuleLoader.readyAll never throws and reports optional ready failures separately', async () => {
   const registry = new ModuleRegistry();
   registry.register({
-    manifest: fakeManifest({ name: 'utility' }),
+    manifest: fakeManifest({ name: 'utility', required: false }),
     onReady: () => {
       throw new Error('ready failure');
     },
   });
   const logger = fakeLogger();
   const loader = new ModuleLoader(registry, new Container(), logger);
-  const failures = await loader.readyAll(['utility']);
-  expect(failures).toStrictEqual(['utility']);
-  expect(logger.calls.some((c) => c.level === 'error' && c.msg === 'module-ready-failed-non-fatal')).toBeTruthy();
+  const report = await loader.readyAll(['utility']);
+  expect(report.failed).toStrictEqual(['utility']);
+  expect(report.requiredFailed).toStrictEqual([]);
+  expect(
+    logger.calls.some((c) => c.level === 'error' && c.msg === 'module-ready-failed-non-fatal'),
+  ).toBeTruthy();
+});
+
+test('ModuleLoader.readyAll reports required ready failures for readiness gating', async () => {
+  const registry = new ModuleRegistry();
+  registry.register({
+    manifest: fakeManifest({ name: 'core-admin', required: true }),
+    onReady: () => {
+      throw new Error('ready failure');
+    },
+  });
+  registry.register({
+    manifest: fakeManifest({ name: 'utility', required: false }),
+    onReady: () => {
+      throw new Error('ready failure');
+    },
+  });
+  const loader = new ModuleLoader(registry, new Container(), fakeLogger());
+  const report = await loader.readyAll(['core-admin', 'utility']);
+  expect(report.failed).toStrictEqual(['core-admin', 'utility']);
+  expect(report.requiredFailed).toStrictEqual(['core-admin']);
 });
 
 test('ModuleLoader.unloadAll calls onUnload in REVERSE load order', async () => {
   const registry = new ModuleRegistry();
   const calls: string[] = [];
-  registry.register({ manifest: fakeManifest({ name: 'a' }), onUnload: () => void calls.push('a') });
-  registry.register({ manifest: fakeManifest({ name: 'b' }), onUnload: () => void calls.push('b') });
-  registry.register({ manifest: fakeManifest({ name: 'c' }), onUnload: () => void calls.push('c') });
+  registry.register({
+    manifest: fakeManifest({ name: 'a' }),
+    onUnload: () => void calls.push('a'),
+  });
+  registry.register({
+    manifest: fakeManifest({ name: 'b' }),
+    onUnload: () => void calls.push('b'),
+  });
+  registry.register({
+    manifest: fakeManifest({ name: 'c' }),
+    onUnload: () => void calls.push('c'),
+  });
   const loader = new ModuleLoader(registry, new Container(), fakeLogger());
   await loader.unloadAll(['a', 'b', 'c']);
   expect(calls).toStrictEqual(['c', 'b', 'a']);

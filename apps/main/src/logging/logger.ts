@@ -2,9 +2,6 @@
  * Structured JSON logging (Cluster: Glass). Wraps Pino so every call site
  * uses the same (message, context) shape instead of pino's (context,
  * message) argument order, and centralizes redaction paths.
- *
- * Requires the 'pino' package — see STATUS_AND_VERIFICATION.md for why
- * this cannot be executed inside the build sandbox.
  */
 import pino, { type Logger as PinoLogger } from 'pino';
 

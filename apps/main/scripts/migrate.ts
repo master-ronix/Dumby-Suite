@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import knexFactory from 'knex';
 import knexConfig from '../src/db/knexfile.js';
 
@@ -14,18 +15,28 @@ async function main(): Promise<void> {
   switch (command) {
     case 'up': {
       const [batch, log] = await knex.migrate.latest();
-      console.log(`Migrated to batch ${batch}. Ran: ${log.length ? log.join(', ') : '(nothing to run)'}`);
+      console.log(
+        `Migrated to batch ${batch}. Ran: ${log.length ? log.join(', ') : '(nothing to run)'}`,
+      );
       break;
     }
     case 'down': {
       const [batch, log] = await knex.migrate.rollback();
-      console.log(`Rolled back batch ${batch}. Reverted: ${log.length ? log.join(', ') : '(nothing to revert)'}`);
+      console.log(
+        `Rolled back batch ${batch}. Reverted: ${log.length ? log.join(', ') : '(nothing to revert)'}`,
+      );
       break;
     }
     case 'status': {
       const [completed, pending] = await knex.migrate.list();
-      console.log(`Completed (${completed.length}):`, completed.map((m: { name: string }) => m.name));
-      console.log(`Pending (${pending.length}):`, pending.map((m: { file: string }) => m.file));
+      console.log(
+        `Completed (${completed.length}):`,
+        completed.map((m: { name: string }) => m.name),
+      );
+      console.log(
+        `Pending (${pending.length}):`,
+        pending.map((m: { file: string }) => m.file),
+      );
       break;
     }
     default:

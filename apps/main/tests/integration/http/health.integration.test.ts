@@ -5,8 +5,7 @@ const BASE = `http://localhost:${HEALTH_PORT}`;
 
 /**
  * Integration tier: targets a live server started by docker-compose.yml
- * (or `pnpm dev`). Cannot execute inside the sandbox this repository was
- * authored in — there is no listening process to hit here.
+ * or `pnpm dev`.
  */
 describe('health probes against a live server', () => {
   it('GET /health/liveness returns 200 once the process is up', async () => {

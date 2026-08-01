@@ -49,11 +49,16 @@ export class QueueAutoscaler {
     now: () => number = Date.now,
   ) {
     if (minConcurrency < 1) throw new RangeError('minConcurrency must be >= 1');
-    if (maxConcurrency < minConcurrency) throw new RangeError('maxConcurrency must be >= minConcurrency');
+    if (maxConcurrency < minConcurrency)
+      throw new RangeError('maxConcurrency must be >= minConcurrency');
     this.now = now;
   }
 
-  evaluate(currentConcurrency: number, currentDepth: number, previousDepth: number): ScalingDecision {
+  evaluate(
+    currentConcurrency: number,
+    currentDepth: number,
+    previousDepth: number,
+  ): ScalingDecision {
     const nowMs = this.now();
     const isNearZero = currentDepth <= 1;
     this.nearZeroChecks = isNearZero ? this.nearZeroChecks + 1 : 0;

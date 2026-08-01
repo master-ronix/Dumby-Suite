@@ -6,12 +6,7 @@
  * When DISCORD_ADAPTER=mock, this builder is never called — the
  * MockGatewayAdapter is used instead (src/discord/gateway.mock-adapter.ts).
  */
-import {
-  Client,
-  GatewayIntentBits,
-  Partials,
-  type ClientOptions,
-} from 'discord.js';
+import { Client, GatewayIntentBits, Partials, type ClientOptions } from 'discord.js';
 import type { Logger } from '../logging/logger.js';
 
 /** Computes the intent union from all loaded module intent string arrays. */

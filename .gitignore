@@ -47,3 +47,10 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Swastik runtime volume mirrors
+.swastik*/
+swastik-live/
+swastik-staging/
+data/swastik-live/
+data/swastik-staging/

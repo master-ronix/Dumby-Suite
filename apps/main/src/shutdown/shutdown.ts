@@ -24,15 +24,17 @@ export interface ShutdownDeps {
   discordClient?: Client | undefined;
   /** Resolves once any in-flight command handlers have finished, or the timeout below elapses. */
   drainInFlightCommands: (timeoutMs: number) => Promise<void>;
+  /** Test-only override for individual step ceilings; production uses the spec defaults. */
+  stepTimeoutsMs?: Partial<Record<(typeof SHUTDOWN_STEPS)[number], number>>;
 }
 
-const STEP_TIMEOUTS_MS: Record<(typeof SHUTDOWN_STEPS)[number], number> = {
-  STOP_ACCEPTING_GATEWAY_EVENTS: 1000,
-  DRAIN_IN_FLIGHT_COMMANDS: 10_000,
-  UNLOAD_MODULES_REVERSE_ORDER: 10_000,
-  DRAIN_QUEUES_AND_DEAD_LETTER: 15_000,
-  CLOSE_HTTP_SERVER: 5000,
-  FLUSH_LOGS_AND_TRACES: 3000,
+export const SHUTDOWN_STEP_TIMEOUTS_MS: Record<(typeof SHUTDOWN_STEPS)[number], number> = {
+  STOP_ACCEPTING_GATEWAY_EVENTS: 30_000,
+  DRAIN_IN_FLIGHT_COMMANDS: 30_000,
+  UNLOAD_MODULES_REVERSE_ORDER: 30_000,
+  DRAIN_QUEUES_AND_DEAD_LETTER: 60_000,
+  CLOSE_HTTP_SERVER: 10_000,
+  FLUSH_LOGS_AND_TRACES: 5000,
   CLOSE_QUEUE_CONNECTIONS: 5000,
   CLOSE_REDIS_CONNECTION: 5000,
   CLOSE_DATABASE_POOL: 5000,
@@ -53,10 +55,12 @@ export async function gracefulShutdown(deps: ShutdownDeps, signal: string): Prom
   });
 
   await runStep(deps, 'DRAIN_IN_FLIGHT_COMMANDS', () =>
-    deps.drainInFlightCommands(STEP_TIMEOUTS_MS.DRAIN_IN_FLIGHT_COMMANDS),
+    deps.drainInFlightCommands(timeoutFor(deps, 'DRAIN_IN_FLIGHT_COMMANDS')),
   );
 
-  await runStep(deps, 'UNLOAD_MODULES_REVERSE_ORDER', () => deps.moduleLoader.unloadAll(deps.moduleOrder));
+  await runStep(deps, 'UNLOAD_MODULES_REVERSE_ORDER', () =>
+    deps.moduleLoader.unloadAll(deps.moduleOrder),
+  );
 
   await runStep(deps, 'DRAIN_QUEUES_AND_DEAD_LETTER', () => deps.queue.shutdown());
 
@@ -85,16 +89,31 @@ export async function gracefulShutdown(deps: ShutdownDeps, signal: string): Prom
   deps.logger.info('shutdown-complete', { signal });
 }
 
-async function runStep(deps: ShutdownDeps, step: keyof typeof STEP_TIMEOUTS_MS, fn: () => Promise<void>): Promise<void> {
+async function runStep(
+  deps: ShutdownDeps,
+  step: keyof typeof SHUTDOWN_STEP_TIMEOUTS_MS,
+  fn: () => Promise<void>,
+): Promise<void> {
   const stepNumber = shutdownStepNumber(step);
-  const timeoutMs = STEP_TIMEOUTS_MS[step];
+  const timeoutMs = timeoutFor(deps, step);
   const started = Date.now();
   try {
     await Promise.race([fn(), timeout(timeoutMs, step)]);
-    deps.logger.info('shutdown-step-complete', { step: stepNumber, name: step, durationMs: Date.now() - started });
+    deps.logger.info('shutdown-step-complete', {
+      step: stepNumber,
+      name: step,
+      durationMs: Date.now() - started,
+    });
   } catch (err) {
     deps.logger.error('shutdown-step-failed', { step: stepNumber, name: step, error: String(err) });
   }
+}
+
+function timeoutFor(
+  deps: ShutdownDeps,
+  step: keyof typeof SHUTDOWN_STEP_TIMEOUTS_MS,
+): number {
+  return deps.stepTimeoutsMs?.[step] ?? SHUTDOWN_STEP_TIMEOUTS_MS[step];
 }
 
 function timeout(ms: number, step: string): Promise<never> {

@@ -26,14 +26,22 @@ export class RateLimitMiddleware implements Middleware {
     const userKey = `ratelimit:user:${ctx.userId}:${ctx.commandName}`;
     const userResult = await this.limiter.checkAndIncrement(userKey);
     if (!userResult.allowed) {
-      throw new MiddlewareRejectError(429, `Rate limit exceeded. Try again in ${Math.ceil(userResult.retryAfterMs / 1000)}s`, false);
+      throw new MiddlewareRejectError(
+        429,
+        `Rate limit exceeded. Try again in ${Math.ceil(userResult.retryAfterMs / 1000)}s`,
+        false,
+      );
     }
 
     if (ctx.guildId) {
       const guildKey = `ratelimit:guild:${ctx.guildId}:${ctx.commandName}`;
       const guildResult = await this.limiter.checkAndIncrement(guildKey);
       if (!guildResult.allowed) {
-        throw new MiddlewareRejectError(429, `Server rate limit exceeded. Try again in ${Math.ceil(guildResult.retryAfterMs / 1000)}s`, false);
+        throw new MiddlewareRejectError(
+          429,
+          `Server rate limit exceeded. Try again in ${Math.ceil(guildResult.retryAfterMs / 1000)}s`,
+          false,
+        );
       }
     }
 

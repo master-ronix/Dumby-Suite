@@ -8,7 +8,7 @@ test('starts idle and becomes ready after login(), with no network calls', async
   expect(adapter.getState()).toBe('ready');
 });
 
-test('shardIdForGuild is deterministic and matches Discord\'s (snowflake >> 22) % shardCount formula', () => {
+test("shardIdForGuild is deterministic and matches Discord's (snowflake >> 22) % shardCount formula", () => {
   const guildId = '900000000000000001';
   const shardCount = 4;
   const expected = Number((BigInt(guildId) >> 22n) % BigInt(shardCount));

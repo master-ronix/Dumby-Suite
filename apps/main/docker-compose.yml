@@ -6,12 +6,13 @@ services:
       POSTGRES_USER: dumby
       POSTGRES_PASSWORD: dumby_dev_password
       POSTGRES_DB: dumby
+    # Localhost only (accessible to host, not publicly exposed)
     ports:
-      - "5432:5432"
+      - '127.0.0.1:5432:5432'
     volumes:
       - dumby_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U dumby -d dumby"]
+      test: ['CMD-SHELL', 'pg_isready -U dumby -d dumby']
       interval: 5s
       timeout: 5s
       retries: 10
@@ -19,18 +20,19 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+    # Localhost only (accessible to host, not publicly exposed)
     ports:
-      - "6379:6379"
+      - '127.0.0.1:6379:6379'
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 5s
       timeout: 5s
       retries: 10
 
   app:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: apps/main/Dockerfile
     restart: unless-stopped
     env_file:
       - .env
@@ -38,21 +40,71 @@ services:
       DATABASE_URL: postgres://dumby:dumby_dev_password@postgres:5432/dumby
       REDIS_URL: redis://redis:6379/0
       QUEUE_REDIS_URL: redis://redis:6379/1
+      SWASTIK_STAGING_VOLUME_PATH: /var/dumby/swastik-staging
+      SWASTIK_LIVE_VOLUME_PATH: /var/dumby/swastik-live
     ports:
-      - "8080:8080" # API_PORT
-      - "8081:8081" # HEALTH_PORT
-      - "8082:8082" # METRICS_PORT
+      - '8080:8080' # API_PORT
+      - '8081:8081' # HEALTH_PORT
+      - '8082:8082' # METRICS_PORT
+    volumes:
+      - dumby_swastik_staging:/var/dumby/swastik-staging
+      - dumby_swastik_live:/var/dumby/swastik-live
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://localhost:8081/health/liveness').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:8081/health/liveness').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
       interval: 10s
       timeout: 5s
       retries: 12
       start_period: 30s
 
+  swastik:
+    build:
+      context: ..
+      dockerfile: apps/main/Dockerfile
+    restart: unless-stopped
+    command: ['node', 'dist/entry/swastik.js']
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://dumby:dumby_dev_password@postgres:5432/dumby
+      REDIS_URL: redis://redis:6379/0
+      QUEUE_REDIS_URL: redis://redis:6379/1
+      SWASTIK_STAGING_VOLUME_PATH: /var/dumby/swastik-staging
+      SWASTIK_LIVE_VOLUME_PATH: /var/dumby/swastik-live
+    ports:
+      - '127.0.0.1:8085:8085'
+    volumes:
+      - dumby_swastik_staging:/var/dumby/swastik-staging
+      - dumby_swastik_live:/var/dumby/swastik-live
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:8085/swastik/status').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
 volumes:
   dumby_postgres_data:
+  dumby_swastik_staging:
+  dumby_swastik_live:

@@ -1,6 +1,10 @@
 import { test, expect } from 'vitest';
 import { toErrorResponse } from '../../src/http/error-boundary.js';
-import { PermissionDeniedError, RateLimitedError, ValidationError } from '../../src/errors/taxonomy.js';
+import {
+  PermissionDeniedError,
+  RateLimitedError,
+  ValidationError,
+} from '../../src/errors/taxonomy.js';
 
 test('a DumbyError renders its own status code and JSON envelope', () => {
   const { statusCode, body } = toErrorResponse(new PermissionDeniedError(2, 'blacklisted'));
@@ -22,7 +26,9 @@ test('a ValidationError surfaces its field errors', () => {
 });
 
 test('a plain Error (not a DumbyError) is flattened to a generic 500 with no internal detail leaked', () => {
-  const { statusCode, body } = toErrorResponse(new Error('leaked stack trace detail, secret path names'));
+  const { statusCode, body } = toErrorResponse(
+    new Error('leaked stack trace detail, secret path names'),
+  );
   expect(statusCode).toBe(500);
   expect(body.error.code).toBe('DUMBY_INTERNAL_ERROR');
   expect(body.error.message.includes('leaked')).toBe(false);

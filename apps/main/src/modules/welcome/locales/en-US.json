@@ -1,6 +1,0 @@
-{
-  "module.name": "Welcome",
-  "module.selftest.success": "Welcome self-test completed successfully.",
-  "module.selftest.failure": "Welcome self-test failed.",
-  "module.status.summary": "Welcome has run {{totalRuns}} self-test(s)."
-}

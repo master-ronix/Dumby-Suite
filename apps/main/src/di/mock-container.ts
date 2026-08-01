@@ -10,7 +10,10 @@ export interface RecordedCall {
 }
 
 export class AssertionFailedError extends Error {
-  constructor(message: string, readonly recorded: readonly RecordedCall[]) {
+  constructor(
+    message: string,
+    readonly recorded: readonly RecordedCall[],
+  ) {
     super(message);
     this.name = 'AssertionFailedError';
   }

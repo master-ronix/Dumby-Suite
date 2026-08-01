@@ -38,8 +38,9 @@ export class DbClient {
       pool: { min: 2, max: options.poolMax },
       migrations: {
         directory: migrationsDir,
-        extension: 'ts',
+        extension: import.meta.url.endsWith('.ts') ? 'ts' : 'js',
         tableName: 'knex_migrations',
+        loadExtensions: [import.meta.url.endsWith('.ts') ? '.ts' : '.js'],
       },
     });
 

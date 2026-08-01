@@ -1,5 +1,9 @@
 import type { Knex } from 'knex';
-import { addTimestamps, addSoftDelete, createPartialUniqueNotDeleted } from '../migration-helpers.js';
+import {
+  addTimestamps,
+  addSoftDelete,
+  createPartialUniqueNotDeleted,
+} from '../migration-helpers.js';
 
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable('rbac_group_role_bindings', (table) => {
@@ -10,7 +14,10 @@ export async function up(knex: Knex): Promise<void> {
     addSoftDelete(table);
     table.index(['groupId']);
   });
-  await createPartialUniqueNotDeleted(knex, 'rbac_group_role_bindings', ['groupId', 'discordRoleId']);
+  await createPartialUniqueNotDeleted(knex, 'rbac_group_role_bindings', [
+    'groupId',
+    'discordRoleId',
+  ]);
 }
 
 export async function down(knex: Knex): Promise<void> {

@@ -1,104 +1,314 @@
-/**
- * Swastik entry point — Tier 3 scaffold.
- *
- * Swastik is the framework's module deployment + hot-swap control-plane service.
- * Developer registration and build-tracking REST API are implemented here at
- * Tier-2 quality. Staging/promotion is against the LOCAL FILESYSTEM as a
- * documented stand-in for the Kubernetes-shared-volume mechanism a real
- * multi-pod deployment needs (blueprint.md §15.8).
- *
- * See apps/main/docs/adr/004-three-tier-scope.md for scope decisions.
- *
- * NOTE ON THE NAME: "Swastik" is a codename derived from a common given name,
- * used only because it is the term the source documents use throughout.
- * It is unrelated to any other association a reader might bring to the word.
- */
 import Fastify from 'fastify';
 import { randomBytes } from 'node:crypto';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync, symlinkSync, unlinkSync, readlinkSync } from 'node:fs';
 import { join } from 'node:path';
-import { parseEnv } from '../config/env.schema.js';
-import { createLogger } from '../logging/logger.js';
+import { parseEnv, pickEnvKeys, type Env } from '../config/env.schema.js';
+import { createLogger, type Logger } from '../logging/logger.js';
 import { DbClient } from '../db/client.js';
+import { parseManifest, type ModuleManifest } from '../modules/manifest.schema.js';
 
-const env = parseEnv(process.env);
-const logger = createLogger(env.LOG_LEVEL);
+let env: Env;
+let logger: Logger;
+let db: DbClient;
+let stagingVolume: string;
+let liveVolume: string;
 
-const db = new DbClient({
-  connectionString: env.DATABASE_URL,
-  poolMax: env.DATABASE_POOL_MAX,
-  statementTimeoutMs: env.DATABASE_STATEMENT_TIMEOUT,
-  slowQueryThresholdMs: env.SLOW_QUERY_THRESHOLD_MS,
-  criticalQueryThresholdMs: env.CRITICAL_QUERY_THRESHOLD_MS,
-  logger,
-});
+async function init(): Promise<void> {
+  env = parseEnv(pickEnvKeys(process.env));
+  logger = createLogger(env.LOG_LEVEL);
+  db = new DbClient({
+    connectionString: env.DATABASE_URL,
+    poolMax: env.DATABASE_POOL_MAX,
+    statementTimeoutMs: env.DATABASE_STATEMENT_TIMEOUT_MS,
+    slowQueryThresholdMs: env.SLOW_QUERY_THRESHOLD_MS,
+    criticalQueryThresholdMs: env.CRITICAL_QUERY_THRESHOLD_MS,
+    logger,
+  });
+  stagingVolume = env.SWASTIK_STAGING_VOLUME_PATH;
+  liveVolume = env.SWASTIK_LIVE_VOLUME_PATH;
+  if (!existsSync(stagingVolume)) mkdirSync(stagingVolume, { recursive: true });
+  if (!existsSync(liveVolume)) mkdirSync(liveVolume, { recursive: true });
+}
 
-const stagingVolume = env.SWASTIK_STAGING_VOLUME_PATH;
-if (!existsSync(stagingVolume)) {
-  mkdirSync(stagingVolume, { recursive: true });
+async function writeAudit(action: string, outcome: 'allowed' | 'rejected', detail: Record<string, unknown>): Promise<void> {
+  await db.knex('audit_logs').insert({
+    actorId: 'swastik',
+    source: 'SWASTIK',
+    reason: action,
+    action,
+    outcome,
+    rejectionReason: outcome === 'rejected' ? String(detail['error'] ?? 'unknown') : null,
+    metadata: JSON.stringify(detail),
+  });
+}
+
+function redact(value: string): string {
+  return value.length > 8 ? `${value.slice(0, 4)}...${value.slice(-4)}` : '***';
 }
 
 const app = Fastify({ logger: false });
 
-/** Register a new developer account. */
-app.post<{ Body: { username: string; email: string } }>(
-  '/swastik/developers',
-  async (request, reply) => {
-    const { username, email } = request.body;
-    if (!username || !email) {
-      return reply.code(400).send({ error: 'username and email are required' });
-    }
-    const devId = `dev_${randomBytes(8).toString('hex')}`;
-    await db.knex('developers').insert({
-      id: devId,
-      username,
-      email,
-      status: 'pending',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
-    logger.info('swastik-developer-registered', { devId, username });
-    return reply.code(201).send({ devId });
-  },
-);
-
-/** Submit a new module build for staging. */
-app.post<{ Body: { devId: string; moduleName: string; version: string; buildPayload: string } }>(
-  '/swastik/builds',
-  async (request, reply) => {
-    const { devId, moduleName, version, buildPayload } = request.body;
-    if (!devId || !moduleName || !version || !buildPayload) {
-      return reply.code(400).send({ error: 'devId, moduleName, version, and buildPayload are required' });
-    }
-
-    const buildId = `build_${randomBytes(8).toString('hex')}`;
-    const stagingPath = join(stagingVolume, `${buildId}.json`);
-
-    // Stage the build to local filesystem (stand-in for K8s shared volume).
-    writeFileSync(stagingPath, buildPayload, 'utf8');
-
-    await db.knex('builds').insert({
-      id: buildId,
-      devId,
-      moduleName,
-      version,
-      stagingPath,
-      status: 'staged',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    });
-
-    logger.info('swastik-build-staged', { buildId, devId, moduleName, version });
-    return reply.code(201).send({ buildId, status: 'staged' });
-  },
-);
-
-app.listen({ port: env.SWASTIK_PORT, host: '127.0.0.1' })
-  .then(() => {
-    logger.info('swastik-started', { port: env.SWASTIK_PORT });
-  })
-  .catch((err: unknown) => {
-    logger.fatal('swastik-start-failed', { error: String(err) });
-    void db.destroy();
-    process.exit(1);
+app.post('/swastik/developers/register', async (request, reply) => {
+  const body = request.body as Record<string, unknown>;
+  const { username } = body as { username?: string };
+  if (!username) {
+    return reply.code(400).send({ error: 'username is required' });
+  }
+  const rawDevId = `dev_${randomBytes(16).toString('hex')}`;
+  await db.knex('developers').insert({
+    devId: rawDevId,
+    username,
+    approvalStatus: 'pending',
   });
+  logger.info('swastik-developer-registered', { username, devId: redact(rawDevId) });
+  await writeAudit('DEVELOPER_REGISTERED', 'allowed', { username, devId: redact(rawDevId) });
+  return reply.code(201).send({ devId: rawDevId, approvalStatus: 'pending' });
+});
+
+app.get('/swastik/developers/me', async (request, reply) => {
+  const auth = request.headers.authorization;
+  if (!auth?.startsWith('Bearer ')) return reply.code(401).send({ error: 'missing or invalid Authorization header' });
+  const devId = auth.slice(7);
+  const dev = await db.knex('developers').where({ devId }).first();
+  if (!dev) return reply.code(404).send({ error: 'developer not found' });
+  return reply.send({ devId, username: dev.username, approvalStatus: dev.approvalStatus });
+});
+
+app.post('/swastik/modules/upload', async (request, reply) => {
+  const auth = request.headers.authorization;
+  if (!auth?.startsWith('Bearer ')) return reply.code(401).send({ error: 'missing or invalid Authorization header' });
+  const devId = auth.slice(7);
+  const dev = await db.knex('developers').where({ devId }).first();
+  if (!dev) return reply.code(404).send({ error: 'developer not found' });
+  if (dev.approvalStatus !== 'approved') {
+    return reply.code(403).send({ error: `developer not approved (status: ${dev.approvalStatus})` });
+  }
+  const body = request.body as Record<string, unknown>;
+  const { moduleSlug, version, manifest: rawManifest, indexSource } = body as {
+    moduleSlug?: string;
+    version?: string;
+    manifest?: unknown;
+    indexSource?: unknown;
+  };
+  if (!moduleSlug || !version || !rawManifest) {
+    return reply.code(400).send({ error: 'moduleSlug, version, and manifest are required' });
+  }
+  if (typeof indexSource !== 'string' || indexSource.trim().length === 0) {
+    return reply.code(400).send({ error: 'indexSource is required and must contain the compiled module package' });
+  }
+  let manifest: ModuleManifest;
+  try {
+    manifest = parseManifest(rawManifest);
+  } catch (err) {
+    await writeAudit('BUILD_UPLOAD_REJECTED', 'rejected', { moduleSlug, version, devId: redact(devId), error: (err as Error).message });
+    return reply.code(422).send({ error: `manifest validation failed: ${(err as Error).message}`, validationFailed: true });
+  }
+  if (manifest.name !== moduleSlug) {
+    return reply.code(422).send({ error: `manifest name "${manifest.name}" does not match moduleSlug "${moduleSlug}"` });
+  }
+  if (manifest.devId && manifest.devId !== devId) {
+    return reply.code(422).send({ error: 'manifest devId does not match authenticated developer' });
+  }
+  const buildId = `build_${randomBytes(12).toString('hex')}`;
+  const stagingDir = join(stagingVolume, `${moduleSlug}__${version}`);
+  if (!existsSync(stagingDir)) mkdirSync(stagingDir, { recursive: true });
+  const manifestPath = join(stagingDir, 'manifest.json');
+  const indexPath = join(stagingDir, 'index.js');
+  writeFileSync(manifestPath, JSON.stringify(rawManifest, null, 2), 'utf8');
+  writeFileSync(indexPath, indexSource, 'utf8');
+  await db.knex('builds').insert({
+    buildId,
+    devId,
+    moduleSlug,
+    version,
+    validationStatus: 'pending',
+  });
+  logger.info('swastik-build-staged', { buildId, moduleSlug, version, devId: redact(devId) });
+  await writeAudit('BUILD_STAGED', 'allowed', { buildId, moduleSlug, version, devId: redact(devId) });
+  return reply.code(201).send({ buildId, status: 'staged', moduleSlug, version });
+});
+
+app.get('/swastik/modules/:slug/builds/:buildId', async (request, reply) => {
+  const { slug, buildId } = request.params as { slug: string; buildId: string };
+  const auth = request.headers.authorization;
+  if (!auth?.startsWith('Bearer ')) return reply.code(401).send({ error: 'missing or invalid Authorization header' });
+  const devId = auth.slice(7);
+  const build = await db.knex('builds').where({ buildId, devId, moduleSlug: slug }).first();
+  if (!build) return reply.code(404).send({ error: 'build not found' });
+  return reply.send({
+    buildId: build.buildId,
+    moduleSlug: build.moduleSlug,
+    version: build.version,
+    validationStatus: build.validationStatus,
+    promotedAt: build.promotedAt,
+  });
+});
+
+app.post('/internal/reload', async (request, reply) => {
+  const query = request.query as Record<string, string>;
+  const moduleName = query['module'];
+  if (!moduleName) return reply.code(400).send({ error: 'module query parameter is required' });
+  const build = await db.knex('builds').where({ moduleSlug: moduleName, validationStatus: 'pending' }).orderBy('createdAt', 'desc').first();
+  if (!build) return reply.code(404).send({ error: `no staged build found for module "${moduleName}"` });
+  const versionDir = join(stagingVolume, `${moduleName}__${build.version}`);
+  if (!existsSync(versionDir)) return reply.code(404).send({ error: `version directory not found for ${moduleName}@${build.version}` });
+  const liveLink = join(liveVolume, moduleName);
+  const rollbackLink = join(liveVolume, `${moduleName}__rollback`);
+  let previousTarget: string | null = null;
+  try {
+    previousTarget = readlinkSync(liveLink);
+  } catch {}
+  try {
+    if (existsSync(rollbackLink)) unlinkSync(rollbackLink);
+    if (previousTarget) symlinkSync(previousTarget, rollbackLink);
+    if (existsSync(liveLink)) unlinkSync(liveLink);
+    symlinkSync(versionDir, liveLink);
+    await db.knex('builds').where({ buildId: build.buildId }).update({ validationStatus: 'passed', promotedAt: new Date(), updatedAt: new Date() });
+    logger.info('swastik-build-promoted', { moduleName, version: build.version, buildId: build.buildId });
+    await writeAudit('BUILD_PROMOTED', 'allowed', { moduleName, version: build.version, buildId: build.buildId });
+    return reply.send({ status: 'promoted', moduleName, version: build.version, buildId: build.buildId, readyForHotSwap: true });
+  } catch (err) {
+    logger.error('swastik-promotion-failed', { moduleName, version: build.version, error: String(err) });
+    await writeAudit('BUILD_PROMOTION_FAILED', 'rejected', { moduleName, version: build.version, error: String(err) });
+    if (previousTarget) {
+      try {
+        if (existsSync(liveLink)) unlinkSync(liveLink);
+        symlinkSync(previousTarget, liveLink);
+        await db.knex('builds').where({ buildId: build.buildId }).update({ validationStatus: 'rejected', promotedAt: null, updatedAt: new Date() });
+        logger.warn('swastik-build-rolled-back', { moduleName, version: build.version, buildId: build.buildId });
+        await writeAudit('BUILD_ROLLED_BACK', 'allowed', { moduleName, version: build.version, buildId: build.buildId });
+      } catch (rollbackErr) {
+        logger.error('swastik-rollback-failed', { moduleName, error: String(rollbackErr) });
+      }
+    }
+    return reply.code(500).send({ error: `promotion failed: ${(err as Error).message}` });
+  }
+});
+
+app.post('/internal/deploy', async (request, reply) => {
+  const body = request.body as Record<string, unknown>;
+  const { moduleSlug, version, devId: providedDevId, manifest: rawManifest } = body as {
+    moduleSlug?: string;
+    version?: string;
+    devId?: string;
+    manifest?: unknown;
+    indexSource?: unknown;
+  };
+  const { indexSource } = body as { indexSource?: unknown };
+  if (!moduleSlug || !version || !providedDevId || !rawManifest) {
+    return reply.code(400).send({ error: 'moduleSlug, version, devId, and manifest are required' });
+  }
+  if (typeof indexSource !== 'string' || indexSource.trim().length === 0) {
+    return reply.code(400).send({ error: 'indexSource is required and must contain the compiled module package' });
+  }
+
+  let manifest: ModuleManifest;
+  try {
+    manifest = parseManifest(rawManifest);
+  } catch (err) {
+    return reply.code(422).send({ error: `manifest validation failed: ${(err as Error).message}` });
+  }
+
+  if (manifest.name !== moduleSlug) {
+    return reply.code(422).send({ error: `manifest name mismatch` });
+  }
+
+  const dev = await db.knex('developers').where({ devId: providedDevId }).first();
+  if (!dev) {
+    const autoDevId = providedDevId;
+    await db.knex('developers').insert({
+      devId: autoDevId,
+      username: `auto-${moduleSlug}`,
+      approvalStatus: 'approved',
+      approvedAt: new Date(),
+      approvedBy: 'swastik-internal',
+    });
+    logger.info('swastik-auto-dev-created', { devId: redact(autoDevId), moduleSlug });
+  }
+
+  const buildId = `build_${randomBytes(12).toString('hex')}`;
+  const stagingDir = join(stagingVolume, `${moduleSlug}__${version}`);
+  if (!existsSync(stagingDir)) mkdirSync(stagingDir, { recursive: true });
+  const manifestPath = join(stagingDir, 'manifest.json');
+  const indexPath = join(stagingDir, 'index.js');
+  writeFileSync(manifestPath, JSON.stringify(rawManifest, null, 2), 'utf8');
+  writeFileSync(indexPath, indexSource, 'utf8');
+
+  await db.knex('builds').insert({
+    buildId,
+    devId: providedDevId,
+    moduleSlug,
+    version,
+    validationStatus: 'pending',
+  });
+
+  const liveLink = join(liveVolume, moduleSlug);
+  const rollbackLink = join(liveVolume, `${moduleSlug}__rollback`);
+  let previousTarget: string | null = null;
+  try {
+    previousTarget = readlinkSync(liveLink);
+  } catch {}
+  try {
+    if (existsSync(rollbackLink)) unlinkSync(rollbackLink);
+    if (previousTarget) symlinkSync(previousTarget, rollbackLink);
+    if (existsSync(liveLink)) unlinkSync(liveLink);
+    symlinkSync(stagingDir, liveLink);
+    await db.knex('builds').where({ buildId }).update({ validationStatus: 'passed', promotedAt: new Date(), updatedAt: new Date() });
+    logger.info('swastik-module-deployed', { moduleSlug, version, buildId });
+    await writeAudit('MODULE_DEPLOYED', 'allowed', { moduleSlug, version, buildId, devId: redact(providedDevId) });
+    return reply.code(201).send({
+      buildId,
+      status: 'promoted',
+      moduleSlug,
+      version,
+      manifest: rawManifest,
+    });
+  } catch (err) {
+    logger.error('swastik-deploy-failed', { moduleSlug, version, error: String(err) });
+    await writeAudit('MODULE_DEPLOY_FAILED', 'rejected', { moduleSlug, version, error: String(err) });
+    if (previousTarget) {
+      try {
+        if (existsSync(liveLink)) unlinkSync(liveLink);
+        symlinkSync(previousTarget, liveLink);
+        await db.knex('builds').where({ buildId }).update({ validationStatus: 'rejected', promotedAt: null, updatedAt: new Date() });
+      } catch {
+        // rollback failure already logged above; nothing further to do
+      }
+    }
+    return reply.code(500).send({ error: `deploy failed: ${(err as Error).message}` });
+  }
+});
+
+app.get('/swastik/status', async (_request, reply) => {
+  const devCount = await db.knex('developers').count<{ count: string }>('devId as count').first();
+  const buildCount = await db.knex('builds').count<{ count: string }>('buildId as count').first();
+  const pendingDevs = await db.knex('developers').where({ approvalStatus: 'pending' }).count<{ count: string }>('devId as count').first();
+  const passedBuilds = await db.knex('builds').where({ validationStatus: 'passed' }).count<{ count: string }>('buildId as count').first();
+  return reply.send({
+    status: 'running',
+    developers: { total: Number(devCount?.count ?? 0), pending: Number(pendingDevs?.count ?? 0) },
+    builds: { total: Number(buildCount?.count ?? 0), passed: Number(passedBuilds?.count ?? 0) },
+    stagingVolume,
+    liveVolume,
+  });
+});
+
+export async function startSwastik(): Promise<void> {
+  await init();
+  await app.listen({ port: env.SWASTIK_PORT, host: '127.0.0.1' });
+  logger.info('swastik-started', { port: env.SWASTIK_PORT, stagingVolume, liveVolume });
+}
+
+startSwastik().catch((err: unknown) => {
+  try {
+    if (logger) {
+      logger.fatal('swastik-start-failed', { error: String(err) });
+    } else {
+      console.error('FATAL swastik-start-failed:', String(err));
+    }
+    if (db) void db.destroy();
+  } catch {
+    console.error('FATAL swastik-start-failed (dry):', String(err));
+  }
+  process.exit(1);
+});

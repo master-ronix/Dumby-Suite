@@ -28,7 +28,7 @@ import importPlugin from 'eslint-plugin-import';
 
 export default [
   {
-    ignores: ['dist/**', 'coverage/**', 'node_modules/**', '.agent/**'],
+    ignores: ['dist/**', 'coverage/**', 'node_modules/**'],
   },
   // ── Base rules for all TS source ────────────────────────────────────────────
   {

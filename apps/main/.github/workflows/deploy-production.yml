@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       image_sha:
-        description: "Git SHA to deploy (must already be staged and smoke-tested)"
+        description: 'Git SHA to deploy (must already be staged and smoke-tested)'
         required: true
 
 permissions:

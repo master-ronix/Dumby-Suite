@@ -22,7 +22,8 @@ export interface TrustedSourcesConfig {
 
 export type RejectionReason = 'MISSING_ACTOR_ID' | 'EMPTY_REASON' | 'UNTRUSTED_SOURCE';
 
-export type PowerEngineValidationResult = { valid: true } | { valid: false; rejectionReason: RejectionReason };
+export type PowerEngineValidationResult =
+  { valid: true } | { valid: false; rejectionReason: RejectionReason };
 
 export function validatePowerEngineRequest(
   req: PowerEngineRequest,
@@ -64,8 +65,7 @@ export class InMemoryAuditWriter implements AuditWriter {
 }
 
 export type DispatchOutcome<T> =
-  | { ok: true; result: T }
-  | { ok: false; rejectionReason: RejectionReason };
+  { ok: true; result: T } | { ok: false; rejectionReason: RejectionReason };
 
 export class PowerEngineDispatcher {
   constructor(

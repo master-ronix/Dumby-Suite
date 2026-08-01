@@ -5,5 +5,4 @@ coverage/
 .env.local
 *.log
 .DS_Store
-/.agent/*.lock
 pnpm-lock.yaml.bak

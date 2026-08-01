@@ -11,9 +11,7 @@
 
 import type { LockStore } from './redis-lock-store.js';
 
-export type StampedeOutcome<T> =
-  | { acquired: true; result: T }
-  | { acquired: false };
+export type StampedeOutcome<T> = { acquired: true; result: T } | { acquired: false };
 
 export class StampedeGuard {
   private static readonly DEFAULT_LOCK_TTL_MS = 30_000;

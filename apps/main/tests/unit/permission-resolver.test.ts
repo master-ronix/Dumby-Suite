@@ -37,14 +37,18 @@ test('layer 1: a process owner bypasses every other layer', () => {
 });
 
 test('layer 2: a globally blacklisted user is denied at layer 2', () => {
-  const ctx = baseContext({ blacklist: { isGloballyBlacklisted: () => true, isGuildBlacklisted: () => false } });
+  const ctx = baseContext({
+    blacklist: { isGloballyBlacklisted: () => true, isGuildBlacklisted: () => false },
+  });
   const result = resolvePermission(ctx);
   expect(result.allowed).toBe(false);
   expect(result.layerIndex).toBe(2);
 });
 
 test('layer 2: a guild-blacklisted user is denied at layer 2', () => {
-  const ctx = baseContext({ blacklist: { isGloballyBlacklisted: () => false, isGuildBlacklisted: () => true } });
+  const ctx = baseContext({
+    blacklist: { isGloballyBlacklisted: () => false, isGuildBlacklisted: () => true },
+  });
   const result = resolvePermission(ctx);
   expect(result.allowed).toBe(false);
   expect(result.layerIndex).toBe(2);
@@ -63,7 +67,10 @@ test('layer 3: DM usage passes through when explicitly sanctioned for DMs', () =
 });
 
 test('layer 4: missing bot permissions are denied with the specific permission names', () => {
-  const ctx = baseContext({ requiredBotPermissions: ['BAN_MEMBERS', 'KICK_MEMBERS'], botPermissions: ['BAN_MEMBERS'] });
+  const ctx = baseContext({
+    requiredBotPermissions: ['BAN_MEMBERS', 'KICK_MEMBERS'],
+    botPermissions: ['BAN_MEMBERS'],
+  });
   const result = resolvePermission(ctx);
   expect(result.allowed).toBe(false);
   expect(result.layerIndex).toBe(4);
@@ -96,7 +103,10 @@ test('layer 6: Core tier is exempt from RBAC even without the required role', ()
 });
 
 test('layer 7: NSFW-only action denied in a non-NSFW channel', () => {
-  const ctx = baseContext({ requiresNsfw: true, channel: { id: 'c', categoryId: null, isNsfw: false } });
+  const ctx = baseContext({
+    requiresNsfw: true,
+    channel: { id: 'c', categoryId: null, isNsfw: false },
+  });
   const result = resolvePermission(ctx);
   expect(result.allowed).toBe(false);
   expect(result.layerIndex).toBe(7);

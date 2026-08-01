@@ -1,6 +1,0 @@
-{
-  "module.name": "Verification",
-  "module.selftest.success": "Verification self-test completed successfully.",
-  "module.selftest.failure": "Verification self-test failed.",
-  "module.status.summary": "Verification has run {{totalRuns}} self-test(s)."
-}
