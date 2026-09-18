@@ -1,0 +1,16 @@
+{
+  "queue.description": "Manage BCCM command queue actions — submit, view, edit, and cancel pending command changes.",
+  "queue.response.title": "Dumby | Queue",
+  "queue.response.attribution": "Developed by Quixotic Mnemonics",
+  "queue.section.pending": "Pending Command Queue Actions",
+  "queue.batch.window": "next push in ~8h 23m",
+  "queue.empty": "No queued command actions for this guild.",
+  "queue.action.rename": "Rename",
+  "queue.action.alias": "Alias",
+  "queue.action.disable": "Disable",
+  "queue.action.enable": "Enable",
+  "queue.button.edit": "Edit",
+  "queue.button.cancel": "Cancel",
+  "queue.button.save": "Save Changes",
+  "queue.button.back": "Back to List"
+}

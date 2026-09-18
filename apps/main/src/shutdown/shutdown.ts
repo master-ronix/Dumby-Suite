@@ -109,10 +109,7 @@ async function runStep(
   }
 }
 
-function timeoutFor(
-  deps: ShutdownDeps,
-  step: keyof typeof SHUTDOWN_STEP_TIMEOUTS_MS,
-): number {
+function timeoutFor(deps: ShutdownDeps, step: keyof typeof SHUTDOWN_STEP_TIMEOUTS_MS): number {
   return deps.stepTimeoutsMs?.[step] ?? SHUTDOWN_STEP_TIMEOUTS_MS[step];
 }
 

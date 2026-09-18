@@ -19,6 +19,7 @@ function baseContext(overrides: Partial<PermissionContext> = {}): PermissionCont
     memberPermissions: ['SEND_MESSAGES'],
     requiredMemberPermissions: [],
     rbac: { highestEffectiveRole: 'MEMBER', requiredRole: null },
+    hasExplicitPermissionDeclaration: true,
     channel: { id: 'chan-1', categoryId: 'cat-1', isNsfw: false },
     requiresNsfw: false,
     channelLocks: {},
@@ -128,6 +129,12 @@ test('layer 7: an allow-list that excludes the current channel is denied', () =>
 
 test('a fully-permitted standard action with no restrictions is allowed', () => {
   expect(resolvePermission(baseContext())).toStrictEqual({ allowed: true });
+});
+
+test('default deny: a non-owner action without a permission declaration is denied', () => {
+  const result = resolvePermission(baseContext({ hasExplicitPermissionDeclaration: false }));
+  expect(result.allowed).toBe(false);
+  expect(result.reason).toBe('no explicit permission declaration exists for this action');
 });
 
 test('layers short-circuit in order: a layer-2 failure never reaches layer 6/7 checks', () => {

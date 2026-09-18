@@ -1,7 +1,7 @@
 name: Bug Report
 description: Report a reproducible defect in the Dumby runtime.
-title: "bug: "
-labels: ["bug"]
+title: 'bug: '
+labels: ['bug']
 body:
   - type: textarea
     id: summary

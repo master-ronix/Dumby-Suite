@@ -45,6 +45,7 @@ export interface PermissionContext {
     highestEffectiveRole: RbacRole | null;
     requiredRole: RbacRole | null;
   };
+  hasExplicitPermissionDeclaration?: boolean;
   channel: {
     id: string;
     categoryId: string | null;
@@ -131,6 +132,10 @@ export function resolvePermission(ctx: PermissionContext): PermissionResult {
     (!ctx.channel.categoryId || !locks.allowedCategoryIds.includes(ctx.channel.categoryId))
   ) {
     return deny(7, 'this action is restricted to specific categories');
+  }
+
+  if (ctx.hasExplicitPermissionDeclaration !== true) {
+    return deny(7, 'no explicit permission declaration exists for this action');
   }
 
   return ALLOW;

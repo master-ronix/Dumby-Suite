@@ -6,6 +6,9 @@ import {
   CommandNotFoundError,
   CommandScopeDeniedError,
 } from '../../src/commands/command-router.js';
+import { MiddlewarePipeline } from '../../src/middleware/middleware-pipeline.js';
+import { MiddlewareRejectError, type Middleware } from '../../src/middleware/base-middleware.js';
+import { PermissionResolver } from '../../src/permissions/resolver.js';
 
 // ─── CommandRegistry ──────────────────────────────────────────────────────────
 
@@ -157,6 +160,116 @@ describe('CommandRouter', () => {
     const router = new CommandRouter(reg, logger);
     await router.dispatch(makeInteraction('health'));
     expect(handler).toHaveBeenCalledTimes(1);
+  });
+
+  test('dispatches registered handlers through the middleware pipeline', async () => {
+    const reg = new CommandRegistry();
+    const calls: string[] = [];
+    const handler = vi.fn().mockImplementation(async () => {
+      calls.push('handler');
+    });
+    const stage: Middleware = {
+      priority: 0,
+      execute: async (ctx, next) => {
+        calls.push(`${ctx.commandName}:before`);
+        await next();
+        calls.push(`${ctx.commandName}:after`);
+      },
+    };
+    const pipeline = new MiddlewarePipeline().add(stage);
+    reg.register({
+      data: { name: 'health', description: 'H' },
+      execute: handler,
+      moduleId: 'core',
+    });
+    const logger = makeLogger() as unknown as Logger;
+    const router = new CommandRouter(reg, logger, { middlewarePipeline: pipeline });
+
+    await router.dispatch(makeInteraction('health'));
+
+    expect(calls).toEqual(['health:before', 'handler', 'health:after']);
+    expect(handler).toHaveBeenCalledTimes(1);
+  });
+
+  test('does not execute the handler when middleware rejects dispatch', async () => {
+    const reg = new CommandRegistry();
+    const handler = vi.fn().mockResolvedValue(undefined);
+    const stage: Middleware = {
+      priority: 0,
+      execute: async () => {
+        throw new MiddlewareRejectError(403, 'Denied by policy', false);
+      },
+    };
+    const pipeline = new MiddlewarePipeline().add(stage);
+    reg.register({
+      data: { name: 'health', description: 'H' },
+      execute: handler,
+      moduleId: 'core',
+    });
+    const logger = makeLogger() as unknown as Logger;
+    const interaction = makeInteraction('health');
+    const router = new CommandRouter(reg, logger, { middlewarePipeline: pipeline });
+
+    await router.dispatch(interaction);
+
+    expect(handler).not.toHaveBeenCalled();
+    expect(interaction.reply).toHaveBeenCalledWith({
+      content: 'Denied by policy',
+      ephemeral: true,
+    });
+  });
+
+  test('invokes the configured permission resolver on every dispatch', async () => {
+    const reg = new CommandRegistry();
+    const handler = vi.fn().mockResolvedValue(undefined);
+    const permissionResolver = {
+      resolve: vi.fn().mockReturnValue({ allowed: true }),
+    } as unknown as PermissionResolver;
+    reg.registerModule('health', 'core');
+    reg.register({
+      data: { name: 'health', description: 'H' },
+      execute: handler,
+      moduleId: 'health',
+    });
+    const logger = makeLogger() as unknown as Logger;
+    const router = new CommandRouter(reg, logger, {
+      permissionResolver,
+      botOwnerIds: ['owner-1'],
+    });
+
+    await router.dispatch(makeInteraction('health'));
+
+    expect(permissionResolver.resolve).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tier: 'core',
+        actorId: 'u1',
+        guildId: 'g1',
+        botOwnerIds: ['owner-1'],
+      }),
+    );
+    expect(handler).toHaveBeenCalledTimes(1);
+  });
+
+  test('denies non-owner dispatch when the command has no explicit permission declaration', async () => {
+    const reg = new CommandRegistry();
+    const handler = vi.fn().mockResolvedValue(undefined);
+    reg.registerModule('utility', 'standard');
+    reg.register({
+      data: { name: 'utility', description: 'Utility' },
+      execute: handler,
+      moduleId: 'utility',
+    });
+    const logger = makeLogger() as unknown as Logger;
+    const router = new CommandRouter(reg, logger, {
+      permissionResolver: new PermissionResolver(),
+      botOwnerIds: ['owner-1'],
+      isModuleEnabledInGuild: async () => true,
+    });
+
+    await expect(router.dispatch(makeInteraction('utility'))).rejects.toBeInstanceOf(
+      CommandScopeDeniedError,
+    );
+    expect(handler).not.toHaveBeenCalled();
   });
 
   test('rejects guild-only commands in direct messages by default', async () => {

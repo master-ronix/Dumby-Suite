@@ -11,6 +11,9 @@ import type { CommandRegistry } from './command-registry.js';
 import type { CommandDefinition } from './command-registry.js';
 import type { Logger } from '../logging/logger.js';
 import type { ModuleTier } from '../modules/tier-rules.js';
+import { MiddlewarePipeline, type PipelineResult } from '../middleware/middleware-pipeline.js';
+import type { MiddlewareContext } from '../middleware/base-middleware.js';
+import type { PermissionResolver } from '../permissions/resolver.js';
 
 export interface CommandInteraction {
   commandName: string;
@@ -21,6 +24,10 @@ export interface CommandInteraction {
   editReply: (options: unknown) => Promise<void>;
   replied?: boolean;
   deferred?: boolean;
+  /** Present when the dispatch layer can resolve channel context (live gateway). */
+  channel?: { id: string; categoryId: string | null; isNsfw: boolean };
+  /** Discord permission strings for the invoking member (live gateway). */
+  memberPermissions?: readonly string[];
 }
 
 export class CommandNotFoundError extends Error {
@@ -48,11 +55,15 @@ export interface CommandRouterOptions {
   devGuildId?: string;
   ackTimeoutMs?: number;
   isModuleEnabledInGuild?: (moduleId: string, guildId: string) => Promise<boolean>;
+  middlewarePipeline?: MiddlewarePipeline;
+  permissionResolver?: PermissionResolver;
+  botOwnerIds?: readonly string[];
 }
 
 export class CommandRouter {
   private readonly devGuildId: string;
   private readonly ackTimeoutMs: number;
+  private readonly middlewarePipeline: MiddlewarePipeline;
 
   constructor(
     private readonly registry: CommandRegistry,
@@ -61,6 +72,7 @@ export class CommandRouter {
   ) {
     this.devGuildId = options.devGuildId ?? '';
     this.ackTimeoutMs = options.ackTimeoutMs ?? 2_500;
+    this.middlewarePipeline = options.middlewarePipeline ?? new MiddlewarePipeline();
   }
 
   async dispatch(interaction: CommandInteraction): Promise<void> {
@@ -73,11 +85,16 @@ export class CommandRouter {
     }
 
     await this.assertCommandInScope(def, interaction.guildId);
+    this.assertPermissionAllowed(def, interaction);
 
     const start = Date.now();
     const guardedInteraction = this.withAcknowledgementGuard(interaction);
     try {
-      await def.execute(guardedInteraction.interaction);
+      const result = await this.middlewarePipeline.execute(
+        this.createMiddlewareContext(interaction),
+        async () => def.execute(guardedInteraction.interaction),
+      );
+      await this.handlePipelineResult(result, interaction);
       this.logger.info('command-executed', {
         command: name,
         moduleId: def.moduleId,
@@ -96,6 +113,75 @@ export class CommandRouter {
     } finally {
       guardedInteraction.clear();
     }
+  }
+
+  private assertPermissionAllowed(
+    command: CommandDefinition,
+    interaction: CommandInteraction,
+  ): void {
+    const result = this.options.permissionResolver?.resolve({
+      tier: this.registry.tierForCommand(command) ?? 'standard',
+      actorId: interaction.user.id,
+      botOwnerIds: this.options.botOwnerIds ?? [],
+      isDM: interaction.guildId === null,
+      allowedInDM: command.guildOnly === false,
+      guildId: interaction.guildId,
+      blacklist: {
+        isGloballyBlacklisted: () => false,
+        isGuildBlacklisted: () => false,
+      },
+      botPermissions: [],
+      requiredBotPermissions: [],
+      memberPermissions: interaction.memberPermissions ?? [],
+      requiredMemberPermissions: [],
+      rbac: { highestEffectiveRole: null, requiredRole: null },
+      hasExplicitPermissionDeclaration: command.permissionDeclared === true,
+      channel: interaction.channel ?? { id: 'unknown', categoryId: null, isNsfw: false },
+      requiresNsfw: false,
+      channelLocks: {},
+    });
+
+    if (result && !result.allowed) {
+      throw new CommandScopeDeniedError(
+        command.data.name,
+        command.moduleId,
+        this.registry.tierForCommand(command) ?? 'standard',
+        interaction.guildId,
+      );
+    }
+  }
+
+  private createMiddlewareContext(interaction: CommandInteraction): MiddlewareContext {
+    return {
+      userId: interaction.user.id,
+      guildId: interaction.guildId,
+      commandName: interaction.commandName,
+      correlationId: null,
+      meta: {},
+    };
+  }
+
+  private async handlePipelineResult(
+    result: PipelineResult,
+    interaction: CommandInteraction,
+  ): Promise<void> {
+    if (result.ok) return;
+
+    if (result.rejection) {
+      this.logger.warn('command-middleware-rejected', {
+        command: interaction.commandName,
+        userId: interaction.user.id,
+        guildId: interaction.guildId ?? 'DM',
+        statusCode: result.rejection.statusCode,
+        reason: result.rejection.reason,
+      });
+      if (!result.rejection.silent) {
+        await interaction.reply({ content: result.rejection.reason, ephemeral: true });
+      }
+      return;
+    }
+
+    throw result.error;
   }
 
   private async assertCommandInScope(

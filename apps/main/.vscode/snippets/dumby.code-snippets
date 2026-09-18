@@ -8,8 +8,8 @@
       "  version: '0.1.0',",
       "  tier: 'standard',",
       "  required: false,",
-      "};"
+      "};",
     ],
-    "description": "Start a Dumby module manifest."
-  }
+    "description": "Start a Dumby module manifest.",
+  },
 }

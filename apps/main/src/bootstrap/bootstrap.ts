@@ -12,17 +12,38 @@ import { RedisLockStore } from '../cache/redis-lock-store.js';
 import { QueueManager } from '../queue/queue-manager.js';
 import { ModuleRegistry } from '../modules/registry.js';
 import { ModuleLoader } from '../modules/loader.js';
+import { defaultEnabledForTier } from '../modules/tier-rules.js';
 import { PermissionResolver } from '../permissions/resolver.js';
 import { BootstrapProgress } from './stages.js';
 import { buildApiServer, buildHealthServer, buildMetricsServer } from '../http/server.js';
 import { PowerEngineDispatcher } from '../http/power-engine-dispatcher.js';
 import { loadModulesFromSwastikVolume } from '../modules/swastik-loader.js';
+import { registerFirstPartyModules } from '../modules/first-party.js';
 import { InFlightTracker } from '../shutdown/in-flight-tracker.js';
 import { registerShutdownSignalHandlers, isAcceptingGatewayEvents } from '../shutdown/shutdown.js';
 import { Redis } from 'ioredis';
 import { CommandRegistry } from '../commands/command-registry.js';
 import { CommandRouter } from '../commands/command-router.js';
 import type { CommandInteraction } from '../commands/command-router.js';
+import type { ButtonInteraction, StringSelectMenuInteraction } from 'discord.js';
+import { MiddlewarePipeline } from '../middleware/middleware-pipeline.js';
+import { TraceMiddleware } from '../middleware/built-in/trace.js';
+import { AnalyticsMiddleware } from '../middleware/built-in/analytics.js';
+import {
+  MaintenanceModeMiddleware,
+  InMemoryMaintenanceModeState,
+} from '../middleware/built-in/maintenance-mode.js';
+import { AdminTierGateMiddleware } from '../middleware/built-in/admin-tier-gate.js';
+import { AuthMiddleware } from '../middleware/built-in/auth.js';
+import { LocaleMiddleware, DefaultLocaleResolver } from '../middleware/built-in/locale.js';
+import { GuildConfigMiddleware } from '../middleware/built-in/guild-config.js';
+import { CooldownMiddleware, InMemoryCooldownStore } from '../middleware/built-in/cooldown.js';
+import { RateLimitMiddleware } from '../middleware/built-in/rate-limit.js';
+import { PermissionMiddleware } from '../middleware/built-in/permission.js';
+import { RBACMiddleware } from '../middleware/built-in/rbac.js';
+import { DeferMiddleware } from '../middleware/built-in/defer.js';
+import { SlidingWindowRateLimiter } from '../ratelimit/sliding-window.js';
+import { GuildConfigService } from '../config/guild-config.service.js';
 import { Events, REST, type Client } from 'discord.js';
 import {
   buildDiscordClient,
@@ -127,17 +148,124 @@ export async function bootstrap(): Promise<void> {
   const moduleRegistry = new ModuleRegistry();
   const permissionResolver = new PermissionResolver();
   const commandRegistry = new CommandRegistry();
+
+  // Command middleware sources resolve lazily against the registry, which is
+  // populated only during Stage 12 (MODULE_LOAD). Everything here runs once
+  // per dispatch, not at bootstrap time.
+  const isAdminTierCommand = (name: string) => {
+    const def = commandRegistry.get(name);
+    return def !== undefined && commandRegistry.getModuleTier(def.moduleId) === 'admin';
+  };
+  const isCoreTierCommand = (name: string) => {
+    const def = commandRegistry.get(name);
+    return def !== undefined && commandRegistry.getModuleTier(def.moduleId) === 'core';
+  };
+
+  const guildConfigService = new GuildConfigService(db, cache, logger);
+  const maintenanceMode = new InMemoryMaintenanceModeState();
+
+  const commandMiddleware = new MiddlewarePipeline()
+    .add(new TraceMiddleware())
+    .add(
+      new MaintenanceModeMiddleware({
+        isActive: () => maintenanceMode.isActive(),
+        allowedCommands: () => maintenanceMode.allowedCommands(),
+      }),
+    )
+    .add(
+      new AdminTierGateMiddleware(
+        {
+          botOwnerIds: config.get('BOT_OWNER_IDS'),
+          isAdminTierCommand,
+        },
+        logger,
+      ),
+    )
+    .add(
+      new AuthMiddleware({ isGuildOnly: (name) => commandRegistry.get(name)?.guildOnly ?? true }),
+    )
+    .add(new LocaleMiddleware(new DefaultLocaleResolver('en-US')))
+    .add(
+      new GuildConfigMiddleware(
+        {
+          load: async (guildId: string): Promise<Record<string, unknown>> =>
+            guildConfigService.get(guildId),
+        },
+        logger,
+      ),
+    )
+    .add(
+      new RateLimitMiddleware(
+        new SlidingWindowRateLimiter(
+          config.get('RATE_LIMIT_USER_MAX'),
+          config.get('RATE_LIMIT_USER_WINDOW_MS'),
+        ),
+        {
+          userMax: config.get('RATE_LIMIT_USER_MAX'),
+          userWindowMs: config.get('RATE_LIMIT_USER_WINDOW_MS'),
+          guildMax: config.get('RATE_LIMIT_GUILD_MAX'),
+          guildWindowMs: config.get('RATE_LIMIT_GUILD_WINDOW_MS'),
+        },
+      ),
+    )
+    .add(
+      new PermissionMiddleware({
+        getMemberPermissions: async () => [],
+        getRequiredPermissions: () => [],
+      }),
+    )
+    .add(
+      new RBACMiddleware({
+        getHighestRole: async () => null,
+        getRequiredRole: () => null,
+        isCoreTierCommand,
+      }),
+    )
+    .add(
+      new CooldownMiddleware(new InMemoryCooldownStore(), {
+        getCooldownMs: () => 0,
+      }),
+    )
+    .add(
+      new DeferMiddleware({
+        requiresDefer: () => false,
+        isEphemeral: () => false,
+      }),
+    )
+    .add(new AnalyticsMiddleware(logger));
   const isModuleEnabledInGuild = async (moduleId: string, guildId: string): Promise<boolean> => {
     const row = await db
       .knex('guild_module_states')
-      .where({ guildId, moduleSlug: moduleId, enabled: true, state: 'active' })
+      .where({ guildId, moduleSlug: moduleId })
       .whereNull('deletedAt')
-      .first('id');
-    return row !== undefined;
+      .first<{ enabled: boolean; state: string }>();
+
+    // No row yet → tier default (change-log v4.1.0). Standard+ is active by
+    // default; the first interaction backfills a row so the admin surface
+    // sees a concrete state instead of an implicit gap.
+    if (row === undefined) {
+      const tier = moduleRegistry.get(moduleId)?.manifest.tier ?? 'marketplace';
+      const enabled = defaultEnabledForTier(tier);
+      if (enabled) {
+        await db
+          .knex('guild_module_states')
+          .insert({ guildId, moduleSlug: moduleId, enabled: true, state: 'active' })
+          .onConflict(['guildId', 'moduleSlug'])
+          .ignore();
+      }
+      return enabled;
+    }
+
+    // An explicit row is authoritative: enabled + active means on; anything
+    // else (explicit disable, interrupted install, degraded) means off.
+    return row.enabled === true && row.state === 'active';
   };
   const commandRouter = new CommandRouter(commandRegistry, logger, {
     devGuildId: config.get('DEV_GUILD_ID'),
     isModuleEnabledInGuild,
+    permissionResolver,
+    botOwnerIds: config.get('BOT_OWNER_IDS'),
+    middlewarePipeline: commandMiddleware,
   });
   container.registerValue(CORE_TOKENS.EventBus, eventBus);
   container.registerValue(CORE_TOKENS.ModuleRegistry, moduleRegistry);
@@ -155,14 +283,16 @@ export async function bootstrap(): Promise<void> {
 
   // Stage 10: MODULE_DISCOVER
   progress.advanceTo('MODULE_DISCOVER');
+  const firstPartyModules = registerFirstPartyModules(moduleRegistry);
   const swastikModules = await loadModulesFromSwastikVolume({
     liveVolumePath: config.get('SWASTIK_LIVE_VOLUME_PATH'),
     registry: moduleRegistry,
     logger,
   });
   logger.info('module-discovery-complete', {
-    source: 'swastik-live-volume',
+    source: 'first-party-and-swastik-live-volume',
     liveVolumePath: config.get('SWASTIK_LIVE_VOLUME_PATH'),
+    firstPartyModules,
     swastikModules: swastikModules.loaded,
   });
 
@@ -197,12 +327,42 @@ export async function bootstrap(): Promise<void> {
     const partials = computePartials(modules.map((m) => m.manifest.partials));
     discordClient = buildDiscordClient({ intents, partials, logger });
 
-    discordClient.on(Events.InteractionCreate, (interaction) => {
-      if (!interaction.isChatInputCommand()) return;
+    discordClient.on(Events.InteractionCreate, async (interaction) => {
       if (!isAcceptingGatewayEvents()) return;
-      void commandRouter
-        .dispatch(interaction as unknown as CommandInteraction)
-        .catch(async (err) => {
+
+      if (interaction.isChatInputCommand()) {
+        const channel = (
+          interaction as unknown as {
+            channel?: { id: string; parentId?: string | null; isNSFW?: () => boolean } | null;
+          }
+        ).channel;
+        const member = (
+          interaction as unknown as {
+            member?: { permissions?: { has: (p: string) => boolean } } | null;
+          }
+        ).member;
+        const memberPermissions = member?.permissions
+          ? [
+              'Administrator',
+              'ManageChannels',
+              'ManageGuild',
+              'ModerateMembers',
+              'BanMembers',
+              'KickMembers',
+            ].filter((p) => member.permissions?.has(p) === true)
+          : undefined;
+        const commandInteraction: CommandInteraction = interaction as unknown as CommandInteraction;
+        if (channel) {
+          commandInteraction.channel = {
+            id: channel.id,
+            categoryId: channel.parentId ?? null,
+            isNsfw: channel.isNSFW?.() ?? false,
+          };
+        }
+        if (memberPermissions !== undefined) {
+          commandInteraction.memberPermissions = memberPermissions;
+        }
+        void commandRouter.dispatch(commandInteraction).catch(async (err) => {
           logger.error('interaction-dispatch-failed', {
             command: interaction.commandName,
             error: String(err),
@@ -222,6 +382,57 @@ export async function bootstrap(): Promise<void> {
             logger.error('interaction-error-reply-failed', { error: String(replyErr) });
           }
         });
+        return;
+      }
+
+      if (interaction.isButton() || interaction.isStringSelectMenu()) {
+        const customId = interaction.customId;
+
+        let handled = false;
+
+        if (interaction.isStringSelectMenu()) {
+          if (customId.startsWith('dashboard:') || customId.startsWith('health:nav:')) {
+            const { handleDashboardComponent } = await import('../modules/dashboard/index.js');
+            handled = await handleDashboardComponent(interaction, moduleContainer);
+          } else if (customId.startsWith('browse:')) {
+            const { handleBrowseComponent } = await import('../modules/browse/index.js');
+            handled = await handleBrowseComponent(interaction, moduleContainer);
+          } else if (customId.startsWith('persona:')) {
+            const { handlePersonaComponent } = await import('../modules/persona/index.js');
+            handled = await handlePersonaComponent(interaction, moduleContainer);
+          } else if (customId.startsWith('modules:')) {
+            const { handleModulesComponent } = await import('../modules/modules/index.js');
+            handled = await handleModulesComponent(interaction, moduleContainer);
+          } else if (customId.startsWith('health:nav:')) {
+            const { handleHealthComponent } = await import('../modules/health/index.js');
+            handled = await handleHealthComponent(interaction, moduleContainer);
+          }
+        }
+
+        if (!handled && interaction.isButton()) {
+          if (customId.startsWith('queue:')) {
+            const { handleQueueComponent } = await import('../modules/queue/index.js');
+            handled = await handleQueueComponent(interaction, moduleContainer);
+          } else if (customId.startsWith('permit:')) {
+            const { handlePermitComponent } = await import('../modules/permit/index.js');
+            handled = await handlePermitComponent(interaction, moduleContainer);
+          } else if (customId.startsWith('modules:')) {
+            const { handleModulesComponent } = await import('../modules/modules/index.js');
+            handled = await handleModulesComponent(interaction, moduleContainer);
+          }
+        }
+
+        if (!handled) {
+          logger.warn('unhandled-component-interaction', { customId, userId: interaction.user.id });
+          try {
+            if (!interaction.deferred && !interaction.replied) {
+              await interaction.reply({ content: 'This interaction is no longer valid.', ephemeral: true });
+            }
+          } catch {
+          }
+        }
+        return;
+      }
     });
 
     const liveAdapter = new LiveGatewayAdapter(
@@ -248,12 +459,30 @@ export async function bootstrap(): Promise<void> {
       },
       rest,
       enabledGuildResolver: async (moduleSlug) => {
-        const rows = await db
+        // Match the router's defaulting: all guilds for default-enabled
+        // tiers minus explicitly-disabled rows; explicit-active rows only
+        // for Marketplace (opt-in).
+        const tier = moduleRegistry.get(moduleSlug)?.manifest.tier ?? 'marketplace';
+        const explicit = await db
           .knex('guild_module_states')
           .select<{ guildId: string }[]>('guildId')
           .where({ moduleSlug, enabled: true, state: 'active' })
           .whereNull('deletedAt');
-        return rows.map((row) => row.guildId);
+
+        if (!defaultEnabledForTier(tier)) {
+          return explicit.map((row) => row.guildId);
+        }
+
+        const disabledRows = await db
+          .knex('guild_module_states')
+          .select<{ guildId: string }[]>('guildId')
+          .where({ moduleSlug })
+          .where((builder) => builder.where('enabled', false).orWhereNot('state', 'active'))
+          .whereNull('deletedAt');
+        const disabled = new Set(disabledRows.map((row) => row.guildId));
+
+        const allRows = await db.knex('guilds').select<{ id: string }[]>('id');
+        return allRows.map((row) => row.id).filter((id) => !disabled.has(id));
       },
     });
     await commandDeployer.deploy();

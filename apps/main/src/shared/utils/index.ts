@@ -1,6 +1,7 @@
 /**
  * Shared utility functions (Cluster: Core shared).
  */
+export * from './components-v2.js';
 
 /** Sleep for a given number of milliseconds. */
 export function sleep(ms: number): Promise<void> {

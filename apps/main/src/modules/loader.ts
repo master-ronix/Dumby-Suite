@@ -85,10 +85,9 @@ export class ModuleLoader {
       const mod = this.registry.get(name);
       if (!mod) continue;
       try {
-        this.container.tryResolve<CommandRegistry>(CORE_TOKENS.CommandRegistry)?.registerModule(
-          mod.manifest.name,
-          mod.manifest.tier,
-        );
+        this.container
+          .tryResolve<CommandRegistry>(CORE_TOKENS.CommandRegistry)
+          ?.registerModule(mod.manifest.name, mod.manifest.tier);
         await mod.onLoad?.(this.container);
       } catch (err) {
         this.logger.error('module-load-failed', { module: name, error: String(err) });

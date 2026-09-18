@@ -1,0 +1,168 @@
+# Dumby CI — strict fail-fast sequence per directive.md D-8.4
+#
+# Mirror of the local verification chain (AGENTS.md): typecheck → lint → format →
+# test:unit + test:coverage → test:integration → docker build.
+#
+# The gates job is a SINGLE job with sequential steps: a later gate never runs if an
+# earlier one fails (D-8.4). The integration job additionally applies migrations
+# against live Postgres + Redis (D-8.10) and the docker job verifies the D-8.6
+# multi-stage image builds from the workspace root context.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gates:
+    name: Gates (D-8.4 strict sequence)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # gitleaks + dependency review require full history
+
+      - name: Secret scanning
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Dependency review
+        if: github.event_name == 'pull_request'
+        uses: actions/dependency-review-action@v5
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 9
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+
+      - name: Gate 1 — typecheck, strict (first gate)
+        run: |
+          pnpm typecheck
+          pnpm --filter @workspace/dumby typecheck
+
+      - name: Gate 2 — lint (architecture rules, zero warnings)
+        run: pnpm --filter @workspace/dumby lint
+
+      - name: Gate 3 — format gate
+        run: pnpm --filter @workspace/dumby format
+
+      - name: Gate 4 — unit tests + coverage floors
+        run: pnpm --filter @workspace/dumby test:coverage
+
+      - name: Gate 5 — production build compiles
+        run: pnpm --filter @workspace/dumby build
+
+      - name: SBOM for provenance binding
+        uses: anchore/sbom-action@v0
+        with:
+          path: .
+          format: spdx-json
+          artifact-name: sbom-spdx
+
+      - name: Supply-chain hashing (lockfile, build artifact, gate results)
+        run: |
+          set -euo pipefail
+          tar -czf dist-archive.tar.gz -C apps/main dist
+          sha256sum pnpm-lock.yaml dist-archive.tar.gz > supply-chain.sha256
+          {
+            echo "## Supply-chain hashes (immutable build provenance, D-8.4)"
+            echo
+            echo '```'
+            cat supply-chain.sha256
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  integration:
+    name: Integration (live Postgres + Redis, D-8.10)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: gates
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: dumby
+          POSTGRES_PASSWORD: dumby_dev_password
+          POSTGRES_DB: dumby
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U dumby"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgres://dumby:dumby_dev_password@localhost:5432/dumby
+      REDIS_URL: redis://localhost:6379/0
+      QUEUE_REDIS_URL: redis://localhost:6379/1
+      DATABASE_REPLICA_URLS: ""
+      DISCORD_ADAPTER: mock
+      BOT_TOKEN: ""
+      INTERNAL_API_KEY: ci_internal_api_key
+      JWT_SIGNING_KEY: ci_jwt_signing_key_32_chars_minimum
+      ENCRYPTION_KEY_CURRENT: ci_encryption_key_current_32_bytes!
+      CLAI_AUTHKEY_STORAGE_URL: postgres://dumby:dumby_dev_password@localhost:5432/dumby
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 9
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+
+      - name: Apply migrations
+        run: pnpm --filter @workspace/dumby migrate
+
+      - name: Integration suite
+        run: pnpm --filter @workspace/dumby test:integration
+
+  docker:
+    name: Docker build (D-8.6 context = workspace root)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: gates
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Build production image
+        run: docker build --file apps/main/Dockerfile --tag dumby:ci .

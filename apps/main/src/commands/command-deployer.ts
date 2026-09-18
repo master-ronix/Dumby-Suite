@@ -58,7 +58,8 @@ export interface CommandDeployerDeps {
   enabledGuildResolver?: (moduleSlug: string) => Promise<readonly string[]>;
 }
 
-const isGuildScopedTier = (tier: ModuleTier): boolean => tier === 'standard' || tier === 'marketplace';
+const isGuildScopedTier = (tier: ModuleTier): boolean =>
+  tier === 'standard' || tier === 'marketplace';
 
 class MissingModuleTierError extends Error {
   constructor(moduleId: string) {

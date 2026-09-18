@@ -64,3 +64,13 @@ export function validateTierRules(manifest: ModuleManifestForTierCheck): TierVio
 export function isTierValid(manifest: ModuleManifestForTierCheck): boolean {
   return validateTierRules(manifest).length === 0;
 }
+
+/**
+ * change-log v4.1.0 resolution: a guild with no row in guild_module_states
+ * defaults to the module tier default — active for everything except
+ * Marketplace (opt-in per guild, "never_installed" until explicitly enabled).
+ * Unknown/missing tiers default to Marketplace to fail closed.
+ */
+export function defaultEnabledForTier(tier: ModuleTier): boolean {
+  return tier !== 'marketplace';
+}

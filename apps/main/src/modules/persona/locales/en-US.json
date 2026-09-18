@@ -1,0 +1,15 @@
+{
+  "persona.description": "View activated personas and their command inventory.",
+  "persona.response.title": "Dumby | Persona",
+  "persona.response.attribution": "Developed by Quixotic Mnemonics",
+  "persona.section.active": "Active Personas",
+  "persona.field.applicationId": "Application ID",
+  "persona.field.displayName": "Display Name",
+  "persona.field.shards": "Shards",
+  "persona.field.boundModules": "Bound Modules",
+  "persona.field.status": "Status",
+  "persona.status.online": "Online",
+  "persona.status.offline": "Offline",
+  "persona.status.connecting": "Connecting",
+  "persona.note.mdis": "Persona management is handled through the MDIS web interface. Use /browse to check module availability across personas."
+}

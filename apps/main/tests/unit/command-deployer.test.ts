@@ -23,7 +23,11 @@ const config = {
 };
 
 describe('CommandDeployer', () => {
-  function registerModule(registry: CommandRegistry, moduleId: string, tier: 'admin' | 'core' | 'standard' | 'marketplace'): void {
+  function registerModule(
+    registry: CommandRegistry,
+    moduleId: string,
+    tier: 'admin' | 'core' | 'standard' | 'marketplace',
+  ): void {
     registry.registerModule(moduleId, tier);
   }
 
@@ -135,11 +139,9 @@ describe('CommandDeployer', () => {
     // Core tier is global by specification; the development guild is only for admin tier.
     expect(put).toHaveBeenCalledTimes(2);
     expect(put).toHaveBeenNthCalledWith(1, '/applications/1234567890/commands', { body: [] });
-    expect(put).toHaveBeenNthCalledWith(
-      2,
-      '/applications/1234567890/commands',
-      { body: registry.toApiPayloads() },
-    );
+    expect(put).toHaveBeenNthCalledWith(2, '/applications/1234567890/commands', {
+      body: registry.toApiPayloads(),
+    });
   });
 
   test('deploy() registers admin commands only to the development guild', async () => {

@@ -1,4 +1,5 @@
 import type { DbClient } from '../db/client.js';
+import { tryParseJson } from '../shared/utils/index.js';
 import type { CacheManager } from '../cache/cache-manager.js';
 import type { Logger } from '../logging/logger.js';
 
@@ -35,8 +36,14 @@ export class GuildConfigService {
     return this.cache.get<GuildConfig>(
       `${CONFIG_CACHE_KEY_PREFIX}${guildId}`,
       async () => {
-        const row = await this.db.knex('guild_configs').where({ guildId }).first();
-        return row?.settings ?? DEFAULT_CONFIG;
+        const row = await this.db.knex('guild_configs').where({ guildId }).first<{
+          settings?: string;
+        }>();
+        if (row?.settings) {
+          const parsed = tryParseJson<Record<string, unknown>>(row.settings);
+          return { ...DEFAULT_CONFIG, ...(parsed ?? {}) };
+        }
+        return { ...DEFAULT_CONFIG };
       },
       { ttlMs: CONFIG_CACHE_TTL },
     ) as Promise<GuildConfig>;

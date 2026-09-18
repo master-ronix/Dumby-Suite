@@ -1,5 +1,9 @@
 import { test, expect } from 'vitest';
-import { validateTierRules, isTierValid } from '../../src/modules/tier-rules.js';
+import {
+  validateTierRules,
+  isTierValid,
+  defaultEnabledForTier,
+} from '../../src/modules/tier-rules.js';
 
 test('a valid standard-tier module has no violations', () => {
   expect(isTierValid({ name: 'utility', tier: 'standard' })).toBe(true);
@@ -56,4 +60,11 @@ test('only admin-tier modules may set devGuildOnly', () => {
 test('a manifest can accumulate multiple simultaneous violations', () => {
   const violations = validateTierRules({ name: 'broken', tier: 'admin', devGuildOnly: false });
   expect(violations.length >= 1).toBeTruthy();
+});
+
+test('defaultEnabledForTier enables everything except Marketplace', () => {
+  expect(defaultEnabledForTier('admin')).toBe(true);
+  expect(defaultEnabledForTier('core')).toBe(true);
+  expect(defaultEnabledForTier('standard')).toBe(true);
+  expect(defaultEnabledForTier('marketplace')).toBe(false);
 });

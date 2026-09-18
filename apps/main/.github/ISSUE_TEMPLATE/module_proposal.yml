@@ -1,7 +1,7 @@
 name: Module Proposal
 description: Propose a new Dumby module.
-title: "module: "
-labels: ["module-proposal"]
+title: 'module: '
+labels: ['module-proposal']
 body:
   - type: input
     id: module-name

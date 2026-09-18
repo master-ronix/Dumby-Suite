@@ -1,0 +1,10 @@
+{
+  "dashboard.description": "Opens the Dumby dashboard — the central navigation hub for all core commands and module pages.",
+  "dashboard.response.title": "Dumby | Dashboard",
+  "dashboard.response.attribution": "Developed by Quixotic Mnemonics",
+  "dashboard.section.coreCommands": "Core Commands",
+  "dashboard.nav.placeholder": "Navigate to...",
+  "dashboard.nav.home": "Dashboard (Home)",
+  "dashboard.nav.module.prefix.installed": "✅",
+  "dashboard.nav.module.prefix.marketplace": "🛒"
+}

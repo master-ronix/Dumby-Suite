@@ -1,957 +1,598 @@
-# DUMBY — MASTER BUILD PROMPT
-## The Complete Execution Brief for Constructing the Dumby Unified Modular Bot System
+# DUMBY — Master Build Prompt
 
-```
-Document Class     : Master Engineering Prompt — Execution Brief (not a runtime artifact)
-Subject System      : Dumby — Discord Unified Modular Bot System
-Derived From        : Full line-by-line synthesis of all seven Dumby reference documents
-                       (blueprint.md, documentation.md, directive.md, change-log.md,
-                       concept.md, directory.md, interface.md)
-Governs             : The construction of workspace/apps/main — the actual Dumby codebase
-Companion Location  : This file lives in workspace/docs/, alongside the seven source
-                       documents it synthesizes. It replaces none of them — it is the
-                       execution layer on top of them.
-Intended Reader     : Engineers tasked with building Dumby with workspace/docs/
-                       available to read and workspace/apps/main/ available to write to.
-Status              : Execute this directly. Where this prompt is silent on a detail,
-                       the source documents govern — go read the cited section.
-```
+## Execution Brief: From Specification to Deployable Application — From Any State of Completion
 
 ---
 
-## PART 0 — ORIENTATION: HOW TO USE THIS PROMPT
+**Document type:** Master Build Prompt — orchestration brief that takes an implementer from empty workspace OR any partially-complete codebase to a verified, deployable Dumby bot at 100% specification compliance.
 
-### 0.1 What This Document Is
+**Project:** Dumby — Discord Unified Modular Bot System
 
-You have been handed seven source documents and this eighth one. The seven are not
-background reading you skim once — they are the specification you build against for
-the entire length of this project. This document is the bridge between "here is a
-480,000-word architecture" and "here is what to actually type, in what order, with
-what definition of done." It does three things the seven source documents don't do on
-their own: it **resolves the handful of places where they genuinely disagree**, it
-**sequences the work into buildable phases**, and it **draws an honest, explicit line**
-between what must be production-grade on the first pass and what is correctly scoped
-as a documented, extensible stub for now. Nothing in this document invents new
-architecture. Every specific number, table, and rule below traces back to one of the
-seven files, cited by name and section.
+**Version:** 5.0.0
 
-### 0.2 The Source Corpus, and Where It Lives
+**Derived from:** The nine-document Dumby documentation set at version 5.0.0 (Consolidated Re-Baseline) in `workspace/docs/` — with `blueprint.md` 5.0.0 (Consolidated Re-Baseline Edition) as the sole architectural authority — together with the ADR series in `workspace/docs/adr/` and the frozen request records in `workspace/docs/ur/`.
 
-| File | Role | Treat As |
-|---|---|---|
-| `blueprint.md` | The controlling architectural specification — 9 Parts, 48 sections | **Primary source of truth.** When in doubt, this file governs. |
-| `directive.md` | Imperative MUST/SHOULD/MAY engineering rules for the Application Core | **Primary source of truth for *how* to build**, explicitly subordinate to `blueprint.md` but more actionable — read this for the exact rule, `blueprint.md` for the reasoning behind it. |
-| `documentation.md` | A parallel, independently-produced narrative edition covering the same system | **Supplementary only.** Rich in concrete elaboration (schema columns, endpoint shapes) that neither `blueprint.md` nor `directive.md` spells out — use it to fill gaps, never to override either. It contains at least one substantive conflict with the two documents above; see §0.4. |
-| `interface.md` | The exact, current, end-user-facing surface (dated 24 July 2026) | **Ground truth for the two real commands.** This is not aspirational — it is the literal contract `/health` and `/hello` must satisfy, byte for byte. |
-| `directory.md` | The actual monorepo file/directory layout | **Ground truth for physical structure**, reconciled with `directive.md` §16 — see Part 3 below. |
-| `concept.md` | Philosophy, audience, and the business/licensing model | **Context, not a build spec.** Read once for the "why"; nothing here is directly implemented as code, though it explains why fields like `hardcoded`/`releaseStatus`/`devId` exist in the module manifest. |
-| `change-log.md` | The 13-draft revision history of the documentation lineage | **Historical record only.** Do not implement anything described as a past defect or a superseded draft. Two items are flagged there as still genuinely open — see §1.4. |
+**Governing objective:** Following this prompt end-to-end MUST yield a finished, deployable, ready-to-use Dumby bot — regardless of whether the starting point is an empty workspace or a partially-built codebase. The prompt detects what exists, what is missing, what is faulty, and what is not working — then drives the codebase to full compliance with the specification.
 
-### 0.3 Source Authority & Precedence
+**Output location:** The main project is built inside `workspace/apps/main/`; the `swastik` module-authoring package is built inside `workspace/packages/swastik/`. All source documents remain in `workspace/docs/` — the nine-document set plus the `adr/` decision records and the frozen `ur/` request records — as the permanent reference set.
 
-This is `directive.md` §0.4's own precedence rule, restated as policy for this build:
-**`blueprint.md` and `directive.md` govern.** Where `documentation.md` adds detail that
-neither of the other two states, use it. Where `documentation.md` appears to disagree
-with `blueprint.md` or `directive.md` on anything with real engineering or security
-weight, **that disagreement is a defect in `documentation.md`, not an ambiguity to
-resolve case-by-case** — follow `blueprint.md`/`directive.md` and move on. Three such
-disagreements were found during synthesis and are resolved explicitly below so you
-don't have to rediscover them mid-build.
-
-### 0.4 Known Cross-Document Conflicts — Resolved
-
-**Conflict 1 — CLAI authentication and network exposure (security-relevant; resolve
-in favor of `blueprint.md`/`directive.md` without exception).**
-`documentation.md` §19.16–§19.18 describes CLAI as authenticated by password *plus* a
-locally-held authkey file *plus* TOTP multi-factor, and states it is "reachable over
-the public internet by design." This directly contradicts `blueprint.md` §22.5
-("Authentication is SSH public-key only — no password path exists") and `directive.md`
-Rule 25.5 / Rule 43.5 ("CLAI's SSH listener and PEP's REST API MUST NOT be exposed on
-a public-facing Service/Ingress — reachable only via bastion, VPN, or an equivalent
-in-cluster-only path"). **Build CLAI as SSH-public-key-only, with each operator's key
-individually registered and individually revocable, reachable exclusively from a
-private network position.** Do not implement a password path, TOTP, or public exposure
-for CLAI. `documentation.md`'s `clai_authkeys` table concept is not used as specified;
-Part 4.11 below defines the corrected schema.
-
-**Conflict 2 — Physical directory layout: `src/core/` wrapper vs. flattened `src/`.**
-`blueprint.md` §7.1–§7.2 nests every core subsystem under `src/core/` (e.g.
-`src/core/container/Container.ts`). `directive.md` §16.1–§16.2 explicitly reconciles
-this against the real monorepo (`directory.md`) and rules that the actual layout has
-**no `src/core/` wrapper** — every core subsystem (`bootstrap/`, `di/`, `commands/`,
-`events/`, `middleware/`, `permissions/`, `config/`, `db/`, `cache/`, `http/`,
-`queue/`, `i18n/`, `logging/`, `metrics/`, `tracing/`, `errors/`, `resilience/`,
-`ratelimit/`, `shutdown/`, `discord/`) lives directly under `src/`, as a sibling to
-`src/modules/`, `src/shared/`, `src/entry/`, and `src/monetization/`. **Use the
-flattened layout.** `directive.md` is the document that performs this exact
-reconciliation, so it is treated as authoritative here, not merely supplementary.
-
-**Conflict 3 — Naming: `infra/` vs. `deploy/`, and a few table names.**
-`blueprint.md`/`documentation.md` use `infra/terraform/` and `infra/k8s/`;
-`directory.md` — the actual repository map — uses `deploy/terraform/` and
-`deploy/k8s/`. **Use `deploy/`.** Similarly, `documentation.md` names two Swastik
-tables `swastik_developers`/`swastik_builds`; `blueprint.md`/`directive.md`'s explicit
-core schema (§24.2 / Rule 27.2) names them `developers`/`builds`. **Use `developers`
-and `builds`** — `blueprint.md`'s schema reference is the one both documents agree is
-"the complete schema reference" and "fixed, MUST NOT be extended casually."
-
-**Everything else that differs between `documentation.md` and the two controlling
-documents (a stray "active/standby replicas" comment describing what is actually the
-dynamic Redis-lock shard model; a handful of extra migration filenames tied to
-catalog-era features that no longer exist) is cosmetic residue from
-`documentation.md` being an independent parallel draft, not a second architecture.
-Where you notice something like this, silently prefer `blueprint.md`/`directive.md`
-and move on — it doesn't need its own ADR unless it has real engineering weight, the
-way Conflicts 1–3 above did.**
-
-### 0.5 Reading Order For This Build
-
-Do not attempt to hold all 15,000+ lines of source material in context at once. Read
-just-in-time, per phase, using the "Read first" pointer at the top of each phase in
-Part 6. If you read nothing else before starting, read: `concept.md` in full (15
-minutes — it's short and it's the "why"), `interface.md` in full (5 minutes — it's the
-exact contract for the only two things a user will actually see), and `blueprint.md`
-Part 0 + Part I (the orientation and philosophy — establishes vocabulary you'll use for
-the rest of the build).
+**First priority:** Context window optimization. This prompt contains zero content from the source documents. It is pure orchestration — detection logic, remediation protocol, and phase sequencing. Every technical specification lives in the document that owns it. Source documents are loaded on demand, per phase, never in bulk. Where a build choice is governed by a recorded decision, the governing ADR in `docs/adr/` is one of those on-demand sources — read it before making the choice it governs, never in bulk.
 
 ---
 
-## PART 1 — MISSION, IDENTITY & SCOPE
+## TABLE OF CONTENTS
 
-### 1.1 What You Are Building, In One Paragraph
+- [0. How to Use This Prompt](#0-how-to-use-this-prompt)
+- [1. Mission & Scope](#1-mission--scope)
+- [2. Source Document Authority](#2-source-document-authority)
+- [3. Codebase State Detection & Audit Protocol](#3-codebase-state-detection--audit-protocol)
+- [4. Remediation Protocol](#4-remediation-protocol)
+- [5. Phased Build Plan](#5-phased-build-plan)
+- [6. Completion Enforcement & Definition of Done](#6-completion-enforcement--definition-of-done)
 
-Dumby is a **Unified Modular Bot System**: one TypeScript application — one bootstrap
-sequence, one dependency graph, one event bus, one permission engine, one
-configuration system — into which independently-authored **modules** load as the
-exclusive source of every behavior the bot exhibits, including its own administrative
-tooling. The framework never special-cases itself (`blueprint.md` §1.2): there is no
-privileged code path a third-party module author couldn't also use. As of the current
-release date the entire end-user-visible surface is exactly two Core-tier slash
-commands, `/health` and `/hello` (`interface.md`) — everything else in the seven
-source documents describes the *machinery* that makes shipping the third, fortieth,
-and four-hundredth module exactly as safe as shipping those first two.
+---
 
-### 1.2 The Three-Tier Build Scope
+## 0. HOW TO USE THIS PROMPT
 
-Building every subsystem in all seven documents to full, hardened, multi-region
-production readiness in a single pass is not a realistic or honest goal — and the
-source documents themselves model this kind of explicit scoping (the module catalog
-is deliberately index-depth, §36.1; the monetization scaffold is deliberately empty,
-§7.6). Apply the same discipline here, made explicit rather than silent:
+### 0.1 Entry Point: Detect Your Starting State
 
-| Tier | Meaning | Subsystems |
-|---|---|---|
-| **Tier 1 — Full, no shortcuts** | Production-shaped, fully implemented, fully tested against the exact spec. This is the load-bearing 80% of the architecture. | Bootstrap (all 18 stages) · Graceful shutdown (all 9 steps) · DI container · Config management (all 3 scopes) · Database layer + full core schema + migrations · Caching (L1+L2, stampede guard, negative caching) · Command framework & routing · Event architecture (gateway router + internal bus + cycle detection) · Middleware pipeline (all built-in stages) · Permission engine (all 7 layers) · RBAC (roles + groups + sets + grants) · Module system (manifest, registry, loader, lifecycle, tier validation, isolation lint rules) · Error taxonomy · Observability (logs/metrics/traces) · The two shipped modules (`/health`, `/hello`) + `_template` · Health endpoints (3) · HTTP server · CI/CD (5 workflows) · Docker (multi-stage) · Kubernetes manifests (base + overlays) |
-| **Tier 2 — Fully functional, correctly scoped for a single-node/dev-first deployment** | Genuinely working code, exercised by real tests, built so it extends to full scale without a rewrite — but not validated against live multi-region infrastructure you don't have in this build session. | Job queue (BullMQ) infrastructure · Shard-ownership lock model (correct even at shard count 1) · i18n infrastructure · Rate limiting (dual-window + fail-closed fallback) · Webhook signature-verification infrastructure (built even before any module registers a route) · Security controls with no external dependency (redaction, Zod boundaries, secrets-via-env) · Terraform modules (real, valid, provider-parameterized; write for the single-operator tier per `blueprint.md` §41.6, leave growing/enterprise tiers as documented variables) · Credentials Service · Power Engine Panel (PEP) — this is "just" a service talking to the same Postgres/Redis everything else uses; build it in full |
-| **Tier 3 — Architecturally scaffolded, explicitly documented as such** | Real entry points, real service interfaces, a genuine minimal working version, clear extension points — not production-hardened, and say so in the code and in an ADR rather than pretending otherwise. | CLAI (real SSH listener + pubkey auth against a real table + a working REPL calling PEP; rate limiting, device-binding, and the break-glass runbook are fast-follow work) · Swastik (developer registration + build-tracking REST API is Tier 2-quality; the staging/promotion mechanism itself runs against the **local filesystem** as a documented stand-in for the Kubernetes-shared-volume mechanism `blueprint.md` §15.8 specifies for real multi-pod production) · Persona/Twill (the data model, binding logic, and entry-point support are code-complete; actually exercising it requires an operator-supplied second Discord bot token, which this build session will not have) · MDIS **backend contract only** (the `dashboardSchema` type system and the four auto-exposed REST endpoints — never a frontend renderer; that's `website/`, explicitly out of scope, `directive.md` §0.3) · Marketplace review-pipeline **data model and service interfaces** (there is no third-party developer to submit anything yet) |
+Before doing anything else, determine which of these two states applies:
 
-### 1.3 Explicit Non-Goals For This Build
+**State A — Greenfield:** `workspace/apps/main/` does not exist or is empty. Begin at Phase 0 of the build plan (§5). Build from scratch following the phased sequence.
 
-Beyond the architecture's own non-goals (`blueprint.md` §4 — no text-prefix commands,
-no general message-content scanning, no built-in frontend, no "zero-config," no
-microservices sprawl beyond the named control-plane exception), this build session
-specifically does **not**:
+**State B — Existing codebase:** `workspace/apps/main/` contains code at any stage of completion. Do NOT start at Phase 0. Instead, execute the Codebase State Detection & Audit Protocol (§3) first. This produces a Gap Manifest that maps every specification requirement to the codebase's actual state. Then use the Remediation Protocol (§4) to drive every gap to closure.
 
-- Design or implement any of the 22 illustrative catalog modules (`moderation`,
-  `economy`, `leveling`, etc.). They are index-depth by design (`blueprint.md` §36.1)
-  — a name, a tier, a one-line purpose, nothing more. Do not give any of them a
-  command surface, a schema, or a service.
-- Build `website/`, `design/`, or `assets/` content. These are reserved, out-of-scope
-  workspace-level directories (`directory.md`) — create them as empty, documented
-  placeholders only, mirroring the pattern already established for
-  `src/monetization/`.
-- Build `specs/` or `tools/release_manager/` content beyond an empty, documented
-  placeholder.
-- Implement any monetization logic. `src/monetization/` stays empty except for a
-  `README.md` describing its reserved purpose (`blueprint.md` §7.6) — MTP (Metric
-  Track Protocol) is the one piece of monetization-*adjacent* infrastructure that
-  **is** in scope (it's usage metering, not billing) and belongs under Tier 2.
+This prompt handles both states. The phases in §5 are the target sequence — in State B you enter the sequence at the phase matching your highest-complete subsystem and use the audit results to remediate everything below and around it.
+
+### 0.2 Core Principle
+
+This prompt does not reproduce, summarize, or paraphrase specifications from the source documents. Every technical detail — architecture, schemas, stage sequences, middleware orderings, permission layers, database tables, interface layouts, defect descriptions, engineering rules, environment variables, error taxonomies, acceptance criteria — lives in the document that owns it.
+
+This prompt provides three things the source documents do not: (1) a method for auditing any codebase state against the specification, (2) a remediation protocol for driving gaps to closure, and (3) a phased execution sequence that works from any starting point.
+
+### 0.3 Precedence Order
+
+The source documents have a strict authority hierarchy. When any two appear to conflict, the higher-precedence document wins. Record the conflict in `change-log.md` and proceed with the higher-precedence interpretation.
+
+1. `blueprint.md` (v5.0.0) — sole source of architectural truth
+2. `directive.md` (v5.0.0) — imperative translation of #1 into rules, including the ban registry
+3. `interface.md` — governs end-user interface surfaces and the renderer grammar
+4. `directory.md` — canonical layout reference (tier volumes, unified command tree, repository-root `.github/`)
+5. `concept.md` — ideological foundation and glossary
+6. `change-log.md` — version history and defect lifecycle
+7. `definitions.md` — document intent and scope definitions
+8. `documentation.md` (v5.0.0, archived) — frozen legacy reference, retained for the decisions the set inherits; it never overrides the documents above
+
+Two supporting series complete the set. The ADRs in `docs/adr/` are binding on the build choices they govern: where an ADR covers a choice you are about to make, the recorded decision wins over any contrary reading of prose elsewhere in the set. The frozen request records in `docs/ur/` are provenance — they explain why the documentation reads as it does; they are never build specifications.
+
+### 0.4 Build Discipline
+
+- Read the named source sections *before* implementing or remediating a subsystem. Never work from assumption — work from the specification.
+- Where an ADR in `docs/adr/` governs a build choice, read it before implementing that choice. A deviation from a recorded decision is a defect to fix or a judgment to record in `change-log.md` — never a silent override.
+- Use the canonical vocabulary everywhere — code, tests, commit messages, and docs alike. The persona system is **Twixter** (bring-your-own-identity, single-server-bound). The release-management service is the **Release Manager**. The rank names are **MODERATOR** and **ADMINISTRATOR**. No legacy names, no shorthand variants.
+- Each phase or remediation item must be verifiable before moving on.
+- Write tests alongside implementation. For remediation, update or write tests that prove the fault is fixed.
+- Never skip the middleware pipeline or permission resolver "to get it working." A bypass is a defect to fix, not a shortcut to take.
+- Every file created or modified must trace to a requirement in a source document.
+- Where a source document self-reports an implementation status gap, the build addresses it honestly — see the change-log's defect lifecycle and the directive's status-honesty rule.
+
+---
+
+## 1. MISSION & SCOPE
+
+### 1.1 What You Are Building
+
+A production-ready, deployable Dumby bot application — a single TypeScript process that connects to the Discord gateway, serves a defined set of slash commands through the module system, presents every user-facing surface through the core Renderer, persists state to PostgreSQL and Redis, and passes its own acceptance gate.
+
+The application is built as a pnpm monorepo workspace member at `workspace/apps/main/`, alongside the `swastik` module-authoring package at `workspace/packages/swastik/`.
+
+### 1.2 Three-Tier Build Scope
+
+| Tier | What It Means | Delivered? |
+|------|---------------|------------|
+| **Core Framework** | Bootstrap, DI, module system, middleware, permissions, data layer, cache, queue, observability, shutdown, the core Renderer | YES — full implementation |
+| **Shipped Modules** | The modules that constitute the user-facing surface on delivery | YES — the Core Command Surface specified in `interface.md` |
+| **Control-Plane Services** | PEP, CLAI, Swastik, Credentials Service, Personas (Twixter) | SCAFFOLD ONLY — typed interfaces and entry points; no operational implementation |
+
+### 1.3 Non-Goals
+
+The framework's non-goals are specified in full in `blueprint.md` §4 and `directive.md` D-1.4. The build MUST NOT recreate any of those outcomes. Read those sections before starting or remediating.
 
 ### 1.4 Inherited Open Items
 
-`change-log.md` §3–§4 names two items that were never closed anywhere in the entire
-13-draft documentation lineage, and they remain genuinely open going into this build.
-Treat them as known, accepted limitations for the initial pass — not silently, but
-explicitly, flagged in an ADR (Part 6, Phase 8):
-
-1. **No real runtime sandbox exists for third-party module code** — review is
-   lint-plus-human-security-review only (`blueprint.md` §16.4's five gates). This is
-   moot for the current build since the module catalog is illustrative-only and no
-   third party is submitting anything yet, but it's a real gap the moment Marketplace
-   goes live for real. Document it; don't attempt to solve it in this pass.
-2. **BullMQ/Redis is a single point of failure for all scheduled-job state**, with no
-   database-backed fallback. Build the job queue per Tier 2's scope; note this
-   limitation in the same ADR rather than attempting a bespoke DB-backed job store,
-   which is out of scope for this build.
+Known gaps from the specification's history are documented in `change-log.md` (Cross-Version Defect Lifecycle and Open Items sections). The build must address them honestly, not paper over them. Read those sections before starting or remediating.
 
 ---
 
-## PART 2 — TECHNOLOGY STACK
+## 2. SOURCE DOCUMENT AUTHORITY
 
-Every choice below is a deliberate decision already made by the controlling
-documents (`blueprint.md` §5, `directive.md` Part II). Do not substitute any of them
-without writing an ADR of equivalent rigor first.
+### 2.1 Document Map
 
-| Concern | Choice | Non-negotiable detail |
-|---|---|---|
-| Runtime | Node.js LTS ≥ 22 | Needed for native `fetch`, structured clone, stable top-level `await` in ESM |
-| Language | TypeScript, strict mode | `"strict": true`, `"exactOptionalPropertyTypes": true`, `"noUncheckedIndexedAccess": true`. No `.js` source ships. `tsc --noEmit` is CI gate #1, before lint or test. |
-| Module format | ESM | `"type": "module"`, `"module": "NodeNext"`. `require()` never appears. |
-| Package manager | pnpm, latest stable | Lockfile committed; CI runs `--frozen-lockfile` |
-| Discord library | discord.js v14, used directly | No wrapper abstraction — module authors use discord.js's own types |
-| System of record | PostgreSQL | JSONB for config docs; ACID transactions; row-level locking; `LISTEN`/`NOTIFY` |
-| Acceleration layer | Redis | L2 cache, BullMQ backing store, cross-shard pub/sub — never the primary store |
-| Query builder | Knex.js | Not an ORM. No active-record entities. The only SQL abstraction is `BaseRepository`. |
-| Job queue | BullMQ | Redis-backed, survives process restarts |
-| HTTP server | Fastify | Health, metrics, admin REST, MDIS backend, webhooks |
-| Logging | Pino → structured JSON stdout | Child-logger scoping; centrally-enforced redaction |
-| Metrics | `prom-client` → `/metrics` | Prometheus text format |
-| Tracing | OpenTelemetry SDK → OTLP | One root span per command; `TRACE_SAMPLE_RATE` default `0.1` |
-| Config validation | Zod | Every trust boundary, no exceptions |
-| Lint | ESLint ^9, flat config | Encodes architecture rules as build failures, not review discipline |
-| Format | Prettier ^3 | CI `--check` gate |
-| Test runner | Vitest ^2 | Unit + integration |
-| Dev execution | tsx ^4 | No build step in dev |
-| Git hooks | Husky ^9 | pre-commit (lint-staged), commit-msg (commitlint) |
-| Commit convention | commitlint ^19 | Conventional Commits |
-| Release automation | changesets ^2 | No hand-edited version bumps or changelogs |
-| Containerization | Docker | Multi-stage: builder (`tsc`) + runtime (`node`) |
-| Orchestration | Kubernetes | `Deployment`, never `StatefulSet` (shard ownership is dynamic, not identity-based) |
-| Infra-as-code | Terraform | `database` / `cache` / `kubernetes` modules |
-| Secrets | Sealed Kubernetes Secrets, or Vault/cloud secrets manager | Never plaintext in manifests or committed `.env` files |
-| CI/CD | GitHub Actions | Exactly five workflows — see Phase 7 |
+| Document | Path | Role |
+|----------|------|------|
+| `blueprint.md` | `workspace/docs/blueprint.md` | Sole architectural authority — Consolidated Re-Baseline Edition |
+| `directive.md` | `workspace/docs/directive.md` | Imperative rules (MUST/SHOULD/MAY) and the ban registry |
+| `interface.md` | `workspace/docs/interface.md` | End-user interface specification — renderer grammar, Modes D/M/C, the Core Command Surface |
+| `directory.md` | `workspace/docs/directory.md` | Canonical folder tree — every directory annotated |
+| `concept.md` | `workspace/docs/concept.md` | Ideological foundation and glossary |
+| `change-log.md` | `workspace/docs/change-log.md` | Version history, defect lifecycle, open items |
+| `definitions.md` | `workspace/docs/definitions.md` | Document intent, impact, purpose, definition for the full document set |
+| `documentation.md` | `workspace/docs/documentation.md` | Archived legacy reference — frozen; retained for inherited decisions only |
+| `master-prompt.md` | `workspace/docs/master-prompt.md` | This document — the orchestration brief |
+| `docs/adr/` | `workspace/docs/adr/` | ADR series — recorded decisions, binding on the build choices they govern |
+| `docs/ur/` | `workspace/docs/ur/` | Frozen request records — provenance for the v5.0.0 re-baseline |
 
----
+### 2.2 Subsystem-to-Document Loading Guide
 
-## PART 3 — REPOSITORY STRUCTURE
+When implementing, auditing, or remediating a specific subsystem, read the source-document sections listed below. The `documentation.md` column is the frozen legacy record: consult it for inherited decisions only — `blueprint.md` 5.0.0 governs on any conflict. Where a row's build choice is governed by an ADR, read that ADR from `docs/adr/` before implementing.
 
-Two levels: the broader `workspace/` monorepo (per `directory.md`), and the actual
-build target, `apps/main/`, laid out per `directive.md` §16.2's flattened
-reconciliation (Conflict 2, §0.4).
+| Subsystem | Blueprint § | Documentation § | Directive Part |
+|-----------|-------------|-----------------|----------------|
+| Bootstrap | §8 | §8 | Part 3 |
+| Shutdown | §9 | — | D-3.7 |
+| DI Container | §10 | §9 | D-3.5, D-3.6 |
+| Module System | §11, §13, §14 | §10, §11, §12 | Part 4 |
+| Tier Volumes & Blind Discovery | §7.3, §15.9 | — | Part 4 |
+| Swastik (staging, promotion, hot reload) | §15 | §13 | D-4.10 to D-4.12 |
+| Marketplace / MDIS | §16 | §14 | D-4.13 |
+| Command Framework | §17 | §15 | D-3.9, D-3.10 |
+| Event Architecture | §18 | §16 | D-4.8 |
+| Middleware Pipeline | §19 | §17 | D-5.1 |
+| Interaction Handling | §20 | §18 | D-5.3 |
+| Renderer & Presentation Grammar | §10.2, §16.5, §20 | — | ban registry (embed ban) |
+| Buffer Embed & Formal Notice Frame | §17.11, §19.2, §20, §28.6 | — | — |
+| Permission Engine | §21 | §19 | D-5.2 |
+| PEP / CLAI / Credentials | §22 | — | Part 6 |
+| Configuration | §23 | §20 | D-5.4 |
+| Database | §24 | §21 | D-5.5 |
+| Caching | §25 | §22 | D-5.6 |
+| State Externalization | §26 | §23 | D-5.7 |
+| Observability | §27 | §24 | D-7.1 |
+| Error Management | §28 | §25 | D-7.2, D-7.3 |
+| Job Queue | §29 | §26 | D-5.8 |
+| Localization | §30 | §27 | D-5.9 |
+| Security | §32 | §29 | D-7.5 |
+| Performance | §33 | §30 | D-7.6 |
+| Privacy / GDPR | §34 | §31 | D-7.7 |
+| Personas (Twixter) | §35 | — | D-6.6 |
+| Testing | §37 | §40 | D-8.1 to D-8.3 |
+| CI/CD | §40 | §43 | D-8.4 to D-8.5 |
+| Infrastructure | §41 | §44 | D-8.6 to D-8.7 |
+| Versioning & Release | §42 | §45 | D-8.5, D-8.9 |
+| Troubleshooting | §43 | §46 | — |
 
-### 3.1 `workspace/` — Top Level
-
-```
-workspace/
-├── apps/
-│   └── main/                 ← THE BUILD TARGET — full tree in §3.2 below
-├── assets/                   ← reserved (images/audio/fonts/branding) — empty + README, out of scope
-├── design/                   ← reserved (brand/mockups/ui-kit) — empty + README, out of scope
-├── docs/                     ← THIS file + the seven source documents live here, unchanged
-│   ├── reference/
-│   ├── changelog/
-│   └── rfcs/
-├── specs/                    ← reserved (modules/api/rfcs) — empty + README, out of scope
-├── tools/
-│   └── release_manager/      ← reserved — empty + README, out of scope
-└── website/                  ← reserved (frontend, dashboard, portal) — empty + README, explicitly
-                                  out of scope per directive.md §0.3
-```
-
-### 3.2 `apps/main/` — The Build Target (Flattened Layout)
-
-```
-apps/main/
-├── .github/
-│   ├── workflows/{ci,release,deploy-staging,deploy-production,dependency-review}.yml
-│   ├── CODEOWNERS
-│   ├── PULL_REQUEST_TEMPLATE.md
-│   └── ISSUE_TEMPLATE/{bug_report,feature_request,module_proposal}.yml
-├── .husky/{pre-commit,commit-msg}
-├── .vscode/{launch.json,settings.json,extensions.json,snippets/dumby.code-snippets}
-├── .changeset/config.json
-├── docker/{Dockerfile,Dockerfile.dev,docker-compose.yml}
-├── deploy/
-│   ├── k8s/base/{deployment,service,configmap,serviceaccount,hpa}.yaml
-│   ├── k8s/overlays/{staging,production}/
-│   └── terraform/environments/{staging,production}/, modules/{database,cache,kubernetes}/
-├── docs/                     ← APP-SCOPED docs (distinct from workspace/docs/ above)
-│   ├── architecture/ compliance/ privacy/ runbooks/ security/ api/ adr/
-├── scripts/{scaffold,migrate,seed}.ts
-├── src/
-│   ├── application/          ← Application.ts (bootstrap orchestrator), ApplicationContext.ts, HealthServer.ts
-│   ├── bootstrap/            ← one file per bootstrap stage (18 stages, §4.2)
-│   ├── di/                   ← Container.ts, tokens.ts, lifetimes.ts
-│   ├── commands/              ← CommandRouter.ts, CommandRegistry.ts, CommandDeployer.ts
-│   ├── events/                ← EventRouter.ts, InternalEventBus.ts
-│   ├── middleware/             ← MiddlewarePipeline.ts, BaseMiddleware.ts, built-in/ (12 files)
-│   ├── permissions/            ← PermissionResolver.ts, RBACService.ts, BlacklistService.ts
-│   ├── config/                ← ConfigManager.ts, GuildConfigService.ts, schema.ts
-│   ├── db/                    ← DatabaseManager.ts, MigrationRunner.ts, BaseRepository.ts,
-│   │                              QueryLogger.ts, migrations/{core,backfill}/, repositories/
-│   ├── cache/                  ← CacheManager.ts, L1Cache.ts, L2Cache.ts, StampedeGuard.ts
-│   ├── http/                   ← HttpServer.ts, routes/{health,metrics,admin,webhooks,modules}.routes.ts
-│   ├── queue/                  ← QueueManager.ts, BaseProcessor.ts, Scheduler.ts, BaseJob.ts
-│   ├── i18n/                   ← I18nManager.ts, formatters.ts
-│   ├── logging/ metrics/ tracing/  ← Logger.ts, Metrics.ts, Tracing.ts
-│   ├── errors/                 ← DumbyError.ts + 8 concrete subclasses
-│   ├── resilience/              ← retry.ts, CircuitBreaker.ts
-│   ├── ratelimit/                ← rate-limit algorithm + in-memory fallback
-│   ├── shutdown/                 ← graceful-shutdown orchestration (9 steps, §4.3)
-│   ├── discord/                  ← discord.js Client construction, intent union computation
-│   ├── modules/
-│   │   ├── _template/            ← the only module present besides the two below, on a fresh clone
-│   │   ├── health/                ← Core tier — the /health command (§5)
-│   │   └── hello/                 ← Core tier — the /hello command (§5)
-│   ├── permissions/... (see above)
-│   ├── shared/{types,utils,constants,testing}/
-│   ├── entry/{main,worker,migrate,pep,clai,swastik,credentials}.ts
-│   └── monetization/{adapters,models,services}/  ← empty + README (§1.3)
-└── tests/{integration/{http,modules},unit/modules,smoke,e2e,load,chaos}/
-    tsconfig.json  tsconfig.build.json  eslint.config.ts  prettier.config.ts
-    vitest.config.ts  commitlint.config.ts  package.json  pnpm-lock.yaml
-```
+The renderer grammar itself — the static Components v2 frame, dynamic slots, Modes D/M/C, the buffer embed, the formal notice frame, the title and attribution grammar, and the accent token — is owned by `interface.md`; read its renderer and interaction-lifecycle sections alongside the rows above whenever presentation behavior is in scope.
 
 ---
 
-## PART 4 — CORE ARCHITECTURE: THE MENTAL MODEL
+## 3. CODEBASE STATE DETECTION & AUDIT PROTOCOL
 
-This Part condenses `blueprint.md` Parts II–VI into working reference tables. It is
-not a replacement for those sections — it's what you hold in mind while implementing
-them. Cite the section number in comments/ADRs when a design choice traces back to it.
+**Execute this section when the codebase already exists.** The output is a Gap Manifest — a classified inventory of every subsystem's actual state against the specification.
 
-### 4.1 System Diagram
+### 3.1 The Four-State Classification
+
+Every subsystem, file, behavior, and deliverable in the codebase is classified into exactly one of four states:
+
+| State | Meaning | Action Required |
+|-------|---------|-----------------|
+| `COMPLETE` | Exists, compiles, passes its tests, and behaves per specification | None — verify only |
+| `FAULTY` | Exists but behaves incorrectly, or contradicts the specification | Fix — remediate the fault |
+| `PARTIAL` | Exists but is incomplete — some specified elements are missing | Complete — fill the gap |
+| `MISSING` | Does not exist in the codebase at all | Build — implement from specification |
+
+### 3.2 Structural vs Behavioral Detection
+
+For every subsystem, check two independent dimensions:
+
+**Structural detection** (does the thing exist?):
+- Does the directory exist per `directory.md`'s canonical layout?
+- Do the files exist at the specified paths?
+- Does the code compile (`tsc --noEmit`)?
+- Do the declared dependencies exist in `package.json`?
+- Are the ESLint rules, repository-root CI workflows, Docker/K8s manifests present?
+
+**Behavioral detection** (does the thing work as specified?):
+- Does the bootstrap actually complete its full stage sequence in order?
+- Is the PermissionResolver actually invoked on every command dispatch — not merely registered in DI?
+- Does every interaction actually pass through the full middleware pipeline — all twelve built-in middlewares live on the dispatch path, not merely defined as files somewhere?
+- Does every interaction actually receive the instant buffer embed, edited into the final render or the formal notice frame — not merely have a buffer helper defined that nothing calls?
+- Do formal notices actually carry reason codes and a trace correlation ID?
+- Is any classic `EmbedBuilder`/`MessageEmbed` construction reachable anywhere in the codebase — the embed ban is absolute; renderer-issued Components v2 is the only presentation path?
+- Does the main bot ever send a direct message — the DM prohibition is absolute?
+- Do all migrations actually have working `down()` functions — not merely exist as files?
+- Do all shipped commands actually respond with the exact formatting specified in `interface.md` — not merely exist as command files?
+- Does the rate limiter actually fail closed on Redis outage — not merely have a fallback file?
+- Does the event bus actually enforce its cycle-depth guard — not merely have the constant defined?
+- Does the health endpoint actually return 503 before bootstrap completion and 200 after — not merely exist as a route?
+
+**A subsystem that is structurally present but behaviorally absent is `FAULTY`, not `COMPLETE`.** This is the most common and most dangerous gap in a partially-complete codebase: files exist, but the wiring that makes them live is missing.
+
+### 3.3 The Audit Procedure
+
+Execute in this order:
+
+**Step 1 — Compile check.** Run `tsc --noEmit` (or the project's typecheck command). If it fails, catalog every error. All affected subsystems are immediately `FAULTY` or `PARTIAL` pending inspection.
+
+**Step 2 — Test run.** Run the full test suite (`vitest run` or equivalent). Catalog every failure and every skip. Failed tests mark their subsystem `FAULTY`. Missing tests mark their subsystem `PARTIAL` (tests are a specified deliverable).
+
+**Step 3 — Structural inventory.** Walk the subsystem-to-document loading guide (§2.2). For each subsystem:
+- Check the source directories exist per `directory.md`
+- Check the key files exist (entry points, manifest schemas, middleware definitions, migration files, repository base classes, etc.)
+- Check that feature modules live on the four per-tier volumes rooted at `MODULES_DIR` (default `/mnt/modules`) — any module code living under `src/` is `FAULTY` and must be relocated to its tier volume
+- Check that the CI workflows live in `.github/` at the repository root — a `.github/` nested under `apps/main/` is inert and therefore `FAULTY`
+- Check for the presence of any duplicate or orphaned subsystem (a second command router, a legacy wrapper directory, tests for code that is not wired — these are `FAULTY` and must be removed or consolidated per the one-canonical-path rule)
+
+**Step 4 — Behavioral verification.** For each subsystem that passed structural checks, verify behavior against the specification:
+- Read the specification sections from §2.2 for that subsystem
+- Trace the actual execution path in the code: does the dispatch reach the middleware pipeline? does the pipeline reach the permission resolver? does the resolver actually get called with the right arguments?
+- Run the process (or its tests) and observe: does bootstrap complete? does shutdown respect its ceilings? do commands respond with correct formatting?
+- Where you cannot run the process, write a test that proves the behavior — this is itself a specified deliverable
+
+**Step 5 — Known-defect check.** Read `change-log.md`'s Cross-Version Defect Lifecycle table. For every defect listed there, check whether the codebase replicates the defect (e.g., an orphaned router bypassing the pipeline, a permission resolver with no callers, a webhook check-then-write race, a rate limiter that fails open). Any replicated defect marks the affected subsystem `FAULTY`.
+
+**Step 6 — Interface conformance check.** Read `interface.md` completely. For every command, page layout, button, dropdown, banner specification, title format, emoji rule, and interaction pattern specified there, verify the codebase's implementation matches exactly. Any deviation is `FAULTY`.
+
+**Step 7 — Produce the Gap Manifest.** Compile the results into a structured inventory:
 
 ```
-DISCORD GATEWAY & REST API  (one WebSocket connection per shard)
-        │  GatewayIntentBits = union of every loaded module's declared intents
-        ▼
-APPLICATION CORE  (exactly one instance of each, per process — never constructed
-                    by a module)
-  Bootstrap → DI Container → Event Router → Command Router
-  Middleware Pipeline → Permission Engine (7-layer) → Config Manager
-  Cache Manager → Database Manager → Job Queue → HTTP Server
-        │  loaded through the Module Registry
-        ▼
-MODULE LAYER  (N independently-owned modules; on a fresh install: _template,
-               health, hello — nothing else)
-        │
-        ▼
-EXTERNALIZED STATE — PostgreSQL (system of record) + Redis (acceleration).
-No cross-process state lives anywhere else, ever.
+GAP MANIFEST
+════════════
 
-Parallel, separately-deployed control-plane services (never modules, never part
-of the gateway-connected process): Power Engine Panel (PEP) · CLAI · Swastik ·
-Credentials Service · Persona processes.
+Subsystem: Bootstrap
+  State: PARTIAL
+  Structural: directory exists, 14 of 18 stages implemented
+  Behavioral: stage ordering enforced, but health-server stage starts late
+  Missing: stages per blueprint §8 — read for the full sequence
+  Faulty: none
+  Action: complete remaining stages; fix health-server ordering
+
+Subsystem: Permission Engine
+  State: FAULTY
+  Structural: resolver, RBAC, blacklist all exist and compile
+  Behavioral: resolver registered in DI but invoked on 0% of dispatch paths
+  Faulty: dispatch bypasses the resolver entirely
+  Action: wire the resolver into the middleware pipeline as a mandatory stage
+
+...
 ```
 
-### 4.2 The 18-Stage Bootstrap Sequence
+The Gap Manifest is the working document for the Remediation Protocol (§4).
 
-| # | Stage | What Happens | Failure Mode |
-|---|---|---|---|
-| 01 | `PROCESS_SETUP` | Register `uncaughtException`/`unhandledRejection` handlers; set process title | Fatal |
-| 02 | `CONFIG_LOAD` | Validate root Zod schema against `process.env` | Fatal, field-level error |
-| 03 | `HEALTH_SERVER_INIT` | Start Fastify on `HEALTH_PORT`; all 3 health endpoints return 503 | Fatal |
-| 04 | `OBSERVABILITY_INIT` | Init Pino, Prometheus registry, OTel SDK | Fatal |
-| 05 | `DATABASE_CONNECT` | Open Knex pool; verify `SELECT 1` | Fatal |
-| 06 | `MIGRATION_RUN` | Core migrations, then module migrations, in order | Fatal |
-| 07 | `CACHE_CONNECT` | Open Redis; verify `PING` | Fatal |
-| 08 | `QUEUE_INIT` | Init BullMQ connections; register processors | Fatal |
-| 09 | `DI_BOOTSTRAP` | Bind core services; freeze core token namespace | Fatal |
-| 10 | `MODULE_DISCOVER` | Scan `src/modules/`; collect manifests | Fatal |
-| 11 | `MODULE_VALIDATE` | Validate manifests; resolve dependency graph; detect cycles | Fatal |
-| 12 | `MODULE_LOAD` | `onLoad(container)` in topological order | Fatal only if a `required:true` module throws |
-| 13 | `COMMAND_REGISTER` | Delete-then-reregister every command fresh; collision detection | Fatal on collision |
-| 14 | `EVENT_REGISTER` | Register event handlers with `EventRouter` | Fatal |
-| 15 | `DISCORD_LOGIN` | `client.login(BOT_TOKEN)` | Fatal |
-| 16 | `CLIENT_READY` | Wait for `ready`; compute shard assignments | Fatal |
-| 17 | `MODULE_READY` | `onReady(client)` per module | Non-fatal per module |
-| 18 | `STARTUP_COMPLETE` | `/health/readiness` → 200 once every `required:true` module is healthy; emit `dumby.system.ready` | — |
+### 3.4 Severity Ordering for Remediation
 
-Health endpoint ↔ stage gate: `/health/liveness` on Stage 04, `/health/startup` on
-Stage 15, `/health/readiness` on Stage 18. Never collapse these into one endpoint
-(`blueprint.md` §8.2).
+When the Gap Manifest contains multiple items, remediate in this order:
 
-### 4.3 The 9-Step Graceful Shutdown Sequence
-
-Triggered by `SIGTERM`/`SIGINT`. Ceilings, not expected durations — a normal shutdown
-finishes in low single-digit seconds.
-
-| # | Action | Timeout |
-|---|---|---|
-| 01 | Stop accepting new gateway events | 30s |
-| 02 | Drain in-flight command executions | 30s |
-| 03 | `onUnload()` every module, reverse load order | 30s |
-| 04 | Drain job queues (in-flight finish; new refused) | 60s |
-| 05 | Close HTTP server | 10s |
-| 06 | Flush log buffer + trace exporter | 5s |
-| 07 | Close BullMQ connections | 5s |
-| 08 | Close Redis | 5s |
-| 09 | Close database pool | 5s |
-
-Worst case sums to **180s**; `terminationGracePeriodSeconds: 190` in every Kubernetes
-manifest (180 + a 10s buffer — never round down). `SIGUSR2` is reserved and unused —
-register no handler for it. Every restart path resolves to `process.exit(0)` plus the
-orchestrator's own restart policy; no self-re-exec mechanism anywhere.
-
-### 4.4 Dependency Injection
-
-Constructor injection through the container, exclusively — no service locator, no
-module-level singletons, no bare-import globals. Tokens are `Symbol`s, never strings.
-Three lifetimes: `singleton` (one per container), `transient` (new per resolution,
-rarely used), `scoped` (one per command-execution child container — this is how
-`CommandContext` never bleeds between concurrent interactions). Cycle detection runs
-via a resolution stack, checked *before* recursion begins, so a circular dependency is
-always a Stage-09/12 startup failure with the full cycle path in the error — never a
-runtime surprise.
-
-### 4.5 The Seven-Layer Permission Engine
-
-Ordered; each layer returns `ALLOW` (short-circuit), `DENY` (short-circuit), or
-`PASS`. Falling through all seven with no definitive answer defaults to **allow**.
-
-| # | Layer | On Data Unavailability |
-|---|---|---|
-| 1 | Global bot owner override (`BOT_OWNER_IDS`) | N/A — env var |
-| 2 | Blacklist check | **Fail closed** (deny) |
-| 3 | Guild & module availability | **Fail closed** (deny) |
-| 4 | Channel restriction | **Fail open** (allow) |
-| 5 | Discord native permission bitfield | **Fail closed** (deny) |
-| 6 | Dumby RBAC role — **skipped entirely for Core tier** | **Fail closed**, degrades to lowest role |
-| 7 | Explicit grant override (permit/blacklist/whitelist/quota/cooldown) | **Fail open** (falls through to Layer 6) |
-
-RBAC hierarchy, inclusive upward: `OWNER > ADMIN > MOD > HELPER > MEMBER > RESTRICTED`.
-Guilds configure **Groups** (Discord role → Dumby role mapping) and **Sets** (bundles
-of grants), resolved fresh every interaction, never cached indefinitely. Any external
-surface (a REST/dashboard caller) resolves authorization through this **identical**
-resolver instance — never a parallel implementation (`blueprint.md` §21.7).
-
-### 4.6 The Four-Tier Module Governance Model
-
-| Tier | Pre-Installed? | Guild-Visible Default? | Who Toggles? | Rate-Limited? | Catalog? |
-|---|---|---|---|---|---|
-| Admin | N/A — dev guild only | Never (non-owners) | No one | No — bypasses at priority -10 | Never |
-| Core | Yes, permanent | Yes, always | No one | Yes | Never |
-| Standard | Yes, by default | Yes, until disabled | Guild ADMIN role | Yes | Yes, if disabled |
-| Marketplace | No | No, until installed | Guild ADMIN role | Yes | Yes, if absent |
-
-Core skips Layer 6 (RBAC) entirely — access is native-Discord-permission-only.
-`health` and `hello` are both Core tier (`interface.md`).
-
-### 4.7 The Middleware Pipeline
-
-Strict onion, priority order (lower = outermost). Any layer can `reject()` instead of
-calling `next()` to short-circuit outward. This exact set, this exact order — no
-built-in stage is removed, reordered, or bypassed by a specific command.
-
-| Priority | Stage | Behavior on Failure |
-|---|---|---|
-| -20 | `MaintenanceModeMiddleware` | Short-circuits everything (except an allow-list managing maintenance mode itself) |
-| -10 | `AdminTierGateMiddleware` | Owner check fails → **silent** reject, no reply, warn log |
-| 0 | `TraceMiddleware` | Opens span, generates `correlationId`. Never aborts. |
-| 10 | `AuthMiddleware` | Resolves user; DM to a `guildOnly` command → reject |
-| 20 | `GuildConfigMiddleware` | Loads guild config. Load failure degrades to defaults, never aborts. |
-| 30 | `LocaleMiddleware` | Binds i18n. Never aborts. |
-| 40 | `RateLimitMiddleware` | Atomic Redis check-and-increment. Over limit → reject |
-| 50 | `PermissionMiddleware` | Discord bitfield check (Layer 5). Fails → reject, names the permission |
-| 60 | `RBACMiddleware` | Dumby role check (Layer 6), skipped for Core tier. Fails → reject |
-| 70 | `CooldownMiddleware` | Per-user-per-command cooldown. Fails → reject with remaining time |
-| 80 | `DeferMiddleware` | `deferReply()` if declared. Never aborts. |
-| 90 | `AnalyticsMiddleware` | Records invocation start. Never aborts. |
-| 100+ | Module-global middleware | Manifest-declared `global: true` |
-| 200+ | Command-scoped middleware | Declared on the individual command |
-
-One outermost try/catch (`blueprint.md` §19.4) wraps the entire onion — a module
-author never writes their own top-level error handler to avoid leaking a stack trace.
-
-### 4.8 The Module Manifest — Field Summary
-
-Every module's `manifest.ts` exports one object validated at Stage 11. Full field
-reference: `blueprint.md` §11.2 (do not add fields beyond it without a
-framework-version bump). Key fields: `name` (kebab-case, unique), `version` (semver),
-`description`, `tier`, `devGuildOnly` (required iff Admin), `hardcoded` +
-`hardcodeGuildId` (required together) OR `hardcoded:false` + `releaseStatus`
-(mutually exclusive by construction), `devId`/`buildId` (Swastik-issued — **every**
-module carries these, including `health` and `hello`; see Part 5), `required`,
-`depends`/`provides` (DI tokens), `intents`, `commands`/`events`/`services`/
-`repositories`/`jobs`/`tasks`/`routes`/`middleware`, `migrations`, `locales`
-(`en-US.json` mandatory), `config` (Zod schema), `eventsCatalog`, `dashboardSchema`.
-
-### 4.9 Core Database Schema
-
-**Blueprint-authoritative tables** (`blueprint.md` §24.2 — "Complete Schema
-Reference," implement exactly): `guilds`, `users`, `guild_configs`, `guild_roles`,
-`guild_module_states`, `grants`, `blocked_users`, `audit_logs`, `developers`,
-`builds`, `marketplace_listings`, `metering_usage_daily`. Every entity table carries
-the four standard audit columns (`createdAt`, `updatedAt`, `createdBy`, `updatedBy`)
-— `updatedAt` bumped by application code, never a DB trigger. Every unique constraint
-on a soft-deletable table is a **partial index** (`WHERE "deletedAt" IS NULL`), never
-a plain `UNIQUE` constraint.
-
-**Supplementary tables** (mechanism specified in prose by `blueprint.md`; exact DDL
-adopted from `documentation.md` §21.2 where it doesn't conflict, renamed for
-consistency): `rbac_groups`, `rbac_sets`, `rbac_group_role_bindings`, `rbac_grants`
-(§21.4's Groups & Sets); `guild_command_queue` (§17.7's batching queue);
-`guild_command_overrides` (§17.9's collision resolution); `guild_persona_bindings`
-(§35.3's Persona bindings); `system_state` (§28.6's maintenance-mode singleton flag).
-
-**Corrected for Conflict 1:** replace `documentation.md`'s password/authkey-shaped
-`clai_authkeys` table with **`clai_operators`** — `operatorId` (PK), a human label,
-`sshPublicKeyFingerprint`, `sshPublicKey` (the raw public key — this is not a secret),
-`registeredAt`, `registeredBy`, `revokedAt` (nullable). No password hash, no TOTP
-secret, no bound-IP/device fields — the SSH keypair itself is the only credential.
-
-Every module-owned table (e.g., nothing for `hello`; nothing required for `health`
-either, since both read only live, in-memory gateway state) lives outside this list
-entirely, owned exclusively by its module's own migrations.
-
-### 4.10 Caching Architecture
-
-Two tiers behind one `CacheManager.get/set/invalidate` API. **L1**: in-process LRU,
-`CACHE_L1_MAX_ENTRIES=5000` / `CACHE_L1_MAX_BYTES=50MB`, sub-millisecond, one copy per
-pod. **L2**: Redis, shared fleet-wide, single-digit-millisecond. Key convention:
-`{domain}:{entity}:{identifier}[:{sub-scope}]`. Write-through invalidation for
-config-shaped data (delete-then-repopulate, never overwrite-in-place); short TTL for
-frequently-changing aggregates; Redis pub/sub for cross-pod L1 invalidation. Stampede
-protection is **both** mechanisms together: a distributed lock (`SET NX EX`) on a
-true miss, and probabilistic early refresh (threshold `0.15`, probability `0.10`) to
-avoid most misses ever happening for a hot key. Negative results get their own
-sentinel and their own (shorter) TTL — never left uncached.
-
-### 4.11 Control Plane: PEP, CLAI, Swastik, Credentials Service, Personas
-
-Four separate deployable processes (`src/entry/pep.ts`, `clai.ts`, `swastik.ts`,
-`credentials.ts`) plus however many Persona instances (`main.ts` again, under a
-distinct token), sharing only the same PostgreSQL primary and Redis instance with the
-bot — never its gateway connection, never its module registry. This is the one named
-exception to the "not a microservices architecture" non-goal (`blueprint.md` §4).
-
-- **Power Engine Panel (PEP)** — Tier 2, build in full. A callable function catalog
-  (never hardcoded terminal commands), 17 control domains (4 foundational —
-  `suspendGuild`/`suspendModule`/`suspendDeveloper`/`suspendCommand` — plus 13
-  extended, covering maintenance mode, cache-namespace flush, queue pause/resume/
-  dead-letter-requeue, rate-limit override, shard-group restart, deployment
-  triggers, Persona suspension, audit query, Marketplace signature revocation,
-  credential rotation). Every call requires `{actorId, source, reason}`; the
-  dispatcher rejects an empty `reason` before any side effect, and writes an
-  unconditional `audit_logs` row — success or rejection — before returning. Exposed
-  as `POST /api/pep/{functionName}`.
-- **CLAI** — Tier 3. SSH-hosted REPL, **public-key auth only** (Conflict 1), reachable
-  only from a private network position. A session is a thin presentation layer over
-  `PowerEngineService` — it carries no logic of its own, and every command it issues
-  is tagged with the operator's identity and a `correlationId` linking it to the PEP
-  action(s) it triggered. Destructive actions require the operator to type the
-  target's name back as confirmation.
-- **Credentials Service** — Tier 2, build in full. The single shared issuance path for
-  every runtime credential (Swastik dev IDs, any future service-to-service token):
-  cryptographically random, Argon2id-hashed at rest, displayed exactly once, always
-  transmitted via `Authorization` header, independently revocable. Binds to a
-  local/internal interface only — never the public internet.
-- **Swastik** *(the framework's own name for this service — a codename derived from a
-  common given name, unrelated to any other association some readers may bring to the
-  word; used here only because it's the term the source documents use throughout)* —
-  Tier 3. Two update paths: the framework's own core codebase changes go
-  through the ordinary CI/CD release pipeline (Phase 7) with a scheduled 24-hour
-  restart trigger layered on top; a single module's own new version goes through
-  Swastik's own upload → validate (the *identical* Stage-11 manifest check) → stage →
-  atomically promote → hot-swap-signal → self-health-check → (rollback on failure)
-  pipeline. Build the developer-registration and build-tracking REST API to full
-  Tier-2 quality; implement staging/promotion against the **local filesystem** for
-  this build (a documented stand-in for the Kubernetes-shared-volume mechanism a real
-  multi-pod deployment needs).
-- **Personas (Twill)** — Tier 3. Data model (`guild_persona_bindings`), binding
-  resolution at command-dispatch time, and `PERSONA_ID`-aware entry-point support are
-  code-complete. A Persona is never a lighter build — it's the identical 18-stage
-  bootstrap under a second bot token. Exercising it for real requires an
-  operator-supplied second token, out of this build session's reach.
+1. **Compile-blocking faults** — nothing else can be verified until the code compiles
+2. **Known-defect replications** — the change-log's defect lifecycle items, because these are pre-analyzed faults with documented resolutions
+3. **Core framework gaps** (bootstrap, DI, module system, middleware, permissions, data layer) — everything else depends on these
+4. **Command router and Discord integration gaps** — the request path depends on the framework
+5. **Shipped module gaps** — the user-facing surface depends on the router
+6. **Testing, CI/CD, infrastructure gaps** — the acceptance gate depends on everything above
+7. **Documentation gaps** — last, once the code is correct
 
 ---
 
-## PART 5 — THE TWO SHIPPED MODULES: `/health` AND `/hello`
+## 4. REMEDIATION PROTOCOL
 
-This is the one place in the entire build where the spec is not "implement this
-architecture correctly" but "match this document exactly." `interface.md` is short,
-dated, and precise — treat every word of it as a literal test oracle.
+For every item in the Gap Manifest, execute this loop:
 
-### 5.1 Shared Contract (Both Commands)
+### 4.1 The Remediation Loop
 
-- Tier: **Core** — pre-installed permanently, cannot be disabled, no special
-  permission required (`permissions.discord: []`), RBAC not evaluated.
-- `guildOnly: true` (the default) — neither command works in a DM.
-- Not ephemeral — the reply is visible to the whole channel.
-- `requiresDefer: false` — both resolve well inside the 3-second window; never defer.
-- Reply format: **Discord Components V2**, exclusively. Flag `IS_COMPONENTS_V2`
-  (`1 << 15`, decimal `32768`) on the response. Exactly one **Container** component
-  (type `17`) containing exactly one **Text Display** component (type `10`) holding
-  the reply text as Markdown. No embeds, no `content` string, no Section, Thumbnail,
-  Media Gallery, Separator, button, select menu, or Action Row — ever, for either
-  command.
-- Even though these ship with the core, they are **not** exempt from the Swastik
-  identity system — per `blueprint.md` §1.2's "no self-special-casing" principle,
-  register a first-party developer account (e.g. username `dumby-core`) through the
-  Credentials Service, approve it, and issue real `devId`/`buildId` values for both
-  modules through the same pipeline any third-party module would use.
+**Step 1 — Read the specification.** Read the source-document sections named in §2.2 for the affected subsystem. Read the full specification, not a summary. For known-defect items, also read the corresponding entry in `change-log.md`'s defect lifecycle for the documented resolution path. If an ADR in `docs/adr/` governs the affected build choice, read it too — the remediation must land on the recorded decision.
 
-### 5.2 `/health` — Module 1
+**Step 2 — Diagnose.** Compare the existing code against the specification line by line. Identify exactly what is wrong, missing, or contradictory. Write down the specific delta: "the spec requires X at location Y; the code has Z instead."
 
-```
-manifest: name 'health', tier 'core', required: true, no dependencies, no intents.
-command: /health, no arguments, no subcommands.
-Displays exactly two figures, live-measured at invocation, never cached:
-  Ping     — round-trip health of the persistent gateway WebSocket heartbeat
-             (discord.js's own client.ws.ping)
-  Latency  — round-trip time of THIS command, invocation to reply
-Exact reply text shape:
-  Ping: {ping}ms
-  Latency: {latency}ms
-Edge case: for a few seconds immediately after restart, before the first heartbeat
-completes, Ping may read as unavailable or zero — this resolves on its own.
-Explicitly excluded, forever: hardware/host stats, software/version info, bandwidth,
-third-party API status, installed-module count, server-usage counts, any aggregate
-"health rating." Only Ping and Latency. Do not add anything else, ever, without
-treating it as a revision to interface.md itself.
-```
+**Step 3 — Remediate.** Fix, complete, or build:
+- `FAULTY` → fix the behavior to match the specification (do not preserve the faulty behavior for compatibility)
+- `PARTIAL` → complete the missing elements per the specification
+- `MISSING` → build from the specification
+- Duplicate/orphaned subsystem → remove or consolidate to the single canonical path per the one-canonical-path rule
 
-### 5.3 `/hello` — Module 2
+**Step 4 — Write or update the test.** Every remediation must be proven by a test that fails before the fix and passes after. If the subsystem had no tests, write them per the directive's test pyramid. If existing tests encoded the faulty behavior, update them to encode the specified behavior.
 
-```
-manifest: name 'hello', tier 'core', required: true, no dependencies, no intents.
-command: /hello, no arguments, no subcommands.
-Displays exactly one line, always identical:
-  Hello, World!
-No name, no user mention, no timestamp, no additional line — ever.
-```
+**Step 5 — Verify behavior.** Run the test. Run the process if possible. Confirm the subsystem now behaves per specification — not merely compiles.
 
-### 5.4 Definition of Done for This Part
+**Step 6 — Update the Gap Manifest.** Mark the item resolved. If remediation revealed additional gaps in the same or dependent subsystems, add them to the manifest.
 
-A fresh install with zero other modules present shows exactly these two commands in
-Discord's command list, in every guild, unconditionally. Invoking either produces
-output that is character-for-character what §5.2/§5.3 specify, rendered as a single
-Container/Text-Display pair with the `IS_COMPONENTS_V2` flag set. Both pass a
-happy-path E2E test asserting the exact component shape, not just the text content.
+**Step 7 — Re-audit dependents.** If the remediated subsystem is a dependency of others (per the severity ordering in §3.4), re-verify the dependent subsystems against their behavioral criteria. A fix in the middleware pipeline, for example, may surface faults in every command that depended on the bypass.
+
+### 4.2 Remediation Rules
+
+- **Never preserve a fault for compatibility.** If existing code contradicts the specification, the specification wins.
+- **Never remove working code to rebuild from scratch unless the existing code is structurally unsalvageable.** Prefer targeted remediation over wholesale rebuild — the goal is 100% compliance, not 100% new code.
+- **Never mark an item resolved without a passing test.** A fix without a test is an unverified claim.
+- **Every removal of existing code must be justified against the specification.** If the spec requires it, do not remove it; if the spec does not require it and it contradicts the spec, remove it; if the spec is silent, record the judgment call in `change-log.md`.
+- **When the specification itself has a known open item** (see `change-log.md` §5), implement the honest state per the directive's status-honesty rule — do not fake completion.
 
 ---
 
-## PART 6 — PHASED BUILD PLAN
+## 5. PHASED BUILD PLAN
 
-Work the phases in order — each one's exit checklist is the next one's entry
-assumption. "Read first" points to the exact sections to open before writing code for
-that phase; don't re-read the whole corpus every time.
+Each phase specifies: its goal, source-document sections to read, deliverables, and verification criteria. The verification criteria are the same criteria used in the audit protocol (§3.2) — structural AND behavioral.
+
+**For State A (greenfield):** execute phases in order 0 → 8.
+
+**For State B (existing codebase):** after the audit (§3) and before entering the phases, use the Gap Manifest to determine your entry point. Enter at the phase containing your highest-severity gap, remediate per §4, then proceed through the remaining phases. Phases whose subsystems are all `COMPLETE` in the manifest are skipped — but their verification criteria are still checked in the final enforcement pass (§6).
+
+---
 
 ### Phase 0 — Workspace Scaffolding
-**Read first:** this document's Part 3.
-**Build:** the full `workspace/` and `apps/main/` tree (Part 3), even where files are
-initially empty; root configs (`package.json`, `tsconfig*.json`, `eslint.config.ts`,
-`prettier.config.ts`, `vitest.config.ts`, `commitlint.config.ts`); `.env.example`
-covering every variable in Appendix A; a top-level `README.md` with a quickstart.
-**Definition of done:** `pnpm install` succeeds; `tsc --noEmit` runs clean against an
-empty `src/`; every directory in Part 3 exists (placeholders get a one-line
-`README.md` stating they're reserved and out of scope for this build, per §1.3).
 
-### Phase 1 — Bootstrap, Config, Observability, Data & Cache
-**Read first:** `blueprint.md` §5–§10, §23–§26; `directive.md` §6–§19, §26–§29.
-**Build:** `Application.ts` orchestrating Stages 01–09 at minimum to start (extend
-through 18 as later phases land); the root Zod config schema (Appendix A's variables);
-Pino/Prometheus/OTel initialization; the Knex connection + all core migrations (§4.9's
-tables, `up`/`down` both, per-table audit columns, partial-index uniqueness on
-soft-deletable tables); `CacheManager` with L1+L2+`StampedeGuard`; the DI `Container`
-with Symbol tokens, all 3 lifetimes, and cycle detection; the 3 health endpoints on
-Fastify, gated to the correct stage each.
-**Definition of done:** the process boots through Stage 09 with zero modules present;
-`/health/liveness` and `/health/startup` transition 503→200 at the correct stages; the
-9-step graceful shutdown (§4.3) is implemented and exercised by a test that confirms
-step ordering and the dead-letter guarantee.
+**Goal:** Correct project skeleton.
 
-### Phase 2 — Module System Infrastructure
-**Read first:** `blueprint.md` Part III (§11–§14); `directive.md` §15–§19.
-**Build:** `ModuleManifest.ts` (the full Zod schema, §4.8); `ModuleRegistry.ts`
-(discovery, validation, dependency-graph resolution, cycle detection); `ModuleLoader`
-(topological `onLoad`/`onReady`/`onUnload` orchestration); `GuildModuleStateService`
-(the full read-path cascade and fail-closed-on-outage behavior, §4.6); the tier
-co-constraint validation rules; the five architecture-specific ESLint rules
-(`no-cross-module-relative-import`, `no-direct-process-env`, `no-repository-in-command`,
-`no-event-emit-in-repository`, `require-eventsCatalog-entry`); the `_template` module.
-**Definition of done:** `_template` loads end to end; a deliberately-malformed second
-test manifest fails Stage 11 validation with a specific, correct error; each of the
-five lint rules demonstrably fails the build on a crafted violation.
+**Read:**
+- `directory.md` — complete folder tree
+- `blueprint.md` §7 — Directory & File Structure
+- `directive.md` Part 2 (D-2.1 to D-2.15) — Technology stack and runtime boundaries
+- `directive.md` D-8.4, D-8.6 — CI sequence, container discipline
+- The ADR in `docs/adr/` governing the tier-volume layout and module storage
 
-### Phase 3 — Request & Interaction Pipeline
-**Read first:** `blueprint.md` §17–§22; `directive.md` §20–§25.
-**Build:** `CommandRouter`/`CommandRegistry`/`CommandDeployer`; `EventRouter` +
-`InternalEventBus` (with the bounded-depth cycle guard, default `20`); the full
-`MiddlewarePipeline` — all 12 built-in stages at their exact priorities (§4.7);
-`PermissionResolver` — all 7 layers with the correct fail-open/fail-closed behavior
-per layer (§4.5); `RBACService` (6-role hierarchy) plus Groups/Sets/Grants; the
-component/interaction registry and its `custom_id` scheme; the 8-subclass error
-taxonomy (Appendix B) and the single root error boundary.
-**Definition of done:** a synthetic test command demonstrably passes through all 12
-middleware stages in the documented order (assert on execution order, not just final
-outcome); each of the 7 permission layers is independently unit-tested for both its
-allow and its deny path; RBAC resolves correctly against a seeded set of Discord role
-mappings.
+**Deliver:**
+- pnpm workspace with `apps/main/` and `packages/swastik/` as workspace members
+- `package.json`, `tsconfig.json` (strict mode per D-2.2), `tsconfig.build.json`
+- ESLint flat config including architecture-specific rules (read D-4.4)
+- Prettier, Vitest (per-layer coverage thresholds per D-8.2), Husky, commitlint, changesets
+- `.env.example`, `.gitignore`
+- Docker multi-stage Dockerfile, docker-compose for local dev
+- Directory tree per `directory.md` — flat `src/` layout; the `src/core/` legacy wrapper flagged there MUST NOT be created
+- No `src/modules` directory — feature modules never live under `src/`. They live on the four per-tier volumes (`modules-admin`, `modules-core`, `modules-standard`, `modules-marketplace`) plus `swastik-staging`, rooted at `MODULES_DIR` (default `/mnt/modules`). The volumes exist and are mountable; the framework discovers them by blind discovery at bootstrap, and first-party modules are seeded onto them through the Swastik promotion flow — never committed into the source tree
+- `.github/` at the repository root, reserved for the CI workflows delivered in Phase 7 — GitHub Actions cannot read a `.github/` nested under `apps/main/`
 
-### Phase 4 — The Two Shipped Modules
-**Read first:** `interface.md` in full; this document's Part 5.
-**Build:** `src/modules/health/` and `src/modules/hello/` exactly per Part 5. Seed a
-first-party `dumby-core` developer record (via the Credentials Service if Phase 6 has
-landed, or a direct bootstrap seed otherwise, reconciled once Phase 6 lands) and issue
-real `devId`/`buildId` values for both.
-**Definition of done:** against a real (or a test) Discord application, both commands
-register, invoke, and reply with output matching Part 5 exactly, verified by an
-automated E2E assertion on the exact Components V2 shape — not eyeballed.
+**Verify (structural):** `pnpm install` succeeds; `tsc --noEmit` passes; directory structure matches `directory.md`; the four per-tier volumes and `swastik-staging` resolve at `MODULES_DIR` (default `/mnt/modules`); `.github/` exists at the repository root, not under `apps/main/`.
+**Verify (behavioral):** The workspace installs and typechecks clean. In State B, this phase is complete if these checks pass — do not re-scaffold over existing structure unless the audit found it unsalvageable.
 
-### Phase 5 — Reliability & Security Hardening
-**Read first:** `blueprint.md` §27–§32; `directive.md` §30–§37.
-**Build:** the in-request retry utility and `CircuitBreaker` (never composed with each
-other for the same call); `QueueManager`/`BaseProcessor`/`Scheduler` wired into
-bootstrap Stage 08; `I18nManager` + mandatory `en-US.json` for both shipped modules;
-`RateLimitMiddleware`'s dual-window check plus its in-memory fail-closed fallback;
-webhook-signature-verification infrastructure (build it even with zero routes
-registered yet — a route with no verifier configured must refuse to register, ever);
-secrets-via-env-only plus the centrally-enforced log-redaction list; the structural
-privilege-escalation blocks (§blueprint 32.4); the erasure/export coordinator
-(`registerEraser`/`registerExporter`) with nothing to register from `health`/`hello`
-yet, since neither stores per-user data.
-**Definition of done:** a simulated Redis outage exercises the fail-closed rate-limit
-fallback and the cache fall-through-to-primary path without a crash, proven by test;
-a test asserts a secret-shaped log field is redacted regardless of nesting depth.
+---
 
-### Phase 6 — Control Plane Services
-**Read first:** `blueprint.md` §15, §22; `directive.md` §25, §38; this document's Part
-4.11 and §0.4 Conflict 1.
-**Build:** Credentials Service (Tier 2, full — Argon2id issuance, local-bind only);
-PEP (`PowerEngineService` + `PowerEngineDispatcher`, all 17 domains, each operating on
-mechanisms already built in Phases 1–5); CLAI (Tier 3 — a real SSH listener,
-public-key auth against `clai_operators`, a REPL calling PEP, mandatory audit
-correlation; rate limiting and device binding are documented fast-follows, not silent
-gaps); Swastik (Tier 3 — developer registration + build-tracking REST at Tier-2
-quality; local-filesystem staging/promotion as the documented dev-mode stand-in for
-the Kubernetes-volume mechanism); Persona data model + `PERSONA_ID`-aware entry-point
-support (Tier 3, code-complete, unexercised without a second live token).
-**Definition of done:** every PEP action writes its `audit_logs` row before returning,
-success or rejection, verified by test; CLAI accepts a registered public key and
-rejects an unregistered one, verified against a local test SSH client; Swastik's
-local staging/promotion round-trips a trivial dummy module version end to end,
-including a forced-failure rollback path.
+### Phase 1 — Configuration, Observability & Error Foundation
 
-### Phase 7 — Engineering Lifecycle
-**Read first:** `blueprint.md` §37–§42; `directive.md` §39–§44.
-**Build:** Vitest config, `MockContainer`, shared test fixtures; unit tests for every
-Tier-1 service, meeting the per-layer coverage floors (Appendix, directive.md §46
-item 59 — Core 85%/80%, module services 80%/75%, commands 75%/70%, repositories
-70%/65%, infra-adjacent 70%/65%, **each floor independent, never a blended average**);
-integration tests against a real ephemeral Postgres; a happy-path smoke suite
-covering `/health` and `/hello`; the five GitHub Actions workflows (`ci.yml` —
-typecheck→lint→format→test→build, fail-fast; `release.yml` — changesets-driven,
-fully automated; `deploy-staging.yml` — automatic on merge to `main`;
-`deploy-production.yml` — two-distinct-approver manual gate, always; `dependency-
-review.yml` — blocks on new critical/high-severity findings); the multi-stage
-`Dockerfile` + `docker-compose.yml`; the Kubernetes base+overlays manifests (including
-the exact `terminationGracePeriodSeconds: 190`, `maxUnavailable: 0`/`maxSurge: 1`,
-three-probe configuration); Terraform modules for at least the single-operator tier,
-with growing/enterprise tiers expressed as variables rather than hardcoded.
-**Definition of done:** `pnpm lint && pnpm typecheck && pnpm test` all pass locally
-and in CI; `docker compose up` boots a genuinely working bot against local Postgres +
-Redis; every per-layer coverage floor is met independently.
+**Goal:** The process validates config, produces structured output, classifies errors.
+
+**Read:**
+- `blueprint.md` §23, §27, §28 — Configuration, Observability, Error Management
+- `directive.md` D-2.9, D-2.10, D-7.1, D-7.2, D-3.3
+
+**Deliver:**
+- `src/config/` — Root Zod schema, fatal field-level errors
+- `src/logging/` — Pino root logger with context scoping and redaction
+- `src/metrics/` — Prometheus registry and core metrics
+- `src/tracing/` — OpenTelemetry SDK and tracer factory
+- `src/errors/` — Root error class and subclasses per the directive's taxonomy
+
+**Verify (structural):** All source files exist and compile.
+**Verify (behavioral):** A valid config loads and produces a structured log line with correlation ID, a metric, and a trace span. A broken config exits with a field-level error naming the offending field and its expected format.
+
+---
+
+### Phase 2 — Bootstrap, DI & Infrastructure
+
+**Goal:** Bootstrap runs to completion against real PostgreSQL and Redis.
+
+**Read:**
+- `blueprint.md` §8, §9, §10, §24, §25, §26, §29
+- `directive.md` Part 3 (D-3.1 to D-3.11), Part 5 (D-5.4 to D-5.9), D-7.4
+
+**Deliver:**
+- `src/bootstrap/` — Forward-only state machine, full stage sequence per blueprint §8
+- `src/di/` — DI container per directive rules (Symbol tokens, lifetimes, frozen core, MockContainer)
+- `src/application/` — Application class, shared runtime context
+- `src/shutdown/` — Graceful shutdown per blueprint §9 and directive ceilings
+- `src/entry/main.ts` — Bot entrypoint
+- `src/entry/worker.ts` — Worker entrypoint running the truncated `bootstrapWorker()`: it skips the Discord login and the API/health servers and asserts its runtime role; entrypoints carry main-module guards so nothing auto-starts on import
+- `src/db/migrations/core/` — Core table migrations per blueprint §24; every migration has working `down()`
+- `src/db/migrations/backfill/` — Proactive backfill (non-fatal; read the change-log for why)
+- `src/db/repositories/` — Typed repository base and core repositories
+- `src/cache/` — Two-tier cache manager per blueprint §25
+- `src/queue/` — BullMQ registry, abstract processor, scheduler
+- `src/ratelimit/` — Redis-backed rate limiter with fail-closed fallback (read the change-log for this requirement)
+- `src/resilience/` — Circuit breaker, retry policy
+- `src/http/` — Fastify server, health/readiness/metrics routes, middleware
+- `src/i18n/` — Locale loading, formatters (en-US base locale per directive)
+- `src/webhooks/` — Outbound delivery, inbound signature verification per directive
+
+**Verify (structural):** All source files exist and compile. All migration files exist with both `up()` and `down()` exports.
+**Verify (behavioral):**
+- The process starts and completes every bootstrap stage in the specified order — no stage skipped, no stage re-run
+- The worker entrypoint boots through the truncated `bootstrapWorker()` without touching the gateway or the API/health servers, and importing it has no side effects
+- `/health/liveness` responds from the health-server stage onward; `/health/readiness` returns 503 during bootstrap and 200 only after the final stage
+- A deliberately broken config fails at the config-validation stage with a field-level error — the process does NOT reach the gateway-login stage
+- SIGTERM executes the full shutdown sequence within the directive's ceilings; modules unload in reverse load order
+- Killing the process mid-run loses no user-visible state (all state is in PostgreSQL/Redis, verified by restart-and-check)
+- Redis unavailability degrades (cache miss, queue pause) rather than crashes; the rate limiter fails closed
+- Every migration's `down()` actually reverses its `up()` — verified by running up, then down, then up on a test database
+
+---
+
+### Phase 3 — Module System Framework
+
+**Goal:** The engine that discovers, validates, loads, isolates, and disposes of modules.
+
+**Read:**
+- `blueprint.md` §11, §13, §14, §18, §19, §21
+- `directive.md` Part 4 (D-4.1 to D-4.14), D-5.1, D-5.2, D-5.3
+- The ADRs in `docs/adr/` governing module storage and the sanctioned cross-module patterns
+
+**Deliver:**
+- Module registry, loader, and manifest Zod schema (full field set, co-constraints, and the visibility enum per blueprint §11) — framework code under `src/`; feature modules themselves never live in the source tree
+- Blind module discovery across the four per-tier volumes (`modules-admin`, `modules-core`, `modules-standard`, `modules-marketplace`) plus `swastik-staging`, rooted at `MODULES_DIR` (default `/mnt/modules`) — no hardcoded module lists, no registry seed; tier-at-rest is enforced by the volume a module is loaded from, and first-party modules reach their volumes through the Swastik promotion flow
+- `packages/swastik` — the `swastik` module-author import surface: types, manifest schemas, scoped entry points, and the `_template` reference module with the 11-folder canonical layout. Module authors import from this package; importing framework internals is forbidden
+- Module lifecycle state machine with hooks per blueprint §13
+- The sanctioned inter-module patterns per directive D-4.5 (Global Data Emit included)
+- ESLint isolation rules per directive D-4.4
+- `src/events/` — Gateway event routing, internal event bus with cycle-depth guard
+- `src/permissions/` — Seven-layer resolver, RBAC service, blacklist service, admin-tier gate (defense-in-depth per directive)
+- `src/middleware/` — Pipeline framework, all twelve built-in middlewares at canonical priorities per directive D-5.1, constructed on the live dispatch path
+
+**Verify (structural):** All files exist and compile. The manifest Zod schema validates a known-good manifest and rejects a known-bad one (missing tier, invalid tier co-constraint, unresolvable dependency). No `src/modules` directory exists.
+**Verify (behavioral):**
+- A mock module loads through the registry, its lifecycle hooks fire in order, and its commands register
+- Discovery is blind: a module placed on a tier volume is discovered and loaded with no registry edit; a module placed anywhere outside the volumes is not loaded
+- A module's tier is enforced by its volume (tier-at-rest) — a module cannot be loaded from a volume whose tier it does not match
+- A module whose `onLoad` throws is disabled alone — the process and other modules continue
+- The middleware pipeline processes a mock interaction through every one of the twelve built-in middlewares in priority order — verified by a test that observes each stage's effect on the context
+- The permission resolver denies by default: a command with no explicit permission declaration is unreachable by any non-owner user
+- The event bus rejects or guards synchronous re-entrancy beyond its depth limit
+- A cross-module relative import fails the ESLint rule; so does a module author importing framework internals instead of the `swastik` package
+
+---
+
+### Phase 4 — Discord Integration, Command Router & Renderer
+
+**Goal:** The bot connects to Discord, serves slash commands through the canonical pipeline, and presents every user-facing surface through the core Renderer.
+
+**Read:**
+- `blueprint.md` §5, §10.2, §16.5, §17, §18, §20
+- `directive.md` D-2.5, D-3.9, D-3.10, D-4.14 and the ban-registry entries governing presentation (embed ban, DM prohibition)
+- The ADRs in `docs/adr/` governing the renderer grammar and the accent token
+
+**Deliver:**
+- `src/discord/` — Client builder, live + mock gateway adapters
+- `src/commands/` — The unified command tree (merged from the former `src/core/commands` split) and the single canonical command router
+- `src/interactions/` — Button, select menu, modal, and autocomplete handlers with stateless custom_id and click-time re-authorization
+- The core Renderer — the single presentation authority. It issues every user-facing surface as Components v2: the static frame grammar with dynamic slots (accent, banner, module identity, content) and Modes D/M/C per `interface.md`. Classic `EmbedBuilder`/`MessageEmbed` are banned everywhere in the codebase; renderer-issued Components v2 is the only presentation path
+- The buffer-then-render interaction contract: an instant buffer embed on every interaction, edited into the final render or the formal notice frame. Formal notices are the personality's failure voice — honest, never silent — and carry reason codes and a trace correlation ID
+- The DM prohibition: the main bot never sends direct messages; every user-facing emission is renderer-issued in channel
+- Command registration, Discord upsert, collision detection (fatal), ceiling enforcement per directive D-4.14
+
+**Verify (structural):** All files exist and compile. Exactly one command router exists in the unified `src/commands/` tree — no orphaned or duplicate router anywhere in the codebase, and no remnant of the former `src/core/commands` split.
+**Verify (behavioral):**
+- The bot connects to a test guild and registers its commands
+- Every command invocation demonstrably passes through the full middleware pipeline with all twelve built-in middlewares live — verified by a test that fails if any stage is bypassed
+- The permission resolver is invoked on every dispatch — verified by a test that instruments the resolver and confirms invocation on a sample dispatch
+- A command-name collision fails registration fatally — verified by registering two commands with the same name and asserting the error
+- Component interactions (buttons, selects, modals, autocomplete) re-check authorization at click time — a user who had permission when the message was sent but lost it before clicking is denied
+- The embed ban holds: no classic `EmbedBuilder`/`MessageEmbed` construction is reachable anywhere — verified by a lint/grep gate that fails the build on import or instantiation
+- Every interaction receives the instant buffer embed and exactly one subsequent edit into the final render or the formal notice frame — verified by asserting the edit sequence, not a second message
+- A formal notice carries its reason code and trace correlation ID — verified on a deliberately failed command
+- The main bot never DMs — verified on the permission-denied and error paths, where the formal notice frame is issued in channel instead
+- The mock gateway adapter enables headless testing of the full dispatch path without a Discord connection
+
+---
+
+### Phase 5 — Control-Plane Service Stubs
+
+**Goal:** Typed interfaces and entry points for the five control-plane services.
+
+**Read:**
+- `blueprint.md` §15, §22, §35
+- `directive.md` Part 6 (D-6.1 to D-6.6)
+
+**Deliver:**
+- `src/entry/pep.ts` — PEP stub with typed interface
+- `src/entry/ssh-clai.ts` — CLAI SSH server entrypoint stub. The console speaks SSH with public-key authentication (ssh2) — no plaintext TCP REPL exists anywhere in the codebase
+- `src/entry/swastik.ts` — Swastik stub (manifest reading must NOT use `import()` — read D-4.9)
+- `src/entry/credentials.ts` — Credentials Service stub
+- Persona (Twixter) typed interface — bring-your-own-identity, single-server-bound
+- `src/monetization/` — Empty reserved scaffold
+
+**Verify (structural):** Entry points compile; typed interfaces importable.
+**Verify (behavioral):** No operational logic executes from any stub. The Swastik stub's manifest-reading path uses static extraction, not dynamic import — verified by inspection and test. The CLAI stub opens no plaintext TCP listener.
+
+---
+
+### Phase 6 — Shipped Modules
+
+**Goal:** All shipped commands are fully functional modules matching `interface.md` exactly.
+
+**Read:**
+- `interface.md` — All 9 Divisions, completely. This document owns every visual, layout, interaction, and component detail.
+- `blueprint.md` §11, §12
+- `directive.md` D-4.2
+
+**Deliver:**
+Build one module per command specified in `interface.md` — the Core Command Surface: `dashboard`, `health`, `browse`, `queue`, `persona`, `permit`, `modules` (all Core-tier), and `hello-world` (Standard-tier). The complete specifications — commands, modules, tiers, purposes, interaction patterns, Components V2 constants, banner specifications, title formats, emoji rules, button inventories, edit-in-place behavior, dropdown navigation — are all in `interface.md`. Implement from that document, not from this prompt.
+
+First-party modules are seeded onto their tier volumes (`modules-core` for the Core-tier set, `modules-standard` for `hello-world`) through the Swastik promotion flow — they are not committed into the source tree, and blind discovery picks them up like any other module.
+
+**Verify (structural):** Each module has the 11-folder canonical layout (as templated by the `swastik` package), a valid manifest, and colocated tests.
+**Verify (behavioral):**
+- Every command responds in a test guild with the exact Components V2 formatting specified in `interface.md` — container structure, text display content, flag value, banner, title format, attribution line
+- Every interaction follows the buffer-then-render contract: the instant buffer embed is edited into the final render or the formal notice frame — verified by asserting the edit, never a second message
+- Title and attribution follow the grammar exactly: surface titles carry the module identity; developer attribution appears in the footer/subtitle attribution slot — never in the surface title
+- The renderer applies the single official accent token — blurple `#5865F2` — everywhere; no other accent value appears anywhere in the presented surfaces
+- Formal notices carry reason codes and a trace correlation ID — the personality's failure voice is honest and never silent
+- Dashboard edit-in-place works: the first `/dashboard` sends a message; every subsequent interaction edits it — verified by asserting no second message is sent
+- Dropdown navigation works: selecting an option edits the message to the target page; the dropdown remains present on every page
+- Permission checks work: commands deny by default and allow with correct roles per the permission engine's resolution
+- Module disable/enable works: a disabled module's commands disappear and its handlers stop firing; the rest of the bot continues
+- The `hello-world` module passes every item in its testing checklist (`interface.md` Division 8.10)
+- Every button in `interface.md`'s button inventory performs its specified action and edits in place
+
+---
+
+### Phase 7 — Testing, CI/CD & Infrastructure
+
+**Goal:** The build passes its own acceptance gate.
+
+**Read:**
+- `blueprint.md` §37, §40, §41, §43
+- `directive.md` Part 8 (D-8.1 to D-8.9), D-7.6, and the CI-hygiene directives
+
+**Deliver:**
+- Unit, integration, happy-path smoke, and E2E tests per the directive's pyramid and per-layer coverage floors
+- `.github/` at the repository root — five workflows (the strict fail-fast CI sequence per D-8.4 among them), with CODEOWNERS, templates, and the root `dependabot.yml`. The directory MUST NOT exist under `apps/main/` — GitHub Actions cannot read it there. Actions are SHA-pinned and secrets never travel on command lines (read the directive's CI policy)
+- Secret scanning, dependency review, SBOM
+- Docker multi-stage build per D-8.6
+- K8s manifests per D-8.7 (Kustomize base + overlays, terminationGracePeriodSeconds, probes, HPA, non-root, no automounted token)
+- Terraform environment roots
+- Operational runbooks per blueprint §43
+
+**Verify (structural):** All files exist; the five workflow definitions are valid and live at the repository root; Docker and K8s manifests parse.
+**Verify (behavioral):**
+- Full CI sequence is green end-to-end on a real run — verified from the run itself, not the badge
+- Per-layer coverage floors are met — verified from the coverage report, not the CI badge
+- Docker image builds, runs, and contains only the Application Core (no TypeScript source, no devDependencies in the final image)
+- K8s manifests apply to a test cluster and the deployment becomes ready
+
+---
 
 ### Phase 8 — Documentation & Final Verification
-**Build:** `apps/main/docs/{architecture,compliance,privacy,runbooks,security,api,
-adr}/`, populated — auto-generated API/module/database/event reference where the
-manifest already carries the source of truth (`blueprint.md` §38.5's pattern), plus
-hand-written ADRs for every scoping decision this prompt made (the three conflicts in
-§0.4, the three-tier scope in §1.2, the two inherited open items in §1.4); a
-top-level `README.md` matching Phase 0's quickstart, verified to actually work end to
-end by a fresh clone; a full walk of `blueprint.md` §45 / `directive.md` §46's
-compliance matrices, checking off or explicitly deferring — with a one-line reason —
-every single row.
-**Definition of done:** Part 9 of this document, below, is either fully satisfied or
-every unmet item has a corresponding ADR explaining the deferral.
+
+**Goal:** The build is documented and passes the Definition of Done (§6).
+
+**Deliver:**
+- `README.md`, `docs/adr/`, `docs/runbooks/`, `docs/security/`, `.env.example` (per source documents)
+- `docs/adr/` stands as issued: any implementation decision that contradicts a recorded ADR is a deviation to record in `change-log.md`, never a silent override
+- `change-log.md` updated with any deviations per directive D-1.6 and D-0.6
+- Final verification per §6
 
 ---
 
-## PART 7 — ENGINEERING STANDARDS & GUARDRAILS
+## 6. COMPLETION ENFORCEMENT & DEFINITION OF DONE
 
-These are the rules most likely to be silently violated under time pressure. They are
-restated here, curated, because they're cheap to violate accidentally and expensive to
-fix after the fact. The full, authoritative rule set is `directive.md` Parts I–VII
-(normative MUST/SHOULD/MAY) — treat `directive.md` §46's 62-item compliance checklist
-as the master list this section merely highlights from.
+### 6.1 The Enforcement Pass
 
-- **The three-layer rule, no exceptions:** Command → Service → Repository,
-  one direction only. A repository never emits an event or applies a business rule. A
-  command never queries the database directly. Enforced by lint (Phase 2), not review
-  discipline.
-- **Module isolation is tooling-enforced, not convention-enforced.** No cross-module
-  relative imports (build error). No writes to another module's tables, ever, through
-  any pattern. Every cross-module dependency is declared in `depends` — an undeclared
-  one fails to resolve at Stage 12, fatally, never silently.
-- **Every migration has a working `down()`.** A migration without one is a CI failure,
-  not a review comment.
-- **Idempotency is required, not encouraged, for every job processor.** BullMQ
-  guarantees only at-least-once delivery — check the record's precondition state
-  before acting, every time.
-- **Secrets never touch source control, ever, in any form.** Environment variables
-  only, injected by the orchestrator. CI includes a secret-scanning step independent
-  of developer discipline.
-- **Fail-closed where the docs say fail-closed; fail-open where they say fail-open.**
-  Do not normalize this to one behavior across the permission engine (§4.5) — the
-  asymmetry is deliberate, not an oversight to "fix" toward consistency.
-- **`audit_logs` is insert-only, forever.** No `UPDATE`, no `DELETE`, anywhere in the
-  codebase, against this table — enforce with a lint rule matching any non-`.insert()`
-  Knex call against it.
-- **Non-production credentials are categorically distinct values from production
-  ones** — never shared, never derived from one another. This is what gives the
-  Admin-tier Layer 4 environment guard its actual force.
-- **`TypeScript strict` is the floor, not a target.** `tsc --noEmit` is CI gate one,
-  before lint, before test.
-- **Coverage floors are per-layer, never blended.** A well-tested module cannot mask a
-  drop in core coverage.
+Regardless of starting state (greenfield or existing codebase), the build is NOT complete until the Enforcement Pass succeeds. This is a full re-audit using the §3 protocol — every subsystem, every classification, every behavioral check.
+
+**The Enforcement Pass is the final audit that catches every remaining fault, gap, and bypass.** It is executed after the phased build or remediation is believed complete, and it must produce an all-`COMPLETE` Gap Manifest.
+
+**Enforcement Pass procedure:**
+
+1. **Re-run the full audit** (§3.3, all seven steps) against the finished codebase
+2. **Confirm zero `FAULTY`, zero `PARTIAL`, zero `MISSING` items** in the Gap Manifest
+3. **Confirm the five Definition of Done conditions** (§6.2 below)
+4. **If any item is not `COMPLETE`:** return to the Remediation Protocol (§4), fix, and re-run the Enforcement Pass. Do not declare completion with an unresolved manifest.
+5. **Only when the manifest is all-`COMPLETE` and all five conditions are met** is the build finished
+
+### 6.2 Definition of Done — Five Conditions
+
+The acceptance gate is specified in `directive.md` D-8.10 and the compliance self-audit checklist in `directive.md` Appendix B. Read those sections in full and confirm:
+
+1. **Every checkbox in `directive.md` D-8.10 is checked** — boot & lifecycle, runtime behavior, data & state, observability & security, delivery & operations.
+
+2. **Every item in `directive.md` Appendix B is confirmed** — all load-bearing capabilities.
+
+3. **Every known defect from `change-log.md`'s Cross-Version Defect Lifecycle is addressed** — read the defect table, confirm each one's resolution against the built code. None replicated. None papered over.
+
+4. **Every shipped command matches `interface.md` exactly** — read the interface specification for each command and verify the implementation conforms on every point: formatting, behavior, permissions, interaction patterns, button actions, dropdown navigation, edit-in-place, the buffer-then-render contract, the title and attribution grammar, and the accent token.
+
+5. **Every deviation from the directive is recorded in `change-log.md`** per the directive's change-management rule.
+
+### 6.3 The Completion Standard
+
+When the Enforcement Pass produces an all-`COMPLETE` manifest and all five conditions are met, the result is the product this prompt exists to produce: a bot an operator can deploy once and run indefinitely — scaled, observed, secured, and upgradable without downtime.
+
+**Anything less than all-`COMPLETE` is not done.** A codebase driven through this protocol to an all-`COMPLETE` manifest is finished — regardless of where it started. A codebase that skips the Enforcement Pass is not finished — because the gaps the audit would catch are exactly the ones that matter.
 
 ---
 
-## PART 8 — QUALITY BAR: FROM ADJECTIVE TO MECHANISM
-
-Every quality this build is held to maps to something real and checkable in the
-architecture — not an assertion. If a review can't point to the mechanism in this
-table, the adjective hasn't actually been earned yet.
-
-| Quality | Concrete mechanism in this build |
-|---|---|
-| Precise | Zod at every trust boundary; Symbol-based DI tokens; exact numeric defaults (Appendix A) taken verbatim from the source docs, never approximated |
-| Accurate | Every subsystem checked against both `blueprint.md` and `directive.md`; the three known conflicts (§0.4) resolved explicitly rather than silently picked |
-| Robust | Fail-fast 18-stage bootstrap with a named failure mode per stage; per-handler and per-module isolation; a circuit breaker and two independent, never-composed retry mechanisms |
-| Deep | The full 7-layer permission engine, the full 12-stage middleware pipeline, the full 8-subclass error taxonomy — no subsystem stubbed to "compiles" |
-| Detailed | Every manifest field, every config variable, every schema column implemented exactly as specified |
-| Comprehensive | Every Tier-1 subsystem covers its full lifecycle — bootstrap through shutdown, request through response, config through cache through database |
-| Exhaustive | Phase 8 walks both compliance matrices row by row — sampled coverage is treated as a failed pass |
-| Meticulous | Standard audit columns on every entity table; partial-index uniqueness on every soft-deletable one; every migration reversible |
-| Polished | Prettier + ESLint flat config enforced from the first commit; no unowned TODO |
-| Refined | Non-goals honored strictly — refinement includes knowing what *not* to build (§1.3), not only what to |
-| Structured | The reconciled directory layout (Part 3); one canonical location per concern (Principle P13) |
-| Systematic | The nine-phase build plan (Part 6) — entry state, exit checklist, no phase built out of dependency order |
-| Rigorous | Strict-mode TypeScript is non-negotiable; circular-dependency detection at boot, never at runtime |
-| Optimized | Hot-path discipline: L1-cache-first lookups on the common path, O(1) command registry, Core tier's deliberate RBAC skip |
-| Enhanced | Beyond a minimum cache: stampede protection *and* negative caching *and* probabilistic early refresh, together |
-| Advanced | The 7-layer auth engine, event-cycle detection, and shard-ownership lock model are implemented in full, not simplified toward "good enough" |
-| Scalable | Zero user-visible process-local state (§4.9's externalization rule); autoscaling on workload-specific signals, never CPU alone |
-| Maintainable | Single-direction layered dependencies; one source of truth per concern; isolation enforced by tooling |
-| Extensible | The module contract *is* the extension API — the fortieth module is exactly as safe to add as the first |
-| Production-Ready | Multi-stage Docker, real Kubernetes manifests, zero-downtime rolling updates, a full 5-workflow CI/CD pipeline |
-| Enterprise-Grade | RBAC groups and sets, a full audit trail, GDPR-shaped erasure/export, encryption-in-transit enforced at config-validation time |
-| Future-Proof | Discord *platform* policy is absorbed as configuration, never assumed structurally; module contracts are semver-pinned with deprecation windows |
-| Effective | Every Tier-1 subsystem is genuinely exercised by the two real, working commands — never built and left untested |
-| Productive | A working `pnpm dev` loop from clone to a responding bot in under 10 commands |
-| Actionable | Every instruction here is a MUST, a SHOULD with a documented-exception path, or an explicit bounded choice — never an unfalsifiable aspiration |
-| Strategic | The three-tier build scope (§1.2) — deliberately sequencing what must be perfect now against what scaffolds now and hardens later |
-| Intelligent | Cross-document conflicts reasoned through explicitly (§0.4), not glossed over or averaged |
-| Cohesive | One core, one permission engine, one configuration system, one operational surface — enforced by construction |
-| Reliable | Idempotent job processing; atomic cache operations; fail-closed where it matters, fail-open where it doesn't |
-| High-Quality | Every Tier-1 line passes typecheck, lint, and its own test before its phase is called complete |
-
----
-
-## PART 9 — FINAL ACCEPTANCE CHECKLIST
-
-Walk this list at the end of Phase 8. Every unchecked item needs either a fix or an
-ADR explaining the deferral — never a silent gap.
-
-- [ ] Process boots deterministically through all 18 stages and shuts down through
-      all 9, verified by test, with `terminationGracePeriodSeconds: 190` set exactly.
-- [ ] The core runs with **zero modules loaded** and remains fully healthy —
-      `directive.md` §0.6's own definition of "done" for the Application Core.
-- [ ] `/health` and `/hello` match `interface.md` byte-for-byte, verified by an
-      automated Components V2 shape assertion, not a visual check.
-- [ ] All three health endpoints gate on their correct stage; no orchestrator would
-      ever route traffic to a not-actually-ready pod or restart a healthy-but-still-
-      initializing one.
-- [ ] The 7-layer permission engine's fail-open/fail-closed asymmetry matches §4.5
-      exactly, per layer.
-- [ ] Module isolation is provably tooling-enforced — a crafted violation of each of
-      the 5 custom lint rules fails the build.
-- [ ] Every core and module-owned entity table carries the 4 standard audit columns
-      and partial-index (not plain) uniqueness where soft-deletable.
-- [ ] PEP writes an audit row before returning on all 17 domains, success and
-      rejection alike.
-- [ ] CLAI is SSH-public-key-only and unreachable from a public network position —
-      Conflict 1 resolved, not reintroduced.
-- [ ] Coverage floors are met per layer (Core 85/80, services 80/75, commands 75/70,
-      repositories 70/65, infra-adjacent 70/65), never as a blended average.
-- [ ] All 5 GitHub Actions workflows exist and are individually correct: CI fail-fast
-      sequence, fully-automated release and staging, a genuine two-approver
-      production gate, and a severity-gated dependency review.
-- [ ] `docker compose up` produces a genuinely working bot against local Postgres and
-      Redis, from a clean clone, following only the README.
-- [ ] Every workspace/ reserved directory (`assets/`, `design/`, `specs/`,
-      `tools/release_manager/`, `website/`) exists with a one-line README stating its
-      reserved, out-of-scope status — never silently absent, never accidentally built
-      out.
-- [ ] `src/monetization/` is empty except for its README — no logic, no imports into
-      it from anywhere in the core.
-- [ ] The two inherited open items (§1.4) and the three resolved conflicts (§0.4) each
-      have a corresponding ADR in `apps/main/docs/adr/`.
-- [ ] Both compliance matrices (`blueprint.md` §45, `directive.md` §46) have been
-      walked row by row, with every row checked off or explicitly, individually
-      deferred with a stated reason.
-
----
-
-## APPENDIX A — Environment Variable Quick Reference
-
-| Variable | Default | Governs |
-|---|---|---|
-| `NODE_ENV` | *(required)* | `development` \| `staging` \| `production` |
-| `BOT_TOKEN` | *(required)* | Discord bot token |
-| `BOT_OWNER_IDS` | *(required)* | CSV of process-owner snowflakes |
-| `DEV_GUILD_ID` | *(required)* | Admin-tier dev guild |
-| `DATABASE_URL` | *(required)* | Primary Postgres |
-| `DATABASE_POOL_MAX` | `10` | Per-process connection ceiling |
-| `DATABASE_STATEMENT_TIMEOUT_MS` | `10000` | Runaway-query guard |
-| `DATABASE_REPLICA_URLS` | *(optional)* | Read replicas |
-| `DATABASE_REPLICA_MAX_LAG_MS` | `1000` | Replica exclusion threshold |
-| `REDIS_URL` | *(required)* | Cache/queue/pub-sub backing |
-| `HEALTH_PORT` | `3000` | Health/metrics/admin HTTP |
-| `RATE_LIMIT_USER_WINDOW_MS` / `_MAX` | `60000` / `10` | Per-user sliding window |
-| `RATE_LIMIT_GUILD_WINDOW_MS` / `_MAX` | `60000` / `100` | Per-guild sliding window |
-| `CACHE_L1_MAX_ENTRIES` / `_BYTES` | `5000` / `50MB` | L1 LRU bounds |
-| `TRACE_SAMPLE_RATE` | `0.1` | OTel probabilistic sampling |
-| `SLOW_QUERY_THRESHOLD_MS` | `500` | Warn-level query log |
-| `CRITICAL_QUERY_THRESHOLD_MS` | `2000` | Error-level query log + counter |
-| `EVENT_LOOP_LAG_SHED_THRESHOLD_MS` | `50` | Load-shedding trigger |
-| `EVENT_BUS_MAX_EMIT_DEPTH` | `20` | Internal event-cycle guard |
-| `SHARD_LOCK_HEARTBEAT_MS` | `10000` | Shard-ownership lock refresh |
-| `SHARD_LOCK_RETRY_MS` | `2000` | Shard-claim retry interval |
-| `TELEMETRY_ENABLED` | `true` | Anonymized framework telemetry opt-out |
-| `{MODULE_NAME}_*` | module-defined | Namespaced module-level config |
-
-## APPENDIX B — Error Taxonomy Quick Reference
-
-| Subclass | HTTP-equiv. | `isOperational` |
-|---|---|---|
-| `ValidationError` | 400 | `true` |
-| `PermissionDeniedError` | 403 | `true` |
-| `NotFoundError` | 404 | `true` |
-| `ConflictError` | 409 | `true` |
-| `RateLimitExceededError` | 429 | `true` |
-| `ExternalServiceError` | 502 | `true` |
-| `ConfigurationError` | 500 | `false` |
-| `InternalError` | 500 | `false` |
-
-## APPENDIX C — Glossary (Minimal)
-
-| Term | Definition |
-|---|---|
-| Module | The fundamental unit of feature ownership — a complete vertical slice under one manifest |
-| Tier | A module's governance class: Admin, Core, Standard, or Marketplace |
-| Manifest | A module's complete, self-describing contract declaration |
-| DI Container | The sole mechanism for sharing services; Symbol-tokened, three lifetimes |
-| PEP | Power Engine Panel — the global administrative authority, a function catalog |
-| CLAI | Command Line Administrative Interface — the SSH-hosted front end to PEP |
-| Swastik | The deployment / hot-reload / hot-swap control-plane service |
-| Persona / Twill | An additional, fully independent Discord Application sharing the same codebase and data; Twill governs its lifecycle |
-| MTP | Metric Track Protocol — module-agnostic usage metering in abstract units, not real billing |
-| `guild_module_states` | The sole runtime source of truth for a module's per-guild enabled state |
-
----
-
-## Colophon
-
-This prompt was assembled by reading all seven source documents in full, line by
-line, and cross-checking each one's claims against the other six before any of it was
-turned into a build plan. Every table above traces to a specific section in
-`blueprint.md` or `directive.md`; every scoping decision in Part 1 and every conflict
-resolution in Part 0 is stated as a decision, with its reasoning, rather than left
-implicit. Where this document is silent on a detail — and it is silent on most of the
-15,000+ lines it summarizes — the source documents in `workspace/docs/` are not a
-fallback; they are the actual specification. Build against them directly whenever this
-prompt's own condensed tables aren't precise enough for the line of code in front of
-you.
+*End of Master Build Prompt. Version 5.0.0. Record all future revisions in `change-log.md`.*

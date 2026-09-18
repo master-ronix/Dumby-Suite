@@ -1,4 +1,13 @@
-import { readFileSync, existsSync, mkdirSync, writeFileSync, symlinkSync, readlinkSync, unlinkSync, readdirSync } from 'node:fs';
+import {
+  readFileSync,
+  existsSync,
+  mkdirSync,
+  writeFileSync,
+  symlinkSync,
+  readlinkSync,
+  unlinkSync,
+  readdirSync,
+} from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomBytes, createHash } from 'node:crypto';
@@ -43,7 +52,7 @@ if (existsSync(modulesDir)) {
   }
 }
 console.log(`  ✓ Production modules: ${moduleDirs.length ? moduleDirs.join(', ') : '(none)'}`);
-const illustrativeModules = moduleDirs.filter(m => !['health', 'hello', '_template'].includes(m));
+const illustrativeModules = moduleDirs.filter((m) => !['health', 'hello', '_template'].includes(m));
 if (illustrativeModules.length > 0) {
   console.log(`  ⚠ Unexpected modules: ${illustrativeModules.join(', ')}`);
 }
@@ -53,7 +62,11 @@ console.log();
 // ── Step 3: Verify command deployer logic ────────────────────────────
 console.log('Step 3: Verifying command deployer...');
 const deployerJs = readFileSync(join(REPO_ROOT, 'dist', 'commands', 'command-deployer.js'), 'utf8');
-if (deployerJs.includes('Route') && deployerJs.includes('deploy') && deployerJs.includes('undeploy')) {
+if (
+  deployerJs.includes('Route') &&
+  deployerJs.includes('deploy') &&
+  deployerJs.includes('undeploy')
+) {
   console.log('  ✓ CommandDeployer has deploy() and undeploy() methods');
 }
 if (deployerJs.includes('Routes.applicationCommands')) {
@@ -108,7 +121,11 @@ for (const mod of ['health', 'hello']) {
   // Stage
   const stagingDir = join(stagingVolume, `${mod}__${version}`);
   if (!existsSync(stagingDir)) mkdirSync(stagingDir, { recursive: true });
-  writeFileSync(join(stagingDir, 'manifest.json'), JSON.stringify({ name: mod, version, devId, buildId }), 'utf8');
+  writeFileSync(
+    join(stagingDir, 'manifest.json'),
+    JSON.stringify({ name: mod, version, devId, buildId }),
+    'utf8',
+  );
   console.log(`  ${mod} staged: ${stagingDir}`);
 
   // Promote (symlink swap)

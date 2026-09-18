@@ -19,6 +19,8 @@ export interface CommandDefinition {
   moduleId: string;
   /** Commands are guild-only unless a future contract explicitly opts out. */
   guildOnly?: boolean;
+  /** Non-owner dispatch is denied unless the module explicitly declares permission policy. */
+  permissionDeclared?: boolean;
 }
 
 export class CommandCollisionError extends Error {
