@@ -13,6 +13,8 @@ import { parseEnv, pickEnvKeys, type Env } from '../config/env.schema.js';
 import { createLogger, type Logger } from '../logging/logger.js';
 import { DbClient } from '../db/client.js';
 import { parseManifest, type ModuleManifest } from '../modules/manifest.schema.js';
+import { constantTimeEqual } from '../shared/utils/crypto.js';
+import { safeJoin } from '../shared/utils/path-guard.js';
 
 let env: Env;
 let logger: Logger;
@@ -25,6 +27,7 @@ async function init(): Promise<void> {
   logger = createLogger(env.LOG_LEVEL);
   db = new DbClient({
     connectionString: env.DATABASE_URL,
+    ssl: env.DATABASE_SSL,
     poolMax: env.DATABASE_POOL_MAX,
     statementTimeoutMs: env.DATABASE_STATEMENT_TIMEOUT_MS,
     slowQueryThresholdMs: env.SLOW_QUERY_THRESHOLD_MS,
@@ -142,7 +145,7 @@ app.post('/swastik/modules/upload', async (request, reply) => {
     return reply.code(422).send({ error: 'manifest devId does not match authenticated developer' });
   }
   const buildId = `build_${randomBytes(12).toString('hex')}`;
-  const stagingDir = join(stagingVolume, `${moduleSlug}__${version}`);
+  const stagingDir = safeJoin(stagingVolume, `${moduleSlug}__${version}`);
   if (!existsSync(stagingDir)) mkdirSync(stagingDir, { recursive: true });
   const manifestPath = join(stagingDir, 'manifest.json');
   const indexPath = join(stagingDir, 'index.js');
@@ -182,7 +185,24 @@ app.get('/swastik/modules/:slug/builds/:buildId', async (request, reply) => {
   });
 });
 
+async function requireInternalKey(request: FastifyRequest, reply: FastifyReply): Promise<boolean> {
+  const { internalAuthHeader } = await import('../config/env.schema.js').catch(() => ({}));
+  void internalAuthHeader;
+  const supplied = request.headers[INTERNAL_API_HEADER];
+  const expected = env.INTERNAL_API_KEY;
+  if (
+    typeof supplied !== 'string' ||
+    supplied.length === 0 ||
+    !constantTimeEqual(supplied, expected)
+  ) {
+    await reply.code(401).send({ error: 'missing or invalid x-internal-api-key header' });
+    return false;
+  }
+  return true;
+}
+
 app.post('/internal/reload', async (request, reply) => {
+  if (!(await requireInternalKey(request, reply))) return;
   const query = request.query as Record<string, string>;
   const moduleName = query['module'];
   if (!moduleName) return reply.code(400).send({ error: 'module query parameter is required' });
@@ -193,13 +213,13 @@ app.post('/internal/reload', async (request, reply) => {
     .first();
   if (!build)
     return reply.code(404).send({ error: `no staged build found for module "${moduleName}"` });
-  const versionDir = join(stagingVolume, `${moduleName}__${build.version}`);
+  const versionDir = safeJoin(stagingVolume, `${moduleName}__${build.version}`);
   if (!existsSync(versionDir))
     return reply
       .code(404)
       .send({ error: `version directory not found for ${moduleName}@${build.version}` });
-  const liveLink = join(liveVolume, moduleName);
-  const rollbackLink = join(liveVolume, `${moduleName}__rollback`);
+  const liveLink = safeJoin(liveVolume, moduleName);
+  const rollbackLink = safeJoin(liveVolume, `${moduleName}__rollback`);
   let previousTarget: string | null = null;
   try {
     previousTarget = readlinkSync(liveLink);
@@ -316,7 +336,7 @@ app.post('/internal/deploy', async (request, reply) => {
   }
 
   const buildId = `build_${randomBytes(12).toString('hex')}`;
-  const stagingDir = join(stagingVolume, `${moduleSlug}__${version}`);
+  const stagingDir = safeJoin(stagingVolume, `${moduleSlug}__${version}`);
   if (!existsSync(stagingDir)) mkdirSync(stagingDir, { recursive: true });
   const manifestPath = join(stagingDir, 'manifest.json');
   const indexPath = join(stagingDir, 'index.js');
@@ -331,8 +351,8 @@ app.post('/internal/deploy', async (request, reply) => {
     validationStatus: 'pending',
   });
 
-  const liveLink = join(liveVolume, moduleSlug);
-  const rollbackLink = join(liveVolume, `${moduleSlug}__rollback`);
+  const liveLink = safeJoin(liveVolume, moduleSlug);
+  const rollbackLink = safeJoin(liveVolume, `${moduleSlug}__rollback`);
   let previousTarget: string | null = null;
   try {
     previousTarget = readlinkSync(liveLink);
@@ -416,11 +436,11 @@ startSwastik().catch((err: unknown) => {
     if (logger) {
       logger.fatal('swastik-start-failed', { error: String(err) });
     } else {
-      console.error('FATAL swastik-start-failed:', String(err));
+      process.stderr.write(`FATAL swastik-start-failed: ${String(err)}\n`);
     }
     if (db) void db.destroy();
   } catch {
-    console.error('FATAL swastik-start-failed (dry):', String(err));
+    process.stderr.write(`FATAL swastik-start-failed (dry): ${String(err)}\n`);
   }
   process.exit(1);
 });
