@@ -4,7 +4,7 @@ import type { QueueManager } from '../queue/queue-manager.js';
 import type { DbClient } from '../db/client.js';
 import type { Redis } from 'ioredis';
 import type { Client } from 'discord.js';
-import type { ModuleLoader } from '../modules/loader.js';
+import type { ModuleLoader } from '../module-system/loader.js';
 import { type SHUTDOWN_STEPS, shutdownStepNumber } from '../bootstrap/stages.js';
 
 /** Graceful shutdown orchestration (Cluster: Grace) — see stages.ts for the ordered step list. */

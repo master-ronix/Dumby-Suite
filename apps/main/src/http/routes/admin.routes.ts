@@ -28,6 +28,21 @@ function sendDispatchResult(
   return reply.code(200).send({ ok: true });
 }
 
+/**
+ * Honest 501 for PEP actions whose backing primitive does not exist yet.
+ * These must never fake a `200 {ok:true}` (UR-C-25): a route that has no
+ * real implementation responds with NOT_IMPLEMENTED instead of claiming
+ * success.
+ */
+function sendNotImplemented(reply: FastifyReply, action: string): FastifyReply {
+  return reply.code(501).send({
+    error: {
+      code: 'NOT_IMPLEMENTED',
+      message: `PEP action "${action}" has no backing primitive implemented yet`,
+    },
+  });
+}
+
 export interface AdminRoutesDeps {
   dispatcher: PowerEngineDispatcher;
   db: DbClient;
@@ -162,126 +177,53 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
     },
   );
 
-  app.post(
-    '/admin/power-engine/economy/balance-adjust',
-    async (req: FastifyRequest, reply: FastifyReply) => {
-      const body = extractRequest(req.body);
-      const outcome = await deps.dispatcher.dispatch(
-        'economy.balance-adjust',
-        body,
-        async () => {},
-      );
-      return sendDispatchResult(reply, outcome);
-    },
-  );
-
-  app.post(
-    '/admin/power-engine/rbac/role-assign',
-    async (req: FastifyRequest, reply: FastifyReply) => {
-      const body = extractRequest(req.body);
-      const outcome = await deps.dispatcher.dispatch('rbac.role-assign', body, async () => {});
-      return sendDispatchResult(reply, outcome);
-    },
-  );
-
-  app.post(
-    '/admin/power-engine/marketplace/review',
-    async (req: FastifyRequest, reply: FastifyReply) => {
-      const body = extractRequest(req.body);
-      const outcome = await deps.dispatcher.dispatch('marketplace.review', body, async () => {});
-      return sendDispatchResult(reply, outcome);
-    },
-  );
-
-  app.post(
-    '/admin/power-engine/backups/create',
-    async (req: FastifyRequest, reply: FastifyReply) => {
-      const body = extractRequest(req.body);
-      const outcome = await deps.dispatcher.dispatch('backups.create', body, async () => {});
-      return sendDispatchResult(reply, outcome);
-    },
-  );
-
-  app.post(
-    '/admin/power-engine/telemetry/config-update',
-    async (req: FastifyRequest, reply: FastifyReply) => {
-      const body = extractRequest(req.body);
-      const outcome = await deps.dispatcher.dispatch(
-        'telemetry.config-update',
-        body,
-        async () => {},
-      );
-      return sendDispatchResult(reply, outcome);
-    },
-  );
-
-  app.post(
-    '/admin/power-engine/sharding/rebalance',
-    async (req: FastifyRequest, reply: FastifyReply) => {
-      const body = extractRequest(req.body);
-      const outcome = await deps.dispatcher.dispatch('sharding.rebalance', body, async () => {});
-      return sendDispatchResult(reply, outcome);
-    },
-  );
-
-  app.post(
-    '/admin/power-engine/credentials/rotate',
-    async (req: FastifyRequest, reply: FastifyReply) => {
-      const body = extractRequest(req.body);
-      const outcome = await deps.dispatcher.dispatch('credentials.rotate', body, async () => {});
-      return sendDispatchResult(reply, outcome);
-    },
-  );
-
-  app.post('/admin/power-engine/audit/export', async (req: FastifyRequest, reply: FastifyReply) => {
-    const body = extractRequest(req.body);
-    const outcome = await deps.dispatcher.dispatch('audit.export', body, async () => {});
-    return sendDispatchResult(reply, outcome);
+  app.post('/admin/power-engine/economy/balance-adjust', async (_req, reply) => {
+    return sendNotImplemented(reply, 'economy.balance-adjust');
   });
 
-  app.post(
-    '/admin/power-engine/notifications/broadcast',
-    async (req: FastifyRequest, reply: FastifyReply) => {
-      const body = extractRequest(req.body);
-      const outcome = await deps.dispatcher.dispatch(
-        'notifications.broadcast',
-        body,
-        async () => {},
-      );
-      return sendDispatchResult(reply, outcome);
-    },
-  );
+  app.post('/admin/power-engine/rbac/role-assign', async (_req, reply) => {
+    return sendNotImplemented(reply, 'rbac.role-assign');
+  });
 
-  app.post(
-    '/admin/power-engine/tasks/schedule',
-    async (req: FastifyRequest, reply: FastifyReply) => {
-      const body = extractRequest(req.body);
-      const outcome = await deps.dispatcher.dispatch('tasks.schedule', body, async () => {});
-      return sendDispatchResult(reply, outcome);
-    },
-  );
+  app.post('/admin/power-engine/marketplace/review', async (_req, reply) => {
+    return sendNotImplemented(reply, 'marketplace.review');
+  });
 
-  app.post(
-    '/admin/power-engine/webhooks/rotate-secret',
-    async (req: FastifyRequest, reply: FastifyReply) => {
-      const body = extractRequest(req.body);
-      const outcome = await deps.dispatcher.dispatch(
-        'webhooks.rotate-secret',
-        body,
-        async () => {},
-      );
-      return sendDispatchResult(reply, outcome);
-    },
-  );
+  app.post('/admin/power-engine/backups/create', async (_req, reply) => {
+    return sendNotImplemented(reply, 'backups.create');
+  });
 
-  app.post(
-    '/admin/power-engine/cache/invalidate',
-    async (req: FastifyRequest, reply: FastifyReply) => {
-      const body = extractRequest(req.body);
-      const outcome = await deps.dispatcher.dispatch('cache.invalidate', body, async () => {});
-      return sendDispatchResult(reply, outcome);
-    },
-  );
+  app.post('/admin/power-engine/telemetry/config-update', async (_req, reply) => {
+    return sendNotImplemented(reply, 'telemetry.config-update');
+  });
+
+  app.post('/admin/power-engine/sharding/rebalance', async (_req, reply) => {
+    return sendNotImplemented(reply, 'sharding.rebalance');
+  });
+
+  app.post('/admin/power-engine/credentials/rotate', async (_req, reply) => {
+    return sendNotImplemented(reply, 'credentials.rotate');
+  });
+
+  app.post('/admin/power-engine/audit/export', async (_req, reply) => {
+    return sendNotImplemented(reply, 'audit.export');
+  });
+
+  app.post('/admin/power-engine/notifications/broadcast', async (_req, reply) => {
+    return sendNotImplemented(reply, 'notifications.broadcast');
+  });
+
+  app.post('/admin/power-engine/tasks/schedule', async (_req, reply) => {
+    return sendNotImplemented(reply, 'tasks.schedule');
+  });
+
+  app.post('/admin/power-engine/webhooks/rotate-secret', async (_req, reply) => {
+    return sendNotImplemented(reply, 'webhooks.rotate-secret');
+  });
+
+  app.post('/admin/power-engine/cache/invalidate', async (_req, reply) => {
+    return sendNotImplemented(reply, 'cache.invalidate');
+  });
 
   app.post(
     '/admin/power-engine/feature-flags/toggle',
@@ -322,12 +264,15 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
         await deps.db
           .knex('guild_command_overrides')
           .insert({
+            // NULL guildId = fleet-wide kill switch (UR-A-10 / UR-B-07).
+            // The migration 00036 partial unique index is what makes this a
+            // working upsert target.
+            guildId: null,
             commandKey: commandName,
             overrideType: 'disabled',
             payload: JSON.stringify({ fleetWide: true }),
-            updatedAt: new Date(),
           })
-          .onConflict(['guildId', 'commandKey'])
+          .onConflict(deps.db.knex.raw('("guildId", "commandKey") where "deletedAt" is null'))
           .merge({ overrideType: 'disabled', updatedAt: new Date() });
       });
       return sendDispatchResult(reply, outcome);
@@ -495,18 +440,20 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
 
   // 16. queryAuditLog — query the audit log
   app.get('/admin/power-engine/queryAuditLog', async (req: FastifyRequest, reply: FastifyReply) => {
-    const { source, actorId, targetType, targetId, limit } = (req.query ?? {}) as {
+    const { source, actorId, action, outcome, limit } = (req.query ?? {}) as {
       source?: string;
       actorId?: string;
-      targetType?: string;
-      targetId?: string;
+      action?: string;
+      outcome?: string;
       limit?: string;
     };
-    const query = deps.db.knex('audit_logs').orderBy('timestamp', 'desc');
+    // Columns must match the real migration 00008 shape (UR-B-07): the
+    // legacy targetType/targetId/timestamp columns never existed.
+    const query = deps.db.knex('audit_logs').orderBy('createdAt', 'desc');
     if (source) query.where({ source });
     if (actorId) query.where({ actorId });
-    if (targetType) query.where({ targetType });
-    if (targetId) query.where({ targetId });
+    if (action) query.where({ action });
+    if (outcome === 'allowed' || outcome === 'rejected') query.where({ outcome });
     query.limit(Math.min(parseInt(limit ?? '50', 10), 200));
     const rows = await query;
     return reply.code(200).send(rows);
@@ -517,13 +464,32 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
     '/admin/power-engine/revokeModuleSignature',
     async (req: FastifyRequest, reply: FastifyReply) => {
       const body = extractRequest(req.body);
-      const { moduleSlug } = (req.body ?? {}) as { moduleSlug?: string };
-      const outcome = await deps.dispatcher.dispatch('revokeModuleSignature', body, async () => {
-        await deps.db
-          .knex('signing_keys')
-          .where({ moduleSlug })
-          .update({ revokedAt: new Date(), updatedAt: new Date() });
-      });
+      const { moduleSlug, keyId } = (req.body ?? {}) as {
+        moduleSlug?: string;
+        keyId?: string;
+      };
+      const outcome = await deps.dispatcher.dispatch(
+        'revokeModuleSignature',
+        body,
+        async () => {
+          // signing_keys has no moduleSlug column — key on the real keyId
+          // (UR-C-11: previously filtered a nonexistent column and always
+          // 500'd).
+          return deps.db
+            .knex('signing_keys')
+            .where({ keyId })
+            .update({ revokedAt: new Date(), updatedAt: new Date() });
+        },
+        { metadata: { moduleSlug: moduleSlug ?? null, keyId: keyId ?? null } },
+      );
+      if (outcome.ok && outcome.result === 0) {
+        return reply.code(404).send({
+          error: {
+            code: 'DUMBY_NOT_FOUND',
+            message: `No signing key with keyId "${keyId}"`,
+          },
+        });
+      }
       return sendDispatchResult(reply, outcome);
     },
   );

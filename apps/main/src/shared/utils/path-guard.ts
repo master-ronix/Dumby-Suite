@@ -12,7 +12,7 @@ import { isAbsolute, resolve, sep } from 'node:path';
  */
 
 export interface PathGuardError extends Error {
-  kind: 'TRAVERSAL' | 'UNSAFE_ABSOLUTE' | 'EMPTY_SEGMENT';
+  kind: 'TRAVERSAL' | 'UNSAFE_ABSOLUTE' | 'EMPTY_SEGMENT' | 'UNSAFE_VERSION';
 }
 
 function fail(kind: PathGuardError['kind'], message: string): never {
@@ -59,4 +59,12 @@ export function assertSafeSlug(slug: string): string {
     fail('TRAVERSAL', `module slug must be lowercase kebab-case, got "${slug}"`);
   }
   return slug;
+}
+
+/** Guard contra path traversal in a module version derived from the request. */
+export function assertSafeVersion(version: string): string {
+  if (!/^\d+\.\d+\.\d+(?:[-+][a-zA-Z0-9.-]+)?$/.test(version)) {
+    fail('UNSAFE_VERSION', `module version must be semver-like, got "${version}"`);
+  }
+  return version;
 }

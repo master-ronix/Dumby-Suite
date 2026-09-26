@@ -1,0 +1,19 @@
+{
+  "name": "@workspace/swastik",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Dumby Swastik module authoring surface.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./manifest": "./src/manifest.ts",
+    "./entrypoints/core": "./src/entrypoints/core.ts",
+    "./entrypoints/admin": "./src/entrypoints/admin.ts",
+    "./entrypoints/standard": "./src/entrypoints/standard.ts",
+    "./entrypoints/marketplace": "./src/entrypoints/marketplace.ts"
+  },
+  "files": [
+    "src",
+    "_template"
+  ]
+}

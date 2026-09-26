@@ -6,15 +6,17 @@ import type { ConfigService } from '../config/config.service.js';
 import type { DbClient } from '../db/client.js';
 import type { CacheManager } from '../cache/cache-manager.js';
 import type { QueueManager } from '../queue/queue-manager.js';
-import type { ModuleLoader } from '../modules/loader.js';
+import type { ModuleLoader } from '../module-system/loader.js';
 import type { CommandRegistry } from '../commands/command-registry.js';
 import type { CommandRouter } from '../commands/command-router.js';
 import type { InternalEventBus } from '../events/event-bus.js';
 import type { PermissionResolver } from '../permissions/resolver.js';
-import type { ModuleRegistry } from '../modules/registry.js';
+import type { ModuleRegistry } from '../module-system/registry.js';
 import type { Container } from '../di/container.js';
 import type { Redis } from 'ioredis';
 import type { InFlightTracker } from '../shutdown/in-flight-tracker.js';
+import type { CoreRenderer } from '../rendering/core-renderer.js';
+import type { InteractionRegistry } from '../interactions/interaction-registry.js';
 
 export interface ApplicationContext {
   container: Container;
@@ -33,6 +35,8 @@ export interface ApplicationContext {
   permissionResolver: PermissionResolver;
   commandRegistry: CommandRegistry;
   commandRouter: CommandRouter;
+  renderer: CoreRenderer;
+  interactionRegistry: InteractionRegistry;
   apiServer: FastifyInstance;
   healthServer: FastifyInstance;
   metricsServer: FastifyInstance;

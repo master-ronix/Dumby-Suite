@@ -3,29 +3,37 @@ import { Container } from '../di/container.js';
 import { CORE_TOKENS } from '../di/tokens.js';
 import { parseEnv, pickEnvKeys, ConfigValidationError } from '../config/env.schema.js';
 import { ConfigService } from '../config/config.service.js';
-import { createLogger } from '../logging/logger.js';
+import { createLogger, type Logger } from '../logging/logger.js';
 import { MetricsRegistry } from '../metrics/registry.js';
 import { DbClient } from '../db/client.js';
 import { InternalEventBus } from '../events/event-bus.js';
 import { CacheManager } from '../cache/cache-manager.js';
 import { RedisLockStore } from '../cache/redis-lock-store.js';
 import { QueueManager } from '../queue/queue-manager.js';
-import { ModuleRegistry } from '../modules/registry.js';
-import { ModuleLoader } from '../modules/loader.js';
-import { defaultEnabledForTier } from '../modules/tier-rules.js';
+import { ModuleRegistry } from '../module-system/registry.js';
+import { ModuleLoader } from '../module-system/loader.js';
+import { defaultEnabledForTier } from '../module-system/tier-rules.js';
 import { PermissionResolver } from '../permissions/resolver.js';
 import { BootstrapProgress } from './stages.js';
 import { buildApiServer, buildHealthServer, buildMetricsServer } from '../http/server.js';
 import { PowerEngineDispatcher } from '../http/power-engine-dispatcher.js';
-import { loadModulesFromSwastikVolume } from '../modules/swastik-loader.js';
-import { registerFirstPartyModules } from '../modules/first-party.js';
+import { loadModulesFromTierVolumes } from '../module-system/swastik-loader.js';
 import { InFlightTracker } from '../shutdown/in-flight-tracker.js';
-import { registerShutdownSignalHandlers, isAcceptingGatewayEvents } from '../shutdown/shutdown.js';
+import {
+  registerShutdownSignalHandlers,
+  isAcceptingGatewayEvents,
+  gracefulShutdown,
+} from '../shutdown/shutdown.js';
+import { installFatalHandlers } from '../shutdown/fatal-handler.js';
 import { Redis } from 'ioredis';
 import { CommandRegistry } from '../commands/command-registry.js';
 import { CommandRouter } from '../commands/command-router.js';
 import type { CommandInteraction } from '../commands/command-router.js';
-import type { ButtonInteraction, StringSelectMenuInteraction } from 'discord.js';
+import { PersonaCommandBindingService } from '../personas/persona-command-binding.service.js';
+import {
+  PostgresPersonaBindingStore,
+  PostgresPersonaIdentityStore,
+} from '../personas/persona.repository.js';
 import { MiddlewarePipeline } from '../middleware/middleware-pipeline.js';
 import { TraceMiddleware } from '../middleware/built-in/trace.js';
 import { AnalyticsMiddleware } from '../middleware/built-in/analytics.js';
@@ -52,6 +60,8 @@ import {
 } from '../discord/client-builder.js';
 import { LiveGatewayAdapter } from '../discord/gateway.live-adapter.js';
 import { CommandDeployer } from '../commands/command-deployer.js';
+import { CoreRenderer } from '../rendering/core-renderer.js';
+import { InteractionRegistry } from '../interactions/interaction-registry.js';
 
 /**
  * The 18-stage bootstrap sequence (Cluster: Grace). Each numbered comment
@@ -65,13 +75,17 @@ export async function bootstrap(): Promise<void> {
   // Stage 01: PROCESS_SETUP
   progress.advanceTo('PROCESS_SETUP');
   process.title = 'dumby-headless-backend';
-  process.on('uncaughtException', (err) => {
-    console.error('uncaughtException', err);
-    process.exit(1);
-  });
-  process.on('unhandledRejection', (reason) => {
-    console.error('unhandledRejection', reason);
-  });
+  // Fatal handlers (UR-C-18): structured fatal log with correlation ID, then
+  // `system.fatal-error` notification and a graceful shutdown bounded to 15s,
+  // then exit 1. The logger/shutdown/notifiers are upgraded in place once the
+  // later stages construct them.
+  const fatalHooks: {
+    logger: Logger;
+    shutdown?: () => Promise<void>;
+    notify?: (correlationId: string, error: unknown) => void;
+  } = { logger: createLogger('warn') };
+  const uninstallFatalHandlers = installFatalHandlers(fatalHooks);
+  void uninstallFatalHandlers;
 
   // Stage 02: CONFIG_LOAD
   progress.advanceTo('CONFIG_LOAD');
@@ -80,7 +94,7 @@ export async function bootstrap(): Promise<void> {
     env = parseEnv(pickEnvKeys(process.env));
   } catch (err) {
     if (err instanceof ConfigValidationError) {
-      console.error('Fatal: environment validation failed', err.fieldErrors);
+      fatalHooks.logger.fatal('environment-validation-failed', { fieldErrors: err.fieldErrors });
       process.exit(1);
     }
     throw err;
@@ -97,6 +111,7 @@ export async function bootstrap(): Promise<void> {
   // Stage 04: OBSERVABILITY_INIT
   progress.advanceTo('OBSERVABILITY_INIT');
   const logger = createLogger(config.get('LOG_LEVEL'));
+  fatalHooks.logger = logger;
   const metrics = new MetricsRegistry();
   container.registerValue(CORE_TOKENS.Logger, logger);
   container.registerValue(CORE_TOKENS.Metrics, metrics);
@@ -145,9 +160,31 @@ export async function bootstrap(): Promise<void> {
   // Stage 09: DI_BOOTSTRAP — register remaining core services, then freeze.
   progress.advanceTo('DI_BOOTSTRAP');
   const eventBus = new InternalEventBus({ maxEmitDepth: config.get('EVENT_BUS_MAX_EMIT_DEPTH') });
+  fatalHooks.notify = (correlationId, error) => {
+    try {
+      void eventBus.emit('dumby.system.fatal', {
+        correlationId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    } catch {
+      // The fatal path must never throw while reporting its own fatal.
+    }
+  };
   const moduleRegistry = new ModuleRegistry();
   const permissionResolver = new PermissionResolver();
   const commandRegistry = new CommandRegistry();
+  const renderer = new CoreRenderer();
+  const interactionRegistry = new InteractionRegistry({
+    acknowledge: async (component) => {
+      if (typeof component.deferUpdate === 'function') {
+        await component.deferUpdate();
+        return;
+      }
+      if (typeof component.deferReply === 'function') {
+        await component.deferReply({ ephemeral: false });
+      }
+    },
+  });
 
   // Command middleware sources resolve lazily against the registry, which is
   // populated only during Stage 12 (MODULE_LOAD). Everything here runs once
@@ -160,6 +197,15 @@ export async function bootstrap(): Promise<void> {
     const def = commandRegistry.get(name);
     return def !== undefined && commandRegistry.getModuleTier(def.moduleId) === 'core';
   };
+
+  // Persona (Twixter) wiring (§18.5.1): the binding service is constructed at
+  // bootstrap alongside the personal stores and registered in DI so it is never
+  // zero-caller. Persona identities load per persona process against PERSONA_ID.
+  const personaBindingService = new PersonaCommandBindingService(
+    new PostgresPersonaIdentityStore(db.knex),
+    new PostgresPersonaBindingStore(db.knex),
+    logger,
+  );
 
   const guildConfigService = new GuildConfigService(db, cache, logger);
   const maintenanceMode = new InMemoryMaintenanceModeState();
@@ -266,12 +312,19 @@ export async function bootstrap(): Promise<void> {
     permissionResolver,
     botOwnerIds: config.get('BOT_OWNER_IDS'),
     middlewarePipeline: commandMiddleware,
+    renderer,
+    resolveCommandOwner: (guildId, moduleSlug) =>
+      personaBindingService.resolveCommandOwner(guildId, moduleSlug),
+    ...(config.get('PERSONA_ID') !== '' ? { residentPersonaId: config.get('PERSONA_ID') } : {}),
   });
   container.registerValue(CORE_TOKENS.EventBus, eventBus);
   container.registerValue(CORE_TOKENS.ModuleRegistry, moduleRegistry);
   container.registerValue(CORE_TOKENS.PermissionResolver, permissionResolver);
   container.registerValue(CORE_TOKENS.CommandRegistry, commandRegistry);
   container.registerValue(CORE_TOKENS.CommandRouter, commandRouter);
+  container.registerValue(CORE_TOKENS.Renderer, renderer);
+  container.registerValue(CORE_TOKENS.InteractionRegistry, interactionRegistry);
+  container.registerValue(CORE_TOKENS.Personas, personaBindingService);
   container.freeze();
 
   // Modules load against a child of the frozen root container: they can
@@ -283,17 +336,15 @@ export async function bootstrap(): Promise<void> {
 
   // Stage 10: MODULE_DISCOVER
   progress.advanceTo('MODULE_DISCOVER');
-  const firstPartyModules = registerFirstPartyModules(moduleRegistry);
-  const swastikModules = await loadModulesFromSwastikVolume({
-    liveVolumePath: config.get('SWASTIK_LIVE_VOLUME_PATH'),
+  const discoveredModules = await loadModulesFromTierVolumes({
+    modulesDir: config.get('MODULES_DIR'),
     registry: moduleRegistry,
     logger,
   });
   logger.info('module-discovery-complete', {
-    source: 'first-party-and-swastik-live-volume',
-    liveVolumePath: config.get('SWASTIK_LIVE_VOLUME_PATH'),
-    firstPartyModules,
-    swastikModules: swastikModules.loaded,
+    source: 'tier-volumes',
+    modulesDir: config.get('MODULES_DIR'),
+    modules: discoveredModules.loaded,
   });
 
   // Stage 11: MODULE_VALIDATE
@@ -338,7 +389,10 @@ export async function bootstrap(): Promise<void> {
         ).channel;
         const member = (
           interaction as unknown as {
-            member?: { permissions?: { has: (p: string) => boolean } } | null;
+            member?: {
+              permissions?: { has: (p: string) => boolean };
+              roles?: { cache?: { keys: () => IterableIterator<string> } };
+            } | null;
           }
         ).member;
         const memberPermissions = member?.permissions
@@ -362,74 +416,48 @@ export async function bootstrap(): Promise<void> {
         if (memberPermissions !== undefined) {
           commandInteraction.memberPermissions = memberPermissions;
         }
+        if (member?.roles?.cache) {
+          commandInteraction.memberRoles = [...member.roles.cache.keys()];
+        }
         void commandRouter.dispatch(commandInteraction).catch(async (err) => {
           logger.error('interaction-dispatch-failed', {
             command: interaction.commandName,
             error: String(err),
           });
-          try {
-            if (interaction.deferred || interaction.replied) {
-              await interaction.editReply({
-                content: 'Something went wrong running that command.',
-              });
-            } else {
-              await interaction.reply({
-                content: 'Something went wrong running that command.',
-                ephemeral: true,
-              });
-            }
-          } catch (replyErr) {
-            logger.error('interaction-error-reply-failed', { error: String(replyErr) });
-          }
         });
         return;
       }
 
       if (interaction.isButton() || interaction.isStringSelectMenu()) {
-        const customId = interaction.customId;
-
-        let handled = false;
-
-        if (interaction.isStringSelectMenu()) {
-          if (customId.startsWith('dashboard:') || customId.startsWith('health:nav:')) {
-            const { handleDashboardComponent } = await import('../modules/dashboard/index.js');
-            handled = await handleDashboardComponent(interaction, moduleContainer);
-          } else if (customId.startsWith('browse:')) {
-            const { handleBrowseComponent } = await import('../modules/browse/index.js');
-            handled = await handleBrowseComponent(interaction, moduleContainer);
-          } else if (customId.startsWith('persona:')) {
-            const { handlePersonaComponent } = await import('../modules/persona/index.js');
-            handled = await handlePersonaComponent(interaction, moduleContainer);
-          } else if (customId.startsWith('modules:')) {
-            const { handleModulesComponent } = await import('../modules/modules/index.js');
-            handled = await handleModulesComponent(interaction, moduleContainer);
-          } else if (customId.startsWith('health:nav:')) {
-            const { handleHealthComponent } = await import('../modules/health/index.js');
-            handled = await handleHealthComponent(interaction, moduleContainer);
-          }
-        }
-
-        if (!handled && interaction.isButton()) {
-          if (customId.startsWith('queue:')) {
-            const { handleQueueComponent } = await import('../modules/queue/index.js');
-            handled = await handleQueueComponent(interaction, moduleContainer);
-          } else if (customId.startsWith('permit:')) {
-            const { handlePermitComponent } = await import('../modules/permit/index.js');
-            handled = await handlePermitComponent(interaction, moduleContainer);
-          } else if (customId.startsWith('modules:')) {
-            const { handleModulesComponent } = await import('../modules/modules/index.js');
-            handled = await handleModulesComponent(interaction, moduleContainer);
-          }
-        }
+        const componentInteraction = {
+          id: interaction.id,
+          customId: interaction.customId,
+          user: { id: interaction.user.id },
+          guildId: interaction.guildId,
+          reply: interaction.reply.bind(interaction) as unknown as (
+            options: unknown,
+          ) => Promise<void>,
+          deferReply: interaction.deferReply.bind(interaction) as unknown as (options?: {
+            ephemeral?: boolean;
+          }) => Promise<void>,
+          editReply: interaction.editReply.bind(interaction) as unknown as (
+            options: unknown,
+          ) => Promise<void>,
+          ...(interaction.deferUpdate !== undefined
+            ? {
+                deferUpdate: interaction.deferUpdate.bind(
+                  interaction,
+                ) as unknown as () => Promise<void>,
+              }
+            : {}),
+        };
+        const handled = await interactionRegistry.dispatch(componentInteraction);
 
         if (!handled) {
-          logger.warn('unhandled-component-interaction', { customId, userId: interaction.user.id });
-          try {
-            if (!interaction.deferred && !interaction.replied) {
-              await interaction.reply({ content: 'This interaction is no longer valid.', ephemeral: true });
-            }
-          } catch {
-          }
+          logger.warn('unhandled-component-interaction', {
+            customId: interaction.customId,
+            userId: interaction.user.id,
+          });
         }
         return;
       }
@@ -534,7 +562,16 @@ export async function bootstrap(): Promise<void> {
       config,
       auditWriter: {
         write: async (entry) => {
-          await db.knex('audit_logs').insert(entry);
+          await db.knex('audit_logs').insert({
+            actorId: entry.actorId,
+            source: entry.source,
+            action: entry.action,
+            reason: entry.reason,
+            outcome: entry.outcome,
+            rejectionReason: entry.rejectionReason ?? null,
+            metadata: entry.metadata ?? {},
+            createdAt: new Date(entry.at),
+          });
         },
       },
     },
@@ -558,6 +595,24 @@ export async function bootstrap(): Promise<void> {
     discordClient,
     drainInFlightCommands: (timeoutMs) => inFlightTracker.waitForDrain(timeoutMs),
   });
+  fatalHooks.shutdown = () =>
+    gracefulShutdown(
+      {
+        logger,
+        apiServer,
+        healthServer,
+        metricsServer,
+        moduleLoader,
+        moduleOrder: loadReport.order,
+        queue,
+        redis,
+        queueRedis,
+        db,
+        discordClient,
+        drainInFlightCommands: (timeoutMs) => inFlightTracker.waitForDrain(timeoutMs),
+      },
+      'FATAL',
+    );
 
   logger.info('bootstrap-complete', { degradedModules: loadReport.degraded });
 }

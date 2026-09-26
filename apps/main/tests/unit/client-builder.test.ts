@@ -4,10 +4,11 @@ import {
   computePartials,
   buildDiscordClient,
 } from '../../src/discord/client-builder.js';
+import { ConfigurationError } from '../../src/errors/taxonomy.js';
 
 describe('computeIntentsBitfield', () => {
   test('unions intents across modules and always includes Guilds', () => {
-    const bits = computeIntentsBitfield([['GuildMessages'], ['MessageContent']]);
+    const bits = computeIntentsBitfield([['GuildMessages'], ['DirectMessages']]);
     expect(bits).toBeGreaterThan(0);
     // Guilds = 1 << 0, must always be present.
     expect(bits & 1).toBe(1);
@@ -21,6 +22,23 @@ describe('computeIntentsBitfield', () => {
   test('deduplicates overlapping intents via bitwise or', () => {
     const single = computeIntentsBitfield([['Guilds'], ['Guilds']]);
     expect(single).toBe(1);
+  });
+
+  test('rejects every privileged intent with ConfigurationError (UR-A-27)', () => {
+    for (const privileged of ['MessageContent', 'GuildMembers', 'GuildPresences']) {
+      expect(() => computeIntentsBitfield([[privileged]])).toThrow(ConfigurationError);
+      expect(() => computeIntentsBitfield([[privileged]])).toThrow(/privileged/i);
+    }
+  });
+
+  test('fails closed: a mixed list containing one privileged intent is rejected entirely', () => {
+    expect(() => computeIntentsBitfield([['GuildMessages', 'GuildPresences']])).toThrow(
+      ConfigurationError,
+    );
+  });
+
+  test('non-privileged intents still union fine', () => {
+    expect(() => computeIntentsBitfield([['GuildMessages'], ['GuildVoiceStates']])).not.toThrow();
   });
 });
 

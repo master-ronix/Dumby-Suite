@@ -40,15 +40,19 @@ services:
       DATABASE_URL: postgres://dumby:dumby_dev_password@postgres:5432/dumby
       REDIS_URL: redis://redis:6379/0
       QUEUE_REDIS_URL: redis://redis:6379/1
-      SWASTIK_STAGING_VOLUME_PATH: /var/dumby/swastik-staging
-      SWASTIK_LIVE_VOLUME_PATH: /var/dumby/swastik-live
+      MODULES_DIR: /mnt/modules
+      SWASTIK_STAGING_VOLUME_PATH: /mnt/modules/swastik-staging
+      SWASTIK_LIVE_VOLUME_PATH: /mnt/modules/modules-core
     ports:
       - '8080:8080' # API_PORT
       - '8081:8081' # HEALTH_PORT
       - '8082:8082' # METRICS_PORT
     volumes:
-      - dumby_swastik_staging:/var/dumby/swastik-staging
-      - dumby_swastik_live:/var/dumby/swastik-live
+      - dumby_modules_admin:/mnt/modules/modules-admin
+      - dumby_modules_core:/mnt/modules/modules-core
+      - dumby_modules_standard:/mnt/modules/modules-standard
+      - dumby_modules_marketplace:/mnt/modules/modules-marketplace
+      - dumby_swastik_staging:/mnt/modules/swastik-staging
     depends_on:
       postgres:
         condition: service_healthy
@@ -79,13 +83,17 @@ services:
       DATABASE_URL: postgres://dumby:dumby_dev_password@postgres:5432/dumby
       REDIS_URL: redis://redis:6379/0
       QUEUE_REDIS_URL: redis://redis:6379/1
-      SWASTIK_STAGING_VOLUME_PATH: /var/dumby/swastik-staging
-      SWASTIK_LIVE_VOLUME_PATH: /var/dumby/swastik-live
+      MODULES_DIR: /mnt/modules
+      SWASTIK_STAGING_VOLUME_PATH: /mnt/modules/swastik-staging
+      SWASTIK_LIVE_VOLUME_PATH: /mnt/modules/modules-core
     ports:
       - '127.0.0.1:8085:8085'
     volumes:
-      - dumby_swastik_staging:/var/dumby/swastik-staging
-      - dumby_swastik_live:/var/dumby/swastik-live
+      - dumby_modules_admin:/mnt/modules/modules-admin
+      - dumby_modules_core:/mnt/modules/modules-core
+      - dumby_modules_standard:/mnt/modules/modules-standard
+      - dumby_modules_marketplace:/mnt/modules/modules-marketplace
+      - dumby_swastik_staging:/mnt/modules/swastik-staging
     depends_on:
       postgres:
         condition: service_healthy
@@ -106,5 +114,8 @@ services:
 
 volumes:
   dumby_postgres_data:
+  dumby_modules_admin:
+  dumby_modules_core:
+  dumby_modules_standard:
+  dumby_modules_marketplace:
   dumby_swastik_staging:
-  dumby_swastik_live:

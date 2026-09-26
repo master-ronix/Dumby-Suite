@@ -1,19 +1,22 @@
 /**
- * Command router — dispatches incoming slash command interactions
- * to their registered handlers through the full middleware pipeline
- * (Cluster: Frame).
- *
- * The router is constructed once at bootstrap Stage 09 (DI_BOOTSTRAP)
- * and registered as CORE_TOKENS.CommandRouter. Modules bind handlers
- * to it during Stage 12 (MODULE_LOAD) via their onLoad hooks.
+ * Command router — dispatches incoming command interactions through the
+ * middleware pipeline and the core Renderer.
  */
 import type { CommandRegistry } from './command-registry.js';
 import type { CommandDefinition } from './command-registry.js';
 import type { Logger } from '../logging/logger.js';
-import type { ModuleTier } from '../modules/tier-rules.js';
+import type { ModuleTier } from '../module-system/tier-rules.js';
 import { MiddlewarePipeline, type PipelineResult } from '../middleware/middleware-pipeline.js';
 import type { MiddlewareContext } from '../middleware/base-middleware.js';
 import type { PermissionResolver } from '../permissions/resolver.js';
+import type { RbacGrant } from '../permissions/rbac.js';
+import {
+  CoreRenderer,
+  FOLLOWUP_ALARM_MS,
+  type NoticeReasonCode,
+  type RenderIdentity,
+} from '../rendering/core-renderer.js';
+import { PersonaOccupiedError } from '../personas/persona.js';
 
 export interface CommandInteraction {
   commandName: string;
@@ -28,6 +31,10 @@ export interface CommandInteraction {
   channel?: { id: string; categoryId: string | null; isNsfw: boolean };
   /** Discord permission strings for the invoking member (live gateway). */
   memberPermissions?: readonly string[];
+  /** The invoking member's role IDs (live gateway), for Layer 7 grant scoping. */
+  memberRoles?: readonly string[];
+  /** True when the invoking member is the guild's ownership account (Layer 6 OWNER). */
+  isGuildOwner?: boolean;
 }
 
 export class CommandNotFoundError extends Error {
@@ -54,16 +61,29 @@ export class CommandScopeDeniedError extends Error {
 export interface CommandRouterOptions {
   devGuildId?: string;
   ackTimeoutMs?: number;
+  followupAlarmMs?: number;
   isModuleEnabledInGuild?: (moduleId: string, guildId: string) => Promise<boolean>;
   middlewarePipeline?: MiddlewarePipeline;
   permissionResolver?: PermissionResolver;
   botOwnerIds?: readonly string[];
+  /** This guild's Layer 7 grant rows, resolved fresh per interaction by the caller. */
+  guildGrants?: readonly RbacGrant[];
+  renderer?: CoreRenderer;
+  /**
+   * Persona dispatch gate (ADR-011, §35.3): resolves which identity — main bot
+   * or a named persona — owns a command key in a guild. Undefined means the
+   * main-bot default. Wired when a persona binding service is running.
+   */
+  resolveCommandOwner?: (guildId: string, moduleSlug: string) => Promise<string | undefined>;
+  /** This process's own persona identity (PERSONA_ID); absent for the main bot. */
+  residentPersonaId?: string;
 }
 
 export class CommandRouter {
   private readonly devGuildId: string;
-  private readonly ackTimeoutMs: number;
+  private readonly followupAlarmMs: number;
   private readonly middlewarePipeline: MiddlewarePipeline;
+  private readonly renderer: CoreRenderer;
 
   constructor(
     private readonly registry: CommandRegistry,
@@ -71,35 +91,67 @@ export class CommandRouter {
     private readonly options: CommandRouterOptions = {},
   ) {
     this.devGuildId = options.devGuildId ?? '';
-    this.ackTimeoutMs = options.ackTimeoutMs ?? 2_500;
+    this.followupAlarmMs = options.followupAlarmMs ?? options.ackTimeoutMs ?? FOLLOWUP_ALARM_MS;
     this.middlewarePipeline = options.middlewarePipeline ?? new MiddlewarePipeline();
+    this.renderer = options.renderer ?? new CoreRenderer();
   }
 
   async dispatch(interaction: CommandInteraction): Promise<void> {
     const name = interaction.commandName;
-    const def = this.registry.get(name);
+    const identity = { surface: this.surfaceName(name) };
 
-    if (!def) {
-      this.logger.warn('command-not-found', { command: name, userId: interaction.user.id });
-      throw new CommandNotFoundError(name);
+    if (interaction.guildId === null) {
+      this.logger.warn('dm-interaction-rejected', { command: name, userId: interaction.user.id });
+      throw new CommandScopeDeniedError(name, 'main-bot', 'core', null);
     }
 
-    await this.assertCommandInScope(def, interaction.guildId);
-    this.assertPermissionAllowed(def, interaction);
+    const traceId = this.renderer.createTraceId();
+    await this.renderer.sendBuffer(interaction, identity);
+
+    const def = this.registry.get(name);
+    if (!def) {
+      this.logger.warn('command-not-found', { command: name, userId: interaction.user.id });
+      await this.renderer.editNotice(interaction, {
+        ...identity,
+        reason: 'UNKNOWN_COMMAND',
+        traceId,
+      });
+      return;
+    }
 
     const start = Date.now();
-    const guardedInteraction = this.withAcknowledgementGuard(interaction);
+    const watchdog = this.armFollowupWatchdog(interaction, identity, traceId);
+
     try {
+      await this.assertCommandInScope(def, interaction.guildId);
+      this.assertPermissionAllowed(def, interaction);
+      await this.assertPersonaOwnsCommand(def, interaction.guildId);
+
+      let declaredResponse: unknown;
       const result = await this.middlewarePipeline.execute(
         this.createMiddlewareContext(interaction),
-        async () => def.execute(guardedInteraction.interaction),
+        async () => {
+          declaredResponse = await def.execute(
+            this.renderer.createReadOnlyInteraction(interaction),
+          );
+        },
       );
-      await this.handlePipelineResult(result, interaction);
+
+      const pipelinePassed = await this.handlePipelineResult(
+        result,
+        interaction,
+        identity,
+        traceId,
+      );
+      if (!pipelinePassed) return;
+
+      const render = this.renderer.normalizeHandlerResult(declaredResponse, identity);
+      await this.renderer.editFinal(interaction, render);
       this.logger.info('command-executed', {
         command: name,
         moduleId: def.moduleId,
         userId: interaction.user.id,
-        guildId: interaction.guildId ?? 'DM',
+        guildId: interaction.guildId,
         durationMs: Date.now() - start,
       });
     } catch (err) {
@@ -109,9 +161,13 @@ export class CommandRouter {
         userId: interaction.user.id,
         error: String(err),
       });
-      throw err;
+      await this.renderer.editNotice(interaction, {
+        ...identity,
+        reason: this.renderer.noticeReasonFromError(err),
+        traceId,
+      });
     } finally {
-      guardedInteraction.clear();
+      clearTimeout(watchdog);
     }
   }
 
@@ -124,20 +180,37 @@ export class CommandRouter {
       actorId: interaction.user.id,
       botOwnerIds: this.options.botOwnerIds ?? [],
       isDM: interaction.guildId === null,
-      allowedInDM: command.guildOnly === false,
+      allowedInDM: false,
       guildId: interaction.guildId,
       blacklist: {
         isGloballyBlacklisted: () => false,
         isGuildBlacklisted: () => false,
       },
+      availability: {
+        guildKnown: interaction.guildId !== null,
+        moduleActive: true,
+      },
       botPermissions: [],
       requiredBotPermissions: [],
       memberPermissions: interaction.memberPermissions ?? [],
-      requiredMemberPermissions: [],
-      rbac: { highestEffectiveRole: null, requiredRole: null },
+      requiredMemberPermissions: command.permissions?.discord ?? [],
+      rankInput: {
+        isGuildOwner: interaction.isGuildOwner ?? false,
+        restricted: false,
+      },
+      requiredRank: command.permissions?.rbac ?? null,
+      grants: {
+        commandKey: `${command.moduleId}.${command.data.name}`,
+        membership: {
+          roleIds: interaction.memberRoles ?? [],
+          groupIds: [],
+          setIds: [],
+        },
+        guildGrants: this.options.guildGrants ?? [],
+      },
       hasExplicitPermissionDeclaration: command.permissionDeclared === true,
       channel: interaction.channel ?? { id: 'unknown', categoryId: null, isNsfw: false },
-      requiresNsfw: false,
+      requiresNsfw: command.permissions?.nsfw ?? false,
       channelLocks: {},
     });
 
@@ -164,21 +237,26 @@ export class CommandRouter {
   private async handlePipelineResult(
     result: PipelineResult,
     interaction: CommandInteraction,
-  ): Promise<void> {
-    if (result.ok) return;
+    identity: RenderIdentity,
+    traceId: string,
+  ): Promise<boolean> {
+    if (result.ok) return true;
 
     if (result.rejection) {
       this.logger.warn('command-middleware-rejected', {
         command: interaction.commandName,
         userId: interaction.user.id,
-        guildId: interaction.guildId ?? 'DM',
+        ...(interaction.guildId !== null ? { guildId: interaction.guildId } : {}),
         statusCode: result.rejection.statusCode,
         reason: result.rejection.reason,
       });
-      if (!result.rejection.silent) {
-        await interaction.reply({ content: result.rejection.reason, ephemeral: true });
-      }
-      return;
+      await this.renderer.editNotice(interaction, {
+        ...identity,
+        reason: this.reasonFromRejection(result.rejection.reason),
+        traceId,
+        explanation: result.rejection.reason,
+      });
+      return false;
     }
 
     throw result.error;
@@ -223,59 +301,55 @@ export class CommandRouter {
     }
   }
 
-  private withAcknowledgementGuard(interaction: CommandInteraction): {
-    interaction: CommandInteraction;
-    clear: () => void;
-  } {
-    let acknowledged = interaction.replied === true || interaction.deferred === true;
-    let autoDeferred = false;
+  private async assertPersonaOwnsCommand(
+    command: CommandDefinition,
+    guildId: string | null,
+  ): Promise<void> {
+    if (guildId === null) return;
+    if (this.options.resolveCommandOwner === undefined) return;
+    const owner = await this.options.resolveCommandOwner(guildId, command.moduleId);
+    if (owner === undefined) return;
+    if (owner === this.options.residentPersonaId) return;
+    throw new PersonaOccupiedError(guildId, command.moduleId, owner);
+  }
 
-    const timer: ReturnType<typeof setTimeout> = setTimeout(() => {
-      if (acknowledged) return;
-      acknowledged = true;
-      autoDeferred = true;
-      void interaction.deferReply({ ephemeral: true }).catch((err) => {
-        this.logger.error('command-auto-defer-failed', {
-          command: interaction.commandName,
-          error: String(err),
+  private armFollowupWatchdog(
+    interaction: CommandInteraction,
+    identity: RenderIdentity,
+    traceId: string,
+  ): ReturnType<typeof setTimeout> {
+    return setTimeout(() => {
+      void this.renderer
+        .editNotice(interaction, { ...identity, reason: 'OVERDUE', traceId })
+        .then(() => {
+          this.logger.warn('command-followup-watchdog-fired', {
+            command: interaction.commandName,
+            traceId,
+          });
+        })
+        .catch((err) => {
+          this.logger.error('command-followup-watchdog-failed', {
+            command: interaction.commandName,
+            traceId,
+            error: String(err),
+          });
         });
-      });
-    }, this.ackTimeoutMs);
+    }, this.followupAlarmMs);
+  }
 
-    const guarded = new Proxy(interaction, {
-      get(target, prop, receiver) {
-        if (prop === 'reply') {
-          return async (options: unknown): Promise<void> => {
-            if (autoDeferred) {
-              await target.editReply(options);
-              return;
-            }
-            acknowledged = true;
-            await target.reply(options);
-          };
-        }
+  private reasonFromRejection(reason: string): NoticeReasonCode {
+    const normalized = reason.toLowerCase();
+    if (normalized.includes('maintenance')) return 'MAINTENANCE';
+    if (normalized.includes('rate')) return 'RATE_LIMITED';
+    if (normalized.includes('cooldown')) return 'COOLDOWN';
+    return 'FORBIDDEN';
+  }
 
-        if (prop === 'deferReply') {
-          return async (options?: { ephemeral?: boolean }): Promise<void> => {
-            acknowledged = true;
-            await target.deferReply(options);
-          };
-        }
-
-        if (prop === 'editReply') {
-          return async (options: unknown): Promise<void> => {
-            acknowledged = true;
-            await target.editReply(options);
-          };
-        }
-
-        return Reflect.get(target, prop, receiver);
-      },
-    });
-
-    return {
-      interaction: guarded,
-      clear: () => clearTimeout(timer),
-    };
+  private surfaceName(commandName: string): string {
+    return commandName
+      .split(/[-_.\s]+/u)
+      .filter((part) => part.length > 0)
+      .map((part) => `${part[0]?.toUpperCase() ?? ''}${part.slice(1)}`)
+      .join(' ');
   }
 }

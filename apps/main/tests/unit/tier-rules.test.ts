@@ -3,7 +3,7 @@ import {
   validateTierRules,
   isTierValid,
   defaultEnabledForTier,
-} from '../../src/modules/tier-rules.js';
+} from '../../src/module-system/tier-rules.js';
 
 test('a valid standard-tier module has no violations', () => {
   expect(isTierValid({ name: 'utility', tier: 'standard' })).toBe(true);

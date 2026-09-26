@@ -56,6 +56,15 @@ export default [
       'no-restricted-imports': [
         'error',
         {
+          paths: [
+            {
+              name: 'discord.js',
+              importNames: ['EmbedBuilder', 'MessageEmbed'],
+              message:
+                'Classic embeds are banned (ADR-001): all presentation is renderer-issued ' +
+                'Components v2. Use the core Renderer via render descriptors.',
+            },
+          ],
           patterns: [
             {
               group: ['**/modules/*/!(forCrossModuleRead|manifest)*'],
@@ -71,6 +80,8 @@ export default [
       // Config must flow through ConfigService / parseEnv(), not bare process.env.
       // Exempted: src/config/env.schema.ts (the single allowed boundary file)
       //           src/entry/*.ts (boot files that call parseEnv before DI exists)
+      //
+      // ADR-001 embed ban — no `new EmbedBuilder()` / `new MessageEmbed()` anywhere.
       'no-restricted-syntax': [
         'error',
         {
@@ -79,6 +90,13 @@ export default [
             'Direct process.env access is forbidden. Inject ConfigService via the DI container ' +
             'or use parseEnv() in src/config/env.schema.ts. ' +
             'Only src/config/env.schema.ts and src/entry/*.ts are allowed to read process.env directly.',
+        },
+        {
+          selector:
+            "NewExpression[callee.name='EmbedBuilder'], NewExpression[callee.name='MessageEmbed']",
+          message:
+            'Classic embed construction is banned (ADR-001): all presentation is renderer-issued ' +
+            'Components v2.',
         },
       ],
 

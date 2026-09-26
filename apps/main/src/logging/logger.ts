@@ -15,14 +15,29 @@ export interface LogContext {
   [key: string]: unknown;
 }
 
-const REDACT_PATHS = [
+export const REDACT_PATHS = [
+  'token',
   '*.token',
+  '*.*.token',
+  'password',
   '*.password',
+  '*.*.password',
+  'secret',
   '*.secret',
+  '*.*.secret',
+  'authorization',
   '*.authorization',
+  '*.*.authorization',
   '*.Authorization',
   '*.botToken',
   '*.internalApiKey',
+  '*.webhookUrl',
+  '*.signingKey',
+  '*.apiKey',
+  '*.*.apiKey',
+  '*.clientSecret',
+  '*.accessToken',
+  '*.refreshToken',
 ];
 
 export class Logger {

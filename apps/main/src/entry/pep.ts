@@ -12,6 +12,7 @@ import { createLogger } from '../logging/logger.js';
 import { DbClient } from '../db/client.js';
 import { Redis } from 'ioredis';
 import { PowerEngineDispatcher } from '../http/power-engine-dispatcher.js';
+import { registerInternalAuth } from '../http/internal-auth.js';
 
 const env = parseEnv(pickEnvKeys(process.env));
 const logger = createLogger(env.LOG_LEVEL);
@@ -28,7 +29,7 @@ const db = new DbClient({
 const redis = new Redis(env.REDIS_URL);
 
 const dispatcher = new PowerEngineDispatcher(
-  { trustedSources: env.PEP_TRUSTED_SOURCES },
+  { trustedSources: ['pep-internal'] },
   {
     write: async (entry) => {
       await db.knex('audit_logs').insert({
@@ -46,6 +47,10 @@ const dispatcher = new PowerEngineDispatcher(
 
 const app = Fastify({ logger: false });
 
+registerInternalAuth(app, {
+  expectedKey: env.INTERNAL_API_KEY,
+});
+
 app.post<{ Params: { functionName: string }; Body: unknown }>(
   '/api/pep/:functionName',
   async (request, reply) => {
@@ -54,7 +59,7 @@ app.post<{ Params: { functionName: string }; Body: unknown }>(
     try {
       const req = {
         actorId: String(body['actorId'] ?? ''),
-        source: String(body['source'] ?? ''),
+        source: 'pep-internal',
         reason: String(body['reason'] ?? ''),
       };
       const result = await dispatcher.dispatch(functionName, req, async () => body);

@@ -46,7 +46,7 @@ export interface MediaGalleryComponent extends ComponentBase {
 export interface SeparatorComponent extends ComponentBase {
   type: typeof ComponentType.SEPARATOR;
   divider?: boolean;
-  spacing?: 'small' | 'large';
+  spacing?: 1 | 2;
 }
 
 export interface ContainerComponent extends ComponentBase {
@@ -113,34 +113,36 @@ export function textDisplay(content: string): TextDisplayComponent {
  * Creates a Media Gallery component for banner images.
  */
 export function mediaGallery(url: string, description?: string): MediaGalleryComponent {
-  const items: Array<{ media: { url: string }; description?: string }> = [{ media: { url } }];
+  const item: { media: { url: string }; description?: string } = { media: { url } };
   if (description !== undefined) {
-    items[0].description = description;
+    item.description = description;
   }
   return {
     type: ComponentType.MEDIA_GALLERY,
-    items,
+    items: [item],
   };
 }
 
 /**
  * Creates a Separator component.
  */
-export function separator(divider = true, spacing: 'small' | 'large' = 'large'): SeparatorComponent {
+export function separator(
+  dividerOrSpacing: boolean | 'small' | 'large' = true,
+  spacing: 'small' | 'large' = 'large',
+): SeparatorComponent {
+  const divider = typeof dividerOrSpacing === 'boolean' ? dividerOrSpacing : true;
+  const size = typeof dividerOrSpacing === 'string' ? dividerOrSpacing : spacing;
   return {
     type: ComponentType.SEPARATOR,
     divider,
-    spacing,
+    spacing: size === 'small' ? 1 : 2,
   };
 }
 
 /**
  * Creates a Container component (top-level).
  */
-export function container(
-  components: Component[],
-  accentColor?: number,
-): ContainerComponent {
+export function container(components: Component[], accentColor?: number): ContainerComponent {
   const result: ContainerComponent = {
     type: ComponentType.CONTAINER,
     components,
@@ -165,10 +167,9 @@ export function stringSelect(
   }>,
   placeholder?: string,
 ): StringSelectComponent {
-  return {
+  const result: StringSelectComponent = {
     type: ComponentType.STRING_SELECT,
     custom_id: customId,
-    placeholder,
     min_values: 1,
     max_values: 1,
     options: options.map((opt) => {
@@ -188,6 +189,10 @@ export function stringSelect(
       return result;
     }),
   };
+  if (placeholder !== undefined) {
+    result.placeholder = placeholder;
+  }
+  return result;
 }
 
 /**
@@ -252,7 +257,10 @@ export function createBannerMediaGallery(bannerUrl: string): MediaGalleryCompone
  * Creates a default generated banner URL.
  * In a real implementation, this would generate an image server-side or use a placeholder service.
  */
-export function getDefaultBannerUrl(moduleName: string, accentColor = DEFAULT_ACCENT_COLOR): string {
+export function getDefaultBannerUrl(
+  moduleName: string,
+  accentColor = DEFAULT_ACCENT_COLOR,
+): string {
   const encoded = encodeURIComponent(moduleName);
   return `https://api.dumby.dev/banner?module=${encoded}&color=${accentColor.toString(16).padStart(6, '0')}`;
 }
@@ -260,7 +268,11 @@ export function getDefaultBannerUrl(moduleName: string, accentColor = DEFAULT_AC
 /**
  * Creates the standard title block (TextDisplay with title and developer attribution).
  */
-export function createTitleBlock(pageName: string, developer = 'Quixotic Mnemonics', version?: string): TextDisplayComponent {
+export function createTitleBlock(
+  pageName: string,
+  developer = 'Quixotic Mnemonics',
+  version?: string,
+): TextDisplayComponent {
   const title = `Dumby | ${pageName}`;
   const attribution = version
     ? `-# Developed by ${developer} v${version}`
@@ -271,8 +283,10 @@ export function createTitleBlock(pageName: string, developer = 'Quixotic Mnemoni
 /**
  * Creates the Marketplace title block (no "Dumby |" prefix).
  */
-export function createMarketplaceTitleBlock(developer = 'Quixotic Mnemonics'): TextDisplayComponent {
-  return textDisplay(`Marketplace\n-# Developed by ${developer}`);
+export function createMarketplaceTitleBlock(
+  developer = 'Quixotic Mnemonics',
+): TextDisplayComponent {
+  return textDisplay(`Dumby | Marketplace\n-# Developed by ${developer}`);
 }
 
 /**

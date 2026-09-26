@@ -1,8 +1,0 @@
-{
-  "browse.description": "Browse the marketplace, discover modules, and install them.",
-  "browse.response.title": "Marketplace",
-  "browse.response.attribution": "Developed by Quixotic Mnemonics",
-  "browse.section.installed": "Installed & Standard-Tier Modules",
-  "browse.nav.placeholder": "Select a module to install...",
-  "browse.install.success": "Module installed successfully!"
-}

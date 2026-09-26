@@ -45,14 +45,13 @@ function fakeEnv(overrides: Partial<Env> = {}): Env {
     TELEMETRY_ENABLED: false,
     TRACE_SAMPLE_RATE: 0.1,
     OTEL_EXPORTER_OTLP_ENDPOINT: '',
-    INTERNAL_API_KEY: 'internal-key',
-    JWT_SIGNING_KEY: 'jwt-signing-key-1234567890',
-    ENCRYPTION_KEY_CURRENT: 'encryption-key-1234567890',
-    ENCRYPTION_KEY_PREVIOUS: '',
+    INTERNAL_API_KEY: 'internal-key-internal-key-32chars',
+    ENCRYPTION_ROOT_KEY: 'JF8PejG/00/nD5iuxpUtzGqh5MWW3yL1Oj6EcWYPgzM=',
     PEP_TRUSTED_SOURCES: ['dashboard'],
     CLAI_MFA_ISSUER: 'DUMBY-CLAI',
     CLAI_AUTHKEY_STORAGE_URL: '',
     CLAI_BREAK_GLASS_SCRIPT_URL: '',
+    MODULES_DIR: '/var/dumby/modules',
     SWASTIK_STAGING_VOLUME_PATH: '/var/dumby/swastik-staging',
     SWASTIK_LIVE_VOLUME_PATH: '/var/dumby/swastik-live',
     MTP_BANDWIDTH_TOKEN_THRESHOLD_BYTES: 1048576,
@@ -87,7 +86,7 @@ test('redactedSnapshot() masks every known secret key', () => {
   expect(redacted.BOT_TOKEN).toBe('[REDACTED]');
   expect(redacted.DATABASE_URL).toBe('[REDACTED]');
   expect(redacted.INTERNAL_API_KEY).toBe('[REDACTED]');
-  expect(redacted.JWT_SIGNING_KEY).toBe('[REDACTED]');
+  expect(redacted.ENCRYPTION_ROOT_KEY).toBe('[REDACTED]');
 });
 
 test('redactedSnapshot() leaves non-secret values untouched', () => {

@@ -5,9 +5,10 @@ const minValid = {
   DATABASE_URL: 'postgres://localhost/dumby_test',
   REDIS_URL: 'redis://localhost:6379/0',
   QUEUE_REDIS_URL: 'redis://localhost:6379/1',
-  INTERNAL_API_KEY: 'supersecretkey',
-  JWT_SIGNING_KEY: 'supersecretjwtsignkey',
-  ENCRYPTION_KEY_CURRENT: 'supersecretencryptionkey',
+  INTERNAL_API_KEY: 'supersecretkey_supersecretkey_32',
+  // base64 of exactly 32 bytes (ADR-003 envelope root key)
+  ENCRYPTION_ROOT_KEY: 'JF8PejG/00/nD5iuxpUtzGqh5MWW3yL1Oj6EcWYPgzM=',
+  DEV_GUILD_ID: '900000000000000001',
 };
 
 describe('parseEnv', () => {
@@ -19,6 +20,7 @@ describe('parseEnv', () => {
     expect(env.API_PORT).toBe(8080); // default
     expect(env.HEALTH_PORT).toBe(8081); // default
     expect(env.DATABASE_POOL_MAX).toBe(10); // default
+    expect(env.CREDENTIALS_SERVICE_PORT).toBe(8086); // default
   });
 
   test('coerces numeric strings correctly', () => {
@@ -33,18 +35,35 @@ describe('parseEnv', () => {
   });
 
   test('maps documented DEVELOPMENT_GUILD_ID alias to canonical DEV_GUILD_ID', () => {
-    const env = parseEnv({ ...minValid, DEVELOPMENT_GUILD_ID: 'guild-123' });
-    expect(env.DEV_GUILD_ID).toBe('guild-123');
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { DEV_GUILD_ID: _, ...base } = minValid;
+    const env = parseEnv({ ...base, DEVELOPMENT_GUILD_ID: '123456789012345678' });
+    expect(env.DEV_GUILD_ID).toBe('123456789012345678');
     expect(env).not.toHaveProperty('DEVELOPMENT_GUILD_ID');
   });
 
   test('prefers canonical DEV_GUILD_ID when both guild-id keys are present', () => {
     const env = parseEnv({
       ...minValid,
-      DEV_GUILD_ID: 'canonical-guild',
-      DEVELOPMENT_GUILD_ID: 'legacy-guild',
+      DEV_GUILD_ID: '900000000000000001',
+      DEVELOPMENT_GUILD_ID: '123456789012345678',
     });
-    expect(env.DEV_GUILD_ID).toBe('canonical-guild');
+    expect(env.DEV_GUILD_ID).toBe('900000000000000001');
+  });
+
+  test('DEV_GUILD_ID is required and must be a snowflake (UR-B-17)', () => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { DEV_GUILD_ID: _, ...rest } = minValid;
+    expect(() => parseEnv(rest)).toThrow(ConfigValidationError);
+    expect(() => parseEnv({ ...minValid, DEV_GUILD_ID: 'guild-123' })).toThrow(
+      ConfigValidationError,
+    );
+    expect(() => parseEnv({ ...minValid, DEV_GUILD_ID: '123' })).toThrow(ConfigValidationError);
+  });
+
+  test('coerces CREDENTIALS_SERVICE_PORT from string (UR-A-26/UR-C-27)', () => {
+    const env = parseEnv({ ...minValid, CREDENTIALS_SERVICE_PORT: '9001' });
+    expect(env.CREDENTIALS_SERVICE_PORT).toBe(9001);
   });
 
   test('returns empty array for empty BOT_OWNER_IDS', () => {

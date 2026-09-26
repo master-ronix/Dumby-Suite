@@ -4,15 +4,19 @@ import {
   ModuleRegistry,
   ModuleAlreadyRegisteredError,
   type LoadedModule,
-} from '../../src/modules/registry.js';
+} from '../../src/module-system/registry.js';
 import {
   ModuleLoader,
   ModuleValidationFailedError,
   FatalModuleLoadError,
-} from '../../src/modules/loader.js';
+} from '../../src/module-system/loader.js';
 import type { Logger } from '../../src/logging/logger.js';
-import type { ModuleManifest } from '../../src/modules/manifest.schema.js';
-import { loadModulesFromSwastikVolume } from '../../src/modules/swastik-loader.js';
+import type { ModuleManifest } from '../../src/module-system/manifest.schema.js';
+import {
+  loadModulesFromTierVolumes,
+  loadModulesFromSwastikVolume,
+  MODULE_VOLUME_NAMES,
+} from '../../src/module-system/swastik-loader.js';
 import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -87,26 +91,96 @@ test('ModuleRegistry rejects registering the same module name twice', () => {
   );
 });
 
-test('loadModulesFromSwastikVolume dynamically loads promoted modules from the live volume', async () => {
-  const registry = new ModuleRegistry();
-  const volumeRoot = mkdtempSync(join(tmpdir(), 'dumby-swastik-live-'));
-  const moduleRoot = join(volumeRoot, 'utility');
-  mkdirSync(moduleRoot);
+function writeVolumeModule(
+  modulesDir: string,
+  volumeName: string,
+  moduleName: string,
+  manifestOverrides: Partial<ModuleManifest>,
+): void {
+  const moduleRoot = join(modulesDir, volumeName, moduleName);
+  mkdirSync(moduleRoot, { recursive: true });
   writeFileSync(
     join(moduleRoot, 'manifest.json'),
-    JSON.stringify(fakeManifest({ name: 'utility', tier: 'core' })),
+    JSON.stringify(fakeManifest({ name: moduleName, ...manifestOverrides })),
   );
   writeFileSync(join(moduleRoot, 'index.js'), 'export const onLoad = () => undefined;\n');
+}
+
+test('loadModulesFromTierVolumes blindly discovers modules from all configured tier volumes', async () => {
+  const registry = new ModuleRegistry();
+  const modulesDir = mkdtempSync(join(tmpdir(), 'dumby-modules-'));
+  for (const volumeName of MODULE_VOLUME_NAMES) {
+    mkdirSync(join(modulesDir, volumeName), { recursive: true });
+  }
+  writeVolumeModule(modulesDir, 'modules-admin', 'core-admin', {
+    tier: 'admin',
+    devGuildOnly: true,
+  });
+  writeVolumeModule(modulesDir, 'modules-core', 'utility', { tier: 'core' });
+  writeVolumeModule(modulesDir, 'modules-standard', 'polls', { tier: 'standard' });
+  writeVolumeModule(modulesDir, 'modules-marketplace', 'music', {
+    tier: 'marketplace',
+    marketplaceCategory: 'audio',
+  });
+
+  const result = await loadModulesFromTierVolumes({
+    modulesDir,
+    registry,
+    logger: fakeLogger(),
+  });
+
+  expect(result.loaded).toStrictEqual(['core-admin', 'utility', 'polls', 'music']);
+  expect(result.failed).toStrictEqual([]);
+  expect(registry.get('core-admin')?.manifest.tier).toBe('admin');
+  expect(registry.get('utility')?.manifest.tier).toBe('core');
+  expect(registry.get('polls')?.manifest.tier).toBe('standard');
+  expect(registry.get('music')?.manifest.tier).toBe('marketplace');
+});
+
+test('loadModulesFromTierVolumes does not discover modules outside the named volume set', async () => {
+  const registry = new ModuleRegistry();
+  const modulesDir = mkdtempSync(join(tmpdir(), 'dumby-modules-'));
+  mkdirSync(join(modulesDir, 'random-modules'), { recursive: true });
+  writeVolumeModule(modulesDir, 'random-modules', 'rogue', { tier: 'core' });
+
+  const result = await loadModulesFromTierVolumes({
+    modulesDir,
+    registry,
+    logger: fakeLogger(),
+  });
+
+  expect(result.loaded).toStrictEqual([]);
+  expect(registry.has('rogue')).toBe(false);
+});
+
+test('loadModulesFromTierVolumes enforces tier-at-rest by volume placement', async () => {
+  const registry = new ModuleRegistry();
+  const modulesDir = mkdtempSync(join(tmpdir(), 'dumby-modules-'));
+  mkdirSync(join(modulesDir, 'modules-standard'), { recursive: true });
+  writeVolumeModule(modulesDir, 'modules-standard', 'wrong-place', { tier: 'core' });
+
+  await expect(() =>
+    loadModulesFromTierVolumes({
+      modulesDir,
+      registry,
+      logger: fakeLogger(),
+    }),
+  ).rejects.toThrow('modules-standard/wrong-place');
+});
+
+test('loadModulesFromSwastikVolume remains an alias for tier-volume discovery', async () => {
+  const registry = new ModuleRegistry();
+  const modulesDir = mkdtempSync(join(tmpdir(), 'dumby-modules-'));
+  mkdirSync(join(modulesDir, 'modules-core'), { recursive: true });
+  writeVolumeModule(modulesDir, 'modules-core', 'utility', { tier: 'core' });
 
   const result = await loadModulesFromSwastikVolume({
-    liveVolumePath: volumeRoot,
+    modulesDir,
     registry,
     logger: fakeLogger(),
   });
 
   expect(result.loaded).toStrictEqual(['utility']);
-  expect(result.failed).toStrictEqual([]);
-  expect(registry.get('utility')?.manifest.tier).toBe('core');
 });
 
 test('ModuleLoader.validateAll throws ModuleValidationFailedError for a bad manifest', () => {

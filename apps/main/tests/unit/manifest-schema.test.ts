@@ -1,5 +1,5 @@
 import { test, expect, describe } from 'vitest';
-import { parseManifest, ManifestValidationError } from '../../src/modules/manifest.schema.js';
+import { parseManifest, ManifestValidationError } from '../../src/module-system/manifest.schema.js';
 
 const minValid = {
   name: 'my-module',

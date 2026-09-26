@@ -6,8 +6,11 @@
  *
  *   1. actorId, source, and reason are required on every call.
  *   2. An empty reason or an untrusted source is rejected outright.
- *   3. An audit_logs row is written for EVERY attempt — allowed or
- *      rejected — never only on success.
+ *   3. An audit_logs row is written for EVERY attempt — rejected rows are
+ *      written before the rejection is returned, and allowed rows are
+ *      written only AFTER the handler has completed successfully, so the
+ *      recorded outcome is truthful (never a claim about an action that
+ *      has not actually run).
  */
 
 export interface PowerEngineRequest {
@@ -41,6 +44,8 @@ export function validatePowerEngineRequest(
   return { valid: true };
 }
 
+export type AuditScalar = string | number | boolean | null;
+
 export interface PowerEngineAuditEntry {
   actorId: string;
   source: string;
@@ -48,6 +53,7 @@ export interface PowerEngineAuditEntry {
   action: string;
   outcome: 'allowed' | 'rejected';
   rejectionReason?: RejectionReason;
+  metadata?: Record<string, AuditScalar>;
   at: number;
 }
 
@@ -67,6 +73,11 @@ export class InMemoryAuditWriter implements AuditWriter {
 export type DispatchOutcome<T> =
   { ok: true; result: T } | { ok: false; rejectionReason: RejectionReason };
 
+export interface DispatchOptions {
+  /** Action-specific fact set serialized into the audit_logs.metadata column. */
+  metadata?: Record<string, AuditScalar>;
+}
+
 export class PowerEngineDispatcher {
   constructor(
     private readonly config: TrustedSourcesConfig,
@@ -78,6 +89,7 @@ export class PowerEngineDispatcher {
     action: string,
     req: PowerEngineRequest,
     handler: () => Promise<T>,
+    options: DispatchOptions = {},
   ): Promise<DispatchOutcome<T>> {
     const validation = validatePowerEngineRequest(req, this.config);
 
@@ -89,23 +101,28 @@ export class PowerEngineDispatcher {
         action,
         outcome: 'rejected',
         rejectionReason: validation.rejectionReason,
+        ...(options.metadata !== undefined ? { metadata: options.metadata } : {}),
         at: this.now(),
       });
       return { ok: false, rejectionReason: validation.rejectionReason };
     }
 
-    // Audit the allowed attempt BEFORE running the handler: the write is
-    // unconditional on the *attempt*, not on the handler's own success.
+    // Run the handler FIRST, then audit the outcome: the 'allowed' write is
+    // unconditional on the *attempt* being accepted, but it must never claim
+    // an action succeeded before the handler has actually run (UR-A-05 /
+    // UR-B-06 — truthful, outcome-based audit rows).
+    const result = await handler();
+
     await this.auditWriter.write({
       actorId: req.actorId,
       source: req.source,
       reason: req.reason,
       action,
       outcome: 'allowed',
+      ...(options.metadata !== undefined ? { metadata: options.metadata } : {}),
       at: this.now(),
     });
 
-    const result = await handler();
     return { ok: true, result };
   }
 }

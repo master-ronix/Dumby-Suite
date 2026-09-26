@@ -64,6 +64,7 @@ export class InternalEventBus {
   private readonly als = new AsyncLocalStorage<EmitContext>();
   private readonly onSubscriberError: ((err: unknown, eventName: string) => void) | undefined;
   private cycleDetectedCount = 0;
+  private readonly subscriberErrors: Array<{ eventName: string; error: unknown }> = [];
 
   constructor(options: EventBusOptions = {}) {
     this.maxEmitDepth = options.maxEmitDepth ?? 20;
@@ -136,16 +137,80 @@ export class InternalEventBus {
     try {
       await call();
     } catch (err) {
-      if (this.onSubscriberError) {
-        this.onSubscriberError(err, eventName);
-      } else {
-        throw err;
-      }
+      // Cycle/structural errors always propagate: silently isolating them
+      // would hide unbounded-recursion bugs behind a resolved promise.
+      // Runtime subscriber failures are isolated per UR-C-16 instead.
+      if (err instanceof EventCycleError) throw err;
+      this.recordSubscriberError(err, eventName);
     } finally {
       if (sub.once) {
         this.subs = this.subs.filter((s) => s.id !== sub.id);
       }
     }
+  }
+
+  /**
+   * Synchronous delivery for ordering-critical flows (UR-C-16): listeners
+   * run in priority order before emitSync returns. Async listeners are
+   * detached (their promises fire-and-forget) but still isolated — a
+   * rejected promise never aborts the remaining subscribers.
+   */
+  emitSync(eventName: string, payload: unknown): void {
+    assertValidEventName(eventName);
+
+    const parent = this.als.getStore();
+    const chain = parent ? [...parent.chain, eventName] : [eventName];
+
+    if (chain.length > this.maxEmitDepth) {
+      this.cycleDetectedCount += 1;
+      throw new EventCycleError(chain);
+    }
+
+    this.als.run({ chain }, () => {
+      const deliveries: Array<{ sub: Subscription; call: () => void | Promise<void> }> = [
+        ...this.subs
+          .filter((s) => s.eventName === eventName)
+          .sort((a, b) => b.priority - a.priority)
+          .map((sub) => ({
+            sub,
+            call: () => (sub.handler as EventHandler)(payload),
+          })),
+        ...this.subs
+          .filter((s) => s.eventName === null)
+          .sort((a, b) => b.priority - a.priority)
+          .map((sub) => ({
+            sub,
+            call: () => (sub.handler as WildcardHandler)({ eventName, payload }),
+          })),
+      ];
+
+      for (const { sub, call } of deliveries) {
+        try {
+          const result = call();
+          if (typeof result === 'object' && result !== null && 'then' in result) {
+            void Promise.resolve(result).catch((err: unknown) =>
+              this.recordSubscriberError(err, eventName),
+            );
+          }
+        } catch (err) {
+          if (err instanceof EventCycleError) throw err;
+          this.recordSubscriberError(err, eventName);
+        } finally {
+          if (sub.once) {
+            this.subs = this.subs.filter((s) => s.id !== sub.id);
+          }
+        }
+      }
+    });
+  }
+
+  getSubscriberErrors(): Array<{ eventName: string; error: unknown }> {
+    return [...this.subscriberErrors];
+  }
+
+  private recordSubscriberError(err: unknown, eventName: string): void {
+    this.subscriberErrors.push({ eventName, error: err });
+    this.onSubscriberError?.(err, eventName);
   }
 
   getCycleDetectedCount(): number {

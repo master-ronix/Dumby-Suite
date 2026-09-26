@@ -1,10 +1,11 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: dumby-swastik-staging
+  name: dumby-modules-admin
   labels:
     app: dumby
-    component: swastik
+    component: modules
+    module-tier: admin
 spec:
   accessModes:
     - ReadWriteMany
@@ -15,7 +16,52 @@ spec:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: dumby-swastik-live
+  name: dumby-modules-core
+  labels:
+    app: dumby
+    component: modules
+    module-tier: core
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: dumby-modules-standard
+  labels:
+    app: dumby
+    component: modules
+    module-tier: standard
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: dumby-modules-marketplace
+  labels:
+    app: dumby
+    component: modules
+    module-tier: marketplace
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: dumby-swastik-staging
   labels:
     app: dumby
     component: swastik

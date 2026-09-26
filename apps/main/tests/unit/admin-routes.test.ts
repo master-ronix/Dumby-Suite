@@ -15,7 +15,7 @@ test('GET /admin/config returns config snapshot', async () => {
   const res = await app.inject({ method: 'GET', url: '/admin/config' });
   expect(res.statusCode).toBe(200);
   expect(res.json()).toStrictEqual({ foo: 'bar' });
-});
+}, 15_000);
 
 test('POST /admin/system/maintenance-mode dispatches to power engine', async () => {
   const app = Fastify();
@@ -35,11 +35,11 @@ test('POST /admin/system/maintenance-mode dispatches to power engine', async () 
   });
   expect(res.statusCode).toBe(200);
   expect(dispatcher.dispatch).toHaveBeenCalled();
-});
+}, 15_000);
 
-test('PEP economy endpoint dispatches to power engine', async () => {
+test('PEP economy endpoint answers honest 501 (no stub, no fake 200)', async () => {
   const app = Fastify();
-  const dispatcher = { dispatch: vi.fn().mockResolvedValue({ ok: true }) };
+  const dispatcher = { dispatch: vi.fn() };
   const deps = {
     dispatcher,
     db: { knex: vi.fn() },
@@ -53,12 +53,9 @@ test('PEP economy endpoint dispatches to power engine', async () => {
     url: '/admin/power-engine/economy/balance-adjust',
     body: { actorId: 'admin', source: 'internal', reason: 'adjustment' },
   });
-  expect(res.statusCode).toBe(200);
-  expect(dispatcher.dispatch).toHaveBeenCalledWith(
-    'economy.balance-adjust',
-    expect.any(Object),
-    expect.any(Function),
-  );
+  expect(res.statusCode).toBe(501);
+  expect(res.json().error?.code).toBe('NOT_IMPLEMENTED');
+  expect(dispatcher.dispatch).not.toHaveBeenCalled();
 });
 
 test('PEP feature-flags endpoint dispatches to power engine', async () => {

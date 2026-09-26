@@ -4,7 +4,7 @@ import {
   CommandCollisionError,
   type CommandDefinition,
 } from '../../src/commands/command-registry.js';
-import type { ModuleTier } from '../../src/modules/tier-rules.js';
+import type { ModuleTier } from '../../src/module-system/tier-rules.js';
 
 function makeDef(name: string, moduleId = 'health'): CommandDefinition {
   return {

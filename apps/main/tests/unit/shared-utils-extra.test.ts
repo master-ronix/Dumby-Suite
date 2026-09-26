@@ -5,7 +5,6 @@ import {
   hmacSha256,
   constantTimeEqual,
 } from '../../src/shared/utils/crypto.js';
-import { createEmbed } from '../../src/shared/utils/embed.js';
 import { paginate, buildPageButtons } from '../../src/shared/utils/paginator.js';
 import { withRetry } from '../../src/shared/utils/retry.js';
 import {
@@ -62,43 +61,6 @@ describe('constantTimeEqual', () => {
   test('short-circuits on length mismatch without comparing', () => {
     expect(constantTimeEqual('a', 'aa')).toBe(false);
     expect(constantTimeEqual('', 'a')).toBe(false);
-  });
-});
-
-describe('createEmbed', () => {
-  test('starts with defaults and builds a minimal embed', () => {
-    const embed = createEmbed().setTitle('T').setDescription('D').build();
-    expect(embed).toEqual({ title: 'T', description: 'D', color: 0x5865f2 });
-  });
-
-  test('chains fields, footer, and timestamp onto the payload', () => {
-    const stamp = new Date('2026-01-01T00:00:00.000Z');
-    const embed = createEmbed()
-      .setTitle('T')
-      .setDescription('D')
-      .setColor(0x2ecc71)
-      .addField('k', 'v', true)
-      .setFooter('foot')
-      .setTimestamp(stamp)
-      .build();
-    expect(embed.color).toBe(0x2ecc71);
-    expect(embed.fields).toEqual([{ name: 'k', value: 'v', inline: true }]);
-    expect(embed.footer).toEqual({ text: 'foot' });
-    expect(embed.timestamp).toBe('2026-01-01T00:00:00.000Z');
-  });
-
-  test('setTimestamp defaults to now when no date is passed', () => {
-    const before = new Date(Date.now() - 1000).toISOString();
-    const embed = createEmbed().setTitle('T').setDescription('D').setTimestamp().build();
-    expect(embed.timestamp).toBeDefined();
-    expect((embed.timestamp ?? '') >= before).toBe(true);
-  });
-
-  test('omits optional sections that were never set', () => {
-    const embed = createEmbed().setTitle('T').setDescription('D').build();
-    expect(embed.fields).toBeUndefined();
-    expect(embed.footer).toBeUndefined();
-    expect(embed.timestamp).toBeUndefined();
   });
 });
 

@@ -27,11 +27,20 @@ const baseEnvSchema = z
     CLAI_PORT: z.coerce.number().int().positive().default(8084),
     SWASTIK_PORT: z.coerce.number().int().positive().default(8085),
     CREDENTIALS_SERVICE_BIND_HOST: z.string().default('127.0.0.1'),
+    CREDENTIALS_SERVICE_PORT: z.coerce.number().int().positive().default(8086),
+    TWIXTER_PORT: z.coerce.number().int().positive().default(8090),
 
     BOT_TOKEN: z.string().default(''),
+    /** Set only in a persona process: the persona's own identity (§35.2). */
+    PERSONA_ID: z.string().default(''),
     BOT_OWNER_IDS: csvIds(),
-    DEV_GUILD_ID: z.string().default(''),
-    DEVELOPMENT_GUILD_ID: z.string().optional(),
+    DEV_GUILD_ID: z
+      .string()
+      .regex(/^\d{17,20}$/, 'DEV_GUILD_ID must be a 17-20 digit Discord snowflake'),
+    DEVELOPMENT_GUILD_ID: z
+      .string()
+      .regex(/^\d{17,20}$/, 'DEVELOPMENT_GUILD_ID must be a 17-20 digit Discord snowflake')
+      .optional(),
     DISCORD_ADAPTER: z.enum(['mock', 'live']).default('mock'),
     OAUTH_CLIENT_ID: z.string().default(''),
     OAUTH_CLIENT_SECRET: z.string().default(''),
@@ -69,19 +78,31 @@ const baseEnvSchema = z
     TRACE_SAMPLE_RATE: z.coerce.number().min(0).max(1).default(0.1),
     OTEL_EXPORTER_OTLP_ENDPOINT: z.string().default(''),
 
-    INTERNAL_API_KEY: z.string().min(8, 'INTERNAL_API_KEY must be at least 8 characters'),
-    JWT_SIGNING_KEY: z.string().min(16, 'JWT_SIGNING_KEY must be at least 16 characters'),
-    ENCRYPTION_KEY_CURRENT: z
+    INTERNAL_API_KEY: z.string().min(32, 'INTERNAL_API_KEY must be at least 32 characters'),
+    // Envelope-encryption root key (ADR-003, blueprint §32.7 / §7504): the only
+    // key-bearing variable that exists. It is consumed exclusively by the
+    // envelope hierarchy — nothing else may read an ENCRYPTION_KEY_* variable —
+    // and there is deliberately NO JWT_SIGNING_KEY: the HTTP surface
+    // authenticates with Credentials-Service bearer tokens and HMAC shared
+    // secrets (§32.3), not JWTs.
+    ENCRYPTION_ROOT_KEY: z
       .string()
-      .min(16, 'ENCRYPTION_KEY_CURRENT must be at least 16 characters'),
-    ENCRYPTION_KEY_PREVIOUS: z.string().default(''),
+      .min(1, 'ENCRYPTION_ROOT_KEY must be base64 of a 32-byte root key')
+      .refine((value) => {
+        try {
+          return Buffer.from(value, 'base64').length === 32;
+        } catch {
+          return false;
+        }
+      }, 'ENCRYPTION_ROOT_KEY must decode to exactly 32 bytes'),
     PEP_TRUSTED_SOURCES: csvIds(),
     CLAI_MFA_ISSUER: z.string().default('DUMBY-CLAI'),
     CLAI_AUTHKEY_STORAGE_URL: z.string().default(''),
     CLAI_BREAK_GLASS_SCRIPT_URL: z.string().default(''),
 
-    SWASTIK_STAGING_VOLUME_PATH: z.string().default('/data/swastik-staging'),
-    SWASTIK_LIVE_VOLUME_PATH: z.string().default('/data/swastik-live'),
+    MODULES_DIR: z.string().default('/mnt/modules'),
+    SWASTIK_STAGING_VOLUME_PATH: z.string().default('/mnt/modules/swastik-staging'),
+    SWASTIK_LIVE_VOLUME_PATH: z.string().default('/mnt/modules/modules-core'),
 
     MTP_BANDWIDTH_TOKEN_THRESHOLD_BYTES: z.coerce.number().int().positive().default(1_048_576),
     MTP_MEMORY_TOKEN_THRESHOLD_BYTES: z.coerce.number().int().positive().default(52_428_800),
@@ -130,7 +151,14 @@ export class ConfigValidationError extends Error {
 }
 
 export function parseEnv(raw: NodeJS.ProcessEnv): Env {
-  const result = envSchema.safeParse(raw);
+  // Resolve the documented legacy alias (DEVELOPMENT_GUILD_ID) into the
+  // canonical key BEFORE validation so DEV_GUILD_ID's required-snowflake
+  // rule (UR-B-17) applies to whichever key the operator actually set.
+  const merged: NodeJS.ProcessEnv = { ...raw };
+  if (!merged['DEV_GUILD_ID'] && merged['DEVELOPMENT_GUILD_ID']) {
+    merged['DEV_GUILD_ID'] = merged['DEVELOPMENT_GUILD_ID'];
+  }
+  const result = envSchema.safeParse(merged);
   if (!result.success) {
     const fieldErrors: Record<string, string[]> = {};
     for (const issue of result.error.issues) {
@@ -139,9 +167,7 @@ export function parseEnv(raw: NodeJS.ProcessEnv): Env {
     }
     throw new ConfigValidationError(fieldErrors);
   }
-  const { DEVELOPMENT_GUILD_ID: developmentGuildId, ...env } = result.data;
-  return {
-    ...env,
-    DEV_GUILD_ID: env.DEV_GUILD_ID || developmentGuildId || '',
-  };
+  const { DEVELOPMENT_GUILD_ID: _developmentGuildId, ...env } = result.data;
+  void _developmentGuildId;
+  return env;
 }

@@ -5,7 +5,7 @@ import {
   ModuleDependencyCycleError,
   UnknownModuleDependencyError,
   type ModuleNode,
-} from '../../src/modules/topo-sort.js';
+} from '../../src/module-system/topo-sort.js';
 
 test('dependencies are ordered before their dependents', () => {
   const modules: ModuleNode[] = [

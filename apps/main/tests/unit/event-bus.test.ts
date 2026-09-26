@@ -144,3 +144,77 @@ test('isProtectedEventDomain guards moderation/automod/verification/cache regard
   expect(isProtectedEventDomain('cache.guild-config.invalidated')).toBe(true);
   expect(isProtectedEventDomain('welcome.member.greeted')).toBe(false);
 });
+
+test('default (no hook) subscriber errors are isolated and recorded, never aborting the rest (UR-C-16)', async () => {
+  const bus = new InternalEventBus();
+  const order: string[] = [];
+  bus.on(
+    'guild.member.joined',
+    () => {
+      order.push('first');
+      throw new Error('boom');
+    },
+    10,
+  );
+  bus.on(
+    'guild.member.joined',
+    () => {
+      order.push('second');
+    },
+    5,
+  );
+  await bus.emit('guild.member.joined', {});
+  expect(order).toStrictEqual(['first', 'second']);
+  const errors = bus.getSubscriberErrors();
+  expect(errors).toHaveLength(1);
+  expect(errors[0]?.eventName).toBe('guild.member.joined');
+  expect((errors[0]?.error as Error).message).toBe('boom');
+});
+
+test('emitSync runs sync listeners in priority order before returning (UR-C-16)', () => {
+  const bus = new InternalEventBus();
+  const order: string[] = [];
+  bus.on('guild.member.joined', () => void order.push('low'), 0);
+  bus.on('guild.member.joined', () => void order.push('high'), 100);
+  bus.emitSync('guild.member.joined', {});
+  expect(order).toStrictEqual(['high', 'low']);
+});
+
+test('emitSync isolates sync throws and completes remaining listeners (UR-C-16)', () => {
+  const bus = new InternalEventBus();
+  const order: string[] = [];
+  bus.on(
+    'guild.member.joined',
+    () => {
+      order.push('first');
+      throw new Error('sync-boom');
+    },
+    10,
+  );
+  bus.on(
+    'guild.member.joined',
+    () => {
+      order.push('second');
+    },
+    5,
+  );
+  expect(() => bus.emitSync('guild.member.joined', {})).not.toThrow();
+  expect(order).toStrictEqual(['first', 'second']);
+  expect(bus.getSubscriberErrors()).toHaveLength(1);
+});
+
+test('emitSync rejects an invalid event name like emit (UR-C-16)', () => {
+  const bus = new InternalEventBus();
+  expect(() => bus.emitSync('not-a-valid-name', {})).toThrow(TypeError);
+});
+
+test('emitSync applies the same cycle-depth guard as emit (UR-C-16)', () => {
+  const bus = new InternalEventBus({ maxEmitDepth: 2 });
+  bus.on('a.b.c', () => {
+    bus.emitSync('d.e.f', {});
+  });
+  bus.on('d.e.f', () => {
+    bus.emitSync('g.h.i', {});
+  });
+  expect(() => bus.emitSync('a.b.c', {})).toThrow(EventCycleError);
+});

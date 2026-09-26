@@ -4,7 +4,7 @@ import type { ConfigService } from '../config/config.service.js';
 import type { InternalEventBus } from '../events/event-bus.js';
 import type { CacheManager } from '../cache/cache-manager.js';
 import type { QueueManager } from '../queue/queue-manager.js';
-import type { ModuleRegistry } from '../modules/registry.js';
+import type { ModuleRegistry } from '../module-system/registry.js';
 import type { PermissionResolver } from '../permissions/resolver.js';
 import type { MetricsRegistry } from '../metrics/registry.js';
 import type { DbClient } from '../db/client.js';
@@ -12,6 +12,9 @@ import type { CommandRegistry } from '../commands/command-registry.js';
 import type { CommandRouter } from '../commands/command-router.js';
 import type { CommandCeilingService } from '../commands/command-ceiling.js';
 import type { CollisionResolutionService } from '../commands/collision-resolution.js';
+import type { CoreRenderer } from '../rendering/core-renderer.js';
+import type { InteractionRegistry } from '../interactions/interaction-registry.js';
+import type { PersonaCommandBindingService } from '../personas/persona-command-binding.service.js';
 
 /**
  * CORE_TOKENS is the frozen namespace: after bootstrap Stage 09
@@ -30,10 +33,13 @@ export const CORE_TOKENS = {
   Metrics: createToken<MetricsRegistry>('core.Metrics'),
   CommandRegistry: createToken<CommandRegistry>('core.CommandRegistry'),
   CommandRouter: createToken<CommandRouter>('core.CommandRouter'),
+  Renderer: createToken<CoreRenderer>('core.Renderer'),
+  InteractionRegistry: createToken<InteractionRegistry>('core.InteractionRegistry'),
   CommandCeilingService: createToken<CommandCeilingService>('core.CommandCeilingService'),
   CollisionResolutionService: createToken<CollisionResolutionService>(
     'core.CollisionResolutionService',
   ),
+  Personas: createToken<PersonaCommandBindingService>('core.Personas'),
 } as const;
 
 /**

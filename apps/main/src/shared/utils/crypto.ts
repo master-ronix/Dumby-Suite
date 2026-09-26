@@ -10,9 +10,11 @@ export function sha256(input: string): string {
 
 /**
  * Real keyed HMAC-SHA256 (CL-0087). Uses createHmac — not a length-extension
- * vulnerable concatenation of the plain data with the key.
+ * vulnerable concatenation of the plain data with the key. Keys and data may
+ * be raw bytes (Buffer) or text; string inputs are UTF-8 encoded by
+ * `createHmac` exactly as Node's canonical HMAC primitive encodes them.
  */
-export function hmacSha256(key: string, data: string): string {
+export function hmacSha256(key: Buffer | string, data: Buffer | string): string {
   return createHmac('sha256', key).update(data).digest('hex');
 }
 

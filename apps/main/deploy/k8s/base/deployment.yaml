@@ -83,22 +83,37 @@ spec:
               cpu: '1'
               memory: '1Gi'
           volumeMounts:
+            - name: modules-admin
+              mountPath: /mnt/modules/modules-admin
+            - name: modules-core
+              mountPath: /mnt/modules/modules-core
+            - name: modules-standard
+              mountPath: /mnt/modules/modules-standard
+            - name: modules-marketplace
+              mountPath: /mnt/modules/modules-marketplace
             - name: swastik-staging
-              mountPath: /data/swastik-staging
-            - name: swastik-live
-              mountPath: /data/swastik-live
+              mountPath: /mnt/modules/swastik-staging
           lifecycle:
             preStop:
               exec:
                 # Give the PID time to receive SIGTERM before SIGKILL.
                 command: ['/bin/sleep', '5']
       volumes:
+        - name: modules-admin
+          persistentVolumeClaim:
+            claimName: dumby-modules-admin
+        - name: modules-core
+          persistentVolumeClaim:
+            claimName: dumby-modules-core
+        - name: modules-standard
+          persistentVolumeClaim:
+            claimName: dumby-modules-standard
+        - name: modules-marketplace
+          persistentVolumeClaim:
+            claimName: dumby-modules-marketplace
         - name: swastik-staging
           persistentVolumeClaim:
             claimName: dumby-swastik-staging
-        - name: swastik-live
-          persistentVolumeClaim:
-            claimName: dumby-swastik-live
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000

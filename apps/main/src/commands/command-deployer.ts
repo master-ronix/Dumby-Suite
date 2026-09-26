@@ -23,7 +23,7 @@ import { Routes } from 'discord.js';
 import type { CommandRegistry } from './command-registry.js';
 import type { CommandDefinition } from './command-registry.js';
 import type { Logger } from '../logging/logger.js';
-import type { ModuleTier } from '../modules/tier-rules.js';
+import type { ModuleTier } from '../module-system/tier-rules.js';
 
 export interface DeployerConfig {
   botToken: string;

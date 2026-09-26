@@ -8,12 +8,28 @@
  */
 import { Client, GatewayIntentBits, Partials, type ClientOptions } from 'discord.js';
 import type { Logger } from '../logging/logger.js';
+import { ConfigurationError } from '../errors/taxonomy.js';
+
+/**
+ * Privileged gateway intents (UR-A-27): enabling these without the
+ * corresponding Discord application permission would brick the gateway at
+ * connect time. Modules may never request them implicitly — an operator
+ * must enable them explicitly through the trusted config surface.
+ */
+const PRIVILEGED_INTENTS = new Set(['MessageContent', 'GuildMembers', 'GuildPresences']);
 
 /** Computes the intent union from all loaded module intent string arrays. */
 export function computeIntentsBitfield(moduleIntents: string[][]): number {
   let bits = 0;
   for (const intentList of moduleIntents) {
     for (const intent of intentList) {
+      if (PRIVILEGED_INTENTS.has(intent)) {
+        throw new ConfigurationError(
+          `Module requested privileged gateway intent "${intent}"; ` +
+            'enable it in the explicit operator config instead of the module manifest',
+          { intent },
+        );
+      }
       const bit = (GatewayIntentBits as unknown as Record<string, number | undefined>)[intent];
       if (bit !== undefined) {
         bits |= bit;
