@@ -1,11 +1,5 @@
 import type { Knex } from 'knex';
 
-/**
- * Generic singleton/KV settings table (maintenance mode flag, log-level
- * override, and similar process-wide switches the Power Engine Panel
- * mutates). One row per `key`; `value` is JSONB so callers are not forced
- * to keep adding columns for every new toggle.
- */
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable('system_state', (table) => {
     table.string('key').primary();

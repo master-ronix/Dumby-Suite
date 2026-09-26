@@ -183,10 +183,6 @@ describe('promotion path', () => {
   });
 
   test('a promoted build that is still staged is loaded exactly once', async () => {
-    // Promotion keeps the staged copy for rollback/audit, so a promoted
-    // deployment has the same module in staging and in its tier volume. Staging
-    // is not a load source: scanning it would double-register the module and
-    // abort the whole volume discovery.
     const modulesDir = tempDir('dumby-first-party-staged-copy-');
     emptyTierVolumes(modulesDir);
     installArtifact(
@@ -241,7 +237,6 @@ describe('seed tooling cannot bypass the promotion path', () => {
   const seedSource = readFileSync(join(SCRIPTS_DIR, 'seed-first-party-modules.ts'), 'utf8');
   const buildSource = readFileSync(join(SCRIPTS_DIR, 'build-first-party-modules.ts'), 'utf8');
   const swastikSource = readFileSync(join(APP_ROOT, 'src', 'entry', 'swastik.ts'), 'utf8');
-  // Prose may name a volume; code may not.
   const seedCode = seedSource.replace(/\/\*[\s\S]*?\*\//g, '');
   const buildCode = buildSource.replace(/\/\*[\s\S]*?\*\//g, '');
 

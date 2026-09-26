@@ -32,11 +32,9 @@ test('refreshIfStale reloads once the TTL elapses but not before', async () => {
   await lookup.prime();
   expect(loader).toHaveBeenCalledTimes(1);
 
-  // Within TTL: no reload.
   await lookup.refreshIfStale();
   expect(loader).toHaveBeenCalledTimes(1);
 
-  // Past TTL: reload happens.
   vi.useFakeTimers();
   vi.setSystemTime(Date.now() + 5_000_000);
   await lookup.refreshIfStale();

@@ -1,7 +1,3 @@
-/**
- * Command router — dispatches incoming command interactions through the
- * middleware pipeline and the core Renderer.
- */
 import type { CommandRegistry } from './command-registry.js';
 import type { CommandDefinition } from './command-registry.js';
 import type { Logger } from '../logging/logger.js';
@@ -27,13 +23,9 @@ export interface CommandInteraction {
   editReply: (options: unknown) => Promise<void>;
   replied?: boolean;
   deferred?: boolean;
-  /** Present when the dispatch layer can resolve channel context (live gateway). */
   channel?: { id: string; categoryId: string | null; isNsfw: boolean };
-  /** Discord permission strings for the invoking member (live gateway). */
   memberPermissions?: readonly string[];
-  /** The invoking member's role IDs (live gateway), for Layer 7 grant scoping. */
   memberRoles?: readonly string[];
-  /** True when the invoking member is the guild's ownership account (Layer 6 OWNER). */
   isGuildOwner?: boolean;
 }
 
@@ -66,16 +58,9 @@ export interface CommandRouterOptions {
   middlewarePipeline?: MiddlewarePipeline;
   permissionResolver?: PermissionResolver;
   botOwnerIds?: readonly string[];
-  /** This guild's Layer 7 grant rows, resolved fresh per interaction by the caller. */
   guildGrants?: readonly RbacGrant[];
   renderer?: CoreRenderer;
-  /**
-   * Persona dispatch gate (ADR-011, §35.3): resolves which identity — main bot
-   * or a named persona — owns a command key in a guild. Undefined means the
-   * main-bot default. Wired when a persona binding service is running.
-   */
   resolveCommandOwner?: (guildId: string, moduleSlug: string) => Promise<string | undefined>;
-  /** This process's own persona identity (PERSONA_ID); absent for the main bot. */
   residentPersonaId?: string;
 }
 

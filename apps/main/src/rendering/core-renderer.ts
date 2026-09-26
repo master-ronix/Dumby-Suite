@@ -212,19 +212,11 @@ export class CoreRenderer {
     return textDisplay(`-# Developed by ${developer} v${version}${modeLabel}`);
   }
 
-  /**
-   * Mode C body: a single-line status render — the identity plus the first
-   * line of the summary (interface.md §1.4).
-   */
   private oneLineRender(surface: string, first: string): string {
     const line = first.split('\n').find((part) => part.trim().length > 0) ?? first;
     return `${surface}: ${line}`;
   }
 
-  /**
-   * Mode M body: the condensed summary — the first section, with any further
-   * sections collapsed to a count (interface.md §1.4).
-   */
   private condensedRender(sections: readonly string[]): string {
     const first = sections[0] ?? '';
     const remainder = sections.length - 1;

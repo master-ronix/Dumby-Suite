@@ -167,7 +167,6 @@ test('atomic promotion: first promotion points live at the staged dir; a failed 
     expect(outcome.previousTarget).toBeNull();
     expect(outcome.rollbackLink).toBeNull();
 
-    // A promotion for a non-existent staged dir must leave the volume untouched.
     expect(() =>
       promoteAtomically({
         liveVolume: live,
@@ -206,7 +205,6 @@ test('atomic promotion: update replaces live atomically and rollback restores th
     expect(second.rollbackLink).not.toBeNull();
     expect(existsSync(join(live, 'moderation__rollback'))).toBe(true);
 
-    // Post-swap failure: rollback restores the previous live target.
     rollbackPromotion(second);
     expect(readFileSync(join(live, 'moderation', 'manifest.json'), 'utf8')).toContain('1.0.0');
     void first;

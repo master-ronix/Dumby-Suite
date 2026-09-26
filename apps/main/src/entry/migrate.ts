@@ -1,7 +1,3 @@
-/**
- * Migration-only entry point. Runs DB migrations and exits.
- * Use: tsx src/entry/migrate.ts [up|down|status]
- */
 import { createRequire } from 'node:module';
 import knex from 'knex';
 import { parseEnv, pickEnvKeys } from '../config/env.schema.js';
@@ -39,7 +35,6 @@ async function run(): Promise<void> {
   }
 }
 
-// Suppress "createRequire" unused lint if not used.
 void createRequire;
 
 run().catch((err: unknown) => {

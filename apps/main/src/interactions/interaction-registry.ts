@@ -24,12 +24,6 @@ export interface MintCustomIdInput {
 }
 
 export interface InteractionRegistryOptions {
-  /**
-   * Applied to the navigation message in place once an interaction passes the
-   * invoker re-check, so the buffer lifecycle (§20.8/§20.9) acknowledges even
-   * component interactions. Defaults to no-op; the live wiring binds this to a
-   * renderer-issued buffer edit / deferUpdate.
-   */
   acknowledge?: (interaction: ComponentInteraction) => Promise<void>;
 }
 
@@ -129,13 +123,6 @@ export class InteractionRegistry {
     }
   }
 
-  /**
-   * Registry-minted customIds carry a 4-segment shape
-   * `{namespace}:{handler}:{invoker}:{context}`; the third segment binds the
-   * interaction to its invoker and is compared here on every dispatch. A
-   * customId without an invoker binding segment routes prefix-based without the
-   * re-check (blueprint.md §20.1).
-   */
   private invokerMatches(interaction: ComponentInteraction): boolean {
     const parts = interaction.customId.split(CUSTOM_ID_SEPARATOR);
     if (parts.length >= 4) {

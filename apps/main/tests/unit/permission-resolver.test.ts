@@ -200,7 +200,6 @@ test('layer 7: grants never reach core commands', () => {
       guildGrants: [grant],
     },
   });
-  // The core command still has no permission declaration -> deny-by-default.
   const denied = resolvePermission({
     ...ctx,
     hasExplicitPermissionDeclaration: false,
@@ -229,7 +228,6 @@ test('layer 7: an active whitelist restricts a command to whitelisted targets on
     key: 'moderation.ban',
   };
 
-  // A whitelisted member is allowed regardless of rank grounds.
   const allowed = resolvePermission(
     baseContext({
       requiredRank: 'MODERATOR',
@@ -242,7 +240,6 @@ test('layer 7: an active whitelist restricts a command to whitelisted targets on
   );
   expect(allowed).toStrictEqual({ allowed: true });
 
-  // A member holding a whitelist for some OTHER target is not whitelisted here.
   const denied = resolvePermission(
     baseContext({
       grants: {

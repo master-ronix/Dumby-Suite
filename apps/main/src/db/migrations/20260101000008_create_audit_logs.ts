@@ -1,13 +1,5 @@
 import type { Knex } from 'knex';
 
-/**
- * audit_logs is insert-only (spec section 15): no updatedAt/deletedAt
- * columns exist at all, and InsertOnlyRepository (see
- * src/db/repositories/base.repository.ts) refuses update()/delete() at
- * the application layer. A DB-level trigger is added as a second,
- * independent enforcement layer (defense in depth) so the guarantee holds
- * even against a direct psql session.
- */
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable('audit_logs', (table) => {
     table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));

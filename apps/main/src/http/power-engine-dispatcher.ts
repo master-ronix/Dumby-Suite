@@ -1,18 +1,3 @@
-/**
- * PowerEngineDispatcher (Cluster: Boot). Every mutating
- * /admin/* and /admin/power-engine/* endpoint routes through this instead
- * of touching its target service directly. Three invariants, all
- * unconditional:
- *
- *   1. actorId, source, and reason are required on every call.
- *   2. An empty reason or an untrusted source is rejected outright.
- *   3. An audit_logs row is written for EVERY attempt — rejected rows are
- *      written before the rejection is returned, and allowed rows are
- *      written only AFTER the handler has completed successfully, so the
- *      recorded outcome is truthful (never a claim about an action that
- *      has not actually run).
- */
-
 export interface PowerEngineRequest {
   actorId: string;
   source: string;
@@ -61,7 +46,6 @@ export interface AuditWriter {
   write(entry: PowerEngineAuditEntry): Promise<void>;
 }
 
-/** In-memory writer for tests and the sandbox smoke test; the real adapter writes to the insert-only audit_logs table. */
 export class InMemoryAuditWriter implements AuditWriter {
   readonly entries: PowerEngineAuditEntry[] = [];
 
@@ -74,7 +58,6 @@ export type DispatchOutcome<T> =
   { ok: true; result: T } | { ok: false; rejectionReason: RejectionReason };
 
 export interface DispatchOptions {
-  /** Action-specific fact set serialized into the audit_logs.metadata column. */
   metadata?: Record<string, AuditScalar>;
 }
 
@@ -107,10 +90,6 @@ export class PowerEngineDispatcher {
       return { ok: false, rejectionReason: validation.rejectionReason };
     }
 
-    // Run the handler FIRST, then audit the outcome: the 'allowed' write is
-    // unconditional on the *attempt* being accepted, but it must never claim
-    // an action succeeded before the handler has actually run (UR-A-05 /
-    // UR-B-06 — truthful, outcome-based audit rows).
     const result = await handler();
 
     await this.auditWriter.write({

@@ -1,9 +1,3 @@
-/**
- * Shared test helpers (Cluster: Core shared).
- * Imported only by tests — never by production code.
- */
-
-/** Creates a minimal mock logger that captures calls. */
 export function createMockLogger() {
   const calls: { level: string; msg: string; ctx: unknown }[] = [];
   const logger = {
@@ -26,9 +20,7 @@ export function createMockLogger() {
       calls.push({ level: 'fatal', msg, ctx });
     },
     child: () => createMockLogger(),
-    setLevel: (_level: string) => {
-      /* no-op */
-    },
+    setLevel: (_level: string) => {},
     calls,
   };
   return logger;

@@ -7,7 +7,6 @@ import { MiddlewareRejectError, type Middleware } from '../../src/middleware/bas
 import { PermissionResolver } from '../../src/permissions/resolver.js';
 import { IS_COMPONENTS_V2 } from '../../src/shared/utils/components-v2.js';
 
-// Extract every TextDisplay content from a Components V2 message payload.
 function textContents(payload: unknown): string[] {
   const msg = payload as { components?: Array<{ components?: unknown[] }> } | undefined;
   if (msg === undefined || !Array.isArray(msg.components)) return [];
@@ -43,8 +42,6 @@ function lastEditText(interaction: { editReply: ReturnType<typeof vi.fn> }): str
 function firstReply(interaction: { reply: ReturnType<typeof vi.fn> }): unknown {
   return interaction.reply.mock.calls[0]?.[0] as unknown;
 }
-
-// ─── CommandRegistry ──────────────────────────────────────────────────────────
 
 describe('CommandRegistry', () => {
   test('starts with zero commands', () => {
@@ -155,8 +152,6 @@ describe('CommandRegistry', () => {
     }
   });
 });
-
-// ─── CommandRouter ────────────────────────────────────────────────────────────
 
 function makeLogger() {
   return {

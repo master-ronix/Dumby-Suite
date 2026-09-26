@@ -1,6 +1,3 @@
-/**
- * Full end-to-end verification for a machine with Docker and network access.
- */
 import { execSync } from 'node:child_process';
 
 const HEALTH_PORT = process.env.HEALTH_PORT ?? '8081';
@@ -19,9 +16,7 @@ async function waitFor(url: string, timeoutMs: number): Promise<void> {
     try {
       const res = await fetch(url);
       if (res.ok) return;
-    } catch {
-      /* not up yet */
-    }
+    } catch {}
     if (Date.now() - start > timeoutMs) {
       throw new Error(`Timed out waiting for ${url}`);
     }

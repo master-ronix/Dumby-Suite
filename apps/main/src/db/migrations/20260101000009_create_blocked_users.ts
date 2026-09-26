@@ -9,7 +9,7 @@ export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable('blocked_users', (table) => {
     table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
     table.string('userId').notNullable();
-    table.string('guildId').nullable(); // null = global blacklist
+    table.string('guildId').nullable();
     table.text('reason').notNullable();
     table.string('blockedBy').notNullable();
     addTimestamps(knex, table);

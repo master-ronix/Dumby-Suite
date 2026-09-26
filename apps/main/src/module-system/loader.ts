@@ -34,13 +34,6 @@ export class FatalModuleLoadError extends Error {
   }
 }
 
-/**
- * Orchestrates bootstrap Stages 11-12 (MODULE_VALIDATE, MODULE_LOAD) and
- * Stage 17 (MODULE_READY), plus the reverse-order unload used in shutdown
- * step 3. The ordering/cycle-detection and tier-rule logic underneath is
- * already covered by tests/unit/topo-sort.test.ts and
- * tests/unit/tier-rules.test.ts.
- */
 export class ModuleLoader {
   constructor(
     private readonly registry: ModuleRegistry,
@@ -48,7 +41,6 @@ export class ModuleLoader {
     private readonly logger: Logger,
   ) {}
 
-  /** Stage 11: MODULE_VALIDATE. Throws on the first tier violation found. */
   validateAll(): void {
     for (const mod of this.registry.all()) {
       const violations = validateTierRules({
@@ -75,7 +67,6 @@ export class ModuleLoader {
     }));
   }
 
-  /** Stage 12: MODULE_LOAD. Required-module failures are fatal; optional-module failures degrade that module only. */
   async loadAll(): Promise<ModuleLoadReport> {
     const nodes = this.nodes();
     const order = topologicalLoadOrder(nodes);
@@ -102,10 +93,6 @@ export class ModuleLoader {
     return { order, fatal, degraded };
   }
 
-  /**
-   * Stage 17: MODULE_READY. onReady failures do not crash bootstrap, but
-   * required-module failures must keep readiness false until remediated.
-   */
   async readyAll(order: readonly string[]): Promise<ModuleReadyReport> {
     const readyFailures: string[] = [];
     for (const name of order) {
@@ -124,7 +111,6 @@ export class ModuleLoader {
     };
   }
 
-  /** Shutdown step 3: onUnload in reverse load order. */
   async unloadAll(order: readonly string[]): Promise<void> {
     for (const name of [...order].reverse()) {
       const mod = this.registry.get(name);

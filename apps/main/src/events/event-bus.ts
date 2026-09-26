@@ -1,14 +1,3 @@
-/**
- * Internal event bus for domain events (Cluster: Bags). Used for the
- * {domain}.{entity}.{action} events emitted by services/modules (e.g.
- * "dumby.system.ready", "economy.selftest.executed"). A separate adapter
- * translating MockGatewayAdapter's gateway-shaped events onto this same
- * bus is listed as a follow-up in STATUS_AND_VERIFICATION.md rather than
- * included in this delivery.
- *
- * Dependency: only `node:async_hooks` (a Node built-in), so this is fully
- * unit-testable without installing anything.
- */
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { EventCycleError } from '../errors/taxonomy.js';
 
@@ -33,7 +22,6 @@ interface Subscription {
 }
 
 export interface EmitOptions {
-  /** Whether this particular emission is allowed to be dropped under event-loop lag. */
   sheddable?: boolean;
 }
 
@@ -46,11 +34,6 @@ interface EmitContext {
   chain: readonly string[];
 }
 
-/**
- * Domains that must NEVER be shed even if the caller marks the emission as
- * sheddable and the event loop is lagged — moderation/safety/consistency
- * critical paths.
- */
 const NON_SHEDDABLE_PREFIXES = ['moderation.', 'automod.', 'verification.', 'cache.'];
 
 export function isProtectedEventDomain(eventName: string): boolean {
@@ -137,9 +120,6 @@ export class InternalEventBus {
     try {
       await call();
     } catch (err) {
-      // Cycle/structural errors always propagate: silently isolating them
-      // would hide unbounded-recursion bugs behind a resolved promise.
-      // Runtime subscriber failures are isolated per UR-C-16 instead.
       if (err instanceof EventCycleError) throw err;
       this.recordSubscriberError(err, eventName);
     } finally {
@@ -149,12 +129,6 @@ export class InternalEventBus {
     }
   }
 
-  /**
-   * Synchronous delivery for ordering-critical flows (UR-C-16): listeners
-   * run in priority order before emitSync returns. Async listeners are
-   * detached (their promises fire-and-forget) but still isolated — a
-   * rejected promise never aborts the remaining subscribers.
-   */
   emitSync(eventName: string, payload: unknown): void {
     assertValidEventName(eventName);
 

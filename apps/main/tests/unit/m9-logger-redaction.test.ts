@@ -2,11 +2,6 @@ import { test, expect } from 'vitest';
 import pino from 'pino';
 import { Logger, REDACT_PATHS } from '../../src/logging/logger.js';
 
-/**
- * UR-A-22: the redact path list must cover nested tokens and the named
- * secret-bearing keys (webhookUrl, signingKey, apiKey, clientSecret,
- * accessToken, refreshToken), not just one level of wildcard.
- */
 function sinkLogger(): { logger: Logger; lines: string[] } {
   const lines: string[] = [];
   const instance = pino(

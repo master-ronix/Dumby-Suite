@@ -1,10 +1,3 @@
-/**
- * Module loading order (Cluster: Ring). Dependencies must load before
- * dependents. Detects both an unknown dependency (manifest error) and a
- * genuine dependency cycle (fatal bootstrap error at Stage 11
- * MODULE_VALIDATE, before any module's onLoad runs).
- */
-
 export interface ModuleNode {
   name: string;
   depends: readonly string[];
@@ -30,7 +23,6 @@ export class UnknownModuleDependencyError extends Error {
 
 type VisitState = 'unvisited' | 'visiting' | 'done';
 
-/** Returns module names ordered so every dependency precedes its dependents. */
 export function topologicalLoadOrder(modules: readonly ModuleNode[]): string[] {
   const byName = new Map(modules.map((m) => [m.name, m] as const));
 
@@ -67,9 +59,7 @@ export function topologicalLoadOrder(modules: readonly ModuleNode[]): string[] {
 }
 
 export interface LoadFailureClassification {
-  /** required:true modules whose onLoad failed — fatal, aborts bootstrap. */
   fatal: string[];
-  /** required:false modules whose onLoad failed — degraded, bootstrap continues. */
   degraded: string[];
 }
 

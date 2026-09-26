@@ -1,10 +1,3 @@
-/**
- * Metrics registry (Cluster: Glass). Wraps prom-client. GET /metrics
- * serves `registry.metrics()` in the default Prometheus text exposition
- * format — no other format is implemented (JSON-metrics is explicitly out
- * of scope per the spec's "JSON-only" REST rule, which applies to the
- * REST API surface, not the /metrics scrape endpoint).
- */
 import { Registry, Counter, Histogram, Gauge, collectDefaultMetrics } from 'prom-client';
 
 export class MetricsRegistry {

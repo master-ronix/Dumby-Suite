@@ -1,24 +1,3 @@
-/**
- * The Compatibility Ledger (blueprint §14.4, directive D-8.10) — the
- * machine-readable registry of every cross-boundary contract version window,
- * and the release gate for both directions of release.
- *
- * Contract model: each contract has a **current version** (the version the
- * running core ships) and acceptance **windows** held by counterparts (a
- * module or an API family) over that contract. A window is
- * `[minInclusive, maxExclusive)` with an excluded list.
- *
- * The ledger is enforced, not descriptive:
- *  - A core release cannot ship until every window held by a currently-deployed
- *    module is satisfied by the proposed core contract versions.
- *  - A module deployment cannot be promoted until its declared windows are
- *    satisfied by the running core and by every co-deployed dependency.
- *  - Both checks fail closed: an unregistered contract is unsatisfied, never
- *    exempt. The ledger stands from Phase 0 empty but enforced.
- *
- * The §45 compliance matrix is generated from this ledger, never hand-written.
- */
-
 import { parseSemver, versionWithinWindow } from './semver.js';
 import type { ContractWindow } from './semver.js';
 
@@ -28,19 +7,16 @@ export const LEDGER_FORMAT_VERSION = 1 as const;
 
 export interface LedgerContractRecord {
   readonly contractId: string;
-  /** The contract version shipped by the running core. */
   readonly currentVersion: string;
 }
 
 export interface LedgerWindowEntry {
-  /** The party holding this acceptance window (module slug or API family). */
   readonly counterpart: string;
   readonly contractId: string;
   readonly window: ContractWindow;
 }
 
 export interface LedgerProvidesRecord {
-  /** The party providing/shipping this contract (a co-deployed module). */
   readonly counterpart: string;
   readonly contractId: string;
   readonly version: string;
@@ -73,27 +49,19 @@ export interface GateOutcome {
 }
 
 export interface CoreReleaseDeclaration {
-  /** The proposed contract versions the new core ships. */
   readonly proposedContractVersions: Readonly<Record<string, string>>;
-  /** Modules currently deployed fleet-wide (they hold acceptance windows). */
   readonly deployedModuleNames: readonly string[];
 }
 
 export interface ModuleDeploymentDeclaration {
   readonly moduleName: string;
-  /** The windows the module declares over the contracts it touches. */
   readonly declaredWindows: ReadonlyArray<{
     readonly contractId: string;
     readonly window: ContractWindow;
   }>;
-  /** Modules deployed alongside this one (co-deployed dependencies). */
   readonly coDeployedModuleNames: readonly string[];
 }
 
-/**
- * The Compatibility Ledger. Mutable for construction convenience, but all
- * read/gate operations are pure snapshots.
- */
 export class CompatibilityLedger {
   readonly #contracts = new Map<string, string>();
   readonly #windows: LedgerWindowEntry[] = [];
@@ -123,7 +91,6 @@ export class CompatibilityLedger {
     return this;
   }
 
-  /** Removes a contract — unregistered contracts fail closed in every gate. */
   unregisterContract(contractId: string): CompatibilityLedger {
     this.#contracts.delete(contractId);
     return this;
@@ -162,12 +129,10 @@ export class CompatibilityLedger {
     return match?.version;
   }
 
-  /** Snapshot of every window recorded in the ledger. */
   allWindows(): readonly LedgerWindowEntry[] {
     return [...this.#windows];
   }
 
-  /** Snapshot of every registered contract record. */
   allContracts(): readonly LedgerContractRecord[] {
     return [...this.#contracts.entries()].map(
       ([contractId, currentVersion]): LedgerContractRecord => ({ contractId, currentVersion }),
@@ -209,12 +174,6 @@ export function deserializeLedger(serialized: string): CompatibilityLedger {
   return CompatibilityLedger.fromJSON(data);
 }
 
-/**
- * Core-release gate (§14.4, D-8.10): a core release cannot ship until every
- * window held by a currently-deployed module is satisfied by the proposed core
- * contract versions. Fail closed — an unregistered contract, or a held window
- * whose contract is absent from the proposal, is a violation.
- */
 export function checkCoreRelease(
   ledger: CompatibilityLedger,
   declaration: CoreReleaseDeclaration,
@@ -245,12 +204,6 @@ export function checkCoreRelease(
   return { allowed: violations.length === 0, violations };
 }
 
-/**
- * Module-deployment gate (§14.4): a module deployment cannot be promoted until
- * its declared contract windows are satisfied by the running core AND by every
- * co-deployed dependency. Fail closed — an unregistered contract is a
- * violation, never an exemption.
- */
 export function checkModuleDeployment(
   ledger: CompatibilityLedger,
   declaration: ModuleDeploymentDeclaration,
@@ -288,11 +241,6 @@ export function checkModuleDeployment(
   return { allowed: violations.length === 0, violations };
 }
 
-/**
- * §45 compliance matrix, generated from the ledger — one row per registered
- * contract, so it can never drift from the registry that actually gates
- * releases (D-8.10, blueprint §45).
- */
 export function generateComplianceMatrix(
   ledger: CompatibilityLedger,
 ): ReadonlyArray<{ readonly capability: string; readonly specifiedAt: string }> {

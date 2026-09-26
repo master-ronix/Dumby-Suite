@@ -1,17 +1,3 @@
-/**
- * Circuit breaker (cross-cutting resilience primitive used by the DB
- * client and queue/cache adapters — supports Clusters Bundles, Burg, and
- * Holder rather than belonging to a single one).
- *
- * Zero external dependencies; takes a clock function so it is deterministic
- * under test. States follow the standard model:
- *
- *   CLOSED --(failureThreshold reached)--> OPEN
- *   OPEN --(resetTimeoutMs elapsed)--> HALF_OPEN
- *   HALF_OPEN --(success)--> CLOSED
- *   HALF_OPEN --(failure)--> OPEN
- */
-
 export type CircuitState = 'CLOSED' | 'OPEN' | 'HALF_OPEN';
 
 export interface CircuitBreakerOptions {
@@ -55,7 +41,6 @@ export class CircuitBreaker {
     return this.state;
   }
 
-  /** Call before attempting the guarded operation. Throws CircuitOpenError if blocked. */
   beforeCall(): void {
     const state = this.getState();
     if (state === 'OPEN') {
@@ -92,7 +77,6 @@ export class CircuitBreaker {
     this.halfOpenAttempts = 0;
   }
 
-  /** Convenience wrapper for async operations. */
   async execute<T>(fn: () => Promise<T>): Promise<T> {
     this.beforeCall();
     try {

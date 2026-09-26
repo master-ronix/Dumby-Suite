@@ -1,8 +1,3 @@
-/**
- * Priority -10: AdminTierGateMiddleware (Cluster: Ring).
- * Ensures Admin-tier commands are only accessible to the bot owner.
- * Non-owner invoking an Admin-tier command → silent reject (no reply, warn log).
- */
 import type { Middleware, MiddlewareContext, NextFn } from '../base-middleware.js';
 import { MiddlewareRejectError } from '../base-middleware.js';
 import type { Logger } from '../../logging/logger.js';
@@ -30,7 +25,6 @@ export class AdminTierGateMiddleware implements Middleware {
         userId: ctx.userId,
         guildId: ctx.guildId ?? 'DM',
       });
-      // Silent reject — no Discord reply, just drop the interaction.
       throw new MiddlewareRejectError(403, 'Admin-tier command denied', true);
     }
     await next();

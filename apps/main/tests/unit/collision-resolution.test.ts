@@ -126,7 +126,7 @@ test('finalizeResolution transitions to active when no pending collisions remain
   const deps = makeDeps();
   deps.getModuleState.mockResolvedValue('install_pending_resolution');
   deps.getModuleCommands.mockResolvedValue(['ban']);
-  deps.getActiveCommands.mockResolvedValue([]); // after resolution, no collisions
+  deps.getActiveCommands.mockResolvedValue([]);
   deps.getOverride.mockResolvedValue({
     guildId: 'guild-1',
     commandKey: 'ban',

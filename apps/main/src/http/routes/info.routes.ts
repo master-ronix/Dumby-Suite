@@ -15,8 +15,6 @@ export function registerInfoRoutes(app: FastifyInstance, config: ConfigService):
   app.get('/api/info', async (_req, reply) => {
     return reply.code(200).send({
       name: 'dumby-headless-backend',
-      // Version is read from the built package.json at module load, never
-      // hardcoded (UR-B-25).
       version: packageJson.version,
       environment: config.get('NODE_ENV'),
       uptimeSeconds: Math.floor((Date.now() - processStartedAt) / 1000),

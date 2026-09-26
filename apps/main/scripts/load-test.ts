@@ -1,8 +1,3 @@
-/**
- * Minimal load test (Cluster: Clay — no external load-testing package
- * required). Fires N concurrent requests in waves against a live server
- * and reports latency percentiles + error rate. Targets docker-compose.yml.
- */
 const HEALTH_PORT = process.env.HEALTH_PORT ?? '8081';
 const URL = `http://localhost:${HEALTH_PORT}/health/liveness`;
 const TOTAL_REQUESTS = Number(process.env.LOAD_TEST_REQUESTS ?? 500);

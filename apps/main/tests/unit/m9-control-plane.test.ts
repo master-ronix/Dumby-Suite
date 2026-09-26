@@ -9,11 +9,6 @@ import { registerAdminRoutes } from '../../src/http/routes/admin.routes.js';
 
 const trusted = { trustedSources: ['dashboard', 'swastik-internal'] };
 
-/**
- * UR-A-05 / UR-B-06: audit rows must reflect the real outcome — an
- * `allowed` row is written only AFTER the handler completes successfully,
- * never before it has run.
- */
 test('allowed audit row is written after the handler has fully succeeded', async () => {
   const auditWriter = new InMemoryAuditWriter();
   const dispatcher = new PowerEngineDispatcher(trusted, auditWriter);
@@ -23,8 +18,6 @@ test('allowed audit row is written after the handler has fully succeeded', async
     'guild.suspend',
     { actorId: 'owner-1', source: 'dashboard', reason: 'ToS violation' },
     async () => {
-      // The handler must observe ZERO audit rows already written for this
-      // attempt: the 'allowed' write happens strictly after it returns.
       rowsSeenDuringHandler = auditWriter.entries.length;
       return { suspended: true };
     },
@@ -57,10 +50,6 @@ test('a handler that throws never records an "allowed" row for that attempt', as
   expect(auditWriter.entries.length).toBe(0);
 });
 
-/**
- * UR-C-25: the stub PEP handlers must answer honest 501 NOT_IMPLEMENTED
- * instead of returning `200 {ok:true}` from an `async () => {}` body.
- */
 const STUB_PEP_ACTIONS = [
   { path: '/admin/power-engine/economy/balance-adjust', action: 'economy.balance-adjust' },
   { path: '/admin/power-engine/rbac/role-assign', action: 'rbac.role-assign' },
@@ -100,11 +89,6 @@ test('every previously-stubbed PEP route answers honest 501 (no-stub walk)', asy
   expect(dispatcher.dispatch).not.toHaveBeenCalled();
 }, 30_000);
 
-/**
- * UR-B-07 (queryAuditLog portion): the route must query only columns that
- * exist in migration 00008 — order by `createdAt`, filter on source/actorId/
- * action/outcome — never the phantom targetType/targetId/timestamp.
- */
 test('queryAuditLog orders by real createdAt column and filters real columns only', async () => {
   const rows = [{ createdAt: '2026-09-23T00:00:00Z', action: 'guild.suspend' }];
   const builder = {
@@ -165,12 +149,6 @@ test('queryAuditLog ignores unknown filter params and clamps the limit to 200', 
   expect(builder.limit).toHaveBeenCalledWith(200);
 });
 
-/**
- * UR-A-30: cron-parser and jose must no longer be direct dependencies; the
- * only remaining lockfile copy of cron-parser is the transitive one pulled by
- * bullmq (the queue worker still needs it at runtime, so the app keeps
- * resolving it).
- */
 test('jose and cron-parser are no longer direct dependencies (package.json gate)', () => {
   const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8')) as {
     dependencies: Record<string, string>;

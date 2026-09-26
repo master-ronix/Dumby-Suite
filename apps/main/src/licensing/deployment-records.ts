@@ -1,15 +1,3 @@
-/**
- * Deployment Records (blueprint §15.12, §44.8) — the durable, append-only
- * record of every deployment. Binding the deployment's trigger (who or what
- * initiated it, including the OIDC-verified repository identity for
- * push-triggered deployments), the devId and buildId deployed, the module and
- * version, the validation and gate outcomes, the promotion result, the
- * health-check outcome of the verified reload loop, and the rollback result.
- *
- * A deployment that leaves no record is, by construction, a deployment that did
- * not happen — `assertDeploymentRecorded` encodes that rule.
- */
-
 export const DEPLOYMENT_TRIGGER_TYPES = ['upload', 'push', 'operator'] as const;
 
 export type DeploymentTriggerType = (typeof DEPLOYMENT_TRIGGER_TYPES)[number];
@@ -17,7 +5,6 @@ export type DeploymentTriggerType = (typeof DEPLOYMENT_TRIGGER_TYPES)[number];
 export interface DeploymentTrigger {
   readonly type: DeploymentTriggerType;
   readonly initiatedBy: string;
-  /** Present for push-triggered deployments (OIDC-verified repository identity). */
   readonly oidcRepositoryIdentity?: string;
 }
 
@@ -41,7 +28,6 @@ export interface DeploymentRecord {
   readonly promotionResult: PromotionResult;
   readonly healthCheckOutcome: HealthCheckOutcome;
   readonly rollbackResult: RollbackResult;
-  /** Stamp of the verified reload loop's success — only set when `promoted`. */
   readonly deployedAt?: string;
   readonly recordedAt: string;
 }
@@ -83,7 +69,6 @@ export class PromotionDespiteFailedHealthCheckError extends Error {
   }
 }
 
-/** Builds the immutable record, defaulting the deferred packing fields. */
 export function buildDeploymentRecord(input: DeploymentRecordInput): DeploymentRecord {
   const recordedAt = new Date().toISOString();
   const record: DeploymentRecord = {
@@ -111,10 +96,6 @@ export function buildDeploymentRecord(input: DeploymentRecordInput): DeploymentR
   return record;
 }
 
-/**
- * Append-only Deployment Record store. `append` refuses duplicate record IDs,
- * and there is deliberately no update or delete surface.
- */
 export class AppendOnlyDeploymentRecords {
   readonly #records: DeploymentRecord[] = [];
 

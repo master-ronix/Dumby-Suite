@@ -10,22 +10,22 @@ test('reports zero lag when ticks land exactly on schedule', () => {
 
 test('reports the overshoot as lag when a tick arrives late', () => {
   const monitor = new EventLoopLagMonitor({ thresholdMs: 50, intervalMs: 250, now: () => 0 });
-  const lag = monitor.sample(400); // 150ms late
+  const lag = monitor.sample(400);
   expect(lag).toBe(150);
   expect(monitor.isLagged()).toBe(true);
 });
 
 test('isLagged default threshold matches EVENT_LOOP_LAG_SHED_THRESHOLD_MS=50', () => {
   const monitor = new EventLoopLagMonitor({ intervalMs: 100, now: () => 0 });
-  monitor.sample(149); // 49ms late — under threshold
+  monitor.sample(149);
   expect(monitor.isLagged()).toBe(false);
-  monitor.sample(249 + 50); // now push it 50ms late relative to previous tick
+  monitor.sample(249 + 50);
   expect(monitor.isLagged()).toBe(true);
 });
 
 test('shouldShed only sheds sheddable, non-protected events while lagged', () => {
   const monitor = new EventLoopLagMonitor({ thresholdMs: 50, intervalMs: 100, now: () => 0 });
-  monitor.sample(300); // heavily lagged
+  monitor.sample(300);
   const isProtected = (name: string) => name.startsWith('moderation.');
 
   expect(monitor.shouldShed('presence.user.updated', true, isProtected)).toBe(true);
@@ -35,7 +35,7 @@ test('shouldShed only sheds sheddable, non-protected events while lagged', () =>
 
 test('shouldShed never sheds while lag is below threshold', () => {
   const monitor = new EventLoopLagMonitor({ thresholdMs: 50, intervalMs: 100, now: () => 0 });
-  monitor.sample(110); // only 10ms lag
+  monitor.sample(110);
   const isProtected = () => false;
   expect(monitor.shouldShed('presence.user.updated', true, isProtected)).toBe(false);
 });

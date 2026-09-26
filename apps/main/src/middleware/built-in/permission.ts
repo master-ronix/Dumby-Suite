@@ -1,8 +1,3 @@
-/**
- * Priority 50: PermissionMiddleware (Cluster: Ring).
- * Runs Layer 5 of the permission engine: Discord bitfield check.
- * Fails closed → reject, names the missing permission.
- */
 import type { Middleware, MiddlewareContext, NextFn } from '../base-middleware.js';
 import { MiddlewareRejectError } from '../base-middleware.js';
 

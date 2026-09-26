@@ -6,7 +6,6 @@ const minValid = {
   REDIS_URL: 'redis://localhost:6379/0',
   QUEUE_REDIS_URL: 'redis://localhost:6379/1',
   INTERNAL_API_KEY: 'supersecretkey_supersecretkey_32',
-  // base64 of exactly 32 bytes (ADR-003 envelope root key)
   ENCRYPTION_ROOT_KEY: 'JF8PejG/00/nD5iuxpUtzGqh5MWW3yL1Oj6EcWYPgzM=',
   DEV_GUILD_ID: '900000000000000001',
 };
@@ -15,12 +14,12 @@ describe('parseEnv', () => {
   test('accepts a minimal valid environment', () => {
     const env = parseEnv(minValid);
     expect(env.DATABASE_URL).toBe('postgres://localhost/dumby_test');
-    expect(env.NODE_ENV).toBe('development'); // default
-    expect(env.LOG_LEVEL).toBe('info'); // default
-    expect(env.API_PORT).toBe(8080); // default
-    expect(env.HEALTH_PORT).toBe(8081); // default
-    expect(env.DATABASE_POOL_MAX).toBe(10); // default
-    expect(env.CREDENTIALS_SERVICE_PORT).toBe(8086); // default
+    expect(env.NODE_ENV).toBe('development');
+    expect(env.LOG_LEVEL).toBe('info');
+    expect(env.API_PORT).toBe(8080);
+    expect(env.HEALTH_PORT).toBe(8081);
+    expect(env.DATABASE_POOL_MAX).toBe(10);
+    expect(env.CREDENTIALS_SERVICE_PORT).toBe(8086);
   });
 
   test('coerces numeric strings correctly', () => {

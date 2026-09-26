@@ -1,11 +1,3 @@
-/**
- * Power Engine Panel (PEP) entry point — Tier 2.
- * Starts the PEP-only Fastify server on PEP_PORT.
- * Shares the same PostgreSQL and Redis instance as the main bot process.
- *
- * This is a separately-deployed process; it never imports the module
- * registry or gateway client.
- */
 import Fastify from 'fastify';
 import { parseEnv, pickEnvKeys } from '../config/env.schema.js';
 import { createLogger } from '../logging/logger.js';

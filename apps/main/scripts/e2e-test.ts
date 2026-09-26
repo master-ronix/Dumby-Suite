@@ -1,9 +1,3 @@
-/**
- * End-to-end test (Cluster: Clay). Exercises a full request path
- * through a live server: PowerEngineDispatcher validation, the guarded
- * handler's side effect, and — the part a unit test can't see — the
- * resulting audit_logs row landing in real Postgres. Targets docker-compose.yml.
- */
 import knexFactory from 'knex';
 import knexConfig from '../src/db/knexfile.js';
 

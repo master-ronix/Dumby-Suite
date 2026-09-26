@@ -2,8 +2,6 @@ import { test, expect, describe } from 'vitest';
 import { I18nManager } from '../../src/i18n/i18n-manager.js';
 import { formatNumber, formatDuration, formatTimestamp } from '../../src/i18n/formatters.js';
 
-// ─── I18nManager ─────────────────────────────────────────────────────────────
-
 describe('I18nManager', () => {
   test('returns the key as fallback when module is not registered', () => {
     const mgr = new I18nManager();
@@ -50,8 +48,6 @@ describe('I18nManager', () => {
   });
 });
 
-// ─── formatNumber ─────────────────────────────────────────────────────────────
-
 describe('formatNumber', () => {
   test('formats a simple integer', () => {
     expect(formatNumber(1000)).toMatch(/1[,.]?000/);
@@ -66,8 +62,6 @@ describe('formatNumber', () => {
     expect(() => formatNumber(42)).not.toThrow();
   });
 });
-
-// ─── formatDuration ───────────────────────────────────────────────────────────
 
 describe('formatDuration', () => {
   test('returns ms for durations under 1 second', () => {
@@ -94,8 +88,6 @@ describe('formatDuration', () => {
     expect(formatDuration(1000)).toBe('1.0s');
   });
 });
-
-// ─── formatTimestamp ──────────────────────────────────────────────────────────
 
 describe('formatTimestamp', () => {
   test('formats a date without throwing', () => {

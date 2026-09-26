@@ -7,8 +7,6 @@ import type { Client } from 'discord.js';
 import type { ModuleLoader } from '../module-system/loader.js';
 import { type SHUTDOWN_STEPS, shutdownStepNumber } from '../bootstrap/stages.js';
 
-/** Graceful shutdown orchestration (Cluster: Grace) — see stages.ts for the ordered step list. */
-
 export interface ShutdownDeps {
   logger: Logger;
   apiServer: FastifyInstance;
@@ -20,11 +18,8 @@ export interface ShutdownDeps {
   redis: Redis;
   queueRedis: Redis;
   db: DbClient;
-  /** Only present when DISCORD_ADAPTER=live; absent in mock mode. */
   discordClient?: Client | undefined;
-  /** Resolves once any in-flight command handlers have finished, or the timeout below elapses. */
   drainInFlightCommands: (timeoutMs: number) => Promise<void>;
-  /** Test-only override for individual step ceilings; production uses the spec defaults. */
   stepTimeoutsMs?: Partial<Record<(typeof SHUTDOWN_STEPS)[number], number>>;
 }
 
@@ -45,7 +40,6 @@ export function isAcceptingGatewayEvents(): boolean {
   return acceptingGatewayEvents;
 }
 
-/** Runs all 9 shutdown steps in order. Each step has its own ceiling; a step that exceeds it logs and moves on rather than hanging the process forever. */
 export async function gracefulShutdown(deps: ShutdownDeps, signal: string): Promise<void> {
   deps.logger.info('shutdown-initiated', { signal });
 
@@ -70,11 +64,7 @@ export async function gracefulShutdown(deps: ShutdownDeps, signal: string): Prom
     await deps.metricsServer.close();
   });
 
-  await runStep(deps, 'FLUSH_LOGS_AND_TRACES', async () => {
-    // Pino writes synchronously by default in this configuration; nothing
-    // additional to flush. Placeholder step kept for OTEL span-exporter
-    // flush once tracing is wired to a real collector.
-  });
+  await runStep(deps, 'FLUSH_LOGS_AND_TRACES', async () => {});
 
   await runStep(deps, 'CLOSE_QUEUE_CONNECTIONS', async () => {
     deps.queueRedis.disconnect();

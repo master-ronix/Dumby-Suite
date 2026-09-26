@@ -1,7 +1,3 @@
-/**
- * Priority 70: CooldownMiddleware (Cluster: Ring).
- * Per-user-per-command cooldown. Fails → reject with remaining time.
- */
 import type { Middleware, MiddlewareContext, NextFn } from '../base-middleware.js';
 import { MiddlewareRejectError } from '../base-middleware.js';
 
@@ -40,12 +36,10 @@ export class CooldownMiddleware implements Middleware {
 
     await next();
 
-    // Record the cooldown after the command runs successfully.
     await this.store.record(ctx.userId, ctx.commandName, cooldownMs);
   }
 }
 
-/** In-memory cooldown store for tests and single-node deployments. */
 export class InMemoryCooldownStore implements CooldownStore {
   private readonly entries = new Map<string, number>();
 

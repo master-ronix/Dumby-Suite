@@ -1,9 +1,3 @@
-/**
- * In-flight request/command tracker (Cluster: Grace). A Fastify onRequest
- * hook calls increment(), onResponse/onError calls decrement(); shutdown
- * step 2 calls waitForDrain() so a mid-flight request gets to finish
- * instead of being cut off mid-response.
- */
 export class InFlightTracker {
   private count = 0;
   private resolvers: Array<() => void> = [];

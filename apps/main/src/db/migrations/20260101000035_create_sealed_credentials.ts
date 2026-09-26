@@ -1,12 +1,6 @@
 import type { Knex } from 'knex';
 import { addTimestamps } from '../migration-helpers.js';
 
-/**
- * ADR-003 envelope-encrypted credential store — the in-process-readable
- * credential class (service-to-service credentials, signing keys the system
- * must present). Values are sealed under per-record DEKs (root key → DEK →
- * AES-256-GCM); the plaintext is never persisted.
- */
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable('sealed_credentials', (table) => {
     table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));

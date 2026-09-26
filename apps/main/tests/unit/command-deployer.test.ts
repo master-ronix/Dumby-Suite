@@ -136,7 +136,6 @@ describe('CommandDeployer', () => {
     const put = vi.fn().mockResolvedValue(undefined);
     const deployer = new CommandDeployer({ registry, logger, config, rest: { put } });
     await deployer.deploy();
-    // Core tier is global by specification; the development guild is only for admin tier.
     expect(put).toHaveBeenCalledTimes(2);
     expect(put).toHaveBeenNthCalledWith(1, '/applications/1234567890/commands', { body: [] });
     expect(put).toHaveBeenNthCalledWith(2, '/applications/1234567890/commands', {

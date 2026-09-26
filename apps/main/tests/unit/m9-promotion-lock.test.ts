@@ -196,10 +196,7 @@ describe('UR-C-14 promotion lock (blueprint §15.8 / DIAGRAM 15-B)', () => {
       expect(second.rollbackLink).not.toBeNull();
       expect(readlinkSync(join(live, 'moderation__rollback'))).toBe(v1);
 
-      // Make the rollback link dangling: delete its target directory.
       rmSync(v1, { recursive: true, force: true });
-      // existsSync would follow the dangling link and report false; the fix is
-      // lstatSync, which classifies the link itself (UR-C-14).
       expect(lstatSync(join(live, 'moderation__rollback')).isSymbolicLink()).toBe(true);
 
       const v3 = writeModule(staging, 'moderation', '1.2.0');

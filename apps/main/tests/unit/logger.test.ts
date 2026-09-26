@@ -1,10 +1,6 @@
 import { test, expect, vi, describe } from 'vitest';
 import { Logger, createLogger } from '../../src/logging/logger.js';
 
-/**
- * Test the Logger class by wrapping it around a fully mocked Pino instance.
- * This avoids side-effects (stdout output) while still exercising all paths.
- */
 function makeMockPino() {
   return {
     trace: vi.fn(),
@@ -81,7 +77,6 @@ describe('Logger (via mock pino)', () => {
 
 describe('createLogger', () => {
   test('returns a Logger instance without throwing', () => {
-    // We use 'silent' to prevent actual stdout output during tests.
     const logger = createLogger('silent');
     expect(logger).toBeInstanceOf(Logger);
   });

@@ -1,6 +1,3 @@
-/**
- * Tests for the MiddlewarePipeline and all 12 built-in middleware stages.
- */
 import { test, expect, vi, describe } from 'vitest';
 import type { Logger } from '../../src/logging/logger.js';
 import { MiddlewarePipeline } from '../../src/middleware/middleware-pipeline.js';
@@ -47,8 +44,6 @@ function makeLogger() {
     child: vi.fn(),
   };
 }
-
-// ─── MiddlewarePipeline ───────────────────────────────────────────────────────
 
 describe('MiddlewarePipeline', () => {
   test('calls the handler when no middleware is registered', async () => {
@@ -153,8 +148,6 @@ describe('MiddlewarePipeline', () => {
   });
 });
 
-// ─── AdminTierGateMiddleware ──────────────────────────────────────────────────
-
 import { AdminTierGateMiddleware } from '../../src/middleware/built-in/admin-tier-gate.js';
 
 describe('AdminTierGateMiddleware', () => {
@@ -213,8 +206,6 @@ describe('AdminTierGateMiddleware', () => {
   });
 });
 
-// ─── TraceMiddleware ──────────────────────────────────────────────────────────
-
 describe('TraceMiddleware', () => {
   test('sets correlationId on the context', async () => {
     const mw = new TraceMiddleware();
@@ -239,8 +230,6 @@ describe('TraceMiddleware', () => {
     expect(new TraceMiddleware().priority).toBe(0);
   });
 });
-
-// ─── AuthMiddleware ───────────────────────────────────────────────────────────
 
 describe('AuthMiddleware', () => {
   const guildOnlyMeta = { isGuildOnly: (name: string) => name === 'guild-cmd' };
@@ -275,8 +264,6 @@ describe('AuthMiddleware', () => {
     expect(new AuthMiddleware(guildOnlyMeta).priority).toBe(10);
   });
 });
-
-// ─── MaintenanceModeMiddleware ────────────────────────────────────────────────
 
 describe('MaintenanceModeMiddleware', () => {
   test('passes through when maintenance mode is inactive', async () => {
@@ -324,8 +311,6 @@ describe('MaintenanceModeMiddleware', () => {
   });
 });
 
-// ─── GuildConfigMiddleware ────────────────────────────────────────────────────
-
 describe('GuildConfigMiddleware', () => {
   const logger = makeLogger() as unknown as Logger;
 
@@ -362,8 +347,6 @@ describe('GuildConfigMiddleware', () => {
   });
 });
 
-// ─── LocaleMiddleware ─────────────────────────────────────────────────────────
-
 describe('LocaleMiddleware', () => {
   test('sets locale in meta from the resolver', async () => {
     const resolver = new DefaultLocaleResolver('fr-FR');
@@ -382,8 +365,6 @@ describe('LocaleMiddleware', () => {
   });
 });
 
-// ─── RateLimitMiddleware ──────────────────────────────────────────────────────
-
 describe('RateLimitMiddleware', () => {
   const config = { userMax: 5, userWindowMs: 10_000, guildMax: 50, guildWindowMs: 10_000 };
 
@@ -397,7 +378,7 @@ describe('RateLimitMiddleware', () => {
       ran = true;
     });
     expect(ran).toBe(true);
-    expect(limiter.checkAndIncrement).toHaveBeenCalledTimes(2); // user + guild
+    expect(limiter.checkAndIncrement).toHaveBeenCalledTimes(2);
   });
 
   test('rejects when the user limit is exceeded', async () => {
@@ -429,7 +410,7 @@ describe('RateLimitMiddleware', () => {
     };
     const mw = new RateLimitMiddleware(limiter as never, config);
     await mw.execute(makeCtx({ guildId: null }), async () => {});
-    expect(limiter.checkAndIncrement).toHaveBeenCalledTimes(1); // user only
+    expect(limiter.checkAndIncrement).toHaveBeenCalledTimes(1);
   });
 
   test('has priority 40', () => {
@@ -438,8 +419,6 @@ describe('RateLimitMiddleware', () => {
     );
   });
 });
-
-// ─── PermissionMiddleware ─────────────────────────────────────────────────────
 
 describe('PermissionMiddleware', () => {
   test('passes through when no permissions are required', async () => {
@@ -500,8 +479,6 @@ describe('PermissionMiddleware', () => {
     ).toBe(50);
   });
 });
-
-// ─── RBACMiddleware ───────────────────────────────────────────────────────────
 
 describe('RBACMiddleware', () => {
   test('skips RBAC for core-tier commands', async () => {
@@ -584,8 +561,6 @@ describe('RBACMiddleware', () => {
   });
 });
 
-// ─── CooldownMiddleware ───────────────────────────────────────────────────────
-
 describe('CooldownMiddleware', () => {
   test('passes through when no cooldown is configured (0ms)', async () => {
     const store = new InMemoryCooldownStore();
@@ -633,8 +608,6 @@ describe('CooldownMiddleware', () => {
   });
 });
 
-// ─── DeferMiddleware ──────────────────────────────────────────────────────────
-
 describe('DeferMiddleware', () => {
   test('calls deferReply when requiresDefer is true and interaction is present', async () => {
     const config = {
@@ -680,8 +653,6 @@ describe('DeferMiddleware', () => {
     expect(new DeferMiddleware({ requiresDefer: vi.fn(), isEphemeral: vi.fn() }).priority).toBe(80);
   });
 });
-
-// ─── AnalyticsMiddleware ──────────────────────────────────────────────────────
 
 describe('AnalyticsMiddleware', () => {
   test('sets invocationStart in meta and calls next', async () => {

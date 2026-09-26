@@ -101,7 +101,6 @@ test('append-only store exposes no mutable surface — getAll returns a defensiv
   store.appendBuilt({ ...BASE_INPUT, recordId: 'r1' });
   const snapshot = store.getAll();
   expect(snapshot).toHaveLength(1);
-  // Mutating the returned array doesn't affect the store (copy).
   (snapshot as unknown as unknown[]).push('poison');
   expect(store.getAll()).toHaveLength(1);
 });

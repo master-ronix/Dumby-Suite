@@ -17,7 +17,7 @@ test("shardIdForGuild is deterministic and matches Discord's (snowflake >> 22) %
 
 test('getShardAssignment partitions every guild into exactly one shard', () => {
   const guilds = Array.from({ length: 20 }, (_, i) => ({
-    id: String(900000000000000000n + BigInt(i * 4194304)), // spread across the snowflake shard-bits
+    id: String(900000000000000000n + BigInt(i * 4194304)),
     name: `guild-${i}`,
     ownerId: 'owner-1',
   }));

@@ -24,7 +24,7 @@ test('DlqMonitor respects a custom threshold', () => {
 test('QueueAutoscaler scales up by one when depth is growing and not rate-limited', () => {
   let now = 0;
   const scaler = new QueueAutoscaler(1, 10, 30_000, 5, () => now);
-  const decision = scaler.evaluate(2, 20, 5); // depth grew from 5 -> 20
+  const decision = scaler.evaluate(2, 20, 5);
   expect(decision).toStrictEqual({ action: 'scale-up', newConcurrency: 3 });
 });
 
@@ -40,7 +40,7 @@ test('QueueAutoscaler rate-limits scale-ups to once per interval', () => {
   const scaler = new QueueAutoscaler(1, 10, 30_000, 5, () => now);
   const first = scaler.evaluate(2, 20, 5);
   expect(first.action).toBe('scale-up');
-  now += 10_000; // only 10s later, still inside the 30s window
+  now += 10_000;
   const second = scaler.evaluate(3, 40, 20);
   expect(second.action).toBe('hold');
 });
@@ -51,7 +51,7 @@ test('QueueAutoscaler scales down by one after 5 consecutive near-zero-depth che
   let lastDecision;
   for (let i = 0; i < 5; i += 1) {
     lastDecision = scaler.evaluate(5, 0, 0);
-    now += 30_001; // clear the rate limit between checks so only the near-zero counter matters
+    now += 30_001;
   }
   expect(lastDecision).toStrictEqual({ action: 'scale-down', newConcurrency: 4 });
 });
@@ -61,7 +61,7 @@ test('QueueAutoscaler resets the near-zero counter as soon as depth is no longer
   const scaler = new QueueAutoscaler(1, 10, 30_000, 3, () => now);
   scaler.evaluate(5, 0, 0);
   scaler.evaluate(5, 0, 0);
-  scaler.evaluate(5, 50, 0); // depth spikes, resets the near-zero streak
+  scaler.evaluate(5, 50, 0);
   now += 30_001;
   const decision = scaler.evaluate(5, 0, 50);
   expect(decision.action).not.toBe('scale-down');

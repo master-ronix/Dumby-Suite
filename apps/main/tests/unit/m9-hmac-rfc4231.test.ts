@@ -1,14 +1,6 @@
 import { test, expect } from 'vitest';
 import { hmacSha256, sha256 } from '../../src/shared/utils/crypto.js';
 
-/**
- * UR-B-19 regression proof: hmacSha256 must implement real keyed HMAC-SHA256
- * (createHmac). The RFC 4231 §4 HMAC-SHA-256 vectors are fed exactly as
- * specified (raw key/data bytes) and checked against the published digests,
- * so a regressed implementation can never hide behind a self-consistency
- * test. String inputs are covered separately (their semantics must match
- * Node's canonical createHmac on the same UTF-8 strings).
- */
 const case1 = {
   key: Buffer.from('0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b0b', 'hex'),
   data: Buffer.from('Hi There'),

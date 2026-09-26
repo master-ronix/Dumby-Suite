@@ -25,7 +25,7 @@ test('set and get roundtrip an object value', () => {
 
 test('get returns undefined for an expired entry', async () => {
   const cache = makeCache();
-  cache.set('key', 'value', 1); // 1ms TTL
+  cache.set('key', 'value', 1);
   await new Promise((r) => setTimeout(r, 10));
   expect(cache.get('key')).toBeUndefined();
 });
@@ -105,7 +105,6 @@ test('evicts oldest entries when max count is exceeded', () => {
   cache.set('a', 1, 60_000);
   cache.set('b', 2, 60_000);
   cache.set('c', 3, 60_000);
-  // LRU: 'a' or 'b' may have been evicted; 'c' is always present
   expect(cache.get('c')).toBe(3);
   expect(cache.size()).toBeLessThanOrEqual(2);
 });

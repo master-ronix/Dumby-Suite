@@ -1,13 +1,3 @@
-/**
- * Rate limiting (Cluster: Mash). Sliding-window-log algorithm:
- * exact (no fixed-window edge-burst problem), and rejected attempts are
- * NOT recorded — a client hammering the endpoint while blocked does not
- * get to "buy" a later window by spending attempts during the block.
- *
- * Defaults mirror RATE_LIMIT_USER_MAX / RATE_LIMIT_USER_WINDOW_MS and the
- * guild-scoped equivalents from .env.example.
- */
-
 export interface RateLimitDecision {
   allowed: boolean;
   remaining: number;
@@ -59,12 +49,6 @@ export interface AsyncRateLimiter {
   checkAndIncrement(key: string): Promise<RateLimitDecision>;
 }
 
-/**
- * Wraps a primary (Redis-backed) limiter; if it throws (Redis outage), falls
- * back to an in-process SlidingWindowRateLimiter and fires onFallbackEngaged
- * exactly once per transition so a metric/log can be emitted without
- * spamming on every request while the outage persists.
- */
 export class FallbackRateLimiter implements AsyncRateLimiter {
   private usingFallback = false;
 

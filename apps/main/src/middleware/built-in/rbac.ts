@@ -1,9 +1,3 @@
-/**
- * Priority 60: RBACMiddleware (Cluster: Ring).
- * Runs Layer 6 of the permission engine: Dumby RBAC role check.
- * Skipped entirely for Core-tier commands (blueprint.md §18.6).
- * Fails closed → reject.
- */
 import type { Middleware, MiddlewareContext, NextFn } from '../base-middleware.js';
 import { MiddlewareRejectError } from '../base-middleware.js';
 import type { RbacRole } from '../../permissions/rbac.js';
@@ -21,7 +15,6 @@ export class RBACMiddleware implements Middleware {
   constructor(private readonly resolver: RbacResolver) {}
 
   async execute(ctx: MiddlewareContext, next: NextFn): Promise<void> {
-    // Core-tier commands skip Layer 6 entirely.
     if (!ctx.guildId || this.resolver.isCoreTierCommand(ctx.commandName)) {
       await next();
       return;

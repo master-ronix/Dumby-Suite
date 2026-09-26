@@ -1,12 +1,5 @@
 import { z } from 'zod';
 
-/**
- * Module manifest schema (Cluster: Ring). Every field the spec lists as
- * required is present. `.strict()` so an unrecognized field fails
- * manifest validation at bootstrap Stage 11 (MODULE_VALIDATE) instead of
- * being silently ignored.
- */
-
 export const moduleTierSchema = z.enum(['admin', 'core', 'standard', 'marketplace']);
 
 export const commandManifestSchema = z.object({

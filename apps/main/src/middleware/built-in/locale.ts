@@ -1,7 +1,3 @@
-/**
- * Priority 30: LocaleMiddleware (Cluster: Ring).
- * Binds the resolved locale to the context meta. Never aborts.
- */
 import type { Middleware, MiddlewareContext, NextFn } from '../base-middleware.js';
 
 export interface LocaleResolver {

@@ -1,31 +1,3 @@
-/**
- * Seeds the in-repo first-party Swastik module packages onto the tier volumes
- * through the Swastik promotion path.
- *
- * The seed is a *deploy*, not a copy: every package is posted to
- * `POST /internal/deploy`, which writes the bundle into the
- * `swastik-staging` volume, runs the static load verification, applies the
- * promotion gate (first promotion requires explicit human approval), and only
- * then promotes atomically into the tier volume its manifest declares. This
- * script has no filesystem write path into `MODULES_DIR` at all — a first-party
- * module can never bypass staging, verification, the license gate, or the
- * audit trail (blueprint §15.8, ADR-005).
- *
- * Usage:
- *   pnpm seed:modules --human-approved
- *   pnpm seed:modules --modules health,hello-world --human-approved
- *   pnpm seed:modules --provision-governance --human-approved
- *
- * Flags:
- *   --human-approved         assert operator sign-off; without it the server
- *                            refuses any first promotion (fail-closed).
- *   --modules a,b            restrict the run to these package slugs.
- *   --swastik-url URL        Swastik base URL (default http://127.0.0.1:$SWASTIK_PORT).
- *   --dev-id ID              first-party devId (default $FIRST_PARTY_DEV_ID).
- *   --username NAME          developer username used by --provision-governance.
- *   --provision-governance   upsert the first-party developer + approved license.
- *   --no-build               use the existing dist-modules artifacts as-is.
- */
 import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { parseEnv, pickEnvKeys } from '../src/config/env.schema.js';
@@ -43,8 +15,6 @@ import {
 const DEFAULT_DEV_ID = 'dev_first_party';
 const DEFAULT_USERNAME = 'dumby-first-party';
 const GOVERNANCE_ACTOR = 'first-party-seed';
-/** `core` is the highest tier class the first-party set needs; a license
- * authorizes its own tier and below, so it also covers Standard modules. */
 const GOVERNANCE_TIER_CLASS: LicenseTierClass = 'core';
 
 export interface SeedOptions {
@@ -116,12 +86,6 @@ interface DeployResponseBody {
   readonly error?: string;
 }
 
-/**
- * Promotes one built package. The payload manifest is re-validated after the
- * `devId` injection: the Swastik route requires `manifest.devId` to equal the
- * deploying developer, so the seeded artifact carries the governance identity
- * it was actually promoted under.
- */
 export async function promotePackage(options: {
   readonly pkg: BuiltFirstPartyModule;
   readonly swastikUrl: string;

@@ -28,12 +28,6 @@ function sendDispatchResult(
   return reply.code(200).send({ ok: true });
 }
 
-/**
- * Honest 501 for PEP actions whose backing primitive does not exist yet.
- * These must never fake a `200 {ok:true}` (UR-C-25): a route that has no
- * real implementation responds with NOT_IMPLEMENTED instead of claiming
- * success.
- */
 function sendNotImplemented(reply: FastifyReply, action: string): FastifyReply {
   return reply.code(501).send({
     error: {
@@ -50,19 +44,9 @@ export interface AdminRoutesDeps {
   auditWriter: AuditWriter;
   ceilingService?: CommandCeilingService;
   collisionResolution?: CollisionResolutionService;
-  /** Counts the total active commands across all modules for a guild. Default: queries guild_module_states + manifest commands. */
   getGuildCommandCount?: (guildId: string) => Promise<number> | number;
 }
 
-/**
- * A representative slice of the ~60-endpoint admin/Power-Engine-Panel
- * surface (spec section 21). Every mutating route follows the exact same
- * three lines: extract {actorId, source, reason} -> dispatcher.dispatch()
- * -> sendDispatchResult(). The remaining PEP domains (economy, RBAC,
- * marketplace review, backups, telemetry, sharding, ...) register with
- * this identical pattern; see STATUS_AND_VERIFICATION.md for the full
- * endpoint checklist and what is wired here vs. left as a follow-up.
- */
 export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps): void {
   app.get('/admin/config', async (_req: FastifyRequest, reply: FastifyReply) => {
     return reply.code(200).send(deps.config.redactedSnapshot());
@@ -136,7 +120,6 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
           .where({ guildId, moduleSlug: slug })
           .update({ enabled: false, state: 'disabled', updatedAt: new Date() });
 
-        // Re-evaluate collisions: if a winning module is disabled, its overrides are released
         if (deps.collisionResolution) {
           await deps.collisionResolution.handleModuleDisable(guildId, slug);
         }
@@ -154,12 +137,10 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
       const outcome = await deps.dispatcher.dispatch('module.restore', body, async () => {
         if (!guildId) throw new Error('guildId is required');
 
-        // 1. Enforce command ceiling before restoring
         if (deps.ceilingService) {
           await deps.ceilingService.guard(guildId);
         }
 
-        // 2. Detect collisions — if any exist, set install_pending_resolution instead of active
         let targetState = 'active';
         if (deps.collisionResolution) {
           const collisions = await deps.collisionResolution.pauseOnCollision(guildId, slug);
@@ -234,9 +215,6 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
     },
   );
 
-  // ── Blueprint §22.3 — PEP 17 Control Domains ────────────────────────
-
-  // 3. suspendDeveloper — block every module by a devId from deploying
   app.post(
     '/admin/power-engine/suspendDeveloper',
     async (req: FastifyRequest, reply: FastifyReply) => {
@@ -254,7 +232,6 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
     },
   );
 
-  // 4. suspendCommand — disable one specific command fleet-wide
   app.post(
     '/admin/power-engine/suspendCommand',
     async (req: FastifyRequest, reply: FastifyReply) => {
@@ -264,9 +241,6 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
         await deps.db
           .knex('guild_command_overrides')
           .insert({
-            // NULL guildId = fleet-wide kill switch (UR-A-10 / UR-B-07).
-            // The migration 00036 partial unique index is what makes this a
-            // working upsert target.
             guildId: null,
             commandKey: commandName,
             overrideType: 'disabled',
@@ -279,7 +253,6 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
     },
   );
 
-  // 6. exitMaintenanceMode — clear maintenance flag
   app.post(
     '/admin/power-engine/exitMaintenanceMode',
     async (req: FastifyRequest, reply: FastifyReply) => {
@@ -297,7 +270,6 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
     },
   );
 
-  // 8. pauseQueue — pause a BullMQ queue
   app.post('/admin/power-engine/pauseQueue', async (req: FastifyRequest, reply: FastifyReply) => {
     const body = extractRequest(req.body);
     const { queueName } = (req.body ?? {}) as { queueName?: string };
@@ -314,7 +286,6 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
     return sendDispatchResult(reply, outcome);
   });
 
-  // 9. resumeQueue — resume a paused BullMQ queue
   app.post('/admin/power-engine/resumeQueue', async (req: FastifyRequest, reply: FastifyReply) => {
     const body = extractRequest(req.body);
     const { queueName } = (req.body ?? {}) as { queueName?: string };
@@ -327,7 +298,6 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
     return sendDispatchResult(reply, outcome);
   });
 
-  // 10. requeueDeadLetter — re-enqueue a dead-lettered job
   app.post(
     '/admin/power-engine/requeueDeadLetter',
     async (req: FastifyRequest, reply: FastifyReply) => {
@@ -350,7 +320,6 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
     },
   );
 
-  // 11. overrideRateLimit — temporarily bypass rate limit for a user/guild
   app.post(
     '/admin/power-engine/overrideRateLimit',
     async (req: FastifyRequest, reply: FastifyReply) => {
@@ -374,7 +343,6 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
     },
   );
 
-  // 12. restartShardGroup — restart a shard group
   app.post(
     '/admin/power-engine/restartShardGroup',
     async (req: FastifyRequest, reply: FastifyReply) => {
@@ -394,7 +362,6 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
     },
   );
 
-  // 13. triggerCoreRestart — trigger a zero-downtime core restart
   app.post(
     '/admin/power-engine/triggerCoreRestart',
     async (req: FastifyRequest, reply: FastifyReply) => {
@@ -413,7 +380,6 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
     },
   );
 
-  // 14. rollbackModuleVersion — revert a module to its previous version
   app.post(
     '/admin/power-engine/rollbackModuleVersion',
     async (req: FastifyRequest, reply: FastifyReply) => {
@@ -438,7 +404,6 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
     },
   );
 
-  // 16. queryAuditLog — query the audit log
   app.get('/admin/power-engine/queryAuditLog', async (req: FastifyRequest, reply: FastifyReply) => {
     const { source, actorId, action, outcome, limit } = (req.query ?? {}) as {
       source?: string;
@@ -447,8 +412,6 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
       outcome?: string;
       limit?: string;
     };
-    // Columns must match the real migration 00008 shape (UR-B-07): the
-    // legacy targetType/targetId/timestamp columns never existed.
     const query = deps.db.knex('audit_logs').orderBy('createdAt', 'desc');
     if (source) query.where({ source });
     if (actorId) query.where({ actorId });
@@ -459,7 +422,6 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
     return reply.code(200).send(rows);
   });
 
-  // 17. revokeModuleSignature — revoke a module's signing key
   app.post(
     '/admin/power-engine/revokeModuleSignature',
     async (req: FastifyRequest, reply: FastifyReply) => {
@@ -472,9 +434,6 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
         'revokeModuleSignature',
         body,
         async () => {
-          // signing_keys has no moduleSlug column — key on the real keyId
-          // (UR-C-11: previously filtered a nonexistent column and always
-          // 500'd).
           return deps.db
             .knex('signing_keys')
             .where({ keyId })

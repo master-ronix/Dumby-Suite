@@ -10,10 +10,6 @@ const packageJson = JSON.parse(
   readFileSync(new URL('../../package.json', import.meta.url), 'utf8'),
 ) as { version: string };
 
-/**
- * UR-B-25: /api/info must report the version from the built package.json,
- * never a hardcoded literal.
- */
 test('GET /api/info reports the package.json version', async () => {
   const app = Fastify();
   registerInfoRoutes(app, {

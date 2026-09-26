@@ -1,18 +1,3 @@
-/**
- * Twixter registration API — stub entry point (blueprint §35.5, §44 Twixter
- * family; ADR-008; ADR-011).
- *
- * The persona-creation surface: a guild administrator registers the Discord
- * application they already own, the API validates the application and the
- * registrar's authority over it, and the resulting persona is bound to that
- * one guild. MDIS persona pages cross-link here; they never create personas.
- *
- * v5.0 hosts no operational personas (recorded honestly in the ledger, M7):
- * infrastructure provisioning — secrets, process, quota — is reserved to
- * process owners, so every route answers 501 Not Implemented with a reference
- * to the spec that owns it rather than pretending to provision. The typed
- * surface is what a future program fills in.
- */
 import Fastify from 'fastify';
 import { parseEnv, pickEnvKeys } from '../config/env.schema.js';
 import { createLogger } from '../logging/logger.js';
@@ -37,7 +22,6 @@ const NOT_IMPLEMENTED = (surface: string) => ({
     `process owners and is not stubbed in.`,
 });
 
-/** Typed request/response contract for the registration API (ADR-011). */
 app.post<{
   Body: {
     name?: string;

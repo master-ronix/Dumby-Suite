@@ -1,17 +1,6 @@
 import type { Knex } from 'knex';
 import { addSoftDelete, addTimestamps } from '../migration-helpers.js';
 
-/**
- * M7 — aligns the persona tables with blueprint §35.3 / ADR-008 / ADR-011:
- *   - `persona_identities` gains the distinct `discordApplicationId` (the
- *     bring-your-own-identity application), the single-server `boundGuildId`,
- *     the free charter with its recorded sunset condition and grandfathering
- *     flag, DM behavior, shard allocation, status, and the token digest
- *     (plaintext is never stored).
- *   - `guild_persona_bindings` is re-keyed to `(guildId, moduleSlug)` — the
- *     unit of binding is one module in one guild, exactly one live binding per
- *     pair (§35.3) — with the persona as FK.
- */
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable('persona_identities', (table) => {
     table.string('discordApplicationId').notNullable().unique();

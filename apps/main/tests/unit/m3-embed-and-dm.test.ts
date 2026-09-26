@@ -50,7 +50,6 @@ function textContents(payload: unknown): string {
 
 describe('M3 gate — embed ban (ADR-001)', () => {
   test('no file in src/ instantiates or imports a classic embed', () => {
-    // Grep gate: any EmbedBuilder/MessageEmbed use in src/ fails this migration gate.
     const srcDir = fileURLToPath(new URL('../../src', import.meta.url));
     const offenders = readdirSync(srcDir, { recursive: true, encoding: 'utf8' }).filter((path) => {
       if (!path.endsWith('.ts')) return false;

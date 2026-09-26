@@ -2,10 +2,6 @@ import type { Knex } from 'knex';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
-// Resolved relative to this file's own location, not process.cwd() — knex's
-// string default ('./migrations') breaks depending on which directory a
-// script is launched from (e.g. `pnpm run migrate` from the package root
-// vs. bootstrap.ts's runtime knex instance in src/db/client.ts).
 const migrationsDir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'migrations');
 
 function buildConfig(

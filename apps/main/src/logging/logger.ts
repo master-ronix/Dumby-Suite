@@ -1,8 +1,3 @@
-/**
- * Structured JSON logging (Cluster: Glass). Wraps Pino so every call site
- * uses the same (message, context) shape instead of pino's (context,
- * message) argument order, and centralizes redaction paths.
- */
 import pino, { type Logger as PinoLogger } from 'pino';
 
 export interface LogContext {

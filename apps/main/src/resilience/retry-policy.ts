@@ -1,15 +1,7 @@
-/**
- * Retry policy (cross-cutting resilience primitive, same rationale as
- * circuit-breaker.ts). Exponential backoff with full jitter,
- * capped at maxDelayMs. Pure function of (attempt) -> delayMs so it is
- * trivially testable without timers.
- */
-
 export interface RetryPolicyOptions {
   maxAttempts: number;
   baseDelayMs: number;
   maxDelayMs: number;
-  /** Injectable for deterministic tests; defaults to Math.random. */
   random?: () => number;
 }
 
@@ -31,7 +23,6 @@ export class RetryPolicy {
     this.random = options.random ?? Math.random;
   }
 
-  /** Full-jitter exponential backoff: delay = random(0, min(maxDelay, base * 2^attempt)). */
   delayForAttempt(attempt: number): number {
     if (attempt < 0) throw new RangeError('attempt must be >= 0');
     const exp = Math.min(this.options.maxDelayMs, this.options.baseDelayMs * 2 ** attempt);

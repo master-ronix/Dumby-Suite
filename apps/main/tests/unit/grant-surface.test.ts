@@ -41,8 +41,6 @@ test('the write surface refuses grants on core commands', () => {
 });
 
 test('the write surface never offers a privileged or operator-override grant type', () => {
-  // The five canonical types are exhaustive by construction; a boundary
-  // test pins the set so widening it is a breaking change.
   const surface: InMemoryGrantSurface = new InMemoryGrantSurface();
   for (const type of ['permit', 'blacklist', 'whitelist', 'cooldown', 'rate-limit'] as const) {
     const result = surface.apply(

@@ -1,8 +1,3 @@
-/**
- * Priority 40: RateLimitMiddleware (Cluster: Ring).
- * Dual-window sliding check (per-user + per-guild).
- * Falls back to in-memory when Redis is unavailable — fail-closed.
- */
 import type { Middleware, MiddlewareContext, NextFn } from '../base-middleware.js';
 import { MiddlewareRejectError } from '../base-middleware.js';
 import type { SlidingWindowRateLimiter } from '../../ratelimit/sliding-window.js';

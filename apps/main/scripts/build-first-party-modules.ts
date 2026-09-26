@@ -1,13 +1,3 @@
-/**
- * Builds the in-repo first-party Swastik module packages under
- * `packages/modules/<slug>/` into promotable artifacts under
- * `apps/main/dist-modules/<slug>/` (`manifest.json` + `index.js`).
- *
- * This script is a *build* step only. It never reads or writes a tier volume:
- * the output is handed to the Swastik promotion path by
- * `scripts/seed-first-party-modules.ts`, which is the only supported way a
- * first-party module reaches `modules-*` (blueprint §15.8, ADR-005).
- */
 import { build } from 'esbuild';
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -47,13 +37,6 @@ export class FirstPartyModulePackageError extends Error {
   }
 }
 
-/**
- * Discovers every authored first-party package. A directory counts as a package
- * when it carries both a `manifest.json` and a `src/index.ts`; the manifest is
- * validated against the runtime schema and must agree with the directory name
- * so a promoted artifact can never claim a different module name than the
- * volume directory it is promoted into.
- */
 export function discoverFirstPartyModulePackages(
   packagesRoot: string = FIRST_PARTY_MODULES_ROOT,
 ): FirstPartyModulePackage[] {
@@ -91,13 +74,6 @@ export function discoverFirstPartyModulePackages(
   return packages;
 }
 
-/**
- * Bundles one package into a self-contained ESM artifact. The bundle must not
- * reach back into the host application: a promoted module is loaded from a
- * tier volume by `import()` with no module resolution into `apps/main/src`, so
- * any surviving relative import would be a load-time failure on the live
- * volume. esbuild inlines everything it can, which is what makes that true.
- */
 export async function buildFirstPartyModulePackage(
   pkg: FirstPartyModulePackage,
   outRoot: string = FIRST_PARTY_BUILD_ROOT,
@@ -143,11 +119,6 @@ export async function buildAllFirstPartyModulePackages(
   return built;
 }
 
-/**
- * Reads previously built artifacts back off disk (used by the seed script's
- * `--no-build` mode and by tests). Fails closed: a half-built or missing
- * artifact directory is an error, never a silently skipped module.
- */
 export function readBuiltFirstPartyModules(
   outRoot: string = FIRST_PARTY_BUILD_ROOT,
 ): BuiltFirstPartyModule[] {

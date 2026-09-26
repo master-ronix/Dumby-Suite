@@ -16,11 +16,6 @@ import type { CoreRenderer } from '../rendering/core-renderer.js';
 import type { InteractionRegistry } from '../interactions/interaction-registry.js';
 import type { PersonaCommandBindingService } from '../personas/persona-command-binding.service.js';
 
-/**
- * CORE_TOKENS is the frozen namespace: after bootstrap Stage 09
- * (DI_BOOTSTRAP) the root container is frozen, so nothing — including a
- * misbehaving module — can re-register any of these.
- */
 export const CORE_TOKENS = {
   Logger: createToken<Logger>('core.Logger'),
   Config: createToken<ConfigService>('core.Config'),
@@ -42,12 +37,6 @@ export const CORE_TOKENS = {
   Personas: createToken<PersonaCommandBindingService>('core.Personas'),
 } as const;
 
-/**
- * Builds a module-scoped token namespace, e.g. `moduleTokens('utility')`
- * produces a factory for tokens whose description is prefixed
- * `module.utility.*`, preventing accidental collisions between two
- * modules that both want to call their service "Service".
- */
 export function moduleTokenNamespace(moduleId: string) {
   return {
     token<T>(name: string) {

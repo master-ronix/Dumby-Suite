@@ -1,10 +1,3 @@
-/**
- * Persona repositories (blueprint §35.3, §24.2). Persona identities and
- * bindings persist in real stores against PostgreSQL — bindings read and
- * written through a typed repository, never a production in-memory mock. The
- * in-memory implementation in this file exists solely as a unit-test double
- * for the pure gates; the bootstrap wiring uses the Postgres stores only.
- */
 import type { Knex } from 'knex';
 import { type PersonaBinding, type PersonaIdentity } from './persona.js';
 
@@ -161,11 +154,6 @@ function fromRow(r: PersonaBindingRow): PersonaBinding {
   return { guildId: r.guildId, moduleSlug: r.moduleSlug, personaId: r.personaId };
 }
 
-/**
- * Unit-test double only. The production path (bootstrap.ts) constructs the
- * Postgres stores; this in-memory pair exists so the pure gates and the
- * binding service are provable without a database.
- */
 export class InMemoryPersonaStores implements PersonaIdentityStore, PersonaBindingStore {
   readonly identities = new Map<string, PersonaIdentity>();
   readonly bindings = new Map<string, PersonaBinding>();

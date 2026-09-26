@@ -1,14 +1,8 @@
-/**
- * Priority -20: MaintenanceModeMiddleware (Cluster: Ring).
- * Short-circuits all interactions when maintenance mode is active,
- * except for commands on an allow-list that manage maintenance mode itself.
- */
 import type { Middleware, MiddlewareContext, NextFn } from '../base-middleware.js';
 import { MiddlewareRejectError } from '../base-middleware.js';
 
 export interface MaintenanceModeState {
   isActive(): boolean;
-  /** Commands exempt from the maintenance-mode gate (e.g. core-admin commands). */
   allowedCommands(): readonly string[];
 }
 
@@ -25,7 +19,6 @@ export class MaintenanceModeMiddleware implements Middleware {
   }
 }
 
-/** In-memory maintenance-mode state for tests and the single-node case. */
 export class InMemoryMaintenanceModeState implements MaintenanceModeState {
   private active = false;
   private readonly allowed: Set<string>;

@@ -27,9 +27,9 @@ test('a rejected attempt does not count toward the window (no increment after re
   const limiter = new SlidingWindowRateLimiter(2, 10_000, () => now);
   limiter.checkAndIncrement('user-1');
   limiter.checkAndIncrement('user-1');
-  limiter.checkAndIncrement('user-1'); // rejected
-  limiter.checkAndIncrement('user-1'); // also rejected
-  now += 10_001; // window fully elapses
+  limiter.checkAndIncrement('user-1');
+  limiter.checkAndIncrement('user-1');
+  now += 10_001;
   const afterWindow = limiter.checkAndIncrement('user-1');
   expect(afterWindow.allowed).toBe(true);
 });

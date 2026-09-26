@@ -63,22 +63,12 @@ import { CommandDeployer } from '../commands/command-deployer.js';
 import { CoreRenderer } from '../rendering/core-renderer.js';
 import { InteractionRegistry } from '../interactions/interaction-registry.js';
 
-/**
- * The 18-stage bootstrap sequence (Cluster: Grace). Each numbered comment
- * below is one stage; `progress.advanceTo(...)` is what the three health
- * probes read (src/bootstrap/stages.ts — already unit tested).
- */
 export async function bootstrap(): Promise<void> {
   const progress = new BootstrapProgress();
   const container = new Container();
 
-  // Stage 01: PROCESS_SETUP
   progress.advanceTo('PROCESS_SETUP');
   process.title = 'dumby-headless-backend';
-  // Fatal handlers (UR-C-18): structured fatal log with correlation ID, then
-  // `system.fatal-error` notification and a graceful shutdown bounded to 15s,
-  // then exit 1. The logger/shutdown/notifiers are upgraded in place once the
-  // later stages construct them.
   const fatalHooks: {
     logger: Logger;
     shutdown?: () => Promise<void>;
@@ -87,7 +77,6 @@ export async function bootstrap(): Promise<void> {
   const uninstallFatalHandlers = installFatalHandlers(fatalHooks);
   void uninstallFatalHandlers;
 
-  // Stage 02: CONFIG_LOAD
   progress.advanceTo('CONFIG_LOAD');
   let env;
   try {
@@ -102,13 +91,10 @@ export async function bootstrap(): Promise<void> {
   const config = new ConfigService(env);
   container.registerValue(CORE_TOKENS.Config, config);
 
-  // Stage 03: HEALTH_SERVER_INIT — must be listening before Stage 04 so
-  // liveness can start returning 200 as soon as Stage 04 completes.
   progress.advanceTo('HEALTH_SERVER_INIT');
   const healthServer = buildHealthServer(progress);
   await healthServer.listen({ port: config.get('HEALTH_PORT'), host: '0.0.0.0' });
 
-  // Stage 04: OBSERVABILITY_INIT
   progress.advanceTo('OBSERVABILITY_INIT');
   const logger = createLogger(config.get('LOG_LEVEL'));
   fatalHooks.logger = logger;
@@ -118,7 +104,6 @@ export async function bootstrap(): Promise<void> {
   const metricsServer = buildMetricsServer(metrics);
   await metricsServer.listen({ port: config.get('METRICS_PORT'), host: '0.0.0.0' });
 
-  // Stage 05: DATABASE_CONNECT
   progress.advanceTo('DATABASE_CONNECT');
   const db = new DbClient({
     connectionString: config.get('DATABASE_URL'),
@@ -130,11 +115,9 @@ export async function bootstrap(): Promise<void> {
   });
   container.registerValue(CORE_TOKENS.Db, db);
 
-  // Stage 06: MIGRATION_RUN
   progress.advanceTo('MIGRATION_RUN');
   await db.knex.migrate.latest();
 
-  // Stage 07: CACHE_CONNECT
   progress.advanceTo('CACHE_CONNECT');
   const redis = new Redis(config.get('REDIS_URL'));
   const lockStore = new RedisLockStore(redis);
@@ -147,7 +130,6 @@ export async function bootstrap(): Promise<void> {
   });
   container.registerValue(CORE_TOKENS.Cache, cache);
 
-  // Stage 08: QUEUE_INIT
   progress.advanceTo('QUEUE_INIT');
   const queueRedis = new Redis(config.get('QUEUE_REDIS_URL'));
   const queue = new QueueManager({
@@ -157,7 +139,6 @@ export async function bootstrap(): Promise<void> {
   });
   container.registerValue(CORE_TOKENS.Queue, queue);
 
-  // Stage 09: DI_BOOTSTRAP — register remaining core services, then freeze.
   progress.advanceTo('DI_BOOTSTRAP');
   const eventBus = new InternalEventBus({ maxEmitDepth: config.get('EVENT_BUS_MAX_EMIT_DEPTH') });
   fatalHooks.notify = (correlationId, error) => {
@@ -166,9 +147,7 @@ export async function bootstrap(): Promise<void> {
         correlationId,
         error: error instanceof Error ? error.message : String(error),
       });
-    } catch {
-      // The fatal path must never throw while reporting its own fatal.
-    }
+    } catch {}
   };
   const moduleRegistry = new ModuleRegistry();
   const permissionResolver = new PermissionResolver();
@@ -186,9 +165,6 @@ export async function bootstrap(): Promise<void> {
     },
   });
 
-  // Command middleware sources resolve lazily against the registry, which is
-  // populated only during Stage 12 (MODULE_LOAD). Everything here runs once
-  // per dispatch, not at bootstrap time.
   const isAdminTierCommand = (name: string) => {
     const def = commandRegistry.get(name);
     return def !== undefined && commandRegistry.getModuleTier(def.moduleId) === 'admin';
@@ -198,9 +174,6 @@ export async function bootstrap(): Promise<void> {
     return def !== undefined && commandRegistry.getModuleTier(def.moduleId) === 'core';
   };
 
-  // Persona (Twixter) wiring (§18.5.1): the binding service is constructed at
-  // bootstrap alongside the personal stores and registered in DI so it is never
-  // zero-caller. Persona identities load per persona process against PERSONA_ID.
   const personaBindingService = new PersonaCommandBindingService(
     new PostgresPersonaIdentityStore(db.knex),
     new PostgresPersonaBindingStore(db.knex),
@@ -286,9 +259,6 @@ export async function bootstrap(): Promise<void> {
       .whereNull('deletedAt')
       .first<{ enabled: boolean; state: string }>();
 
-    // No row yet → tier default (change-log v4.1.0). Standard+ is active by
-    // default; the first interaction backfills a row so the admin surface
-    // sees a concrete state instead of an implicit gap.
     if (row === undefined) {
       const tier = moduleRegistry.get(moduleId)?.manifest.tier ?? 'marketplace';
       const enabled = defaultEnabledForTier(tier);
@@ -302,8 +272,6 @@ export async function bootstrap(): Promise<void> {
       return enabled;
     }
 
-    // An explicit row is authoritative: enabled + active means on; anything
-    // else (explicit disable, interrupted install, degraded) means off.
     return row.enabled === true && row.state === 'active';
   };
   const commandRouter = new CommandRouter(commandRegistry, logger, {
@@ -327,14 +295,8 @@ export async function bootstrap(): Promise<void> {
   container.registerValue(CORE_TOKENS.Personas, personaBindingService);
   container.freeze();
 
-  // Modules load against a child of the frozen root container: they can
-  // resolve any CORE_TOKENS service through the parent chain, and freely
-  // register their own module.<name>.* tokens (di-container.test.ts:
-  // "freezing a parent does not freeze children") without ever being able
-  // to overwrite a CORE_TOKENS entry on the frozen root itself.
   const moduleContainer = container.createChild();
 
-  // Stage 10: MODULE_DISCOVER
   progress.advanceTo('MODULE_DISCOVER');
   const discoveredModules = await loadModulesFromTierVolumes({
     modulesDir: config.get('MODULES_DIR'),
@@ -347,29 +309,18 @@ export async function bootstrap(): Promise<void> {
     modules: discoveredModules.loaded,
   });
 
-  // Stage 11: MODULE_VALIDATE
   progress.advanceTo('MODULE_VALIDATE');
   const moduleLoader = new ModuleLoader(moduleRegistry, moduleContainer, logger);
   moduleLoader.validateAll();
 
-  // Stage 12: MODULE_LOAD
   progress.advanceTo('MODULE_LOAD');
   const loadReport = await moduleLoader.loadAll();
 
-  // Stage 13: COMMAND_REGISTER
-  // Modules registered their command handlers in onLoad (Stage 12).
-  // Log the inventory; actual Discord API bulk-registration happens in the
-  // live adapter path (src/discord/client-builder.ts + main.ts).
   progress.advanceTo('COMMAND_REGISTER');
   logger.info('command-registry-ready', { commandCount: commandRegistry.count() });
 
-  // Stage 14: EVENT_REGISTER
   progress.advanceTo('EVENT_REGISTER');
-  // Domain event subscriptions are wired inside each module's onLoad; nothing
-  // additional to register centrally in V1.
 
-  // Stage 15: DISCORD_LOGIN — live: real client.login(BOT_TOKEN); mock: MockGatewayAdapter
-  // never opens a real socket (see src/discord/gateway.mock-adapter.ts).
   progress.advanceTo('DISCORD_LOGIN');
   let discordClient: Client | undefined;
   if (config.get('DISCORD_ADAPTER') === 'live') {
@@ -471,7 +422,6 @@ export async function bootstrap(): Promise<void> {
     await liveAdapter.login();
   }
 
-  // Stage 16: CLIENT_READY
   progress.advanceTo('CLIENT_READY');
   if (discordClient) {
     const applicationId = discordClient.application?.id ?? '';
@@ -487,9 +437,6 @@ export async function bootstrap(): Promise<void> {
       },
       rest,
       enabledGuildResolver: async (moduleSlug) => {
-        // Match the router's defaulting: all guilds for default-enabled
-        // tiers minus explicitly-disabled rows; explicit-active rows only
-        // for Marketplace (opt-in).
         const tier = moduleRegistry.get(moduleSlug)?.manifest.tier ?? 'marketplace';
         const explicit = await db
           .knex('guild_module_states')
@@ -520,7 +467,6 @@ export async function bootstrap(): Promise<void> {
     });
   }
 
-  // Stage 17: MODULE_READY
   progress.advanceTo('MODULE_READY');
   const readyReport = await moduleLoader.readyAll(loadReport.order);
   progress.setRequiredModulesHealthy(readyReport.requiredFailed.length === 0);
@@ -531,7 +477,6 @@ export async function bootstrap(): Promise<void> {
     });
   }
 
-  // Stage 18: STARTUP_COMPLETE
   progress.advanceTo('STARTUP_COMPLETE');
   await eventBus.emit('dumby.system.ready', { degradedModules: loadReport.degraded });
 

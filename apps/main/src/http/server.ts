@@ -19,12 +19,6 @@ export interface BuildServerOptions {
   adminDeps: AdminRoutesDeps;
 }
 
-/**
- * Three separate Fastify instances on three separate ports (API_PORT,
- * HEALTH_PORT, METRICS_PORT) per spec section 13 — health/metrics must
- * stay reachable even under API-port load-shedding or a misbehaving
- * admin client.
- */
 export function buildApiServer(options: BuildServerOptions): FastifyInstance {
   const app = Fastify({ logger: false });
 

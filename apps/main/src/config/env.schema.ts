@@ -1,7 +1,3 @@
-/**
- * Environment schema (Cluster: Bonds). Strict parsing rejects unknown keys,
- * requires every mandatory key, and reports validation failures per field.
- */
 import { z } from 'zod';
 
 const csvIds = () =>
@@ -31,7 +27,6 @@ const baseEnvSchema = z
     TWIXTER_PORT: z.coerce.number().int().positive().default(8090),
 
     BOT_TOKEN: z.string().default(''),
-    /** Set only in a persona process: the persona's own identity (§35.2). */
     PERSONA_ID: z.string().default(''),
     BOT_OWNER_IDS: csvIds(),
     DEV_GUILD_ID: z
@@ -79,12 +74,6 @@ const baseEnvSchema = z
     OTEL_EXPORTER_OTLP_ENDPOINT: z.string().default(''),
 
     INTERNAL_API_KEY: z.string().min(32, 'INTERNAL_API_KEY must be at least 32 characters'),
-    // Envelope-encryption root key (ADR-003, blueprint §32.7 / §7504): the only
-    // key-bearing variable that exists. It is consumed exclusively by the
-    // envelope hierarchy — nothing else may read an ENCRYPTION_KEY_* variable —
-    // and there is deliberately NO JWT_SIGNING_KEY: the HTTP surface
-    // authenticates with Credentials-Service bearer tokens and HMAC shared
-    // secrets (§32.3), not JWTs.
     ENCRYPTION_ROOT_KEY: z
       .string()
       .min(1, 'ENCRYPTION_ROOT_KEY must be base64 of a 32-byte root key')
@@ -122,19 +111,8 @@ export const envSchema = baseEnvSchema.refine(
 type RawEnv = z.infer<typeof envSchema>;
 export type Env = Omit<RawEnv, 'DEVELOPMENT_GUILD_ID'>;
 
-/** Every key this schema declares — the app's actual config surface. */
 export const ENV_KEYS: readonly string[] = Object.keys(baseEnvSchema.shape);
 
-/**
- * A real process.env always carries hundreds of OS/shell/tooling keys
- * (PATH, HOME, NIX_*, npm_*, REPLIT_*, ...) that were never part of this
- * app's config and were never meant to be. envSchema.strict() correctly
- * rejects genuinely-unexpected keys in a curated config object (see
- * env-schema.test.ts), but calling parseEnv(process.env) directly would
- * reject on that OS noise too. Pick only the declared keys first, then
- * validate — this preserves .strict()'s typo protection for the app's own
- * keys without requiring process.env to be an exact, closed set.
- */
 export function pickEnvKeys(raw: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   const picked: NodeJS.ProcessEnv = {};
   for (const key of ENV_KEYS) {
@@ -151,9 +129,6 @@ export class ConfigValidationError extends Error {
 }
 
 export function parseEnv(raw: NodeJS.ProcessEnv): Env {
-  // Resolve the documented legacy alias (DEVELOPMENT_GUILD_ID) into the
-  // canonical key BEFORE validation so DEV_GUILD_ID's required-snowflake
-  // rule (UR-B-17) applies to whichever key the operator actually set.
   const merged: NodeJS.ProcessEnv = { ...raw };
   if (!merged['DEV_GUILD_ID'] && merged['DEVELOPMENT_GUILD_ID']) {
     merged['DEV_GUILD_ID'] = merged['DEVELOPMENT_GUILD_ID'];

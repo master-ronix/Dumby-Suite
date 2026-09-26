@@ -68,13 +68,6 @@ async function init(): Promise<void> {
   if (!existsSync(liveVolume)) mkdirSync(liveVolume, { recursive: true });
 }
 
-/**
- * Tier-at-rest target for a promotion. A build is only ever promoted into the
- * tier volume its manifest declares (blueprint §15.8 / ADR-005), so a Core
- * build can never land in the Standard volume and vice versa; the bootstrap
- * tier-volume loader would reject such a placement anyway. The resolved path is
- * asserted to stay inside `MODULES_DIR`.
- */
 function liveVolumeForTier(tier: ModuleTier): string {
   const target = safeJoin(modulesDir, TIER_VOLUME_NAMES[tier]);
   assertPathInside(modulesDir, target);
@@ -121,7 +114,6 @@ const OPTIONAL_LICENSE_FIELDS = [
   'verifiedFingerprint',
 ] as const satisfies ReadonlyArray<keyof LicenseRecord>;
 
-/** Hydrates a license from the `licenses` row (optional fields omitted when absent). */
 function licenseFromRow(row: Record<string, unknown>): LicenseRecord {
   const license: LicenseRecord = {
     licenseId: String(row['licenseId']),
@@ -138,11 +130,6 @@ function licenseFromRow(row: Record<string, unknown>): LicenseRecord {
   return license;
 }
 
-/**
- * Hydrates the runtime Compatibility Ledger from its tables (blueprint §14.4).
- * The ledger is the single source of truth for contract windows; it stands
- * empty-but-enforced from Phase 0 (directive D-8.10).
- */
 async function runtimeLedger(): Promise<CompatibilityLedger> {
   const contracts = (await db
     .knex('compatibility_contracts')
@@ -181,13 +168,6 @@ async function runtimeLedger(): Promise<CompatibilityLedger> {
   });
 }
 
-/**
- * Modules declare their contract windows in the ledger itself, not the
- * manifest (the manifest schema carries no contract-window field). An empty
- * ledger therefore refuses nothing the runtime can evidence — but any window
- * the ledger does record over an unregistered contract refuses the deployment
- * (fail closed, D-8.10).
- */
 function deploymentGateOutcome(ledger: CompatibilityLedger, moduleName: string): GateOutcome {
   return checkModuleDeployment(ledger, {
     moduleName,
@@ -707,9 +687,7 @@ app.post('/internal/deploy', async (request, reply) => {
           .knex('builds')
           .where({ buildId })
           .update({ validationStatus: 'rejected', promotedAt: null, updatedAt: new Date() });
-      } catch {
-        // rollback failure already logged above; nothing further to do
-      }
+      } catch {}
     }
     return reply.code(500).send({ error: `deploy failed: ${(err as Error).message}` });
   }

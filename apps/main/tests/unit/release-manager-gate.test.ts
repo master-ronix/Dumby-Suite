@@ -18,7 +18,6 @@ test('the machine-readable ledger artifact ships, is valid, and is empty-but-enf
   expect(existsSync(TOOLS_LEDGER_PATH)).toBe(true);
   const ledger = deserializeLedger(readFileSync(TOOLS_LEDGER_PATH, 'utf8'));
   expect(ledger).toBeInstanceOf(CompatibilityLedger);
-  // Empty skeleton, enforced: any declared window over unregistered contracts refuses.
   const refused = checkModuleDeployment(ledger, {
     moduleName: 'moderation',
     declaredWindows: [
@@ -31,7 +30,6 @@ test('the machine-readable ledger artifact ships, is valid, and is empty-but-enf
   });
   expect(refused.allowed).toBe(false);
   expect(refused.violations[0]).toContain('not registered');
-  // Serialization round-trips cleanly, so the file is the single source of truth.
   const reparsed = deserializeLedger(serializeLedger(ledger));
   expect(reparsed.allContracts()).toEqual([]);
 });
@@ -86,6 +84,5 @@ test('the compliance matrix derives from registrations and stays drift-free', ()
   expect(matrix).toEqual([
     { capability: 'contract:manifest-schema', specifiedAt: '§14.4 ledger (manifest-schema@1.0.0)' },
   ]);
-  // Hand-maintained prose is prohibited: the matrix is a pure function of the ledger.
   expect(matrix).toHaveLength(ledger.allContracts().length);
 });

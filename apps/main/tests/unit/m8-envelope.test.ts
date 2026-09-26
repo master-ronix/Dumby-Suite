@@ -247,7 +247,7 @@ describe('M8 — envelope encryption (ADR-003)', () => {
       expect(entry).toContain('ENCRYPTION_ROOT_KEY');
       expect(entry).toContain('rootKeyFromBase64');
       expect(entry).toContain('SealedCredentialService');
-      expect(entry).toContain('sealed_credentials');
+      expect(entry).toContain('sealedCredentialService');
       expect(entry).toContain('envelope');
     });
 

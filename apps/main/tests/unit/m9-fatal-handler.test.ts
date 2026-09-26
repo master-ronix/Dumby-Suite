@@ -6,11 +6,6 @@ import {
   FATAL_SHUTDOWN_CEILING_MS,
 } from '../../src/shutdown/fatal-handler.js';
 
-/**
- * UR-C-18: the process-level fatal path must produce a structured fatal log
- * carrying a correlation ID, then run a shutdown that is hard-bounded, then
- * exit 1 — never a bare `console.error`.
- */
 function makeHooks(overrides: Partial<Parameters<typeof createUncaughtExceptionHandler>[0]> = {}) {
   return {
     logger: { fatal: vi.fn() },

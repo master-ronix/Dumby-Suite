@@ -19,13 +19,6 @@ export class AssertionFailedError extends Error {
   }
 }
 
-/**
- * MockContainer (Cluster: Lens / Clay). Extends the real Container so
- * modules under test resolve real DI wiring, but every recordable side
- * effect (log lines, emitted events, enqueued jobs, cache sets, arbitrary
- * spy calls) is captured centrally and can be asserted on with a small,
- * consistent vocabulary instead of ad-hoc spies per test file.
- */
 export class MockContainer extends Container {
   private readonly recorded: RecordedCall[] = [];
 
@@ -94,7 +87,6 @@ export class MockContainer extends Container {
     );
   }
 
-  /** Convenience: wraps any function so every invocation is recorded under `label`. */
   spy<Args extends unknown[], R>(label: string, fn: (...args: Args) => R): (...args: Args) => R {
     return (...args: Args): R => {
       this.record('call', label, args);

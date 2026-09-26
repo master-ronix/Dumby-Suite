@@ -1,20 +1,3 @@
-/**
- * Credentials Service entry point — Tier 2.
- *
- * The single shared issuance path for every runtime credential:
- *   - Swastik developer IDs (verify-only → Argon2id one-way hash)
- *   - Service-to-service tokens (in-process-readable → ADR-003 envelope
- *     encryption via `sealed_credentials`, never a one-way hash)
- *
- * Properties (blueprint.md §15, ADR-003):
- *   - Cryptographically random tokens (crypto.randomBytes).
- *   - Verify-only credentials are Argon2id-hashed at rest; credentials the
- *     system must read back are envelope-encrypted (root key → per-record DEK
- *     → AES-256-GCM). The boundary is enforced by `envelope-scope.ts`.
- *   - Displayed exactly once, transmitted via Authorization header.
- *   - Independently revocable per credential.
- *   - Binds to CREDENTIALS_SERVICE_BIND_HOST only — never the public internet.
- */
 import Fastify from 'fastify';
 import { randomBytes } from 'node:crypto';
 import argon2 from 'argon2';
@@ -41,9 +24,6 @@ const db = new DbClient({
   logger,
 });
 
-// The envelope hierarchy's only key-bearing consumer (blueprint §7504):
-// ENCRYPTION_ROOT_KEY is decoded HERE and nowhere else; validation is
-// fail-closed (exactly 32 bytes or the service refuses to start).
 const rootKey = rootKeyFromBase64('local', env.ENCRYPTION_ROOT_KEY);
 const sealedStore = new PostgresSealedCredentialStore(db.knex);
 const sealedCredentialService = new SealedCredentialService(sealedStore, rootKey);
@@ -54,19 +34,6 @@ registerInternalAuth(app, {
   expectedKey: env.INTERNAL_API_KEY,
 });
 
-/**
- * Issue a new credential.
- *
- * `readable: true` seals the credential with envelope encryption (the
- * system will present it later, so it must be readable back — ADR-003).
- * Otherwise the value is Argon2id-hashed at rest (verify-only), which is the
- * only scheme the at-rest boundary permits for it.
- *
- * NOTE (M9 finding): the verify-only arm currently persists against
- * `api_sessions` columns (`credentialHash`, `label`, `registeredBy`) that the
- * real migration 00029 (`userId`, `sessionTokenHash`, `expiresAt`) does not
- * define — a pre-existing defect, out of M8 scope, logged for the flaw pass.
- */
 app.post<{ Body: { label: string; registeredBy: string; readable?: boolean } }>(
   '/credentials/issue',
   async (request, reply) => {
@@ -82,7 +49,6 @@ app.post<{ Body: { label: string; registeredBy: string; readable?: boolean } }>(
         label,
         registeredBy,
       });
-      // Plaintext returned exactly once; only the sealed envelope is stored.
       return reply
         .code(201)
         .send({ id: issued.credentialId, token: issued.value, scheme: 'envelope' });
@@ -102,12 +68,10 @@ app.post<{ Body: { label: string; registeredBy: string; readable?: boolean } }>(
     });
 
     logger.info('credential-issued', { id, label, registeredBy });
-    // Return plaintext exactly once.
     return reply.code(201).send({ id, token: plaintext, scheme: 'argon2id' });
   },
 );
 
-/** Read back a sealed (service-to-service) credential as plaintext for presentation. */
 app.get<{ Params: { credentialId: string } }>(
   '/credentials/readable/:credentialId',
   async (request, reply) => {
@@ -127,7 +91,6 @@ app.get<{ Params: { credentialId: string } }>(
   },
 );
 
-/** Revoke a sealed credential independently of verify-only credentials. */
 app.delete<{ Params: { credentialId: string } }>(
   '/credentials/readable/:credentialId',
   async (request, reply) => {
@@ -139,7 +102,6 @@ app.delete<{ Params: { credentialId: string } }>(
   },
 );
 
-/** Revoke a verify-only credential by ID. */
 app.delete<{ Params: { id: string } }>('/credentials/:id', async (request, reply) => {
   const { id } = request.params;
   const rows = await db
