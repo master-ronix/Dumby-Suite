@@ -20,7 +20,7 @@ export interface SwastikVolumeLoaderOptions {
   logger: Logger;
 }
 
-const TIER_VOLUME_NAMES = {
+export const TIER_VOLUME_NAMES = {
   admin: 'modules-admin',
   core: 'modules-core',
   standard: 'modules-standard',
@@ -32,8 +32,15 @@ export const MODULE_VOLUME_NAMES = [
   TIER_VOLUME_NAMES.core,
   TIER_VOLUME_NAMES.standard,
   TIER_VOLUME_NAMES.marketplace,
-  'swastik-staging',
 ] as const;
+
+/**
+ * Staging is deliberately NOT a load source. A promoted build stays in staging
+ * as the rollback/audit copy, so scanning it would re-register every live module
+ * and abort bootstrap; an unpromoted build must not load at all. Promotion into
+ * a tier volume is the only way a module becomes loadable.
+ */
+export const STAGING_VOLUME_NAME = 'swastik-staging';
 
 type ModuleVolumeName = (typeof MODULE_VOLUME_NAMES)[number];
 

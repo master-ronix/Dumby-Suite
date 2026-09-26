@@ -10,7 +10,14 @@ import { RedisLockStore } from '../cache/redis-lock-store.js';
 import { INTERNAL_API_HEADER } from '../http/internal-auth.js';
 import { parseManifest, type ModuleManifest } from '../module-system/manifest.schema.js';
 import { constantTimeEqual } from '../shared/utils/crypto.js';
-import { assertSafeSlug, assertSafeVersion, safeJoin } from '../shared/utils/path-guard.js';
+import {
+  assertPathInside,
+  assertSafeSlug,
+  assertSafeVersion,
+  safeJoin,
+} from '../shared/utils/path-guard.js';
+import { TIER_VOLUME_NAMES } from '../module-system/swastik-loader.js';
+import type { ModuleTier } from '../module-system/tier-rules.js';
 import {
   createPendingLicense,
   licenseAuthorizesDeploy,
@@ -35,6 +42,7 @@ import {
 let env: Env;
 let logger: Logger;
 let db: DbClient;
+let modulesDir: string;
 let stagingVolume: string;
 let liveVolume: string;
 let promotionLock: RedisLockStore;
@@ -53,10 +61,25 @@ async function init(): Promise<void> {
   });
   lockRedis = new Redis(env.REDIS_URL);
   promotionLock = new RedisLockStore(lockRedis);
+  modulesDir = env.MODULES_DIR;
   stagingVolume = env.SWASTIK_STAGING_VOLUME_PATH;
   liveVolume = env.SWASTIK_LIVE_VOLUME_PATH;
   if (!existsSync(stagingVolume)) mkdirSync(stagingVolume, { recursive: true });
   if (!existsSync(liveVolume)) mkdirSync(liveVolume, { recursive: true });
+}
+
+/**
+ * Tier-at-rest target for a promotion. A build is only ever promoted into the
+ * tier volume its manifest declares (blueprint §15.8 / ADR-005), so a Core
+ * build can never land in the Standard volume and vice versa; the bootstrap
+ * tier-volume loader would reject such a placement anyway. The resolved path is
+ * asserted to stay inside `MODULES_DIR`.
+ */
+function liveVolumeForTier(tier: ModuleTier): string {
+  const target = safeJoin(modulesDir, TIER_VOLUME_NAMES[tier]);
+  assertPathInside(modulesDir, target);
+  if (!existsSync(target)) mkdirSync(target, { recursive: true });
+  return target;
 }
 
 async function writeAudit(
@@ -375,7 +398,8 @@ app.post('/internal/reload', async (request, reply) => {
     moduleSlug: moduleName,
     version: build.version,
   });
-  if (!verification.ok || verification.stagingDir === undefined) {
+  const stagedManifest = verification.manifest;
+  if (!verification.ok || verification.stagingDir === undefined || stagedManifest === undefined) {
     await db
       .knex('builds')
       .where({ buildId: build.buildId })
@@ -412,7 +436,7 @@ app.post('/internal/reload', async (request, reply) => {
   try {
     promotion = await promoteUnderLock({
       lockStore: promotionLock,
-      liveVolume,
+      liveVolume: liveVolumeForTier(stagedManifest.tier),
       stagingVolume,
       moduleSlug: moduleName,
       stagingDir: verification.stagingDir,
@@ -426,6 +450,7 @@ app.post('/internal/reload', async (request, reply) => {
       version: build.version,
       buildId: build.buildId,
       gate: gate.gate,
+      tier: stagedManifest.tier,
     });
     await writeAudit('BUILD_PROMOTED', 'allowed', {
       moduleName,
@@ -629,7 +654,7 @@ app.post('/internal/deploy', async (request, reply) => {
   try {
     promotion = await promoteUnderLock({
       lockStore: promotionLock,
-      liveVolume,
+      liveVolume: liveVolumeForTier(manifest.tier),
       stagingVolume,
       moduleSlug: safeModuleSlug,
       stagingDir: verification.stagingDir,
@@ -643,6 +668,8 @@ app.post('/internal/deploy', async (request, reply) => {
       version: safeModuleVersion,
       buildId,
       gate: gate.gate,
+      tier: manifest.tier,
+      liveVolume: TIER_VOLUME_NAMES[manifest.tier],
     });
     await writeAudit('MODULE_DEPLOYED', 'allowed', {
       moduleSlug: safeModuleSlug,
@@ -650,6 +677,7 @@ app.post('/internal/deploy', async (request, reply) => {
       buildId,
       devId: redact(providedDevId),
       gate: gate.gate,
+      tier: manifest.tier,
     });
     return reply.code(201).send({
       buildId,
@@ -657,6 +685,8 @@ app.post('/internal/deploy', async (request, reply) => {
       moduleSlug: safeModuleSlug,
       version: safeModuleVersion,
       gate: gate.gate,
+      tier: manifest.tier,
+      liveVolume: TIER_VOLUME_NAMES[manifest.tier],
       manifest: rawManifest,
     });
   } catch (err) {
@@ -704,13 +734,20 @@ app.get('/swastik/status', async (_request, reply) => {
     builds: { total: Number(buildCount?.count ?? 0), passed: Number(passedBuilds?.count ?? 0) },
     stagingVolume,
     liveVolume,
+    tierVolumes: { ...TIER_VOLUME_NAMES },
   });
 });
 
 export async function startSwastik(): Promise<void> {
   await init();
   await app.listen({ port: env.SWASTIK_PORT, host: '127.0.0.1' });
-  logger.info('swastik-started', { port: env.SWASTIK_PORT, stagingVolume, liveVolume });
+  logger.info('swastik-started', {
+    port: env.SWASTIK_PORT,
+    modulesDir,
+    stagingVolume,
+    liveVolume,
+    tierVolumes: { ...TIER_VOLUME_NAMES },
+  });
 }
 
 startSwastik().catch((err: unknown) => {

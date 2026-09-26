@@ -15,7 +15,7 @@ import { addSoftDelete, addTimestamps } from '../migration-helpers.js';
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable('persona_identities', (table) => {
     table.string('discordApplicationId').notNullable().unique();
-    table.uuid('boundGuildId').notNullable().references('id').inTable('guilds');
+    table.string('boundGuildId').notNullable().references('id').inTable('guilds');
     table.string('dmBehavior').notNullable().defaultTo('prohibited');
     table.integer('shardAllocation').notNullable().defaultTo(1);
     table.string('charter').notNullable().defaultTo('free');
