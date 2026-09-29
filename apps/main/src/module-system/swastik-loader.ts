@@ -1,5 +1,5 @@
-import { readdirSync, readFileSync, existsSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { readdirSync, readFileSync, existsSync, realpathSync } from 'node:fs';
+import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { Logger } from '../logging/logger.js';
 import type { ModuleRegistry } from './registry.js';
@@ -8,6 +8,7 @@ import { validateTierRules } from './tier-rules.js';
 import { ModuleValidationFailedError } from './loader.js';
 import type { LoadedModule } from './registry.js';
 import type { ModuleTier } from './tier-rules.js';
+import { assertPathInside, assertSafeSlug, assertSafeVersion } from '../shared/utils/path-guard.js';
 
 export interface SwastikVolumeLoadResult {
   loaded: readonly string[];
@@ -45,6 +46,31 @@ function tierForVolume(volumeName: ModuleVolumeName): ModuleTier | null {
   return null;
 }
 
+const PROMOTED_PATH_SEPARATOR = '__';
+
+interface DiscoveredModuleName {
+  readonly slug: string;
+  readonly version: string | null;
+}
+
+function isTransientPromotionEntry(entry: string): boolean {
+  return entry.endsWith('__rollback') || entry.endsWith('__incoming');
+}
+
+function parseDiscoveredModuleName(entry: string): DiscoveredModuleName | null {
+  const separator = entry.indexOf(PROMOTED_PATH_SEPARATOR);
+  const slugSegment = separator < 0 ? entry : entry.slice(0, separator);
+  const versionSegment =
+    separator < 0 ? null : entry.slice(separator + PROMOTED_PATH_SEPARATOR.length);
+  try {
+    const slug = assertSafeSlug(slugSegment);
+    if (versionSegment === null) return { slug, version: null };
+    return { slug, version: assertSafeVersion(versionSegment) };
+  } catch {
+    return null;
+  }
+}
+
 export async function loadModulesFromTierVolumes(
   options: SwastikVolumeLoaderOptions,
 ): Promise<SwastikVolumeLoadResult> {
@@ -55,6 +81,7 @@ export async function loadModulesFromTierVolumes(
     return { loaded: [], failed: [] };
   }
 
+  const modulesRoot = realpathSync(modulesDir);
   const loaded: string[] = [];
   const failed: string[] = [];
 
@@ -66,8 +93,7 @@ export async function loadModulesFromTierVolumes(
     }
 
     for (const entry of readdirSync(volumePath).sort()) {
-      if (entry.startsWith('.') || entry.endsWith('__rollback') || entry.endsWith('__incoming'))
-        continue;
+      if (entry.startsWith('.') || isTransientPromotionEntry(entry)) continue;
       const entryPath = join(volumePath, entry);
       if (!existsSync(entryPath)) {
         logger.warn('module-skip-dangling', { module: entry, path: entryPath, volumeName });
@@ -75,7 +101,14 @@ export async function loadModulesFromTierVolumes(
       }
 
       try {
-        const moduleDir = resolve(entryPath);
+        const discovered = parseDiscoveredModuleName(entry);
+        if (discovered === null) {
+          throw new ModuleValidationFailedError(entry, [
+            `module directory name "${entry}" is neither a lowercase kebab-case module slug nor a "<slug>__<version>" promoted directory`,
+          ]);
+        }
+        const moduleDir = realpathSync(entryPath);
+        assertPathInside(modulesRoot, moduleDir);
         const manifestPath = join(moduleDir, 'manifest.json');
         if (!existsSync(manifestPath)) {
           throw new Error(`manifest.json is missing from module "${entry}"`);
@@ -89,6 +122,16 @@ export async function loadModulesFromTierVolumes(
         }
 
         const manifest = parseManifest(rawManifest);
+        if (manifest.name !== discovered.slug) {
+          throw new ModuleValidationFailedError(discovered.slug, [
+            `manifest name "${manifest.name}" does not match module directory "${discovered.slug}"`,
+          ]);
+        }
+        if (discovered.version !== null && manifest.version !== discovered.version) {
+          throw new ModuleValidationFailedError(discovered.slug, [
+            `manifest version "${manifest.version}" does not match promoted directory version "${discovered.version}"`,
+          ]);
+        }
         const expectedTier = tierForVolume(volumeName);
         if (expectedTier !== null && manifest.tier !== expectedTier) {
           throw new ModuleValidationFailedError(manifest.name, [

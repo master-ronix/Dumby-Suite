@@ -339,6 +339,7 @@ describe('M7 dispatch gate — address-command already-owned rejection', () => {
   function buildRouter(overrides: CommandRouterOptions) {
     const reg = new CommandRegistry();
     const handler = vi.fn().mockResolvedValue(undefined);
+    reg.registerModule('audio', 'core');
     reg.register({
       data: { name: 'audio', description: 'A' },
       execute: handler,

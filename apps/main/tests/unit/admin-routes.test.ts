@@ -58,7 +58,7 @@ test('PEP economy endpoint answers honest 501 (no stub, no fake 200)', async () 
   expect(dispatcher.dispatch).not.toHaveBeenCalled();
 });
 
-test('PEP feature-flags endpoint dispatches to power engine', async () => {
+test('PEP feature-flags endpoint answers honest 501 and dispatches nothing (UR-A-04)', async () => {
   const app = Fastify();
   const dispatcher = { dispatch: vi.fn().mockResolvedValue({ ok: true }) };
   const deps = {
@@ -72,12 +72,9 @@ test('PEP feature-flags endpoint dispatches to power engine', async () => {
   const res = await app.inject({
     method: 'POST',
     url: '/admin/power-engine/feature-flags/toggle',
-    body: { actorId: 'admin', source: 'internal', reason: 'toggle feature' },
+    body: { actorId: 'admin', reason: 'toggle feature' },
   });
-  expect(res.statusCode).toBe(200);
-  expect(dispatcher.dispatch).toHaveBeenCalledWith(
-    'feature-flags.toggle',
-    expect.any(Object),
-    expect.any(Function),
-  );
+  expect(res.statusCode).toBe(501);
+  expect(res.json().error?.code).toBe('NOT_IMPLEMENTED');
+  expect(dispatcher.dispatch).not.toHaveBeenCalled();
 });

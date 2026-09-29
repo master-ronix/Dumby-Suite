@@ -180,6 +180,7 @@ describe('CommandRouter', () => {
   test('dispatches to the registered handler', async () => {
     const reg = new CommandRegistry();
     const handler = vi.fn().mockResolvedValue(undefined);
+    reg.registerModule('core', 'core');
     reg.register({
       data: { name: 'health', description: 'H' },
       execute: handler,
@@ -206,6 +207,7 @@ describe('CommandRouter', () => {
       },
     };
     const pipeline = new MiddlewarePipeline().add(stage);
+    reg.registerModule('core', 'core');
     reg.register({
       data: { name: 'health', description: 'H' },
       execute: handler,
@@ -230,6 +232,7 @@ describe('CommandRouter', () => {
       },
     };
     const pipeline = new MiddlewarePipeline().add(stage);
+    reg.registerModule('core', 'core');
     reg.register({
       data: { name: 'health', description: 'H' },
       execute: handler,
@@ -417,6 +420,7 @@ describe('CommandRouter', () => {
 
   test('logs command-executed after a successful dispatch', async () => {
     const reg = new CommandRegistry();
+    reg.registerModule('core', 'core');
     reg.register({
       data: { name: 'hello', description: 'H' },
       execute: async () => {},
@@ -430,6 +434,7 @@ describe('CommandRouter', () => {
 
   test('renders a MODULE_ERROR notice and logs when handler throws', async () => {
     const reg = new CommandRegistry();
+    reg.registerModule('core', 'core');
     reg.register({
       data: { name: 'bad', description: 'H' },
       execute: async () => {
@@ -498,6 +503,7 @@ describe('CommandRouter', () => {
   test('sends the buffer then edits it into the final render once', async () => {
     const reg = new CommandRegistry();
     const handler = vi.fn().mockResolvedValue('Pong');
+    reg.registerModule('core', 'core');
     reg.register({
       data: { name: 'ping', description: 'P' },
       execute: handler,
@@ -519,6 +525,7 @@ describe('CommandRouter', () => {
   test('maps a handler returning nothing to a Done final render', async () => {
     const reg = new CommandRegistry();
     const handler = vi.fn().mockResolvedValue(undefined);
+    reg.registerModule('core', 'core');
     reg.register({
       data: { name: 'touch', description: 'T' },
       execute: handler,
@@ -543,6 +550,7 @@ describe('CommandRouter', () => {
       released = new Promise<void>((resolve) => {
         release = resolve;
       });
+      reg.registerModule('core', 'core');
       reg.register({
         data: { name: 'slow', description: 'Slow command' },
         execute: async () => {

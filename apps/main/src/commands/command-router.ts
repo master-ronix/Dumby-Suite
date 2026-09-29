@@ -40,7 +40,7 @@ export class CommandScopeDeniedError extends Error {
   constructor(
     readonly commandName: string,
     readonly moduleId: string,
-    readonly tier: ModuleTier,
+    readonly tier: ModuleTier | 'unresolved',
     readonly guildId: string | null,
   ) {
     super(
@@ -161,7 +161,7 @@ export class CommandRouter {
     interaction: CommandInteraction,
   ): void {
     const result = this.options.permissionResolver?.resolve({
-      tier: this.registry.tierForCommand(command) ?? 'standard',
+      tier: this.requireModuleTier(command, interaction.guildId),
       actorId: interaction.user.id,
       botOwnerIds: this.options.botOwnerIds ?? [],
       isDM: interaction.guildId === null,
@@ -203,7 +203,7 @@ export class CommandRouter {
       throw new CommandScopeDeniedError(
         command.data.name,
         command.moduleId,
-        this.registry.tierForCommand(command) ?? 'standard',
+        this.requireModuleTier(command, interaction.guildId),
         interaction.guildId,
       );
     }
@@ -247,23 +247,29 @@ export class CommandRouter {
     throw result.error;
   }
 
+  private requireModuleTier(command: CommandDefinition, guildId: string | null): ModuleTier {
+    const tier = this.registry.tierForCommand(command);
+    if (tier === undefined) {
+      this.logger.error('command-tier-unresolved', {
+        command: command.data.name,
+        moduleId: command.moduleId,
+        guildId: guildId ?? 'DM',
+      });
+      throw new CommandScopeDeniedError(command.data.name, command.moduleId, 'unresolved', guildId);
+    }
+    return tier;
+  }
+
   private async assertCommandInScope(
     command: CommandDefinition,
     guildId: string | null,
   ): Promise<void> {
-    const tier = this.registry.tierForCommand(command);
+    const tier = this.requireModuleTier(command, guildId);
     const guildOnly = command.guildOnly ?? true;
 
     if (guildOnly && !guildId) {
-      throw new CommandScopeDeniedError(
-        command.data.name,
-        command.moduleId,
-        tier ?? 'standard',
-        guildId,
-      );
+      throw new CommandScopeDeniedError(command.data.name, command.moduleId, tier, guildId);
     }
-
-    if (!tier) return;
 
     if (tier === 'admin') {
       if (guildId !== this.devGuildId) {

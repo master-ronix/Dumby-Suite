@@ -16,8 +16,11 @@ const baseEnvSchema = z
     NODE_ENV: z.enum(['development', 'test', 'staging', 'production']).default('development'),
     LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
 
+    API_BIND_HOST: z.string().default('127.0.0.1'),
     API_PORT: z.coerce.number().int().positive().default(8080),
+    HEALTH_BIND_HOST: z.string().default('127.0.0.1'),
     HEALTH_PORT: z.coerce.number().int().positive().default(8081),
+    METRICS_BIND_HOST: z.string().default('127.0.0.1'),
     METRICS_PORT: z.coerce.number().int().positive().default(8082),
     PEP_PORT: z.coerce.number().int().positive().default(8083),
     CLAI_PORT: z.coerce.number().int().positive().default(8084),

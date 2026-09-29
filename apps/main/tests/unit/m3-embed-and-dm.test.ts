@@ -85,6 +85,7 @@ describe('M3 gate — absolute DM prohibition (ADR-002)', () => {
 describe('M3 gate — buffer-then-render dispatch boundary', () => {
   test('a handler returning a hand-built message payload is surfaced as a MODULE_ERROR notice', async () => {
     const reg = new CommandRegistry();
+    reg.registerModule('core', 'core');
     reg.register({
       data: { name: 'raw', description: 'R' },
       execute: async () => ({ content: 'not allowed', components: [] }),

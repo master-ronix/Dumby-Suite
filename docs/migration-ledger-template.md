@@ -2,7 +2,7 @@
 
 > **This file is the single source of truth for migration progress.** The agent reads it at the start of every session and updates it at the end of every item. An item without a record here did not happen; an IN-PROGRESS item with a resume note is continued, never restarted.
 >
-> Created: (date) · Protocol: `workspace/docs/migration-prompt.md` v5.0.1 · Status: IN PROGRESS
+> Created: (date) · Protocol: `workspace/docs/migration-prompt.md` v5.0.2 (twenty-item work order: M0–M8 → MR-1–MR-8 → M9–M11) · Status: IN PROGRESS
 
 ---
 
@@ -19,6 +19,14 @@
 | M6 | Swastik promotion pipeline | NOT STARTED |
 | M7 | Twixter persona model | NOT STARTED |
 | M8 | Envelope encryption | NOT STARTED |
+| MR-1 | hello-world module rewrite (Standard-tier) | NOT STARTED |
+| MR-2 | health module rewrite (Core-tier) | NOT STARTED |
+| MR-3 | browse module rewrite (Core-tier) | NOT STARTED |
+| MR-4 | queue module rewrite (Core-tier) | NOT STARTED |
+| MR-5 | persona module rewrite (Core-tier) | NOT STARTED |
+| MR-6 | permit module rewrite (Core-tier) | NOT STARTED |
+| MR-7 | modules module rewrite (Core-tier) | NOT STARTED |
+| MR-8 | dashboard module rewrite (Core-tier) | NOT STARTED |
 | M9 | Remaining implementation-flaw corrections | NOT STARTED |
 | M10 | Terminology & legacy-name sweep | NOT STARTED |
 | M11 | Convergence pass | NOT STARTED |
@@ -115,6 +123,102 @@ Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (rea
 - **Started:** — **Completed:** —
 - **Blast radius (declare before editing):** —
 - **Done-gate evidence (tests):** —
+- **What changed:** —
+- **Judgment calls / deviations:** —
+- **Resume note (if IN-PROGRESS):** —
+
+### MR-1 — hello-world module (Standard-tier)
+
+- **Status:** NOT STARTED
+- **Started:** — **Completed:** —
+- **Salvage audit (kept vs superseded, from `pre-m1-modules`):** —
+- **Blast radius (declare before editing):** —
+- **Done-gate evidence (live):** —
+- **Promotion evidence (stage → 19-step validation → smoke → atomic promotion):** —
+- **What changed:** —
+- **Judgment calls / deviations:** —
+- **Resume note (if IN-PROGRESS):** —
+
+### MR-2 — health module (Core-tier)
+
+- **Status:** NOT STARTED
+- **Started:** — **Completed:** —
+- **Salvage audit (kept vs superseded, from `pre-m1-modules`):** —
+- **Blast radius (declare before editing):** —
+- **Done-gate evidence (live):** —
+- **Promotion evidence (stage → 19-step validation → smoke → atomic promotion):** —
+- **What changed:** —
+- **Judgment calls / deviations:** —
+- **Resume note (if IN-PROGRESS):** —
+
+### MR-3 — browse module (Core-tier)
+
+- **Status:** NOT STARTED
+- **Started:** — **Completed:** —
+- **Salvage audit (kept vs superseded, from `pre-m1-modules`):** —
+- **Blast radius (declare before editing):** —
+- **Done-gate evidence (live):** —
+- **Promotion evidence (stage → 19-step validation → smoke → atomic promotion):** —
+- **What changed:** —
+- **Judgment calls / deviations:** —
+- **Resume note (if IN-PROGRESS):** —
+
+### MR-4 — queue module (Core-tier)
+
+- **Status:** NOT STARTED
+- **Started:** — **Completed:** —
+- **Salvage audit (kept vs superseded, from `pre-m1-modules`):** —
+- **Blast radius (declare before editing):** —
+- **Done-gate evidence (live):** —
+- **Promotion evidence (stage → 19-step validation → smoke → atomic promotion):** —
+- **What changed:** —
+- **Judgment calls / deviations:** —
+- **Resume note (if IN-PROGRESS):** —
+
+### MR-5 — persona module (Core-tier)
+
+- **Status:** NOT STARTED
+- **Started:** — **Completed:** —
+- **Salvage audit (kept vs superseded, from `pre-m1-modules`):** —
+- **Blast radius (declare before editing):** —
+- **Done-gate evidence (live):** —
+- **Promotion evidence (stage → 19-step validation → smoke → atomic promotion):** —
+- **What changed:** —
+- **Judgment calls / deviations:** —
+- **Resume note (if IN-PROGRESS):** —
+
+### MR-6 — permit module (Core-tier)
+
+- **Status:** NOT STARTED
+- **Started:** — **Completed:** —
+- **Salvage audit (kept vs superseded, from `pre-m1-modules`):** —
+- **Blast radius (declare before editing):** —
+- **Done-gate evidence (live):** —
+- **Promotion evidence (stage → 19-step validation → smoke → atomic promotion):** —
+- **What changed:** —
+- **Judgment calls / deviations:** —
+- **Resume note (if IN-PROGRESS):** —
+
+### MR-7 — modules module (Core-tier)
+
+- **Status:** NOT STARTED
+- **Started:** — **Completed:** —
+- **Salvage audit (kept vs superseded, from `pre-m1-modules`):** —
+- **Blast radius (declare before editing):** —
+- **Done-gate evidence (live):** —
+- **Promotion evidence (stage → 19-step validation → smoke → atomic promotion):** —
+- **What changed:** —
+- **Judgment calls / deviations:** —
+- **Resume note (if IN-PROGRESS):** —
+
+### MR-8 — dashboard module (Core-tier)
+
+- **Status:** NOT STARTED
+- **Started:** — **Completed:** —
+- **Salvage audit (kept vs superseded, from `pre-m1-modules`):** —
+- **Blast radius (declare before editing):** —
+- **Done-gate evidence (live):** —
+- **Promotion evidence (stage → 19-step validation → smoke → atomic promotion):** —
 - **What changed:** —
 - **Judgment calls / deviations:** —
 - **Resume note (if IN-PROGRESS):** —

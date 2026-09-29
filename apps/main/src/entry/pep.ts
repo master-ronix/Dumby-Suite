@@ -43,20 +43,48 @@ registerInternalAuth(app, {
   expectedKey: env.INTERNAL_API_KEY,
 });
 
+class PepActionNotImplementedError extends Error {
+  constructor(functionName: string) {
+    super(`PEP action "${functionName}" has no backing primitive implemented yet`);
+    this.name = 'PepActionNotImplementedError';
+  }
+}
+
 app.post<{ Params: { functionName: string }; Body: unknown }>(
   '/api/pep/:functionName',
   async (request, reply) => {
     const { functionName } = request.params;
-    const body = request.body as Record<string, unknown>;
+    const body = (request.body ?? {}) as Record<string, unknown>;
     try {
-      const req = {
-        actorId: String(body['actorId'] ?? ''),
-        source: 'pep-internal',
-        reason: String(body['reason'] ?? ''),
-      };
-      const result = await dispatcher.dispatch(functionName, req, async () => body);
-      return reply.code(200).send(result);
+      const outcome = await dispatcher.dispatch(
+        functionName,
+        {
+          actorId: String(body['actorId'] ?? ''),
+          source: 'pep-internal',
+          reason: String(body['reason'] ?? ''),
+        },
+        async () => {
+          throw new PepActionNotImplementedError(functionName);
+        },
+      );
+      if (!outcome.ok) {
+        return reply.code(403).send({
+          error: {
+            code: 'DUMBY_POWER_ENGINE_REJECTED',
+            rejectionReason: outcome.rejectionReason,
+          },
+        });
+      }
+      return reply.code(501).send({
+        error: {
+          code: 'NOT_IMPLEMENTED',
+          message: new PepActionNotImplementedError(functionName).message,
+        },
+      });
     } catch (err) {
+      if (err instanceof PepActionNotImplementedError) {
+        return reply.code(501).send({ error: { code: 'NOT_IMPLEMENTED', message: err.message } });
+      }
       return reply.code(400).send({ error: String(err) });
     }
   },

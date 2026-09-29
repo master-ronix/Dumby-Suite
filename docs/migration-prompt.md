@@ -8,7 +8,7 @@
 
 **Project:** Dumby — Discord Unified Modular Bot System
 
-**Version:** 5.0.1
+**Version:** 5.0.2 — Module Rewrite Block built in. This version absorbs and supersedes `module-rewrite-prompt.md` and `one-time-mr-prompt.md`; both are obsolete and may be discarded.
 
 **Derived from:** `change-log.md` v5.0.0 entry (the consolidated re-baseline), the frozen request record `docs/ur/UR-20260918-001_Consolidated_Re-Baseline_Request.md` (provenance and impact matrix), and `blueprint.md` 5.0.0 (sole architectural authority).
 
@@ -66,9 +66,9 @@ These rules override every other instruction you may have read in the documentat
 
 ## 3. THE MIGRATION WORK ORDER
 
-Ten items, executed strictly in order. Each item names: its source of truth (read these BEFORE coding), its blast radius, and its done-gate. On first run, copy the ledger template (`migration-ledger-template.md`, shipped alongside this prompt) to the repository root as `migration-ledger.md` and fill in the per-item entries as you start each one.
+Twenty items in two blocks, executed strictly in order: the framework block (M0–M8), then the module-rewrite block (MR-1–MR-8), then the closing framework items (M9–M11). Each item names: its source of truth (read these BEFORE coding), its blast radius, and its done-gate. On first run, copy the ledger template (`migration-ledger-template.md`, shipped alongside this prompt) to the repository root as `migration-ledger.md` and fill in the per-item entries as you start each one.
 
-The items are sequenced infrastructure-first: layout and plumbing before presentation, presentation before permissions, permissions before governance, cleanup and convergence last. This ordering is deliberate — do not reorder it without recording the reason in the ledger.
+The framework items are sequenced infrastructure-first: layout and plumbing before presentation, presentation before permissions, permissions before governance. The module-rewrite block follows the framework it depends on — command tree, Renderer, RBAC engine, license/compat gates, Swastik pipeline, persona model — and precedes the convergence pass so that M11 audits the live modules too. This ordering is deliberate — do not reorder it without recording the reason in the ledger.
 
 ### M0 — P0 Security Flaws (do first, smallest blast radius, highest stakes)
 
@@ -132,6 +132,38 @@ The items are sequenced infrastructure-first: layout and plumbing before present
 **Blast radius:** the credentials/secrets handling path, its config, its tests.
 **Done-gate:** every in-process-readable credential is envelope-encrypted at rest; the scope boundary (what is and is not encrypted) matches ADR-003 exactly.
 
+---
+
+### The Module Rewrite Block — MR-1 … MR-8 (first-party modules rewritten to v5.0.0 and made live via Swastik)
+
+Runs after M8 and before M9. Prerequisites: every item M0–M8 DONE — the modules are rewritten against the command tree, Renderer, RBAC engine, license/compat gates, Swastik pipeline, persona model, and encryption scope delivered by those items. If any is not DONE when this block is reached, stop and report — never rewrite a module against an interface that does not exist.
+
+Each MR item follows the per-item execution loop (§4) with these bindings:
+
+**Source and target.** The module's old implementation comes from the git tag `pre-m1-modules` (`git show pre-m1-modules:apps/main/src/modules/<module>/`). Begin with a salvage audit: keep every behavior v5.0.0 still calls for, and record the kept-vs-superseded split in the ledger. The target is the `swastik` `_template` 11-folder layout with the full v5.0.0 manifest (tier, version, granular permissions, dependencies, configSchema, commands, events, assets), colocated tests, and the en-US base locale.
+
+**Presentation.** Exclusively through the Renderer: Components v2 Modes D/M/C, buffer-then-render (instant buffer embed, exactly one edit into the final render or the formal notice frame with reason code + trace correlation ID), the single official accent `#5865F2`, and the A4 title/attribution grammar — attribution in the footer slot, never the title (ADR-001, ADR-002, ADR-009, ADR-010). No classic `EmbedBuilder`/`MessageEmbed` anywhere in module code; the main bot never DMs.
+
+**Permissions.** Layer 6/7 vocabulary, deny-by-default (blueprint §21, concept.md §16.1): a command with no explicit declaration is unreachable by any non-owner user.
+
+**Deployment — the only road to live.** Build → stage on `swastik-staging` → the 19-step validation → staging smoke load + readiness checks → atomic promotion onto the volume matching the declared tier (tier-at-rest, blueprint §15.8/§15.9) → reload within the ADR-006 boundary. Never copy anything directly into `MODULES_DIR`. A failed validation is a module defect to fix, never a gate to bypass.
+
+**Fence.** Framework code (`src/module-system/`, `src/middleware/`, `src/permissions/`, the `src/commands/` router, renderer internals, `packages/swastik/`) is READ-ONLY for MR items. Framework defects found during live verification go to the out-of-scope findings register. `documentation.md` is the archived legacy record — never an implementation source.
+
+**Done means live-verified:** blind discovery picks the module up with zero registry edits; its commands register in a test guild; interactions follow buffer-then-render; permissions resolve through the engine; and the module's done-gate below passes against the running bot.
+
+| Item | Module | Tier | Read before coding | Done-gate |
+|---|---|---|---|---n| MR-1 | `hello-world` | Standard | `interface.md` hello-world division + Division 8.10 testing checklist; blueprint §11, §12.21 | Every Division 8.10 checklist item passes live |
+| MR-2 | `health` | Core | `interface.md` `/health` card spec | Full card renders exactly; edit-in-place only, never a second message |
+| MR-3 | `browse` | Core | `interface.md` browse division | Install/uninstall round-trips through the Swastik pipeline |
+| MR-4 | `queue` | Core | `interface.md` queue division; blueprint §17.8 + §17.8.1 (BCCM, `guild_command_queue`) | Renames/aliases/disables queue in the 12–13h window, respect Discord's 200/day creation limit, honest pending UI |
+| MR-5 | `persona` | Core | `interface.md` persona division; blueprint §35; ADR-008, ADR-011 | Activated personas + command inventory per spec |
+| MR-6 | `permit` | Core | `interface.md` permit division; blueprint §21; concept.md §16.1 | Grants resolve through the seven-layer engine with exact L6/7 vocabulary |
+| MR-7 | `modules` | Core | `interface.md` modules division | Uninstall removes a module's commands; disabled handlers stop firing |
+| MR-8 | `dashboard` | Core | `interface.md` dashboard division (§0.4, §3.4–§3.7) | Edit-in-place on every interaction; dropdown present on every page; navigates to every live module |
+
+**Ledger.** On the first MR session, add the MR-1…MR-8 rows to the ledger's summary table (if not already present), with per-item records in the standard M-item shape.
+
 ### M9 — Remaining Implementation-Flaw Corrections
 
 **Source of truth:** `docs/ur/UR-20260918-001` — the 88-flaw table, EXCLUDING the P0 rows already done in M0.
@@ -150,7 +182,7 @@ The items are sequenced infrastructure-first: layout and plumbing before present
 
 **Source of truth:** the master prompt §3 (audit protocol) and §6 (enforcement pass).
 **What changes:** NOW, and only now, run the full audit: `tsc --noEmit` across the project, the full test suite, the behavioral checks. Everything already migrated must be COMPLETE. Out-of-scope findings accumulated in the ledger are triaged: ones that belong to a v5.0.0 delta item go back to that item (reopened); ones that predate the re-baseline and are unrelated to it are recorded as regular backlog, NOT fixed under this prompt.
-**Done-gate:** the ledger is all-DONE; the audit is all-COMPLETE on the migrated subsystems; the handoff note in the ledger says the master prompt is now the governing protocol again.
+**Done-gate:** the ledger is all-DONE; the audit is all-COMPLETE on the migrated subsystems, the live modules included; the handoff note in the ledger says the master prompt is now the governing protocol again.
 
 ---
 
@@ -186,10 +218,10 @@ You are explicitly forbidden, for the entire duration of this migration, from:
 
 ## 6. COMPLETION
 
-The migration is complete when: every item M0–M11 is DONE in the ledger, the convergence pass is green, and the ledger's final entry hands control back to the Master Build Prompt as the governing protocol.
+The migration is complete when: every item in the work order — M0–M11 and MR-1–MR-8 — is DONE in the ledger, the convergence pass is green, and the ledger's final entry hands control back to the Master Build Prompt as the governing protocol.
 
 **Anything less is not done. Anything more (out-of-scope fixes smuggled in) is a defect of this protocol's execution and must be reverted or recorded in the ledger as a deviation.**
 
 ---
 
-*End of Re-Baseline Migration Prompt. Version 5.0.1. Record all future revisions in `change-log.md`.*
+*End of Re-Baseline Migration Prompt. Version 5.0.2. Record all future revisions in `change-log.md`.*

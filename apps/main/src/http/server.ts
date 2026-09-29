@@ -6,6 +6,7 @@ import type { BootstrapProgress } from '../bootstrap/stages.js';
 import type { MetricsRegistry } from '../metrics/registry.js';
 import type { ConfigService } from '../config/config.service.js';
 import { toErrorResponse } from './error-boundary.js';
+import { registerInternalAuth } from './internal-auth.js';
 import { registerHealthRoutes } from './routes/health.routes.js';
 import { registerMetricsRoutes } from './routes/metrics.routes.js';
 import { registerInfoRoutes } from './routes/info.routes.js';
@@ -19,6 +20,8 @@ export interface BuildServerOptions {
   adminDeps: AdminRoutesDeps;
 }
 
+const ADMIN_PATH_PREFIX = '/admin/';
+
 export function buildApiServer(options: BuildServerOptions): FastifyInstance {
   const app = Fastify({ logger: false });
 
@@ -31,6 +34,16 @@ export function buildApiServer(options: BuildServerOptions): FastifyInstance {
       options.logger.error('unhandled-http-error', { error: String(err) });
     }
     reply.code(statusCode).send(body);
+  });
+
+  registerInternalAuth(app, {
+    expectedKey: options.config.get('INTERNAL_API_KEY'),
+    shouldProtect: (request) => request.url.startsWith(ADMIN_PATH_PREFIX),
+    audit: async (outcome, detail) => {
+      if (outcome === 'rejected') {
+        options.logger.warn('admin-auth-rejected', detail);
+      }
+    },
   });
 
   registerInfoRoutes(app, options.config);

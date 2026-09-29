@@ -43,10 +43,17 @@ services:
       MODULES_DIR: /mnt/modules
       SWASTIK_STAGING_VOLUME_PATH: /mnt/modules/swastik-staging
       SWASTIK_LIVE_VOLUME_PATH: /mnt/modules/modules-core
+      # The container is the trust boundary: it must bind the wildcard address
+      # for the published ports to reach it. Host-side exposure is restricted
+      # by the loopback port mappings below, and /admin/* is additionally gated
+      # by INTERNAL_API_KEY.
+      API_BIND_HOST: 0.0.0.0
+      HEALTH_BIND_HOST: 0.0.0.0
+      METRICS_BIND_HOST: 0.0.0.0
     ports:
-      - '8080:8080' # API_PORT
-      - '8081:8081' # HEALTH_PORT
-      - '8082:8082' # METRICS_PORT
+      - '127.0.0.1:8080:8080' # API_PORT
+      - '127.0.0.1:8081:8081' # HEALTH_PORT
+      - '127.0.0.1:8082:8082' # METRICS_PORT
     volumes:
       - dumby_modules_admin:/mnt/modules/modules-admin
       - dumby_modules_core:/mnt/modules/modules-core
@@ -105,7 +112,7 @@ services:
           'CMD',
           'node',
           '-e',
-          "fetch('http://localhost:8085/swastik/status').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+          "const h={'x-internal-api-key':process.env.INTERNAL_API_KEY};fetch('http://localhost:8085/swastik/status',{headers:h}).then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
         ]
       interval: 10s
       timeout: 5s

@@ -69,6 +69,13 @@ function stripAnsi(input: string): string {
   return input.replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, '');
 }
 
+class PepActionNotImplementedError extends Error {
+  constructor(functionName: string) {
+    super(`PEP action "${functionName}" has no backing primitive implemented yet`);
+    this.name = 'PepActionNotImplementedError';
+  }
+}
+
 async function handlePepCommand(
   functionName: string,
   argsStr: string,
@@ -83,10 +90,18 @@ async function handlePepCommand(
         source: 'clai',
         reason: (args['reason'] as string) ?? 'CLAI command',
       },
-      async () => args,
+      async () => {
+        throw new PepActionNotImplementedError(functionName);
+      },
     );
-    return outcome.ok ? `OK: ${functionName} completed` : `REJECTED: ${outcome.rejectionReason}`;
+    if (!outcome.ok) {
+      return `REJECTED: ${outcome.rejectionReason}`;
+    }
+    return `NOT IMPLEMENTED: ${functionName} has no backing primitive implemented yet`;
   } catch (err) {
+    if (err instanceof PepActionNotImplementedError) {
+      return `NOT IMPLEMENTED: ${functionName} has no backing primitive implemented yet`;
+    }
     return `ERROR: ${String(err)}`;
   }
 }

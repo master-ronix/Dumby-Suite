@@ -7,7 +7,7 @@ import {
 } from '../../src/http/power-engine-dispatcher.js';
 import { registerAdminRoutes } from '../../src/http/routes/admin.routes.js';
 
-const trusted = { trustedSources: ['dashboard', 'swastik-internal'] };
+const trusted = { trustedSources: ['dashboard', 'swastik-internal', '127.0.0.1'] };
 
 function makeChain<T>(resolved: T): Record<string, unknown> & { then: unknown } {
   const chain = {

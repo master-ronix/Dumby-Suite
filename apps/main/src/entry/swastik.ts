@@ -1,4 +1,4 @@
-import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
+import Fastify from 'fastify';
 import { randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -7,9 +7,9 @@ import { parseEnv, pickEnvKeys, type Env } from '../config/env.schema.js';
 import { createLogger, type Logger } from '../logging/logger.js';
 import { DbClient } from '../db/client.js';
 import { RedisLockStore } from '../cache/redis-lock-store.js';
-import { INTERNAL_API_HEADER } from '../http/internal-auth.js';
+import { registerInternalAuth, shouldProtectSwastikRoute } from '../http/internal-auth.js';
+import { toErrorResponse } from '../http/error-boundary.js';
 import { parseManifest, type ModuleManifest } from '../module-system/manifest.schema.js';
-import { constantTimeEqual } from '../shared/utils/crypto.js';
 import {
   assertPathInside,
   assertSafeSlug,
@@ -181,6 +181,25 @@ function deploymentGateOutcome(ledger: CompatibilityLedger, moduleName: string):
 
 const app = Fastify({ logger: false });
 
+const PATH_GUARD_REJECTION = 'rejected: module identifier is malformed or escapes the module root';
+
+function isPathGuardRejection(err: unknown): err is { kind: string } {
+  if (typeof err !== 'object' || err === null) return false;
+  return (err as { name?: unknown }).name === 'PathGuardError';
+}
+
+app.setErrorHandler((err, _request, reply) => {
+  if (isPathGuardRejection(err)) {
+    logger.warn('swastik-path-guard-rejected', { kind: err.kind });
+    return reply.code(400).send({ error: PATH_GUARD_REJECTION });
+  }
+  const { statusCode, body } = toErrorResponse(err);
+  if (statusCode === 500) {
+    logger.error('swastik-unhandled-error', { error: String(err) });
+  }
+  return reply.code(statusCode).send(body);
+});
+
 app.post('/swastik/developers/register', async (request, reply) => {
   const body = request.body as Record<string, unknown>;
   const { username } = body as { username?: string };
@@ -346,22 +365,7 @@ app.get('/swastik/modules/:slug/builds/:buildId', async (request, reply) => {
   });
 });
 
-async function requireInternalKey(request: FastifyRequest, reply: FastifyReply): Promise<boolean> {
-  const supplied = request.headers[INTERNAL_API_HEADER];
-  const expected = env.INTERNAL_API_KEY;
-  if (
-    typeof supplied !== 'string' ||
-    supplied.length === 0 ||
-    !constantTimeEqual(supplied, expected)
-  ) {
-    await reply.code(401).send({ error: 'missing or invalid x-internal-api-key header' });
-    return false;
-  }
-  return true;
-}
-
 app.post('/internal/reload', async (request, reply) => {
-  if (!(await requireInternalKey(request, reply))) return;
   const query = request.query as Record<string, string>;
   const moduleName = query['module'] ? assertSafeSlug(query['module']) : undefined;
   if (!moduleName) return reply.code(400).send({ error: 'module query parameter is required' });
@@ -483,7 +487,6 @@ app.post('/internal/reload', async (request, reply) => {
 });
 
 app.post('/internal/deploy', async (request, reply) => {
-  if (!(await requireInternalKey(request, reply))) return;
   const body = request.body as Record<string, unknown>;
   const {
     moduleSlug,
@@ -718,6 +721,24 @@ app.get('/swastik/status', async (_request, reply) => {
 
 export async function startSwastik(): Promise<void> {
   await init();
+  // Registered after init() because the expected key comes from parsed env, which init() assigns.
+  // Registering at module scope would capture an undefined key before init() has run.
+  registerInternalAuth(app, {
+    expectedKey: env.INTERNAL_API_KEY,
+    shouldProtect: shouldProtectSwastikRoute,
+    audit: (outcome, detail) => {
+      // §15.8 requires an INTERNAL_AUTH_DENIED audit row on rejection, recording the route and
+      // the caller's address but never the presented key. Allowed requests are logged only: an
+      // audit_logs row per authenticated call would add DB load the spec does not ask for, and
+      // matches the admin gate's pattern in http/server.ts.
+      if (outcome !== 'rejected') {
+        logger.debug('swastik-internal-auth-allowed', detail);
+        return undefined;
+      }
+      logger.warn('swastik-internal-auth-rejected', detail);
+      return writeAudit('INTERNAL_AUTH_DENIED', 'rejected', { ...detail });
+    },
+  });
   await app.listen({ port: env.SWASTIK_PORT, host: '127.0.0.1' });
   logger.info('swastik-started', {
     port: env.SWASTIK_PORT,

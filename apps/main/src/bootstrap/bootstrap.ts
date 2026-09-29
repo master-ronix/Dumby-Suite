@@ -93,7 +93,10 @@ export async function bootstrap(): Promise<void> {
 
   progress.advanceTo('HEALTH_SERVER_INIT');
   const healthServer = buildHealthServer(progress);
-  await healthServer.listen({ port: config.get('HEALTH_PORT'), host: '0.0.0.0' });
+  await healthServer.listen({
+    port: config.get('HEALTH_PORT'),
+    host: config.get('HEALTH_BIND_HOST'),
+  });
 
   progress.advanceTo('OBSERVABILITY_INIT');
   const logger = createLogger(config.get('LOG_LEVEL'));
@@ -102,7 +105,10 @@ export async function bootstrap(): Promise<void> {
   container.registerValue(CORE_TOKENS.Logger, logger);
   container.registerValue(CORE_TOKENS.Metrics, metrics);
   const metricsServer = buildMetricsServer(metrics);
-  await metricsServer.listen({ port: config.get('METRICS_PORT'), host: '0.0.0.0' });
+  await metricsServer.listen({
+    port: config.get('METRICS_PORT'),
+    host: config.get('METRICS_BIND_HOST'),
+  });
 
   progress.advanceTo('DATABASE_CONNECT');
   const db = new DbClient({
@@ -524,7 +530,7 @@ export async function bootstrap(): Promise<void> {
   apiServer.addHook('onRequest', async () => inFlightTracker.increment());
   apiServer.addHook('onResponse', async () => inFlightTracker.decrement());
   apiServer.addHook('onError', async () => inFlightTracker.decrement());
-  await apiServer.listen({ port: config.get('API_PORT'), host: '0.0.0.0' });
+  await apiServer.listen({ port: config.get('API_PORT'), host: config.get('API_BIND_HOST') });
 
   registerShutdownSignalHandlers({
     logger,

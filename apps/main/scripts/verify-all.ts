@@ -9,12 +9,16 @@ function run(label: string, cmd: string): void {
   execSync(cmd, { stdio: 'inherit' });
 }
 
-async function waitFor(url: string, timeoutMs: number): Promise<void> {
+async function waitFor(
+  url: string,
+  timeoutMs: number,
+  headers: Record<string, string> = {},
+): Promise<void> {
   const start = Date.now();
 
   while (true) {
     try {
-      const res = await fetch(url);
+      const res = await fetch(url, { headers });
       if (res.ok) return;
     } catch {}
     if (Date.now() - start > timeoutMs) {
@@ -35,7 +39,15 @@ async function main(): Promise<void> {
   run('docker compose up Swastik', 'docker compose up -d --build swastik');
 
   console.log('\n=== waiting for Swastik ===');
-  await waitFor(`http://localhost:${process.env.SWASTIK_PORT ?? '8085'}/swastik/status`, 60_000);
+  // /swastik/status is an internal surface: it requires the service-to-service key, and the
+  // probe presents it from its own environment the same way the compose healthcheck does.
+  const internalKey = process.env.INTERNAL_API_KEY;
+  if (!internalKey) {
+    throw new Error('INTERNAL_API_KEY is required to probe /swastik/status');
+  }
+  await waitFor(`http://localhost:${process.env.SWASTIK_PORT ?? '8085'}/swastik/status`, 60_000, {
+    'x-internal-api-key': internalKey,
+  });
   console.log('Swastik status endpoint returned 200.');
 
   run('docker compose up runtime', 'docker compose up -d --build app');
