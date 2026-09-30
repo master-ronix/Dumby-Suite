@@ -2,7 +2,7 @@
 
 > **One project. One continuous history.**
 > Archive lineage: v1.0.0 → FINAL (13 drafts) · Living reference pair: v4.5.1 (`documentation.md` · `blueprint.md`) · Living document set: v5.0.0 (nine canonical documents · `docs/adr/` · `docs/ur/`)
-> Last recorded: 2026-09-18 (v5.0.0 Consolidated Re-Baseline Edition)
+> Last recorded: 2026-09-30 (v5.0.0 implementation track — migration protocol 5.1.0 and the M0 per-request record)
 
 ---
 
@@ -618,6 +618,57 @@ system, command surface, versions), cross-reference resolution, and a clean-lang
 **Per-request record discipline (adopted at v5.0.0):** every subsequent documentation change keyed
 to a request of the v5.0 program records its own change-log line citing the request ID; the master
 traceability index is the consolidated request's section-level table.
+
+### v5.0.0 Implementation Track — Per-Request Record
+
+_Recorded 2026-09-30. Basis: migration-prompt.md 5.1.0 (rule R11). The migration protocol at 5.0.2
+carried no change-log discipline, so the code landings below were recorded retroactively as part
+of the 5.1.0 revision; every request row closed from 2026-09-30 onward
+records its own line here at close time. Row numbers refer to UR-20260918-001 §8.1.2, the master
+traceability index. The session-generated execution ledger that recorded M0 was retired from the
+repository root on 2026-09-30 (records recoverable in git history at commit `0c625c1`); the state
+of record is this section plus the dated snapshot in `docs/migration-ledger-template.md` §2._
+
+**Protocol records:**
+
+- **2026-09-30 — migration-prompt.md 5.0.2 → 5.1.0** (complete revision) and
+  **migration-ledger-template.md → 2.0** to match: the 5.0.2 first-run instruction to copy the
+  ledger template over `migration-ledger.md` is withdrawn (the live ledger is mid-migration and
+  authoritative — resume, never re-create); rule R11 makes the change-log line part of every item's
+  done-gate per the per-request discipline this entry adopts; the 121-row request-ID coverage map is
+  added (UR-07 and UR-31, previously owned by no work-order item and absent from the UR's own rollout
+  table, are assigned to M9); slice mechanics are made first-class; the template's all-NOT-STARTED
+  snapshot is replaced with the true state (M0 IN-PROGRESS, slices 1–5 DONE); the session-generated
+  migration ledger is retired from the repository root — its records remain recoverable in git
+  history at `0c625c1`, and the next migration session constructs a fresh ledger from the template
+  seeded with the snapshot.
+
+**M0 — P0 security flaws (rows 34–37, 64–69, 92–98; IN-PROGRESS; slices 1–5 landed on `feature/dev`
+in commit `0c625c1`, 2026-09-29; 75 files / 876 tests green at slice-5 close):**
+
+| Request | Row | M0 slice | Record | Status |
+|---|---|---|---|---|
+| UR-A-01 | 34 | 1 | `source` derived from `request.ip`, never the body; every `/admin/*` route behind the constant-time key; three bind hosts default `127.0.0.1` | DONE |
+| UR-A-02 | 35 | — | `entry/ssh-clai.ts` is a real ssh2 public-key-only server; no TCP REPL in tree (verified at M0 triage — already fixed) | DONE |
+| UR-A-03 | 36 | 4 | Fail-open closed: an unresolved tier is denied before dispatch and the two `?? 'standard'` coercions are removed; remaining clauses are the row's own named UR-C-09 dependency (P1 → M9) | PARTIAL (routed to M9) |
+| UR-A-04 | 37 | 3 | All no-op PEP/admin/CLAI actions answer 501 without dispatch, state writes, or false `allowed` audit rows; a rejected PEP dispatch answers 403, not 200 | DONE |
+| UR-B-01 | 64 | — | Auto-approver removed; 403 for unknown/pending developers (verified at M0 triage — already fixed) | DONE |
+| UR-B-02 | 65 | 2 | Zod slug/version validation + `assertPathInside` containment on the Swastik filesystem joins; loader entry-name parse and realpath containment | PARTIAL |
+| UR-B-03 | 66 | 1 | Constant-time preHandler on the API server's `/admin/*` plus PEP/CLAI/Twixter/credentials; three bind hosts loopback-default; compose ports loopback-pinned | DONE |
+| UR-B-04 | 67 | — | No hash/Ed25519 verification, quarantine, or provenance columns on `builds` yet | OPEN (slice 6) |
+| UR-B-05 | 68 | — | No `credentials` table; `devId` remains a plaintext primary key used as the bearer token | OPEN (slice 6) |
+| UR-B-06 | 69 | 1 | Server-derived `source` on all three surfaces; the false `allowed` audit rows the no-op handlers produced are removed | DONE |
+| UR-C-01 | 92 | 2 | `safeJoin` / `assertPathInside` / `assertSafeSlug` / `assertSafeVersion` applied in the loader | PARTIAL |
+| UR-C-02 | 93 | 5 | One shared constant-time `registerInternalAuth` preHandler gates the whole Swastik surface; rejections write an `INTERNAL_AUTH_DENIED` audit row; both in-repo clients present the header | DONE |
+| UR-C-03 | 94 | — | Auto-approver gone; no ownership table, no non-owner 403; `manifest.devId` optional | PARTIAL |
+| UR-C-04 | 95 | — | Sealed store is real; the argon2 branch targets the wrong table; no rate limit/bodyLimit | PARTIAL |
+| UR-C-05 | 96 | — | No `devIdHash`; the 401-vs-404 failure oracle remains | OPEN (slice 6) |
+| UR-C-06 | 97 | — | Same fix as UR-A-02 (verified at M0 triage — already fixed) | DONE |
+| UR-C-07 | 98 | 2 | Manifest/directory match and symlink containment added in the loader; hash verification, quarantine, and cache-busted import URLs remain | PARTIAL |
+
+Slice ledger: 1 (admin surface auth) DONE · 2 (loader path containment) DONE · 3 (honest 501) DONE ·
+4 (fail-closed unknown tier) DONE · 5 (Swastik internal auth) DONE · **6 (provenance, ownership,
+credentials — the three OPEN rows plus the closable partials) NEXT — the last M0 slice.**
 
 ---
 
