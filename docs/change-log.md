@@ -2,7 +2,7 @@
 
 > **One project. One continuous history.**
 > Archive lineage: v1.0.0 → FINAL (13 drafts) · Living reference pair: v4.5.1 (`documentation.md` · `blueprint.md`) · Living document set: v5.0.0 (nine canonical documents · `docs/adr/` · `docs/ur/`)
-> Last recorded: 2026-09-30 (v5.0.0 implementation track — migration protocol 5.1.0 and the M0 per-request record)
+> Last recorded: 2026-10-01 (UR-20260918-001 rev 2.0 — post-re-baseline Conformance & Audit Evidence Set; migration protocol 5.2.0 and the corrected M0 per-request record)
 
 ---
 
@@ -95,7 +95,7 @@ Each entry opens with a one-line metadata footer: _lines · size · basis of ver
 | 12  | FINAL      | 1,682           | 220 KB         | Core-only scope cut; long-standing defects closed out                                                                                                                                                                                                                                                                                                        |
 | 13  | v4.5.1     | 10,949 / 13,099 | 1.11 / 0.99 MB | Structure-Enforced Edition — merged UUR (1,389 findings) applied to the living reference pair                                                                                                                                                                                                                                                                |
 | 14  | v4.6.0     | 10,953 / 13,102 | 1.10 / 0.99 MB | Production-Readiness Edition — eight headline design decisions integrated across the suite; duplicate `src/core/` subsystem removed from the spec; Redis HA, pool sizing, gateway session resume, break-glass, and vulnerability-scanning requirements added; CLAI SSH, Dev-ID/Token split, AST manifest extraction, and per-module isolation made normative |
-| 15  | v5.0.0     | 13,258 / 9,808 / 1,876 / 1,631 / 598 / 582 / 365 | 0.93 MB · 0.99 MB · 0.12 MB · 0.09 MB · 0.05 MB · 0.07 MB · 0.03 MB | Consolidated Re-Baseline Edition — 121 requests (31 program URs · 88 implementation-flaw corrections · 2 RBAC redesign requirements) applied across twelve documents; Renderer + buffer presentation model, RBAC Layer 6/7, tier volumes, license state machine, Compatibility Ledger, Global Data Emit, Twixter, envelope encryption, 11 ADRs, three frozen source records |
+| 15  | v5.0.0     | 13,139 / 9,808 / 1,876 / 1,631 / 598 / 581 / 365 | 0.93 MB · 0.99 MB · 0.12 MB · 0.09 MB · 0.05 MB · 0.07 MB · 0.03 MB | Consolidated Re-Baseline Edition — 121 requests (31 program URs · 88 implementation-flaw corrections · 2 RBAC redesign requirements) applied across twelve documents; Renderer + buffer presentation model, RBAC Layer 6/7, tier volumes, license state machine, Compatibility Ledger, Global Data Emit, Twixter, envelope encryption, 11 ADRs, three frozen source records |
 
 ---
 
@@ -652,9 +652,9 @@ in commit `0c625c1`, 2026-09-29; 75 files / 876 tests green at slice-5 close):**
 | UR-A-02 | 35 | — | `entry/ssh-clai.ts` is a real ssh2 public-key-only server; no TCP REPL in tree (verified at M0 triage — already fixed) | DONE |
 | UR-A-03 | 36 | 4 | Fail-open closed: an unresolved tier is denied before dispatch and the two `?? 'standard'` coercions are removed; remaining clauses are the row's own named UR-C-09 dependency (P1 → M9) | PARTIAL (routed to M9) |
 | UR-A-04 | 37 | 3 | All no-op PEP/admin/CLAI actions answer 501 without dispatch, state writes, or false `allowed` audit rows; a rejected PEP dispatch answers 403, not 200 | DONE |
-| UR-B-01 | 64 | — | Auto-approver removed; 403 for unknown/pending developers (verified at M0 triage — already fixed) | DONE |
+| UR-B-01 | 64 | — | Auto-approver removed; 403 for unknown/pending developers — **reopened to PARTIAL by UR 2.0 (SC-01): the owner-approval workflow clause is absent** | PARTIAL |
 | UR-B-02 | 65 | 2 | Zod slug/version validation + `assertPathInside` containment on the Swastik filesystem joins; loader entry-name parse and realpath containment | PARTIAL |
-| UR-B-03 | 66 | 1 | Constant-time preHandler on the API server's `/admin/*` plus PEP/CLAI/Twixter/credentials; three bind hosts loopback-default; compose ports loopback-pinned | DONE |
+| UR-B-03 | 66 | 1 | Constant-time preHandler on the API server's `/admin/*` plus PEP/CLAI/Twixter/credentials; three bind hosts loopback-default; compose ports loopback-pinned — **reopened to PARTIAL by UR 2.0 (SC-01): bind-host coverage is 4/8 surfaces** | PARTIAL |
 | UR-B-04 | 67 | — | No hash/Ed25519 verification, quarantine, or provenance columns on `builds` yet | OPEN (slice 6) |
 | UR-B-05 | 68 | — | No `credentials` table; `devId` remains a plaintext primary key used as the bearer token | OPEN (slice 6) |
 | UR-B-06 | 69 | 1 | Server-derived `source` on all three surfaces; the false `allowed` audit rows the no-op handlers produced are removed | DONE |
@@ -663,12 +663,56 @@ in commit `0c625c1`, 2026-09-29; 75 files / 876 tests green at slice-5 close):**
 | UR-C-03 | 94 | — | Auto-approver gone; no ownership table, no non-owner 403; `manifest.devId` optional | PARTIAL |
 | UR-C-04 | 95 | — | Sealed store is real; the argon2 branch targets the wrong table; no rate limit/bodyLimit | PARTIAL |
 | UR-C-05 | 96 | — | No `devIdHash`; the 401-vs-404 failure oracle remains | OPEN (slice 6) |
-| UR-C-06 | 97 | — | Same fix as UR-A-02 (verified at M0 triage — already fixed) | DONE |
+| UR-C-06 | 97 | — | ssh2 public-key-only server (same fix as UR-A-02) — **reopened to PARTIAL by UR 2.0 (SC-01): the connection/byte limits clause is absent** | PARTIAL |
 | UR-C-07 | 98 | 2 | Manifest/directory match and symlink containment added in the loader; hash verification, quarantine, and cache-busted import URLs remain | PARTIAL |
 
 Slice ledger: 1 (admin surface auth) DONE · 2 (loader path containment) DONE · 3 (honest 501) DONE ·
 4 (fail-closed unknown tier) DONE · 5 (Swastik internal auth) DONE · **6 (provenance, ownership,
 credentials — the three OPEN rows plus the closable partials) NEXT — the last M0 slice.**
+
+### UR 2.0 — Post-Re-Baseline Conformance & Audit Evidence (recorded 2026-10-01)
+
+_Basis: UR-20260918-001 revision 2.0 (01/10/2026), which registers the ten-document Conformance &
+Audit Evidence Set (E1–E10) — 242 conformance findings across five workstreams, a full codebase audit
+at `0c625c1` (876/876 tests green), a 310-file architecture audit at `df1225e`, and a documentation-
+system audit (RC-1…RC-5, C-1…C-10, R1…R13). The findings are carried in the UR's §8.13 register and
+are **not** new source requests — the master table stays at exactly 121 rows. This record captures the
+findings that correct the migration state of record (UR §8.13.2 SC-01…SC-04), the corpus defects this
+file owed (CF-22, CF-27), and the protocol revision they triggered._
+
+**Protocol records:**
+
+- **2026-10-01 — migration-prompt.md 5.1.0 → 5.2.0** (conformance-reconciliation revision) and
+  **migration-ledger-template.md 2.0 → 2.1** to match: added rule R12 and §3.0.2 (the state-of-record
+  reconciliation gate — re-triage all 121 rows against the tree before any M-item); added §3.0.1
+  (evidence corpus); corrected the migration state of record (below); corrected the MR module source
+  home to `packages/modules/` and the MR-1 checklist citation to §10.10.
+
+**State-of-record corrections (UR §8.13.2):**
+
+- **SC-01 — M0 tally corrected.** Three rows reopen from DONE to PARTIAL: **UR-B-01** (owner-approval
+  workflow), **UR-B-03** (bind-host coverage 4/8), **UR-C-06** (CLAI connection/byte limits). M0 is
+  **5 DONE / 9 PARTIAL / 3 OPEN** (rows above corrected in place).
+- **SC-02 — ahead-of-record work recorded.** The tree at `df1225e` contains M1/M2/M3/M5/M6/M7/M8/M9-shaped
+  code and tests (tier volumes + blind discovery + `packages/swastik`; unified `src/commands`;
+  `src/rendering/` CoreRenderer; `src/licensing/` license machine + Compatibility Ledger;
+  `src/module-system/promotion.ts`; `src/personas/`; `src/crypto/envelope.ts`) that the record never
+  credited, with no R11 lines. Recorded here as **PRESENT IN TREE (uncredited pending UR §8.1.3 #19)**
+  — the open policy question on whether ahead-of-record work is credited as DONE/PARTIAL or logged as a
+  deviation). Crediting is deferred; visibility is not.
+- **SC-03 — ledger rebuilt from the tree.** All 121 rows must be re-triaged against working HEAD (not the
+  snapshot) before any M-item executes (prompt R12 / §3.0.2).
+- **SC-04 — master-table line counts corrected** (row 15 above): blueprint.md **13,139** (not 13,258);
+  concept.md **581** (not 582).
+- **CF-22 — legacy "DRM" corrected** in the living open-items section (D-8.5 → Release Manager).
+- **CF-28 / derived-status docs** (`GAP_MANIFEST.md`, `STATUS.md`, `replit.md`, `apps/main/docs/*`) still
+  present a v4.6.1-era world unmarked; their reconciliation is a documentation action tracked in the UR's
+  §8.13 register, not a migration-protocol change.
+
+**Evidence corpus registration:** E1–E10 are registered as frozen verification records under the UR
+(its §3.1.1 and Appendix C); this file records their migration-facing consequences only. Code-defect
+findings in the set (e.g. K8s probes/trust/configmap, the credentials argon2 branch, `worker.ts`) are
+recorded as documentation impact under the UR; their implementation executes under their own programs.
 
 ---
 
@@ -730,7 +774,7 @@ The single most useful thing a _unified_ changelog can show that 13 separate one
   dependency review, SBOM + supply-chain hashing, live-service integration job, Docker
   build). Needs a first real push/PR run on GitHub to be considered green; SBOM/provenance
   step wiring and action majors may need adjustment after that run.
-- **D-8.5 DRM / D-8.7 K8s-Terraform** remain unautomated, recorded as in-scope but documented
+- **D-8.5 Release Manager / D-8.7 K8s-Terraform** remain unautomated, recorded as in-scope but documented
   deviations (deliberately not fabricated) — see `GAP_MANIFEST.md` §4 defect row 12.
 - **Live-infrastructure D-8.10 evidence** (readiness flip after Stage 18, 9-step SIGTERM ceilings, migration up/down/up reversibility) awaits the integration suite against live Postgres/Redis under `docker compose up`.
 - **interface.md Divisions 3–9 shipped surface** (`dashboard`, `browse`, `queue`, `persona`, `permit`, `modules`) plus the full `/health` card (status rows, dropdown, banner, running version, latency, uptime, guild count, shard grid). The router and middleware that will serve them are now wired.
