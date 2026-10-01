@@ -60,6 +60,8 @@ dumby-suite/                                        ← ROOT · pnpm-workspace m
 │       │           └── kubernetes/                 ← GKE / EKS / AKS cluster provisioning
 │       │
 │       ├── docs/                                   ← app-level engineering documentation (the cross-cutting
+│       │   ├── adr/                                ← app-level decision records (APP-ADR-001 … APP-ADR-005),
+│       │   │                                          distinct from the workspace docs/adr/ series
 │       │   ├── api/                                ← REST / PEP / MDIS API surface
 │       │   ├── architecture/                      ← layered view, request & event flow, shard topology
 │       │   ├── compliance/                        ← audit-column & governance compliance
@@ -254,16 +256,16 @@ dumby-suite/                                        ← ROOT · pnpm-workspace m
 │   ├── interface.md                               ← end-user Discord-facing interface specification
 │   ├── directory.md                               ← this document — the repository tree reference
 │   ├── directive.md                               ← project directives and bans
-│   ├── master-prompt.md                           ← bot system identity and personality prompt
+│   ├── master-prompt.md                           ← the build execution brief (orchestration prompt)
 │   ├── concept.md                                 ← concept definitions and glossary of framework terms
 │   ├── change-log.md                              ← version-history ledger for the document set
 │   ├── definitions.md                             ← foundational definitions
 │   ├── adr/                                       ← architecture decision records — ADR-001 … ADR-011,
 │   │                                                the eleven cross-cutting decision records
 │   ├── ur/                                        ← frozen upgradation-request program records
-│   ├── reference/                                 ← reference material
-│   ├── changelog/                                 ← historical change records
-│   └── rfcs/                                      ← requests for comments / decision docs
+│   ├── meta-prompt.md                             ← remediation / orchestration brief
+│   ├── migration-prompt.md                        ← the delta migration execution protocol
+│   └── migration-ledger-template.md               ← the migration ledger template
 │
 ├── lib/                                           ← shared workspace libraries (generated)
 │   ├── api-client-react/                          ← generated React API client
@@ -285,13 +287,11 @@ dumby-suite/                                        ← ROOT · pnpm-workspace m
 │   │                                                schema — the config-drift guard
 │   └── src/                                       ← general script sources & post-merge hook
 │
-├── specs/                                         ← formal specifications
-│   ├── modules/                                   ← module-level specs
-│   ├── api/                                       ← API specs
-│   └── rfcs/                                      ← specification RFCs
+├── specs/                                         ← formal specifications (currently a README placeholder;
+│                                                    the specification content lives in docs/blueprint.md)
 │
 ├── tools/                                         ← internal tooling
-│   └── release-manager/                           ← Release Manager tooling — release automation scripts,
+│   └── release_manager/                           ← Release Manager tooling — release automation scripts,
 │       ├── scripts/                                  release configuration, release-note & announcement
 │       ├── config/                                  templates; the Release Manager actuator itself is a
 │       └── templates/                               separately built, Swastik-coordinated release service,

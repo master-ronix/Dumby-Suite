@@ -1964,15 +1964,14 @@ export const MODERATION_TOKENS = {
 ```
 
 Core tokens are registered during bootstrap Stage 09 (§8.2). Module tokens are
-
-ModuleRegistry.discover accepts a configurable root directory (default
-`src/modules/`, overridable via `MODULES_DIR`), so the served module set can point
-at a mounted persistent volume rather than a baked-in image layer.
-
 registered during Stage 12, **in topological dependency order** — meaning a module
 whose `depends` array references another module's token can safely resolve that token
 at construction time, because the module it depends on has already had its own tokens
 registered by the time Stage 12 reaches it.
+
+ModuleRegistry.discover accepts a configurable root directory — the tier-volume root
+(`MODULES_DIR`, default `/mnt/modules`), never an in-tree `src/modules/` — so the
+served module set points at a mounted persistent volume rather than a baked-in image layer.
 
 ### §10.2 Addition — QueueManager Worker Lifecycle Map (moduleSlug → Worker[])
 
@@ -2707,7 +2706,7 @@ The onConfigChange hook is called when the module's per-guild configuration is c
 
 Module isolation is enforced by a combination of TypeScript's type system, the Service Locator's access control, and the Module Validator's static analysis. These rules are not conventions — they are enforced at compile time and load time.
 
-Rule 1: No module may import another module's internal files. The ESLint configuration includes a rule that prevents imports from src/modules/[other-module]/. Modules may only import from the framework's typed service interfaces (src/core/types/) and their own directory.
+Rule 1: No module may import another module's internal files. The ESLint configuration includes a rule that prevents imports from another module's internal files. Modules may only import from the framework's typed service interfaces (src/core/types/) and their own directory.
 
 Rule 2: No module may directly access the Knex client. The DatabaseService wraps Knex with a typed, tier-aware service. Marketplace modules receive a rate-limited wrapper that counts queries against the per-guild quota. Attempting to bypass the wrapper by importing Knex directly is prevented by the ESLint rule that blocks imports from src/services/DatabaseService.ts (only the typed interface is importable).
 
@@ -2881,7 +2880,6 @@ Content-addressed staging: the build ID is `semver + content hash` (e.g. `2.3.1+
 
 External module loading: modules are loaded from an external Kubernetes volume (`/mnt/modules`) rather than baked into the immutable container image. Bootstrap Stage 10 (MODULE_DISCOVERY) scans `MODULES_DIR`; the container image contains only the Application Core.
 
-- Blueprint scans `src/modules/` during bootstrap Stage 10; modules packaged inside the Docker image layer.
 
 - Modules sourced from a Kubernetes Persistent Volume / hostPath mounted at `/mnt/modules`; container image contains only the Application Core.
 
@@ -3484,7 +3482,7 @@ The developer tests the module manually by starting the bot in the development e
 
 #### 90.5 Security Review
 
-Before publishing, the developer performs a security review of the module. The review checks for: hardcoded secrets (API keys, tokens, passwords — these should be loaded from the ConfigManager, not hardcoded), input sanitization (all user input is sanitized — the InputSanitizer handles this automatically, but the developer should verify that no raw user input is passed to the database or external APIs), output encoding (all user-provided content in responses is encoded — the ResponseBuilder handles this automatically, but the developer should verify), error handling (all errors are caught and handled gracefully — no unhandled promise rejections, no sensitive information in error messages), and dependency security (all npm dependencies are scanned for known vulnerabilities using npm audit).
+Before publishing, the developer performs a security review of the module. The review checks for: hardcoded secrets (API keys, tokens, passwords — these should be loaded from the ConfigManager, not hardcoded), input validation (all user input is validated against the command's Zod schema by the input-validator middleware — the developer should verify that no raw user input is passed to the database or external APIs), output neutrality (all user-provided content is neutralized by the core Renderer — the developer should verify that no user content is interpolated into a mention or markup position), error handling (all errors are caught and handled gracefully — no unhandled promise rejections, no sensitive information in error messages), and dependency security (all npm dependencies are scanned for known vulnerabilities using npm audit).
 
 #### 90.6 Publishing to the Marketplace
 
@@ -3627,7 +3625,7 @@ Admin- and Core-tier modules need no per-guild state — their controllability i
 global and static. Standard- and Marketplace-tier modules maintain one row per guild
 per module in `guild_module_states`, guild_module_states cache invalidation uses an acknowledged transport (Redis Streams with consumer acknowledgements) or version-stamped cache keys with a shortened TTL on safety-critical reads, so a dropped invalidation cannot leave a pod serving stale state for up to 60s. Module enable/disable status is never
 
-ModuleRegistry.discover accepts a configurable root directory: default src/modules in development, overridable via the MODULES_DIR env var (e.g. /mnt/modules in production). The discovery logic (expects a subdirectory containing manifest.ts) is unchanged.
+ModuleRegistry.discover accepts a configurable root directory — the tier-volume root (`MODULES_DIR`, default `/mnt/modules`), never an in-tree `src/modules/`. The discovery logic (expects a subdirectory containing manifest.ts) is unchanged.
 represented as a field inside the `guild_configs` JSONB document (§23.3) — it lives
 exclusively in this dedicated table, with its own cache key and its own write-path
 transaction, so there is exactly one place this state can be read or written from.
@@ -4089,7 +4087,7 @@ Privilege escalation is blocked structurally rather than by convention, across f
 
 ### Tier Co-Constraints Enforced at Validation (Stage 11)
 
-Tier choice carries hard co-constraints, enforced at manifest validation (Stage 11) before any module loads (`apps/main/src/modules/tier-rules.ts`, `apps/main/src/modules/manifest.schema.ts`): the admin tier requires `devGuildOnly=true`; the marketplace tier requires a `marketplaceCategory`; the core tier forbids non-default RBAC; and `hardcoded` and `visibility` are mutually exclusive, with `hardcoded: true` requiring `visibility: 'private'`. A manifest that violates its tier's co-constraints fails validation outright rather than degrading at runtime.
+Tier choice carries hard co-constraints, enforced at manifest validation (Stage 11) before any module loads (`apps/main/src/module-system/tier-rules.ts`, `apps/main/src/module-system/manifest.schema.ts`): the admin tier requires `devGuildOnly=true`; the marketplace tier requires a `marketplaceCategory`; the core tier forbids non-default RBAC; and `hardcoded` and `visibility` are mutually exclusive, with `hardcoded: true` requiring `visibility: 'private'`. A manifest that violates its tier's co-constraints fails validation outright rather than degrading at runtime.
 
 ## 14. Inter-Module Communication
 
@@ -4380,7 +4378,7 @@ minutes (§43.2's runbook is built around exactly this distinction).
 ```
 DIAGRAM 15-A — Core Restart vs. Module Hot-Swap
 
- A change to the CORE codebase (anything outside src/modules/)
+ A change to the CORE codebase (anything outside the module volumes)
  │
  ▼
  Goes through the FULL release pipeline (§40.2–§40.4): build, staging
@@ -4423,11 +4421,11 @@ Every lease or lock carries a monotonically increasing fencing token, and instru
 
 - Monotonic fencing token on lease; instructions with token < current are rejected.
 
-**Core Cannot Be Hot-Reloaded (Full Restart Required).** The core (`src/core/` — DI container, command router, middleware pipeline, database connections, event bus) cannot be hot-reloaded: a core change requires a full process restart. `/admin reload module` is strictly for `src/modules/`, never `src/core/`; the Node.js module cache (`require.cache` / ESM loader cache) makes in-place core swapping unreliable.
+**Core Cannot Be Hot-Reloaded (Full Restart Required).** The core (`src/core/` — DI container, command router, middleware pipeline, database connections, event bus) cannot be hot-reloaded: a core change requires a full process restart. `/admin reload module` is strictly for the module volumes, never the core; the Node.js module cache (`require.cache` / ESM loader cache) makes in-place core swapping unreliable.
 
 - The core (`src/core/`) — DI container, command router, middleware pipeline, database connections, event bus — cannot be hot-reloaded. When the bot starts, it reads core files, compiles them, and stores them in Node.js's module cache (require.cache or ESM loader cache). Overwriting files on disk doesn't change the running code. Re-importing core breaks every active reference (database connection pool, gateway client, middleware pipeline are live objects).
 
-- Maintain as architectural constraint; document clearly that `/admin reload module` is strictly for `src/modules/`, never `src/core/`.
+- Maintain as architectural constraint; document clearly that `/admin reload module` is strictly for the module volumes, never the core.
 
 **Dev Hot-Reload (tsx --watch) vs Production Hot-Swap (symlink + signal).** Two reload models, deliberately different: development uses `tsx --watch` (auto re-import on save, gateway stays connected); production uses the compiled `.js` artifact as the source of truth with symlink + explicit signal promotion — production never auto-scans folders.
 
@@ -4465,7 +4463,7 @@ non-configurable.
 
 - Two paths specified: Core Restart (CI/CD + Kubernetes rolling update with shard handoff) and Module Hot-Swap (in-process reload via shared volume symlink swap). .
 
-- Path routing automated based on changed paths (e.g., `src/core/` vs `src/modules/`).
+- Path routing automated based on changed paths (e.g., the core vs the module volumes).
 
 ### 15.5 Scheduled Zero-Downtime Core Restart
 
@@ -5509,7 +5507,7 @@ DIAGRAM 17-B — Five-Step Collision Resolution
  │
  ▼
  2. PRESENTATION
- The guild sees an ephemeral embed with a dropdown listing every
+ The guild sees a renderer-issued Components v2 panel with a dropdown listing every
  conflicting command alongside its originating module.
  │
  ▼
@@ -6380,8 +6378,10 @@ surface).
 ### 20.9 The Buffer Embed & Formal Notice Frames
 
 **The buffer embed.** Every interaction — every slash command, component click,
-modal submit, and autocomplete request — receives an instant buffer embed at
-acknowledgment time, before any business logic runs. The buffer is a minimal,
+and modal submit — receives an instant buffer embed at
+acknowledgment time, before any business logic runs. Autocomplete requests are the
+deliberate exception: they must be answered with an `APPLICATION_COMMAND_AUTOCOMPLETE_RESULT`
+within the 1-second window and never receive a buffer embed (interface.md §2.4). The buffer is a minimal,
 mode-neutral render whose only job is to occupy the interaction's response slot so the
 user sees the framework is working, within the platform's acknowledgment window, every
 time. When the command completes, the buffer is edited into the final render
@@ -6398,10 +6398,11 @@ FORMAL NOTICE — Required Fields
 
  reason code     a stable, documented, machine-readable code
                  naming why the interaction did not produce a
-                 normal render (e.g. MAINTENANCE_MODE,
-                 PERMISSION_DENIED, MODULE_SUSPENDED,
-                 RATE_LIMITED, UNKNOWN_COMMAND,
-                 HANDLER_FAILED)
+                 normal render — one of the normative set:
+                 UNKNOWN_COMMAND, MAINTENANCE, NOT_FOUND,
+                 FORBIDDEN, RESTRICTED, COOLDOWN, RATE_LIMITED,
+                 GUILD_UNAVAILABLE, MODULE_ERROR, OVERDUE
+                 (interface.md §2.3 / §11.10)
 
  trace           the interaction's correlation ID (§27.1) —
  correlation ID  the same ID joining the notice to its log
@@ -7309,7 +7310,7 @@ without any of them needing to know the others exist beyond the shared data laye
 
 ### 22.10 CLAI — SSH Public-Key Operator Terminal
 
-CLAI binds 127.0.0.1 and authenticates operators via ssh2 public-key verification against the clai_operators/clai_authkeys tables. No node:net plaintext REPL path exists in the specification, and there is no plaintext credential channel of any kind. PEP dispatch is issued over the authenticated SSH session, carrying the operator's identity through to PEP's audit write (§22.7). The command surface presented inside the session is the PEP function catalog itself — observe, read, policy-tuning, and act functions (§22.2) — so an operator's terminal session and an authenticated REST call are two views of one engine, never two engines.
+CLAI binds 127.0.0.1 and authenticates operators via ssh2 public-key verification against the clai_operators/clai_authkeys tables. The SSH host key is generated fresh at every process start and is not persisted, so operators cannot pin a fingerprint across restarts; this ephemerality is an accepted risk, mitigated by the loopback bind — the terminal is reachable only from the host, and any host-key substitution would require host-level compromise. No node:net plaintext REPL path exists in the specification, and there is no plaintext credential channel of any kind. PEP dispatch is issued over the authenticated SSH session, carrying the operator's identity through to PEP's audit write (§22.7). The command surface presented inside the session is the PEP function catalog itself — observe, read, policy-tuning, and act functions (§22.2) — so an operator's terminal session and an authenticated REST call are two views of one engine, never two engines.
 
 - ** signModule on Gate 5 approval; revokeModuleSignature on revocation.
 
@@ -7331,7 +7332,7 @@ The devId/Dev Token is handled with exactly the sensitivity of a Discord bot tok
 
 ### Entry Point Separation
 
-Seven entry points (`src/entrypoints/main.ts`, `pep.ts`, `ssh-clai.ts`, and the rest) each boot the same DI container but start different service subsets. Maintain the separation, and document each entry point's purpose and service subset in the runbook.
+Seven entry points (`src/entry/main.ts`, `pep.ts`, `ssh-clai.ts`, and the rest) each boot the same DI container but start different service subsets. Maintain the separation, and document each entry point's purpose and service subset in the runbook.
 
 Three capabilities in this architecture sit outside the module system entirely rather
 
@@ -7491,6 +7492,14 @@ configmap-sync CI check (§41.2) diffs against the Kubernetes configmap and
 `.env.example`, so a key dropped from the schema, added to the configmap, or missing
 from either is a CI failure rather than a silent gap discovered in production.
 
+Two conventions complete the environment contract. `DEV_GUILD_ID` is the canonical
+development-guild key; `DEVELOPMENT_GUILD_ID` is accepted as a compatibility alias for
+it. And an unrecognized key present in the environment is ignored, not rejected: the
+schema validates the keys it declares and leaves the rest untouched, so a stray variable
+never fails boot. The configmap-sync CI check (§41.2), not runtime rejection, is what
+keeps the declared set and the deployed set in step — `.env.example` is generated from
+`ENV_KEYS`, so it never claims to reject unknown keys.
+
 Transport security for the two state stores is first-class configuration:
 `DATABASE_SSL` enables TLS on the PostgreSQL pool (read replicas included) and
 `REDIS_TLS` on the Redis client, both wired into their connection managers rather
@@ -7602,6 +7611,8 @@ infrastructure channel for cross-process cache-invalidation signaling as a fallb
 alongside Redis pub/sub (§25.4).
 
 ### 24.2 Complete Schema Reference
+
+> **Legacy tables removed.** The early `swastik_developers` and `swastik_builds` tables are superseded by the `developers` and `builds` tables named below and are not part of the live schema; no code reads or writes them. They are recorded here only so a reader meeting them in old migrations knows they are dead.
 
 ```
 SCHEMA 24-A — Core Tables (Owned by the Application Core, Never a Module)
@@ -8568,7 +8579,7 @@ A global, Redis-backed flag — set and cleared exclusively through PEP's
 `enterMaintenanceMode`/`exitMaintenanceMode` control domains (§22.3) — checked by
 `MaintenanceModeMiddleware` at priority `-20`, the outermost layer of the entire
 pipeline (§19.2). While set, every command's buffer embed is edited into the formal
-notice frame with reason code `MAINTENANCE_MODE` (§20.9) — the same merged frame, and
+notice frame with reason code `MAINTENANCE` (§20.9) — the same merged frame, and
 the same reason-code + correlation-ID discipline, the framework uses for handler
 failures and unknown commands. The only commands exempted are a small, explicitly
 allow-listed set of Admin-tier commands capable of managing maintenance mode itself —
@@ -9177,7 +9188,11 @@ decision. Developer credential verification is delegated to the Credentials Serv
 (§22.8) and its refusals are indistinguishable: an unknown keyId, a mismatched
 secret, and a pending identity all return the identical 401 body, so a caller learns
 nothing about which factor failed, and no credential fragment — not even a prefix —
-is ever written to a log line, metric label, or audit row.
+is ever written to a log line, metric label, or response body. Audit rows are the one
+documented exception: a rejected internal-auth attempt records the route, the caller's
+address, and a short SHA-256 fingerprint prefix of the presented key — a one-way digest
+prefix, never the key or a recoverable fragment — which supports correlating repeated
+denial attempts without exposing the secret.
 
 ### 32.9 Dependency Security
 
@@ -9186,6 +9201,8 @@ All npm dependencies are scanned for known vulnerabilities using npm audit and S
 Dependency updates are managed by Dependabot (or Renovate), which creates pull requests automatically when new versions of dependencies are released. The bot owner reviews the pull request, checks the changelog, runs the test suite, and merges if all tests pass. Automated dependency updates ensure that the bot stays current with security patches without manual effort.
 
 ### 32.10 Input Validation — Deep Dive
+
+**Status:** [SPEC] — logged deviation. The `InputSanitizer` described below is specified but not implemented in the tree, and no migration work-order item owns it. Validation today is performed by the command's Zod schema at the input-validator middleware stage (§19.2), which is where injection defense actually lands; the passes below are the target state for the sanitizer layer.
 
 Input validation is the first line of defense against injection attacks. Dumby's InputSanitizer performs multiple passes on every interaction's options. The deep dive covers each pass in detail.
 
@@ -9199,15 +9216,13 @@ URL validation: the InputSanitizer checks any URL in the input. URLs must use HT
 
 Length limiting: the InputSanitizer truncates input to the maximum length specified in the command's option definition. Discord already limits option lengths (string options are limited to 6,000 characters by Discord), but the InputSanitizer applies the module-specified limit (which may be shorter than Discord's limit). Truncation prevents buffer overflow attacks and ensures that the input fits within the database column's maximum size.
 
-### 32.11 Output Encoding — Deep Dive
+### 32.11 Output Encoding — A Renderer Property
 
-Output encoding prevents injection attacks by encoding user-provided content before including it in responses. The ResponseBuilder encodes user-provided content in all responses.
+Output encoding is a property of the core Renderer (§20.8–§20.9), not a per-module obligation: modules declare content and the Renderer is the single authority that turns it into Components v2. There is no classic-embed path and no HTML surface — embeds are banned (ADR-001) — so the Renderer neutralizes user-provided content at that one boundary:
 
-User-provided content in embeds: when a module includes user-provided content in an embed (e.g., a username in a title, a reason in a description), the ResponseBuilder wraps the content in a code block or inline code. This prevents the content from being interpreted as Discord markdown. For example, if a user's reason is "**BANNED**", the embed shows "`**BANNED**`" (the markdown is not rendered — it is displayed as literal text).
-
-User-provided content in URLs: when a module includes user-provided content in a URL (e.g., a search query in a link), the ResponseBuilder URL-encodes the content. This prevents URL injection (a user adding query parameters to a URL that the module did not intend).
-
-User mentions: when a module mentions a user in a response, the ResponseBuilder uses Discord's mention format (<@user_id>) rather than the user's name. This prevents mention injection (a user changing their nickname to "@everyone" and the bot echoing it, which would mention @everyone in the channel).
+- **Mention suppression.** User-provided text is rendered so that any `@user`, `@role`, `@everyone`, `@here`, or channel mention it contains is displayed as literal text rather than resolved; the Renderer never echoes a user's nickname into a mention. Where a genuine mention is intended, the module supplies the target id and the Renderer emits Discord's `<@id>` form.
+- **Markup neutrality.** User-provided content is not interpreted as Discord markdown on surfaces that require literal display; the Renderer code-wraps or escapes it rather than letting it restyle the surface.
+- **URL handling.** User-provided values that form part of a link are URL-encoded by the Renderer, so a user cannot append query parameters or retarget a link the module did not intend.
 
 ---
 
@@ -9957,7 +9972,7 @@ First-party Standard-tier modules shipped for each category, each with commands,
 Both commands implemented and wired.
 
 **Shipped `/health` and `/hello` modules do not exist on disk**
-ABSENT. `src/modules/` contains only framework files (loader.ts, registry.ts, manifest.schema.ts, tier-rules.ts, topo-sort.ts, swastik-loader.ts, register-all.ts). Zero module directories. `register-all.ts` delegates entirely to `loadModulesFromSwastikVolume` which reads a mounted volume at runtime; no module source packages ship in the repo.
+ABSENT. `src/module-system/` contains only framework files (loader.ts, registry.ts, manifest.schema.ts, tier-rules.ts, topo-sort.ts, swastik-loader.ts, register-all.ts). Zero module directories. `register-all.ts` delegates entirely to `loadModulesFromSwastikVolume` which reads a mounted volume at runtime; no module source packages ship in the repo.
 
 `health` (Core-tier) and `hello` (Standard-tier) modules (each with manifest and built artifact) promoted onto their tier volumes, registered so `/health` and `/hello` resolve at runtime.
 
@@ -12581,7 +12596,7 @@ Maintain specific feedback requirement.
 
 #### [From §17 (Command Framework & Routing Engine)] Function reference — Command Collision Resolution UX:
 
-> **Function reference — Command Collision Resolution UX:** On install collision, the admin sees an ephemeral embed with a dropdown to resolve the conflict (§17.9). Status: Implemented (§17.9); admin never interacts with the review pipeline.; Requirement: Implemented collision-detection + dropdown resolution UI. touchpoints: Install flow (§16.2), collision resolver (§17.9), ephemeral embed UI., §17.9 Command Collision Resolution; install flow (§16.2).
+> **Function reference — Command Collision Resolution UX:** On install collision, the admin sees an ephemeral embed with a dropdown to resolve the conflict (§17.9) — superseded by the embed ban (ADR-001); the collision-resolution surface is renderer-issued Components v2. Status: Implemented (§17.9); admin never interacts with the review pipeline.; Requirement: Implemented collision-detection + dropdown resolution UI. touchpoints: Install flow (§16.2), collision resolver (§17.9), ephemeral embed UI., §17.9 Command Collision Resolution; install flow (§16.2).
 #### [From §17 (Command Framework & Routing Engine)] — Core/Commands Hexagonal Architecture
 
 - **Intent:** Catalog the most substantial subsystem: 14 services + types + ports + 3 migrations + 12 test files (~2,749 LOC).
@@ -12677,7 +12692,7 @@ Maintain as-is; document the PaginationManager API and Redis session storage pat
 
 #### [From §22 (Power Engine Panel, CLAI & Credentials Service)] Function reference — Credentials Service (Argon2id, Internal Network Binding):
 
-> **Function reference — Credentials Service (Argon2id, Internal Network Binding):** Provide a reference for the credentials service contract. Status: Fully Implemented. Credentials Service uses Argon2id for credential hashing. Internal-network-only binding for the credentials service. Separate entry point: `credentials.ts`. Requirement: Maintain as-is; ensure the internal-network-only binding is enforced at the network level (Kubernetes NetworkPolicy). touchpoints: src/entrypoints/credentials.ts; src/core/credentials/ (CredentialsService); spec §19.
+> **Function reference — Credentials Service (Argon2id, Internal Network Binding):** Provide a reference for the credentials service contract. Status: Fully Implemented. Credentials Service uses Argon2id for credential hashing. Internal-network-only binding for the credentials service. Separate entry point: `credentials.ts`. Requirement: Maintain as-is; ensure the internal-network-only binding is enforced at the network level (Kubernetes NetworkPolicy). touchpoints: `src/entry/credentials.ts`; `src/credentials/` (CredentialsService).
 
 ####
 
@@ -12731,7 +12746,7 @@ Called by CacheManager.get.
 
 #### [From §28 (Error Management & Fault Tolerance)] Function reference — DbClient (Knex wrapper with circuit breaker + slow query logging):
 
-> **Function reference — DbClient (Knex wrapper with circuit breaker + slow query logging):** Provide a reference for the HTTP client contract. Status: Fully Implemented. Modules call `httpClient.extend({ baseUrl, headers })` then `.get`, `.post`, etc. Framework Core provides circuit breaker, retries, and correlation-ID propagation.; Requirement: Maintain as-is; document the circuit breaker configuration and retry policy. touchpoints: `apps/main/src/http/client.ts`, src/core/http/HttpClient; circuit breaker; retry logic; spec §28.
+> **Function reference — DbClient (Knex wrapper with circuit breaker + slow query logging):** Provide a reference for the HTTP client contract. Status: Fully Implemented. Modules call `httpClient.extend({ baseUrl, headers })` then `.get`, `.post`, etc. Framework Core provides circuit breaker, retries, and correlation-ID propagation.; Requirement: Maintain as-is; document the circuit breaker configuration and retry policy. touchpoints: `apps/main/src/http/client.ts`, `src/http/HttpClient`; circuit breaker; retry logic.
 
 ####
 
@@ -12860,8 +12875,7 @@ Maintain local command set.
 
 #### [From §40 (CI/CD Pipeline)] CI/CD build scripts to place first-party modules on the volume
 
-- CI compiles `src/modules` and bakes them into the Docker image.
-- `tsc` no longer compiles `src/modules`; the Docker image is purely `src/core` and `src/shared`; CI/CD places first-party modules on the volume or via Swastik upload.
+- `tsc` no longer compiles module sources into the image; the Docker image is purely the application core and `src/shared`; CI/CD places first-party modules on the volume or via Swastik upload.
 
 #### [From §40 (CI/CD Pipeline)] Contract declaration artifacts (.d.ts + hashes)
 
@@ -12972,7 +12986,7 @@ Maintain local command set.
 
 #### [From §41 (Infrastructure & Deployment)] Design consideration — hybrid immutable core + mutable modules.
 
-> **Design consideration — hybrid immutable core + mutable modules.** Separate the deployment paths of the two code layers: the core codebase (`src/core/`) ships via standard CI/CD (Docker image rebuild plus Kubernetes rolling update — zero-downtime but a full restart), while modules (`src/modules/`) live on a persistent volume and update through the reload API with no restart, surviving pod crashes via the PVC. A `pnpm build:module` script (not yet present) would compile modules and copy them to the volume. This is the production-grade pattern used by established plugin systems. Impact: High; feasibility: Medium.
+> **Design consideration — hybrid immutable core + mutable modules.** Separate the deployment paths of the two code layers: the core codebase (`src/core/`) ships via standard CI/CD (Docker image rebuild plus Kubernetes rolling update — zero-downtime but a full restart), while modules live on a persistent volume and update through the reload API with no restart, surviving pod crashes via the PVC. A `pnpm build:module` script (not yet present) would compile modules and copy them to the volume. This is the production-grade pattern used by established plugin systems. Impact: High; feasibility: Medium.
 
 #### [From §41 (Infrastructure & Deployment)] — Terraform Module Composition (database / redis / kubernetes)
 

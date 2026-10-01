@@ -726,6 +726,18 @@ file owed (CF-22, CF-27), and the protocol revision they triggered._
 - **CF-28 / derived-status docs** (`GAP_MANIFEST.md`, `STATUS.md`, `replit.md`, `apps/main/docs/*`) still
   present a v4.6.1-era world unmarked; their reconciliation is a documentation action tracked in the UR's
   §8.13 register, not a migration-protocol change.
+- **Spec-corpus defect repairs (UR §8.13.1) and undocumented-reality documentation (UR §8.13.3).** Applied
+  across blueprint.md, directory.md, directive.md, concept.md, master-prompt.md, meta-prompt.md and
+  definitions.md: CF-02 (§16.5 splice + module-root default), CF-06 (reason-code vocabulary conformed to
+  interface.md), CF-07 (autocomplete never buffered), CF-08 (§17.9 embed-era wording marked superseded),
+  CF-09 (§32.11 output encoding rewritten as a Renderer property), CF-10 (§32.10 InputSanitizer logged as a
+  [SPEC] deviation), CF-11 (directory.md docs/ and specs/ trees and the tools path corrected;
+  `packages/modules/` documented), CF-18 (app-level ADR series registered as APP-ADR-nn), CF-20 (residual
+  `src/modules/` statements struck), CF-21 (process-entry and audit-register paths corrected to `src/entry/`,
+  `src/credentials/`, `src/http/`), CF-24 (master-prompt role corrected to orchestration brief); UB-03
+  (`keyFingerprint` audit-row ruling), UB-04 (CLAI ephemeral host key recorded as accepted risk),
+  UB-08/UB-09 (`DEVELOPMENT_GUILD_ID` alias; unknown env keys ignored not rejected), UB-15 (dead `swastik_*`
+  tables noted). The true-unknowns register (UR §8.13.4, 24 items) is recorded as directive.md Appendix C.
 
 **Evidence corpus registration:** E1–E10 are registered as frozen verification records under the UR
 (its §3.1.1 and Appendix C); this file records their migration-facing consequences only. Code-defect
