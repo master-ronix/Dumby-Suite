@@ -8,13 +8,13 @@
 
 **Project:** Dumby — Discord Unified Modular Bot System
 
-**Version:** 5.2.0 — conformance-reconciliation revision. Supersedes 5.1.0 in full (see §1.1 and §1.2 for the corrections and Appendix A for the revision record). 5.1.0 carried the ledger-resume rule, the slice mechanics, the request-row coverage map, and the change-log rule (R11); 5.2.0 absorbs UR-20260918-001 revision 2.0 — the post-re-baseline Conformance & Audit Evidence Set (E1–E10) — by correcting the migration state of record (M0 tally 5 DONE / 9 PARTIAL / 3 OPEN; M1–M9-shaped code present in the tree), adding the state-of-record reconciliation gate (R12), correcting the module source home to `packages/modules/`, and fixing the MR-1 checklist citation.
+**Version:** 5.3.0 — evidence-extraction revision. Supersedes 5.2.0 in full (see §1.1–§1.3 and Appendix A). 5.2.0 absorbed UR 2.0 at the summary level (M0 tally corrected to 5 DONE / 9 PARTIAL / 3 OPEN; rule R12; `packages/modules/` home; MR-1 §10.10). 5.3.0 extracts the ten-document evidence set (E1–E10) finding-by-finding and lands the specifics this prompt was missing: the **provenance** of the ahead-of-record work (commits `d334cfb`/`581499e`, 2026-09-26; prior ledger removed at `9f7e427`), a per-item **tree-state evidence map** (§3.0.3) so the R12 re-triage starts from evidence rather than a blank sheet, the **true-unknowns register** (§3.0.4), the evidence classification matrix and the executed verification result (876/876 green), and the change-log debt for this prompt's own earlier versions.
 
 **Derived from:** `docs/change-log.md` (the v5.0.0 entry and its per-request record discipline, plus the UR 2.0 implementation-track record), the frozen request record `docs/ur/UR-20260918-001_Consolidated_Re-Baseline_Request.md` **revision 2.0** (provenance, impact matrix, the 121-request master table at its §8.1.2, and the conformance-finding register at its §8.13), and `docs/blueprint.md` 5.0.0 (sole architectural authority). UR 2.0's evidence base — the ten-document Conformance & Audit Evidence Set (E1–E10, verified against `df1225e` and `0c625c1`) — is a registered verification record, not a source of new requests.
 
 **When to use this prompt:** the codebase exists and was built against a spec version older than the documentation (typically v4.6.x). The docs have moved to v5.0.0. Your job is to migrate the code, not to re-audit or re-scaffold it.
 
-**CURRENT STATE — read before anything else.** This migration is UNDERWAY, not starting, and **the state of record is stale in both directions** (UR 2.0 finding 17 / §8.13.2). M0 is IN-PROGRESS: slices 1–5 landed on `feature/dev` in commit `0c625c1` (2026-09-29), but the tally is **corrected to 5 DONE / 9 PARTIAL / 3 OPEN** — UR-B-01, UR-B-03 and UR-C-06 reopen from DONE to PARTIAL (owner-approval workflow; bind-host coverage 4/8; connection/byte limits). M1–M9 are recorded NOT STARTED, but the tree at `df1225e` **already contains M1/M2/M3/M5/M6/M7/M8/M9-shaped code and tests** (tier volumes + blind discovery + `packages/swastik`; unified `src/commands`; the CoreRenderer + embed/DM gates; the license machine; the promotion pipeline; the persona model; envelope encryption) with **no R11 change-log lines**. The first-party module sources live in **`packages/modules/`** — not the `apps/main/src/modules/` a 5.1.0-era reading might assume. The session-generated ledger was retired from the repository root on 2026-09-30 (recoverable at `0c625c1`); the state of record is the change-log per-request record plus the template's §2 snapshot. **Before any M-item executes, run the state-of-record reconciliation (R12, §3.0.2):** rebuild the ledger from the template's shapes, re-triage all 121 rows against the TREE (not the snapshot), and record ahead-of-record work honestly. Never follow this work order verbatim against the snapshot — that is exactly the redo-landed-work risk UR 2.0 raises (its risk #15).
+**CURRENT STATE — read before anything else.** This migration is UNDERWAY, not starting, and **the state of record is stale in both directions** (UR 2.0 finding 17 / §8.13.2). M0 is IN-PROGRESS: slices 1–5 landed on `feature/dev` in commit `0c625c1` (2026-09-29), but the tally is **corrected to 5 DONE / 9 PARTIAL / 3 OPEN** — UR-B-01, UR-B-03 and UR-C-06 reopen from DONE to PARTIAL (owner-approval workflow; bind-host coverage 4/8; connection/byte limits). M1–M9 are recorded NOT STARTED, but the tree at `df1225e` **already contains M1/M2/M3/M5/M6/M7/M8/M9-shaped code and tests** (tier volumes + blind discovery + `packages/swastik`; unified `src/commands`; the CoreRenderer + embed/DM gates; the license machine; the promotion pipeline; the persona model; envelope encryption) with **no R11 change-log lines**. The first-party module sources live in **`packages/modules/`** — not the `apps/main/src/modules/` a 5.1.0-era reading might assume. The session-generated ledger was retired from the repository root on 2026-09-30 (recoverable at `0c625c1`); the state of record is the change-log per-request record plus the template's §2 snapshot. **Before any M-item executes, run the state-of-record reconciliation (R12, §3.0.2):** rebuild the ledger from the template's shapes, re-triage all 121 rows against the TREE (not the snapshot), and record ahead-of-record work honestly. Never follow this work order verbatim against the snapshot — that is exactly the redo-landed-work risk UR 2.0 raises (its risk #15). **Why the work is ahead of the record (now evidenced — E10 RC-5):** the previous migration ledger was removed at commit `9f7e427` (2026-09-26, "chore: remove migration ledger and strip code comments"), and the v5.0.0 re-baseline work landed at `d334cfb` (2026-09-26, "land v5.0.0 re-baseline module system, renderer, RBAC, governance, persona, and crypto work") and `581499e` (2026-09-26, "promote builds into tier volumes and seed first-party modules") — with no ledger record and no R11 lines. This prompt's own earlier versions (5.0.0–5.0.2, 2026-09-24/25) likewise carried no change-log lines (E6 GOV-23); §6 now records that debt.
 
 **Relationship to the Master Build Prompt:** this prompt is a scoped *predecessor* to it. When every item in the Migration Work Order (§3) is marked DONE in the ledger, the master prompt's audit protocol and enforcement pass become the governing protocol again — not before.
 
@@ -61,6 +61,21 @@ The frozen request record advanced to **revision 2.0** (01/10/2026), absorbing a
 | 3 | MR modules come from `apps/main/src/modules/<module>/` | The real home is `packages/modules/`; `apps/main/src/modules/` does not exist (E6 GOV-12; E2 S-27; E5 MOD-02) | MR block's source path corrected to `packages/modules/` (§MR) |
 | 4 | MR-1 reads "Division 8.10 testing checklist" | Division 8.10 is a miscite; the checklist is §10.10 (E10 C-8/R3; E6 GOV-25) | MR-1 citation corrected to §10.10 |
 | 5 | UR-20260918-001 revision 1.0 | Revision 2.0 registers E1–E10 and a conformance-finding register (UR §3.1.1, §8.13) | "Derived from" and the sources of truth now cite UR 2.0 and the evidence corpus |
+
+### 1.3 What the 5.3.0 extraction added (finding-by-finding)
+
+The evidence set is not a summary; it is ten documents of per-file, per-claim evidence. 5.3.0 read all ten and landed the specifics the summary missed.
+
+| # | What the evidence set says (with source) | Where it now lives in this prompt |
+|---|---|---|
+| 1 | **Provenance of the ahead-of-record work.** The prior ledger was removed at `9f7e427` (2026-09-26); the work landed at `d334cfb` + `581499e` (2026-09-26) with no records (E10 RC-5; commits verified against the repo) | CURRENT STATE; §3.0.2 |
+| 2 | **Per-item tree state**, file-and-test specific — M1 (loader/tier volumes/`packages/swastik`), M2 (unified `src/commands`), M3 (`core-renderer.ts`), M5 (`src/licensing/*`), M6 (`promotion.ts`), M7 (`src/personas/*`), M8 (`src/crypto/*`+sealed credentials), M9 (`m9-*` suites) (E6 GOV-13; E2 S-14/S-15/S-37; E5 §71/DATA-06) | New §3.0.3 |
+| 3 | **Classification matrix:** 242 findings = 68 compliant / 38 deviation / 25 implementation defect / 16 spec defect / 9 ambiguity / 7 missing spec / 46 missing implementation / 21 undocumented behaviour / 7 obsolete / 6 unverifiable (E1 §1.1) | §3.0.1 |
+| 4 | **Executed verification:** `pnpm install` + `tsc --noEmit` + `eslint --max-warnings=0` + `vitest run` = **876/876 unit tests, 75 files, 0 failures** (E7 §2) — the "876 green" claim is now *executed*, not merely static (E6 GOV-02 counted it statically) | §3.0.1 |
+| 5 | **The true-unknowns register** — flat `src/` vs `src/core/` (no owner), dead husky/commitlint, missing `scripts/check-configmap-keys.mjs`, §32.10 InputSanitizer, §32.8 token-leak scanning, D-7.5.5 policy lockfile, split-brained maintenance mode, and the ~24 UR §8.13.4 items (E1 §5; E3 §1.2; E5/E9) | New §3.0.4 |
+| 6 | **Volume-path vocabulary:** deployed staging `/mnt/modules/swastik-staging`, live `/mnt/modules/modules-core`, both nested in `MODULES_DIR=/mnt/modules`; STATUS.md/directory.md's `/data/swastik-*` is wrong (E7 F3; E10 C-10/I12) | §3.0.3 (M1/M6 rows) |
+| 7 | **`packages/modules/` is verified present** (8 packages) — E9/Audit_2's D28 claim that it is absent is contradicted by E2 S-27, E5 MOD-02, E7 A1, E10 I11 and by direct tree inspection | §3.0.3 note |
+| 8 | **R11 line-format ambiguity** — the actual change-log M0 table is 5 columns (Request \| Row \| slice \| Record \| Status) with the proof folded into the Record cell (E6 GOV-27); corpus composition ("nine"/"twelve") is undefined (E6 GOV-24) | §6; §3.0.4 |
 
 ---
 
@@ -128,6 +143,10 @@ Two coverage notes, recorded as corrections of 5.0.2: **UR-07 (Global Data Emit)
 
 UR-20260918-001 revision 2.0 registers a ten-document **Conformance & Audit Evidence Set** (its §3.1.1; E1–E10), verified against `df1225e` (conformance + architecture) and `0c625c1` (full codebase audit). It carries 242 conformance findings across five workstreams (structure 47, security 40, presentation 50, data/ops 74, governance 31), a 310-file architecture audit (E9, superseding E8), and a documentation-system audit (E10: RC-1…RC-5, C-1…C-10, R1…R13, I1…I13). It is a **verification record, not a source of requests** — the master table (§3.0) stays at exactly 121 rows. Its documentation actions are catalogued in the UR's §8.13 register (CF-01…CF-30 spec defects, SC-01…SC-04 state corrections, UB-01…UB-15 undocumented reality, TU-01…TU-24 true unknowns). Read it before reconciling the state of record; do not treat its code-defect findings as migration work (they execute under their own programs).
 
+**Classification matrix (E1 §1.1) — 242 findings:** 68 spec-compliant · 38 spec-deviation · 25 implementation-defect · 16 specification-defect · 9 specification-ambiguity · 7 missing-specification · 46 missing-implementation · 21 undocumented-implementation-behaviour · 7 obsolete-specification · 6 unverifiable. Distinguishing **scheduled-deferred** gaps (owned by a work-order item — 60+ findings) from **true unknowns** (no owning item — §3.0.4) is the set's first-class result.
+
+**Executed verification (E7 §2), not just static review:** `pnpm install --frozen-lockfile` clean; `tsc --noEmit` 0 errors (strict); `eslint --max-warnings=0` 0 warnings; `vitest run` → **75 files / 876 tests, 0 failures**. Integration tests were not run (need live Postgres + Redis). E9 dispositioned all **310 `apps/main` files** (KEEP 175 / MODIFY 109 / MERGE 9 / MOVE 7 / REMOVE 4 / SPLIT 3 / REFACTOR 2 / REPLACE 1) and registered **29 cross-cutting duplications (D1–D29)**; E7's highest-confidence deletions are `src/entry/worker.ts` (REPLACE — a byte-identical copy of `main.ts`), migrations `_24`/`_25`/`_26` (dead superseded schema) and `_30` (`otp_secrets`).
+
 ### 3.0.2 The State-of-Record Reconciliation Gate (R12) — run before M1
 
 The evidence set found the record and the tree disagree (UR 2.0 finding 17). Before any M-item beyond the M0 slice already in flight, perform, and record in the ledger:
@@ -138,7 +157,45 @@ The evidence set found the record and the tree disagree (UR 2.0 finding 17). Bef
 4. **Record the corrections SC-04** (change-log master-table line counts: blueprint 13,139 not 13,258; concept 581 not 582) and CF-22 (legacy "DRM" in the change-log's living open-items section).
 5. **Resolve or carry the blocking open questions** (UR §8.1.3 #13 layout model, #14 module source home, #15 hello-world tier, #18 Swastik path vocabulary, #19 state-of-record policy) — each is OPEN and gates a specific item's start.
 
+The **provenance** for step 3 is now evidenced (E10 RC-5; commits verified): the prior ledger was removed at `9f7e427` (2026-09-26) and the work landed at `d334cfb` + `581499e` (2026-09-26) — so the triage's job is to *credit or route work that was done but never recorded*, not to discover where it came from. Start from the §3.0.3 evidence map.
+
 Until steps 1–3 are recorded, no item past the in-flight M0 slice may be claimed.
+
+### 3.0.3 Tree-State Evidence Map (what the tree already contains, per item)
+
+Extracted from E1 §2/§3, E2 (S-14/S-15/S-27/S-37), E3 §2–§3, E5 (§71, DATA-06), E6 GOV-13 and E7 §3. This is the starting map for the R12 re-triage — it does not replace it (the tree at working HEAD is the source of truth).
+
+| Item | Present in the tree (evidence) | Gap / not yet present | R12 verdict so far |
+|---|---|---|---|
+| M0 | slices 1–5 landed (E1 §2.1, E3 §2) | slice 6: UR-B-04/05, UR-C-05 | 5 DONE / 9 PARTIAL / 3 OPEN |
+| M1 | `src/modules` absent; `packages/swastik` present; five tier volumes mounted under `MODULES_DIR=/mnt/modules` (compose + K8s); `MODULES_DIR` / `SWASTIK_STAGING_VOLUME_PATH` / `SWASTIK_LIVE_VOLUME_PATH` env present; loader blind-discovers via `readdirSync` (E2 S-14/S-37, E6 GOV-13) | `packages/swastik` layout differs from directory.md: manifest contract is TS types in `src/manifest.ts` (`defineModule`, `moduleTiers`), not a Zod `schemas/manifest.schema.ts`; `_template` folder set differs (has `ui/`,`assets/`, lacks `tasks/`) (E2 S-26) | directory-level target met; package-layout drift |
+| M2 | unified `src/commands/` present (`command-router`, `-registry`, `-deployer`, `-ceiling`, `collision-resolution`); no `src/core/commands` remnant (E2 S-15) | single-router behaviour unverified | structural target met |
+| M3 | `src/rendering/core-renderer.ts` (288 ln), wired at `bootstrap.ts:162`, injected into `CommandRouter`; buffer-then-render (one edit); formal notice frames; embed ban (ESLint + `m3-embed-and-dm.test.ts`); DM prohibition (router) (E4 PRE-45, E6 GOV-13) | the whole command surface — all 8 modules are stubs (`commands: []`); nothing above the dispatch boundary | skeleton only; done-gate NOT met |
+| M4 | `rbac_sets`/`rbac_groups`/`rbac_group_role_bindings`/`rbac_grants` (migrations 14–17); `src/permissions/{rank,rbac,resolver,grant-surface,db-blacklist}.ts` (E5 DATA-06) | no runtime grant writer; role vocabulary drift (D21: four spellings) | partial |
+| M5 | `src/licensing/{license-machine,compatibility-ledger,deployment-records}.ts`; migration 33 (`licenses`, `compatibility_contracts`, `compatibility_windows`, `compatibility_provides`, `deployment_records`) (E5 §71) | `tools/release_manager` outside every quality gate (E7 E4); ledger not CI-gated | partial |
+| M6 | `src/module-system/promotion.ts` (`renameSync` swap under a Redis lock store) + `m6-promotion.test.ts` (E6 GOV-13) | manifest single-source (D3); `packages/swastik` layout drift | partial |
+| M7 | `src/personas/{persona,persona.repository,persona-command-binding.service}.ts`; migrations 20/21/34; `m7-persona.test.ts` (E6 GOV-13) | ADR-003 gap: `persona.botTokenDigest` hashes a value Twixter must *use* (E9 §21) | partial |
+| M8 | `src/crypto/{envelope,envelope-scope}.ts`; `src/credentials/{sealed-credential.service,sealed-credential.repository}.ts`; migration 35; `m8-envelope.test.ts` (E6 GOV-13) | scope-boundary verification | partial |
+| MR-1…MR-8 | `packages/modules/{browse,dashboard,health,hello-world,modules,permit,persona,queue}` present as lifecycle-only stubs; README "First-party Swastik modules (M6 re-seed)"; built via `apps/main/scripts/build-first-party-modules.ts` (esbuild → `dist-modules/`) (E2 S-27, E7 A1) | zero commands anywhere; no `defineCommand` in `packages/swastik` (E4 PRE-28) | not started (stubs only) |
+| M9 | `m9-*` suites present; UR-B-19 `createHmac` implemented (`shared/utils/crypto.ts`) (E6 GOV-13) | runtime inert: no queues/scheduler/gateway handlers/tracing/metrics; CI hygiene (SHA-pin/secrets/Dependabot) (E1 §2.2, E5 §31) | partial |
+| M10 | canonical vocabulary already clean across the living set (E6 GOV-05) | residual legacy in non-living files | mostly done |
+
+**Volume-path vocabulary (fix once, in M1/M6):** deployed staging `/mnt/modules/swastik-staging`, live `/mnt/modules/modules-core` (env default), both nested inside `MODULES_DIR=/mnt/modules`; STATUS.md/directory.md's `/data/swastik-*` is the wrong vocabulary (E7 F3; E10 C-10/I12). **Code name:** `TIER_VOLUME_NAMES` = `modules-admin/core/standard/marketplace` + `swastik-staging`.
+
+**Evidence-set internal inconsistency (recorded, not propagated):** E9 (`Dumby-Suite-Audit_2.md` §27/D28) asserts `packages/modules` is absent ("the build/seed chain is broken at its source root"), but E2 S-27, E5 MOD-02, E7 A1, E10 I11 and direct tree inspection all confirm the eight packages are present. The triage trusts the tree.
+
+### 3.0.4 True-Unknowns Register (findings with no owning item)
+
+These have **no owning work-order item** and must each receive an owner, a new row, or a logged deviation (UR §8.13.4 TU-01…TU-24; E1 §5; E3 §1.2; E5/E9). Grouped by area, with evidence:
+
+- **Layout / structure:** flat `src/` vs the spec-mandated `src/core/` wrapper — no item owns the restructure (E2 S-13; E6 GOV-11; E10 C-2); `packages/modules/` source home undocumented (E6 GOV-12); corpus composition "nine"/"twelve" undefined (E6 GOV-24).
+- **Tooling:** dead husky/commitlint wiring — config present, dependencies absent from the lockfile (E1 §5.2; E2 S-11); `scripts/check-configmap-keys.mjs` referenced but missing (E1 §5.3; E2 S-08/S-09).
+- **Security residuals:** §32.10 `InputSanitizer` (E3 SEC-27a); §32.8 dynamic token-leak scanning + owner alert (E3 SEC-29); D-7.5.5 policy lockfile / ESM restrictions / `no-direct-interaction-reply` lint (E3 SEC-32).
+- **Data/ops:** audit-log partitioning + retention; standard `createdBy`/`updatedBy` columns; read-replica routing + `DATABASE_SSL`/`REDIS_TLS`; eventsCatalog payload schemas; Redis pub/sub L1 invalidation; OpenAPI publication; the five §43 runbooks; repository-pattern adoption (raw `db.knex` bypass); `blocked_users.expiresAt` + global-block uniqueness; worker-only bootstrap + `ROLE=worker`; configmap↔`ENV_KEYS` drift guard; analytics / mdis / webhooks / operational / cli subsystems (E5; E9; UR §8.13.4 TU-06…TU-18).
+- **Correctness:** split-brained maintenance mode (DB row vs in-memory flag) — no owning item (E1 §5.7; E7 D1; E5 HTTP-10); in-memory idempotency/rate-limit; component-path bypass of the Renderer; invoker re-check bypass for non-minted customIds; persona IDs from a process-local counter (E1 §2.3; E4 PRE-21/25/40).
+- **Residuals of the overstated M0 rows:** UR-B-01 approval workflow; UR-B-03 bind coverage; UR-C-06 limits — now routed via M0/§M9 (E1 §5.6).
+
+Each is either **owned** (a row/item named) or **logged as a deviation** in the ledger — under the set's own rules they cannot simply stand (E1 §5).
 
 ### M0 — P0 Security Flaws (do first, smallest blast radius, highest stakes)
 
@@ -151,6 +208,7 @@ Until steps 1–3 are recorded, no item past the in-flight M0 slice may be claim
 ### M1 — Tier Volumes & Blind Discovery (module relocation)
 
 **Request rows owned:** UR-04 (row 4, package scaffold), UR-05 (row 5), UR-19 (row 19).
+**Tree state (UR 2.0 evidence — §3.0.3):** directory-level target already met — `src/modules` absent, five tier volumes mounted under `MODULES_DIR=/mnt/modules`, loader blind-discovers; `packages/swastik` present with layout drift (E2 S-14/S-26/S-37).
 **Source of truth:** `blueprint.md` §5.4, §7.3, §15.9; `directory.md` (volume layout); ADR-005; master prompt Phase 0 notes on `MODULES_DIR`.
 **What changes:** remove `src/modules` (modules never live in the source tree); stand up the four per-tier volumes (`modules-admin`, `modules-core`, `modules-standard`, `modules-marketplace`) plus `swastik-staging` rooted at `MODULES_DIR` (default `/mnt/modules`); replace any registry seed / hardcoded module list with blind discovery at bootstrap; make the volumes mountable (docker-compose / K8s mounts); create the `packages/swastik` authoring package with types, manifest schemas, scoped entry points, and the `_template` module.
 **Blast radius:** module loader/registry/discovery code, `src/modules` (removal), `packages/swastik` (new), docker-compose and K8s volume mounts, the bootstrap stage that loads modules.
@@ -159,6 +217,7 @@ Until steps 1–3 are recorded, no item past the in-flight M0 slice may be claim
 ### M2 — Unified Command Tree
 
 **Request rows owned:** UR-B-11 (row 74).
+**Tree state (UR 2.0 evidence — §3.0.3):** unified `src/commands/` already present, no `src/core/commands` remnant; single-router behaviour unverified (E2 S-15).
 **Source of truth:** `directory.md` (`src/commands/` unified tree); `blueprint.md` §17; change-log "Removed" (the `src/core/commands` split).
 **What changes:** merge the former `src/core/commands` split into the single canonical `src/commands/` tree; exactly one command router remains; remove any orphaned or duplicate router.
 **Blast radius:** `src/core/commands` (removal), `src/commands/` (merge target), the router, imports of the moved command files.
@@ -167,6 +226,7 @@ Until steps 1–3 are recorded, no item past the in-flight M0 slice may be claim
 ### M3 — Core Renderer, Buffer-Then-Render & the Embed Ban (the big one)
 
 **Request rows owned:** UR-09, UR-10, UR-11, UR-12, UR-21, UR-28 (rows 9–12, 21, 28) plus the interface-UX carriers UR-C-20 (row 111) and UR-C-29 (row 120).
+**Tree state (UR 2.0 evidence — §3.0.3):** `core-renderer.ts` + embed/DM gates present and wired; the whole command surface (all 8 modules are stubs) is absent, so this item's done-gate is NOT met (E4 PRE-45; E6 GOV-13).
 **Source of truth:** `blueprint.md` §10.2, §16.5, §20 (especially §20.8 renderer/presentation grammar and §20.9 buffer embed + formal notice frames), §17.11, §19.2, §28.6; `interface.md` — the renderer, interaction-lifecycle, and component-dispatch sections, read completely; ADR-001 (embed ban), ADR-002 (DM prohibition), ADR-009 (A4 title/attribution grammar), ADR-010 (accent colour).
 **What changes:** build the core Renderer as the single presentation authority — static Components v2 frame grammar with dynamic slots, Modes D/M/C; the buffer-then-render contract on every interaction (instant buffer embed, exactly one edit into the final render or the formal notice frame); formal notice frames with reason codes and trace correlation IDs; the single official accent token blurple `#5865F2` everywhere; the A4 title and attribution grammar (developer attribution in the footer slot, never the surface title); minted stateless customIds with click-time re-authorization, idempotency, the 800 ms autocomplete budget, the 13-minute follow-up watchdog (UR-C-20, UR-C-29); the absolute embed ban (no classic `EmbedBuilder`/`MessageEmbed` anywhere, enforced by a lint/grep gate) and the absolute DM prohibition (UR-21).
 **Blast radius:** renderer, interaction handling, every shipped command's presentation code, the embed-ban lint gate, tests that asserted embed-based output.
@@ -175,6 +235,7 @@ Until steps 1–3 are recorded, no item past the in-flight M0 slice may be claim
 ### M4 — RBAC Layer 6/7 Redesign
 
 **Request rows owned:** R1, R2 (rows 32–33), UR-A-07, UR-A-08, UR-A-09 (rows 40–42).
+**Tree state (UR 2.0 evidence — §3.0.3):** RBAC tables (migrations 14–17) and `src/permissions/{rank,rbac,resolver,grant-surface,db-blacklist}.ts` present; no runtime grant writer; role-vocabulary drift across four files (E5 DATA-06; E9 D21).
 **Source of truth:** `blueprint.md` §21 (especially the Layer 6 pure-backend rank function and Layer 7 guild-side grants, the exhaustive non-configurable override boundary, Table 21-A); `concept.md` §16.1 (six-rank ladder, grant scopes, RESTRICTED floor); `interface.md` (the `/permit` Layer 6/7 vocabulary).
 **What changes:** implement the one normative seven-layer permission ordering; Layer 6 as a pure-backend rank function; Layer 7 as guild-side grants with the "Set" scope semantics; the six-rank ladder with canonical MODERATOR / ADMINISTRATOR names; "OWNER" = the guild's ownership account, distinct from the `BOT_OWNER_IDS` operator override; the `/permit` command surface per `interface.md`; the RBAC persistence the suite rows require (two-step role resolver, knex repository over the four RBAC tables, blacklist lookup backed by `blocked_users`).
 **Blast radius:** `src/permissions/` (resolver, RBAC service), the `/permit` module, permission-related migrations, permission tests.
@@ -183,6 +244,7 @@ Until steps 1–3 are recorded, no item past the in-flight M0 slice may be claim
 ### M5 — License Machine, Compatibility Ledger & Deployment Records
 
 **Request rows owned:** UR-02, UR-06, UR-08, UR-18, UR-20, UR-23 (rows 2, 6, 8, 18, 20, 23).
+**Tree state (UR 2.0 evidence — §3.0.3):** `src/licensing/{license-machine,compatibility-ledger,deployment-records}.ts` + migration 33 present; `tools/release_manager` sits outside every quality gate (E5 §71; E7 E4).
 **Source of truth:** `blueprint.md` §15.7 (six-state license machine with devId binding), §14.4 (Compatibility Ledger gating releases), §15.12 (Deployment Records), §44.8 (versioned OpenAPI API families); `directive.md` D-8.10.
 **What changes:** implement the six-state license machine with devId binding; stand up the machine-readable Compatibility Ledger of cross-boundary contract version windows; wire it as the release gate (core releases and module deployments); add Deployment Records and the repo-to-running OIDC deployment flow (UR-02).
 **Blast radius:** license/compat subsystem, the release/deployment tooling under `tools/release_manager`, the Swastik promotion gate (integration point only — the pipeline itself is M6).
@@ -191,6 +253,7 @@ Until steps 1–3 are recorded, no item past the in-flight M0 slice may be claim
 ### M6 — Swastik Promotion Pipeline (staging, atomic promotion, hot reload)
 
 **Request rows owned:** UR-15, UR-25, UR-26, UR-27, UR-30 (rows 15, 25, 26, 27, 30) plus UR-A-24, UR-A-25, UR-B-12, UR-B-13, UR-B-15, UR-B-20, UR-B-26, UR-C-14, UR-C-22, UR-C-26 (rows 57–58, 75–76, 78, 83, 89, 105, 113, 117).
+**Tree state (UR 2.0 evidence — §3.0.3):** `src/module-system/promotion.ts` + `m6-promotion.test.ts` present; manifest single-source outstanding (three definitions — E9 D3); `packages/swastik` layout drift (E2 S-26).
 **Source of truth:** `blueprint.md` §12.21, §15 (staging, promotion, verified loads), §11.2 (manifest contract); ADR-006 (reload automation boundary); master prompt Phase 3 notes on Swastik.
 **What changes:** staging on `swastik-staging`; atomic promotion onto tier volumes; path containment on all module file operations (the M0 slice-2 containment root — `modulesDir` — is a load-bearing requirement: `SWASTIK_STAGING_VOLUME_PATH` must be nested inside `MODULES_DIR`); verified loads (a module that fails validation never goes live); the hot-reload boundary exactly as ADR-006 records it; manifest reading via static extraction, not `import()` (D-4.9); the full manifest contract (visibility enum, hardcode toggle, `depends` pins, tarball upload, category enum, devId/buildId required at upload).
 **Blast radius:** the Swastik service and `packages/swastik` integration points, module loader hooks used by promotion, `manifest.schema.ts`.
@@ -199,6 +262,7 @@ Until steps 1–3 are recorded, no item past the in-flight M0 slice may be claim
 ### M7 — Twixter Persona Model
 
 **Request rows owned:** UR-16, UR-29 (rows 16, 29) plus UR-A-12, UR-A-13, UR-C-21 (rows 45–46, 112).
+**Tree state (UR 2.0 evidence — §3.0.3):** `src/personas/*` + migrations 20/21/34 + `m7-persona.test.ts` present; ADR-003 gap — `persona.botTokenDigest` hashes a value Twixter must *use* (E6 GOV-13; E9 §21).
 **Source of truth:** `blueprint.md` §35; ADR-008 (free-charter sunset); ADR-011 (persona surface); `interface.md` (persona division); master prompt Phase 5 (stub level is fine if the current codebase has no operational personas yet — record that honestly in the ledger).
 **What changes:** the Twixter typed interface and persona model — bring-your-own-identity, single-server-bound; the free-charter sunset behavior; persona surface per ADR-011; the persona bindings and dispatch gate the suite rows require (moduleSlug in the binding key, PERSONA_ID env, occupied-by-another-persona gate).
 **Blast radius:** persona subsystem, its migrations and tests.
@@ -207,6 +271,7 @@ Until steps 1–3 are recorded, no item past the in-flight M0 slice may be claim
 ### M8 — Envelope Encryption
 
 **Request rows owned:** UR-22 (row 22).
+**Tree state (UR 2.0 evidence — §3.0.3):** `src/crypto/{envelope,envelope-scope}.ts` + `src/credentials/{sealed-credential.service,sealed-credential.repository}.ts` + migration 35 + `m8-envelope.test.ts` present; scope-boundary verification outstanding (E6 GOV-13).
 **Source of truth:** `blueprint.md` §32.7; ADR-003.
 **What changes:** envelope encryption scoped to in-process-readable credentials — exactly the scope ADR-003 records, no wider.
 **Blast radius:** the credentials/secrets handling path, its config, its tests.
@@ -248,6 +313,7 @@ Each MR item follows the per-item execution loop (§4) with these bindings:
 ### M9 — Remaining Implementation-Flaw Corrections
 
 **Request rows owned:** 57 rows (§3.0) — the program rows UR-01, UR-07, UR-17, UR-24, UR-31 and every suite row not owned by M0–M8, including the residual clauses of rows M0 closed PARTIAL (UR-A-03's middleware wiring, UR-C-07's hash verify/quarantine/cache-busted imports, UR-B-02's and UR-C-01's remaining clauses, UR-C-03, UR-C-04).
+**Tree state (UR 2.0 evidence — §3.0.3):** `m9-*` suites present and UR-B-19 `createHmac` implemented; the runtime is inert (no queues, scheduler, gateway handlers, tracing or metrics) and CI hygiene (SHA-pin / secrets-off-`run:` / Dependabot) is outstanding (E1 §2.2; E5 §31).
 **Source of truth:** `docs/ur/UR-20260918-001` §8.1.2 — the suite rows not owned elsewhere, EXCLUDING the P0 rows already closed in M0.
 **What changes:** work the rows one by one: CLAI's functional console (UR-01 landing via UR-A-02/UR-B-09/UR-C-06), control-plane adapters and the shared 501 class in the error boundary (UR-B-08), the credentials domain (UR-17 landing via UR-B-05/UR-C-04/UR-C-05), PEP observe/read functions (UR-24 via UR-B-08's family), the middleware/scheduler/tracing/analytics wiring (UR-C-09, UR-A-20, UR-A-14, UR-A-21), CI hygiene (UR-C-13/UR-B-21's root `.github/`), env/config drift, and the rest of the table. Global Data Emit (UR-07) and the per-guild MDIS sync (UR-31) land here too — see the coverage notes in §3.0. Treat each row as a mini-item: read the row, fix it, test it, log it.
 **Blast radius:** per flaw row — declare it in the ledger before each fix.
@@ -311,6 +377,8 @@ The v5.0.0 entry of `docs/change-log.md` adopts the per-request record disciplin
 - **Protocol revisions of this prompt or the ledger template** are recorded as lines in the same section, citing their own version history (Appendix A) — this prompt is a governed document like any other in the set; its revisions are change-log events, not silent edits.
 - **Backfilling:** lines missed before R11 existed are recorded at discovery with their true landing dates (M0 slices 1–5 have been backfilled in the change-log at the time of the 5.1.0 revision). Backfills are logged as deviations in the ledger.
 - **Ahead-of-record work (UR 2.0 SC-02):** implementations the tree already contains before the protocol recorded them — the M1–M9-shaped code (tier volumes, unified commands, Renderer, license machine, promotion pipeline, persona model, envelope encryption) — get their R11 lines written at reconciliation (§3.0.2), marked **PRESENT IN TREE (uncredited pending UR §8.1.3 #19)**. Crediting them as DONE/PARTIAL is the open policy question; record, never assume.
+- **Format (clarified per E6 GOV-27):** the actual change-log M0 table is five columns — `Request | Row | item/slice | Record | Status` — with the proof folded into the Record cell. That shape is compliant; M11's reconciliation must read it as the norm, not as a missing column.
+- **Debt for this protocol's own earlier versions (E6 GOV-23):** migration-prompt 5.0.0/5.0.1/5.0.2 (2026-09-24/25) and template v1.0 carried no change-log lines. Record them in the implementation track as a backfill (dated to their original issue dates) at the next change-log edit — the same discipline this prompt demands of every other document.
 - **Reconciliation:** M11's done-gate includes a count match — ledger rows DONE/PARTIAL vs. change-log lines, and the 121/121 coverage map. Any mismatch fails the convergence pass.
 
 ---
@@ -321,6 +389,7 @@ You are explicitly forbidden, for the entire duration of this migration, from:
 
 - Overwriting, re-initializing, or re-creating `migration-ledger.md` (or copying `docs/migration-ledger-template.md` over it) — the ONE exception being the first-session construction sanctioned by the CURRENT STATE section above. The live ledger is the source of truth; resume from it.
 - Following the work order verbatim without first reconciling the state of record (R12, §3.0.2) — the UR 2.0 risk of redoing landed work or reopening closed rows.
+- Leaving a true-unknown finding (§3.0.4) unowned and unrecorded — each must be assigned an owner, a new row, or a logged deviation (E1 §5).
 - Running a full-project `tsc --noEmit` fix-loop before or between items (only at M11).
 - Fixing compile errors in files outside the current blast radius (log them, R3).
 - Deleting or rewriting bootstrap, DI, shutdown, or any core subsystem not named in the current item's blast radius.
@@ -333,7 +402,7 @@ You are explicitly forbidden, for the entire duration of this migration, from:
 
 ## 8. COMPLETION
 
-The migration is complete when: the state-of-record reconciliation (R12) is recorded (every row re-triaged against the tree; ahead-of-record work credited or carried per UR §8.1.3 #19); every item in the work order — M0–M11 and MR-1–MR-8 — is DONE in the ledger; the convergence pass is green; the coverage map reconciles (121 rows, 121 owners, 0 orphans); every DONE and PARTIAL row has its change-log line; the UR 2.0 completion criteria that touch the corpus (its §12.1: spec-corpus defects repaired, state of record reconciled, `packages/modules/` documented, every true unknown owned) are met; and the ledger's final entry hands control back to the Master Build Prompt as the governing protocol.
+The migration is complete when: the state-of-record reconciliation (R12) is recorded (every row re-triaged against the tree; ahead-of-record work credited or carried per UR §8.1.3 #19); every item in the work order — M0–M11 and MR-1–MR-8 — is DONE in the ledger; the convergence pass is green; the coverage map reconciles (121 rows, 121 owners, 0 orphans); every DONE and PARTIAL row has its change-log line; the UR 2.0 completion criteria that touch the corpus (its §12.1: spec-corpus defects repaired, state of record reconciled, `packages/modules/` documented, every true unknown owned) are met; every §3.0.4 true unknown has an owner or a logged deviation; and the ledger's final entry hands control back to the Master Build Prompt as the governing protocol.
 
 **Anything less is not done. Anything more (out-of-scope fixes smuggled in) is a defect of this protocol's execution and must be reverted or recorded in the ledger as a deviation.**
 
@@ -350,5 +419,6 @@ This prompt is a governed document: its revisions are change-log events (recorde
 | 5.0.2 | 2026-09-25 | Dumby Core Engineering | Absorbed and superseded `module-rewrite-prompt.md` and `one-time-mr-prompt.md` (both obsolete, discarded); added the MR-1…MR-8 module-rewrite block |
 | 5.1.0 | 2026-09-30 | Dumby Core Engineering | Governance revision after M0 slices 1–5: withdrew the destructive first-run ledger-copy instruction (the ledger is live — resume it); added R11 and §6 (change-log lines are part of the done-gate, per the UR-20260918-001 §8.8 discipline the 5.0.x prompt never enforced); added §3.0 request-row coverage map (all 121 UR rows assigned; UR-07 and UR-31 gain an owning item); added §5 slice mechanics (triage-before-code, fail-before/pass-after, full-suite gate, PARTIAL-with-routing — the conventions M0 earned); fixed the malformed MR table, the block count, and the `release_manager` path |
 | 5.2.0 | 2026-10-01 | Dumby Core Engineering | Conformance-reconciliation revision after UR-20260918-001 advanced to revision 2.0 (the E1–E10 Conformance & Audit Evidence Set): corrected the migration state of record (M0 tally 5 DONE / 9 PARTIAL / 3 OPEN — UR-B-01/UR-B-03/UR-C-06 reopened; M1–M9-shaped code present in the tree); added rule R12 and §3.0.2 (state-of-record reconciliation gate); added §3.0.1 (evidence corpus); corrected the MR module source home to `packages/modules/`; fixed the MR-1 §10.10 checklist citation; extended §6 (ahead-of-record R11 backfill) and §7; added the UR 2.0 completion criteria to §8 |
+| 5.3.0 | 2026-10-01 | Dumby Core Engineering | Evidence-extraction revision — read all ten evidence documents (E1–E10) finding-by-finding: added the ahead-of-record **provenance** (commits `d334cfb`/`581499e`, 2026-09-26; prior ledger removed at `9f7e427`), the per-item **tree-state evidence map** (§3.0.3), the **true-unknowns register** (§3.0.4), the classification matrix and executed 876/876 verification (§3.0.1), the volume-path vocabulary, the §1.3 extraction ledger, and the change-log debt for the prompt's own earlier versions (§6). Recorded the E9/Audit_2 `packages/modules` contradiction as an evidence-set inconsistency |
 
-*End of Re-Baseline Migration Prompt. Version 5.2.0. Record all future revisions in `change-log.md` (implementation track) and in Appendix A.*
+*End of Re-Baseline Migration Prompt. Version 5.3.0. Record all future revisions in `change-log.md` (implementation track) and in Appendix A.*
