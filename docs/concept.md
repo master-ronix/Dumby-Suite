@@ -432,6 +432,8 @@ The seven-layer permission resolution engine is the single source of truth for a
 6. **RBAC Role** — the user's Dumby rank (OWNER/ADMINISTRATOR/MODERATOR/HELPER/MEMBER/RESTRICTED) grants access; if not, access denied. OWNER here is the guild's ownership account — distinct from the bot-owner override in Layer 1, which is not a rank.
 7. **Explicit Grant Override** — a Layer 7 override (permit, whitelist, blacklist, cooldown, rate-limit) applies; this is the final arbiter.
 
+This is the canonical ordering of DIAGRAM 21-A in `blueprint.md` §21, and it resolves in that fixed sequence. Two scopes deny by default: the **module-availability check at Layer 3 fails closed** (an unknown or disabled guild/module denies rather than allows), and the **rank resolution at Layer 6 denies by default** (a command with no explicit permission declaration is unreachable by any non-owner user, and RESTRICTED is the automatic floor). Every other layer refines access above that floor; only Layer 1's operator override bypasses it.
+
 No command handler implements any permission logic of its own. All authorisation logic lives exclusively in the resolver or in the middleware that calls it. This means permission policy is consistent across every module — there is one permission model, not N models that happen to agree most of the time.
 
 ---

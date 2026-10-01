@@ -49,12 +49,21 @@ directive revision.
 
 ### 0.2 Precedence Order
 
+The canonical document-precedence order for the whole set. When any two documents appear to conflict, the higher-precedence document wins; the conflict MUST be recorded in `change-log.md` and resolved in favour of the higher-precedence reading. **This list is the single normative statement of precedence for the corpus — every other document cites it rather than restating it.**
+
 ````
-1. blueprint.md (v5.0.0)          — sole source of architectural truth
-2. this directive (directive.md) — imperative translation of #1 into rules
-3. documentation.md, directory.md, concept.md, change-log.md — context
-4. interface.md                   — governs the excluded end-user surfaces only
+1. blueprint.md (v5.0.0)            — sole source of architectural truth
+2. directive.md (v5.0.0)            — imperative translation of #1 into binding rules
+3. documentation.md (v5.0.0, archived) — frozen legacy record, retained for the decisions the set inherits
+4. interface.md (v5.0.0)            — the end-user interface specification
+5. directory.md (v5.0.0)            — the canonical layout reference
+6. concept.md (v5.0.0)              — ideological foundation and glossary
+7. change-log.md                    — version history and defect lifecycle
+8. definitions.md                   — document intent and scope definitions
+9. master-prompt.md (v5.0.0)        — the build execution brief, derived from all preceding documents
 ````
+
+The ADR series in `docs/adr/` is binding on the choices it governs; the frozen request records in `docs/ur/` are provenance, never build specifications.
 
 ### 0.3 Requirement Language (RFC 2119)
 

@@ -187,7 +187,7 @@ dumby-suite/                                        ← ROOT · pnpm-workspace m
 │           └── chaos/                              ← fault-injection / chaos suites
 │
 ├── packages/                                       ← versioned shared workspace packages
-│   └── swastik/                                    ← the Swastik module-authoring SDK — the versioned standalone
+│   ├── swastik/                                    ← the Swastik module-authoring SDK — the versioned standalone
 │       │                                              package every module author imports through its scoped
 │       │                                              entry points; framework internals are never an import
 │       │                                              surface for module authors
@@ -207,6 +207,18 @@ dumby-suite/                                        ← ROOT · pnpm-workspace m
 │           │                                          translations (load validation fails without the base locale)
 │           └── __tests__/                          ← colocated unit & integration tests
 │               └── fixtures/                       ← module test fixture factories
+│
+│   └── modules/                                    ← first-party module sources — the eight shipped
+│       │                                              command modules, authored here and seeded onto their
+│       │                                              tier volumes through the Swastik promotion pipeline
+│       ├── health/                                 ← Core-tier /health command module source
+│       ├── hello-world/                            ← Standard-tier /hello command module source
+│       ├── browse/                                 ← Core-tier /browse command module source
+│       ├── queue/                                  ← Core-tier /queue command module source
+│       ├── persona/                                ← Core-tier /persona command module source
+│       ├── permit/                                 ← Core-tier /permit command module source
+│       ├── modules/                                ← Core-tier /modules command module source
+│       └── dashboard/                              ← Core-tier /dashboard command module source
 │
 ├── artifacts/                                     ← sandboxed tooling playgrounds (generated — not core runtime)
 │   ├── api-server/                                ← standalone API-server sandbox
@@ -313,14 +325,14 @@ dumby-suite/                                        ← ROOT · pnpm-workspace m
 ├── modules-core/                                  ← [Core] tier volume
 │   ├── health/                                    ← Core-tier /health command module — seeded onto the
 │   │                                                 core volume via promotion on every fresh install
-│   ├── hello/                                     ← Core-tier /hello command module — seeded onto the
-│   │                                                 core volume via promotion on every fresh install
 │   │
 │   │   ── [ILLUSTRATIVE EXAMPLES ONLY — never shipped] ──
 │   ├── guild-settings/                            ← [Core]        — per-guild configuration surface
 │   └── utility/                                   ← [Core]        — everyday utility commands
 │
 ├── modules-standard/                              ← [Standard] tier volume
+│   ├── hello/                                     ← Standard-tier /hello (hello-world) command module —
+│   │                                                 seeded onto the standard volume via promotion on every fresh install
 │   │
 │   │   ── [ILLUSTRATIVE EXAMPLES ONLY — never shipped] ──
 │   ├── moderation/                                ← [Standard]    — the fully worked example module
@@ -347,10 +359,10 @@ dumby-suite/                                        ← ROOT · pnpm-workspace m
     ├── music/                                     ← [Marketplace] — music playback
     └── integrations/                              ← [Marketplace] — third-party integrations
 
-/data/swastik-staging/                             ← Swastik staging area — uploads are validated, built,
-                                                    and promoted here; promotion to the live tree is an
-                                                    atomic symlink swap to /data/swastik-live (the live
-                                                    volume the module loader reads)
+/mnt/modules/swastik-staging/                      ← Swastik staging area — uploads are validated, built,
+                                                    and promoted here; promotion onto the module's tier
+                                                    volume is an atomic symlink swap under MODULES_DIR
+                                                    (the live volume the module loader reads)
 ```
 
 Tier-at-rest is enforced: a module must live on the volume matching its manifest-declared tier, and first-party modules reach the tier volumes only through the promotion pipeline.
@@ -360,6 +372,6 @@ Tier-at-rest is enforced: a module must live on the volume matching its manifest
 **Legend**
 
 - **Tier labels** — `[Admin]` · `[Core]` · `[Standard]` · `[Marketplace]`: the four-tier module system. Each tier has its own Kubernetes volume, and a module must reside on the volume matching its manifest-declared tier (tier-at-rest enforcement).
-- **External volumes** — the module volumes and the Swastik staging area are runtime Kubernetes mounts, not repository content; they are documented here because all feature-module storage lives outside the repository. A fresh installation ships only the reference template (at `packages/swastik/_template/`) plus the `health` and `hello` Core-tier command modules, seeded via promotion onto the core volume.
+- **External volumes** — the module volumes and the Swastik staging area are runtime Kubernetes mounts, not repository content; they are documented here because all feature-module storage lives outside the repository. A fresh installation ships only the reference template (at `packages/swastik/_template/`) plus the `health` (Core-tier) and `hello` (Standard-tier) command modules, seeded via promotion onto their tier volumes.
 - **Illustrative modules** — the 22 catalog modules named on the tier volumes are **illustrative examples only** — they demonstrate the module contract and are never shipped as part of the framework.
 - **Directories only** — individual files are deliberately out of scope of this diagram, with the exception of the named governance files under `.github/` and `dependabot.yml`, the repository guard scripts, the entry points, and the nine canonical documents under `docs/`, whose placement is normative.

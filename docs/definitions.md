@@ -2,6 +2,8 @@
 
 **Document Set:** Dumby v5.0.0 — Consolidated Re-Baseline Edition · nine canonical documents · `docs/adr/` decision series · `docs/ur/` frozen request records
 
+> **Corpus composition (defined once).** The documentation corpus comprises **nine canonical documents** — `blueprint.md`, `directive.md`, `documentation.md` (archived legacy record), `interface.md`, `directory.md`, `concept.md`, `change-log.md`, `definitions.md` (this index), and `master-prompt.md` — together with the `docs/adr/` decision series and the `docs/ur/` frozen request records. The consolidated re-baseline request's "twelve-document" figure enumerates its own target rows: the eight canonical documents it edits (all but this index), the `docs/adr/` series, and the three `docs/ur/` records — twelve in total. Where "nine" and "twelve" appear elsewhere in the corpus, they resolve to this definition.
+
 ---
 
 ## 1. blueprint.md

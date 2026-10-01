@@ -52,18 +52,7 @@ This prompt provides three things the source documents do not: (1) a method for 
 
 ### 0.3 Precedence Order
 
-The source documents have a strict authority hierarchy. When any two appear to conflict, the higher-precedence document wins. Record the conflict in `change-log.md` and proceed with the higher-precedence interpretation.
-
-1. `blueprint.md` (v5.0.0) — sole source of architectural truth
-2. `directive.md` (v5.0.0) — imperative translation of #1 into rules, including the ban registry
-3. `interface.md` — governs end-user interface surfaces and the renderer grammar
-4. `directory.md` — canonical layout reference (tier volumes, unified command tree, repository-root `.github/`)
-5. `concept.md` — ideological foundation and glossary
-6. `change-log.md` — version history and defect lifecycle
-7. `definitions.md` — document intent and scope definitions
-8. `documentation.md` (v5.0.0, archived) — frozen legacy reference, retained for the decisions the set inherits; it never overrides the documents above
-
-Two supporting series complete the set. The ADRs in `docs/adr/` are binding on the build choices they govern: where an ADR covers a choice you are about to make, the recorded decision wins over any contrary reading of prose elsewhere in the set. The frozen request records in `docs/ur/` are provenance — they explain why the documentation reads as it does; they are never build specifications.
+The canonical document-precedence order is stated once, in `directive.md` §0.2; this prompt cites it rather than restating it. When any two source documents appear to conflict, the higher-precedence document wins, the conflict is recorded in `change-log.md`, and the higher-precedence reading is taken. The ADRs in `docs/adr/` are binding on the build choices they govern — where an ADR covers a choice you are about to make, the recorded decision wins over any contrary reading of prose elsewhere in the set. The frozen request records in `docs/ur/` are provenance — they explain why the documentation reads as it does; they are never build specifications.
 
 ### 0.4 Build Discipline
 
@@ -514,7 +503,7 @@ First-party modules are seeded onto their tier volumes (`modules-core` for the C
 - Dropdown navigation works: selecting an option edits the message to the target page; the dropdown remains present on every page
 - Permission checks work: commands deny by default and allow with correct roles per the permission engine's resolution
 - Module disable/enable works: a disabled module's commands disappear and its handlers stop firing; the rest of the bot continues
-- The `hello-world` module passes every item in its testing checklist (`interface.md` Division 8.10)
+- The `hello-world` module passes every item in its testing checklist (`interface.md` §10.10)
 - Every button in `interface.md`'s button inventory performs its specified action and edits in place
 
 ---
@@ -575,9 +564,9 @@ Regardless of starting state (greenfield or existing codebase), the build is NOT
 
 ### 6.2 Definition of Done — Five Conditions
 
-The acceptance gate is specified in `directive.md` D-8.10 and the compliance self-audit checklist in `directive.md` Appendix B. Read those sections in full and confirm:
+The acceptance gate is specified in `directive.md` D-8.11 and the compliance self-audit checklist in `directive.md` Appendix B. Read those sections in full and confirm:
 
-1. **Every checkbox in `directive.md` D-8.10 is checked** — boot & lifecycle, runtime behavior, data & state, observability & security, delivery & operations.
+1. **Every checkbox in `directive.md` D-8.11 is checked** — boot & lifecycle, runtime behavior, data & state, observability & security, delivery & operations.
 
 2. **Every item in `directive.md` Appendix B is confirmed** — all load-bearing capabilities.
 

@@ -8,7 +8,7 @@
 **Scope:** Architecture · Design · Lifecycle · Infrastructure · Security · Operations · Module Catalog (Illustrative Examples) · Power Engine Panel · Administrative Interfaces
 **Classification:** Engineering Reference — implementation status is stated per section by the status badges and the Audit Register
 **Edition note:** 5.0.0 is a consolidated re-baseline of the entire reference: the core Renderer and buffer-embed presentation model (§20.8–§20.9), the RBAC Layer 6/7 redesign (§21), tier volumes replacing the in-tree module layout (§7.3), the six-state license machine (§15.7), the Compatibility Ledger (§14.4), Global Data Emit as the fifth cross-module pattern (§14.1), the Twixter persona model (§35), and envelope encryption (§32.7). The eleven cross-cutting decisions behind these changes are recorded as ADR-001…ADR-011 (docs/adr/); the three source request records are registered frozen under docs/ur/.
-**Sections:** 48 (numbered) + Appendices A–C · **Parts:** IX · **Cataloged Module Examples:** 22 (illustrative — none shipped)
+**Sections:** 48 (numbered) + Appendices A–C + the Implementation Status & Audit Register · **Parts:** 0–IX (Part 0 is orientation; Parts I–IX carry the numbered sections) · **Cataloged Module Examples:** 22 (illustrative — none shipped)
 
 ---
 
@@ -775,7 +775,7 @@ Strict mode (`"strict": true`, plus `"exactOptionalPropertyTypes": true` and
 `"noUncheckedIndexedAccess": true`) is enforced project-wide as the production stack,
 not a future option. The manifest schema, the DI container, the command class
 
-### 5.4 b Persistent Volume Claim for Module Storage — Four Per-Tier Volumes
+### 5.4 Persistent Volume Claim for Module Storage — Four Per-Tier Volumes
 
 Module storage is organized as four per-tier volumes plus a staging volume —
 `modules-admin`, `modules-core`, `modules-standard`, and `modules-marketplace`
@@ -792,7 +792,7 @@ for module storage. This split enables instant hot-swaps, guild-specific module
 sets, and per-tier isolation without any hardcoded module list in the image.
 Avoid on single-node hostPath clusters.
 
-### 5.5 a Per-Module Process Sandbox Isolation
+### 5.5 Per-Module Process Sandbox Isolation
 
 No module shares a process with core or any other module. Every module runs in
 its own sandboxed worker (separate process/container, own CPU + memory quota),
@@ -1679,7 +1679,7 @@ The framework requests only the union of declared intents, never a broad precaut
 
 Registers first-party modules at bootstrap.
 
-Bootstrap registers first-party modules from the tier volumes through promotion — including the `/health` and `/hello` Core-tier modules — with no module-specific imports in the core image: first-party modules load from the external module volumes exactly like every other module.
+Bootstrap registers first-party modules from the tier volumes through promotion — including the `/health` Core-tier and `/hello` Standard-tier modules — with no module-specific imports in the core image: first-party modules load from the external module volumes exactly like every other module.
 
 - ** Application.ts running Stages 1-18.
 
@@ -2016,9 +2016,9 @@ Contract diff + breaking-change enforcement.
 
 {moduleNamespace}:{handlerKey}:{contextPayload} encoding, IComponentHandler for buttons/selects, mandatory re-authorization for sensitive components.
 
-### §10.2 Addition — Shipped `/health` and `/hello` Core-Tier Command Modules
+### §10.2 Addition — Shipped `/health` Core-Tier and `/hello` Standard-Tier Command Modules
 
-Two Core-tier command modules seeded into the core tier volume through the promotion pipeline, installed permanently, non-disableable, returning Ping/Latency (`/health`) and "Hello, World!" (`/hello`) via Components V2, each with `devId`/`buildId` and `en-US.json`.
+A Core-tier command module (`/health`) and a Standard-tier command module (`/hello`, slug `hello-world`) seeded onto their tier volumes through the promotion pipeline, installed permanently, non-disableable, returning Ping/Latency (`/health`) and "Hello, World!" (`/hello`) via Components V2, each with `devId`/`buildId` and `en-US.json`.
 
 ### 10.3 Binding Lifetimes
 
@@ -2513,7 +2513,7 @@ deliverable in that category — the framework never requires empty directories.
 ```
 TREE 11-A — Canonical Module Layout (moderation used as the illustrative shape)
 
-src/modules/moderation/
+packages/modules/moderation/
 ├── manifest.ts ← the module's complete contract declaration
 ├── index.ts ← onLoad(container) / onReady(client) / onUnload
 │
@@ -2709,7 +2709,7 @@ Module isolation is enforced by a combination of TypeScript's type system, the S
 
 Rule 1: No module may import another module's internal files. The ESLint configuration includes a rule that prevents imports from src/modules/[other-module]/. Modules may only import from the framework's typed service interfaces (src/core/types/) and their own directory.
 
-Rule 2: No module may directly access the Prisma client. The DatabaseService wraps Prisma with a typed, tier-aware service. Marketplace modules receive a rate-limited wrapper that counts queries against the per-guild quota. Attempting to bypass the wrapper by importing Prisma directly is prevented by the ESLint rule that blocks imports from src/core/services/DatabaseService.ts (only the typed interface is importable).
+Rule 2: No module may directly access the Knex client. The DatabaseService wraps Knex with a typed, tier-aware service. Marketplace modules receive a rate-limited wrapper that counts queries against the per-guild quota. Attempting to bypass the wrapper by importing Knex directly is prevented by the ESLint rule that blocks imports from src/services/DatabaseService.ts (only the typed interface is importable).
 
 Rule 3: No module may directly access the Redis client. The CacheService wraps Redis with a typed, tier-aware service. Marketplace modules receive a rate-limited wrapper that counts cache operations against the per-guild quota.
 
@@ -2781,7 +2781,7 @@ Once installed, the module is subject to per-guild resource quotas: maximum 5,00
 
 ### 11.15 The Module Scaffolding Tool — Complete Reference
 
-The module scaffolding CLI generates a complete module directory structure with all required files. The command takes a module name and tier as arguments. The generated structure includes the module.ts file (implementing the IModule interface with the declared tier), a commands directory with a template command, an events directory, a services directory, a jobs directory, a models directory with a template Prisma schema addition, a permissions.ts file with a template permission, a config.ts file with a Zod schema and defaults, a dashboard.ts file with a template MDIS schema, an i18n directory with an en-US.json template, and a tests directory with happy path, unit, and contract test stubs.
+The module scaffolding CLI generates a complete module directory structure with all required files. The command takes a module name and tier as arguments. The generated structure includes the module.ts file (implementing the IModule interface with the declared tier), a commands directory with a template command, an events directory, a services directory, a jobs directory, a models directory with a template migration, a permissions.ts file with a template permission, a config.ts file with a Zod schema and defaults, a dashboard.ts file with a template MDIS schema, an i18n directory with an en-US.json template, and a tests directory with happy path, unit, and contract test stubs.
 
 The CLI also updates the pnpm-workspace.yaml file with the new module path. For Marketplace modules, it adds the module to the marketplace catalog JSON file. The CLI validates the module name for kebab-case compliance and checks for collisions with existing modules.
 
@@ -2845,7 +2845,7 @@ The module isolation guarantee states that a module cannot affect other modules 
 
 Type-level isolation: the module's TypeScript code can only import from the framework's typed interfaces (src/core/types/) and its own directory. The ESLint configuration prevents imports from other modules' directories and from the framework's internal implementation files.
 
-Service-level isolation: the module receives typed service interfaces, not implementation classes. The module cannot access the internals of a service (e.g., the Prisma client inside the DatabaseService). The service interfaces expose only the methods that the module is allowed to call.
+Service-level isolation: the module receives typed service interfaces, not implementation classes. The module cannot access the internals of a service (e.g., the Knex client inside the DatabaseService). The service interfaces expose only the methods that the module is allowed to call.
 
 Data-level isolation: the module's database access is through its own repositories, which query the module's own tables. The module cannot query other modules' tables (enforced by the ESLint configuration that blocks imports from other modules' model directories).
 
@@ -2936,7 +2936,7 @@ $ pnpm dumby scaffold module reminders
 ? Needs module-specific configuration? Yes → Zod schema stub generated
 ? Needs localization? Yes → en-US.json stub generated
 
-✔ Module skeleton created at src/modules/reminders/
+✔ Module skeleton created at packages/modules/reminders/
 ✔ Manifest validates against the Zod schema
 ✔ Registered but DISABLED — enable it explicitly once it does something
 ```
@@ -2944,7 +2944,7 @@ $ pnpm dumby scaffold module reminders
 ### 12.3 Step 2 — The Manifest
 
 ```
-FILE — src/modules/reminders/manifest.ts
+FILE — packages/modules/reminders/manifest.ts
 
 export const REMINDERS_TOKENS = {
  ReminderService: Symbol('Reminders.ReminderService'),
@@ -3002,7 +3002,7 @@ export default defineManifest({
 A pnpm script `build:module <name>` is added to `package.json` that compiles a single module's TypeScript to JavaScript without rebuilding the entire Docker image. This supports the hot-reload workflow (kubectl cp + POST /admin/modules/:name/reload).
 
 **Behavior:**
-- Accepts a module name argument and resolves `src/modules/<name>/`.
+- Accepts a module name argument and resolves `packages/modules/<name>/`.
 - Runs a manifest validation pre-build step (rejects if `manifest.ts` is missing or invalid).
 - Invokes `tsc` (or `tsup`) with module-level `tsconfig.json` scoped to that directory.
 - Emits compiled output to `dist/modules/<name>/`, ready for `kubectl cp` or volume mount.
@@ -3014,7 +3014,7 @@ A pnpm script `build:module <name>` is added to `package.json` that compiles a s
 ### 12.4 Step 3 — The Command Layer
 
 ```
-FILE — src/modules/reminders/commands/remind.command.ts
+FILE — packages/modules/reminders/commands/remind.command.ts
 
 export class RemindCommand implements ICommand {
  data = new SlashCommandBuilder
@@ -3083,7 +3083,7 @@ export class RemindCommand implements ICommand {
 ### 12.5 Step 3, Continued — The Service Layer
 
 ```
-FILE — src/modules/reminders/services/ReminderService.ts
+FILE — packages/modules/reminders/services/ReminderService.ts
 
 export class ReminderService implements IReminderService {
  constructor(
@@ -3135,7 +3135,7 @@ eventBus.on('reminders.reminder.scheduled', async (payload) => {
 ### 12.6 Step 3, Continued — The Repository Layer
 
 ```
-FILE — src/modules/reminders/repositories/ReminderRepository.ts
+FILE — packages/modules/reminders/repositories/ReminderRepository.ts
 
 export class ReminderRepository extends BaseRepository<ReminderRow> {
  protected table = 'reminders'; // owned exclusively by this module (P2, §3)
@@ -3156,7 +3156,7 @@ export class ReminderRepository extends BaseRepository<ReminderRow> {
 ### 12.7 Step 3, Continued — The Job Layer
 
 ```
-FILE — src/modules/reminders/jobs/ReminderDeliveryJob.ts
+FILE — packages/modules/reminders/jobs/ReminderDeliveryJob.ts
 
 export class ReminderDeliveryJob extends BaseProcessor<{ reminderId: string }> {
 
@@ -3194,7 +3194,7 @@ export class ReminderDeliveryJob extends BaseProcessor<{ reminderId: string }> {
 ### 12.8 Step 3, Continued — Migration and Locale
 
 ```
-FILE — src/modules/reminders/migrations/0001_create_reminders.ts
+FILE — packages/modules/reminders/migrations/0001_create_reminders.ts
 
 export async function up(knex: Knex): Promise<void> {
  await knex.schema.createTable('reminders', (t) => {
@@ -3217,7 +3217,7 @@ export async function down(knex: Knex): Promise<void> {
 ```
 
 ```json
-FILE — src/modules/reminders/locales/en-US.json
+FILE — packages/modules/reminders/locales/en-US.json
 
 {
  "reminders.set.success": "Got it — I'll remind you {relativeTime}.",
@@ -3228,7 +3228,7 @@ FILE — src/modules/reminders/locales/en-US.json
 ### 12.9 Step 4 — The Unit Test
 
 ```
-FILE — src/modules/reminders/__tests__/ReminderService.unit.test.ts
+FILE — packages/modules/reminders/__tests__/ReminderService.unit.test.ts
 
 describe('ReminderService.schedule', => {
  it('creates a pending reminder and emits reminders.reminder.scheduled', async => {
@@ -3462,7 +3462,7 @@ The services directory contains the module's internal services — repositories 
 
 The jobs directory contains the module's background job definitions. Each job is defined in its own file. The developer implements the job handler function, which receives the job data and executes the job's business logic.
 
-The models directory contains the module's Prisma schema additions. The developer adds the module's database tables to the schema.prisma file and creates a migration.
+The models directory contains the module's database migrations. The developer adds the module's database tables as a Knex migration.
 
 The permissions.ts file defines the module's permissions. The developer declares the permission keys, their human-readable names, their descriptions, and their default levels.
 
@@ -4900,7 +4900,7 @@ The same core image can serve entirely different module sets per namespace or pe
 
 ### Swastik's Architectural Identity: Control Plane, Not Request Plane
 
-Swastik is an administrative control-plane service, not a request-processing plane. It owns the module delivery lifecycle — upload, validate, stage, promote, hot-swap — via symlink promotion on a shared Kubernetes volume (`/data/swastik-staging` and `/data/swastik-live`) with automatic rollback. It makes no Discord gateway connection and loads no modules; it shares only the PostgreSQL primary, the Redis instance, and the container image with the bot (a different entrypoint: `src/entry/swastik.ts`, with volumes declared in `apps/main/deploy/k8s/base/swastik-volumes.yaml`). The separation is load-bearing: Swastik needs filesystem access and cross-pod orchestration that would violate module isolation if it were itself a module.
+Swastik is an administrative control-plane service, not a request-processing plane. It owns the module delivery lifecycle — upload, validate, stage, promote, hot-swap — via symlink promotion on a shared Kubernetes volume (`/mnt/modules/swastik-staging` and the per-tier live volumes under `/mnt/modules`) with automatic rollback. It makes no Discord gateway connection and loads no modules; it shares only the PostgreSQL primary, the Redis instance, and the container image with the bot (a different entrypoint: `src/entry/swastik.ts`, with volumes declared in `apps/main/deploy/k8s/base/swastik-volumes.yaml`). The separation is load-bearing: Swastik needs filesystem access and cross-pod orchestration that would violate module isolation if it were itself a module.
 
 ## 16. Marketplace, MDIS & Extension System
 
@@ -5323,7 +5323,7 @@ CODE REFERENCE 17-A — Registry Key Shapes
 
 Two modules registering the same key throw `CommandKeyCollisionError`, naming both
 modules and the conflicting path, **before the bot is permitted to start** — this is a
-
+Stage 13 fatal error, not a runtime surprise.
 
 **One tree, at `src/commands/`.** The command framework lives as a single subtree at
 top-level `src/commands/` — routing (`CommandRouter`), registration
@@ -5332,7 +5332,6 @@ collision resolution, the per-tier command ceiling, and BCCM — resolving ADR 0
 there is no `src/core/commands/` subtree, the fourteen command services are imported
 from `src/commands/` by the bootstrap path and the hot-swap path alike, and no
 command-system code exists anywhere else in the tree.
-Stage 13 fatal error, not a runtime surprise.
 
 ### 17.4 Command Deployment Strategy
 
@@ -6439,14 +6438,9 @@ This section is the single normative statement of the seven-layer model: whereve
 any other description of authorization appears, it defers to the ordering in
 DIAGRAM 21-A and Table 21-A below.
 
-Resolution proceeds through seven ordered layers. Each layer can produce a definitive
+Resolution proceeds through seven ordered layers. Each layer can produce a definitive ALLOW (short-circuiting every remaining layer), a definitive DENY (short-circuiting every remaining layer), or PASS (defer to the next layer). Only if every layer passes without a definitive answer does the framework fall through to the final default: allow.
 
-**RBAC override order.** Role → group → set, resolved by the RBAC service as part of the seven-layer resolver (`src/core/permissions/`, spec §19). Document and preserve the precedence — which of role, group, or set wins — so the hierarchy is never ambiguous.
-
-ALLOW (short-circuiting every remaining layer), a definitive DENY (short-circuiting
-every remaining layer), or PASS (defer to the next layer). Only if every layer passes
-without a definitive answer does the framework fall through to the final default:
-allow.
+**RBAC override order.** Layer 7 grant scopes resolve Role → group → set, most-specific wins, evaluated by the RBAC service as part of the seven-layer resolver (`src/permissions/`). The precedence — which of role, group, or set wins — is fixed so the hierarchy is never ambiguous.
 
 ```
 DIAGRAM 21-A — Seven-Layer Resolution Flow
@@ -7924,13 +7918,13 @@ The idle timeout determines how long an idle connection is kept before being clo
 
 Database query optimization is essential for maintaining performance as the dataset grows. The following strategies are used to optimize queries.
 
-Indexing: all frequently queried columns are indexed. The guild_id column is indexed on all guild-scoped tables (module_state, permissions, audit_logs, analytics_events). The user_id column is indexed on all user-scoped tables. The module_name column is indexed on module_state. Composite indexes are used for multi-column queries (e.g., guild_id + module_name on module_state). Indexes are created via Prisma migrations and are visible in the schema.prisma file.
+Indexing: all frequently queried columns are indexed. The guild_id column is indexed on all guild-scoped tables (module_state, permissions, audit_logs, analytics_events). The user_id column is indexed on all user-scoped tables. The module_name column is indexed on module_state. Composite indexes are used for multi-column queries (e.g., guild_id + module_name on module_state). Indexes are created via Knex migrations and are visible in the migration files.
 
-Query projection: Prisma's select option is used to fetch only the needed columns. Instead of SELECT * (which fetches all columns), the query fetches only the columns that the module needs. This reduces data transfer and memory usage.
+Query projection: the query selects only the needed columns. Instead of SELECT * (which fetches all columns), the query fetches only the columns that the module needs. This reduces data transfer and memory usage.
 
 Cursor-based pagination: instead of OFFSET/LIMIT (which becomes slow as the offset grows), cursor-based pagination uses a cursor (typically the primary key) to fetch the next page. The query WHERE id > cursor ORDER BY id LIMIT pageSize is efficient regardless of the page number.
 
-Batch queries: instead of N+1 queries (fetching related entities one at a time), batch queries fetch all related entities in a single query. Prisma's include option fetches related entities in a single query (using a JOIN or a separate query with IN clause).
+Batch queries: instead of N+1 queries (fetching related entities one at a time), batch queries fetch all related entities in a single query. Knex joins fetch related entities in a single query (a JOIN, or a separate query with an IN clause).
 
 Read replicas: read queries are automatically routed to read replicas by the DatabaseService. This distributes the read load across multiple database instances, reducing the load on the primary.
 
@@ -7942,9 +7936,9 @@ The partitioning strategy uses PostgreSQL's native partitioning (DECLARATIVE PAR
 
 ### 24.10 Transaction Management
 
-Dumby uses Prisma's transaction support for operations that require atomicity. A transaction ensures that either all operations succeed (commit) or none succeed (rollback). This prevents partial updates that could leave the database in an inconsistent state.
+Dumby uses Knex's transaction support for operations that require atomicity. A transaction ensures that either all operations succeed (commit) or none succeed (rollback). This prevents partial updates that could leave the database in an inconsistent state.
 
-The interactive transaction pattern is used for complex transactions: prisma.$transaction(async (tx) => { .. }). The transaction object (tx) is used for all database operations within the callback. If the callback throws an error, the transaction is rolled back. If the callback completes without error, the transaction is committed.
+The interactive transaction pattern is used for complex transactions: knex.transaction(async (trx) => { .. }). The transaction object (trx) is used for all database operations within the callback. If the callback throws an error, the transaction is rolled back. If the callback completes without error, the transaction is committed.
 
 The timeout for interactive transactions is 5 seconds (configurable). If a transaction exceeds the timeout, it is rolled back and a TransactionTimeoutError is thrown. This prevents long-running transactions from holding locks and blocking other operations.
 
@@ -9292,7 +9286,7 @@ The Release Manager should diff the target configuration against the live cluste
 
 The reference Terraform module should set `max_connections = (max_pods × pool_max × 1.2) + 20`, paired with a startup assertion that refuses to boot when the configured `DATABASE_POOL_MAX` would exceed the server's provisioned capacity. Codifying the formula prevents connection-flood incidents instead of diagnosing them after the fact. Impact: High; Feasibility: High.
 
-Decouple modules from the base image by mounting a per-module PVC at `/app/dist/modules/<name>` (or `/mnt/modules`), treating modules as plugins rather than image content. Staging already ships `swastik-staging`/`swastik-live` PVCs; extending this per module makes single-module updates an image-free operation.
+Decouple modules from the base image by mounting a per-module PVC at `/app/dist/modules/<name>` (or `/mnt/modules`), treating modules as plugins rather than image content. Staging already ships the `swastik-staging` PVC and the per-tier live volumes (all nested under `MODULES_DIR`); extending this per module makes single-module updates an image-free operation.
 Release Manager renews the Redis core-release lease every 10s with a 30s TTL; crash causes lease expiry and Swastik resumes after bounded TTL.
 
 The lease heartbeat renews every 10 s with a 30 s TTL, exactly as specified in §15.4.
@@ -9965,7 +9959,7 @@ Both commands implemented and wired.
 **Shipped `/health` and `/hello` modules do not exist on disk**
 ABSENT. `src/modules/` contains only framework files (loader.ts, registry.ts, manifest.schema.ts, tier-rules.ts, topo-sort.ts, swastik-loader.ts, register-all.ts). Zero module directories. `register-all.ts` delegates entirely to `loadModulesFromSwastikVolume` which reads a mounted volume at runtime; no module source packages ship in the repo.
 
-`health` and `hello` Core-tier modules (each with manifest and built artifact) promoted onto the core tier volume, registered so `/health` and `/hello` resolve at runtime.
+`health` (Core-tier) and `hello` (Standard-tier) modules (each with manifest and built artifact) promoted onto their tier volumes, registered so `/health` and `/hello` resolve at runtime.
 
 **All 22 Illustrative Modules: None Built**
 0% implemented. 22 modules cataloged as illustrative examples; none built or shipped.
@@ -10279,7 +10273,7 @@ Each migration exports a working `up` and `down`; the promotion pipeline verifie
 
 ### 39.5 The Module Scaffolding CLI
 
-The module scaffolding CLI is the starting point for all module development. The command is: pnpm dumby scaffold --name my-module --tier standard. This generates a complete module directory at src/modules/my-module/ with all required files: module.ts (implementing the IModule interface), commands/ directory with a template command, events/ directory, services/ directory, jobs/ directory, models/ directory with a template Prisma schema addition, permissions.ts with a template permission, config.ts with a Zod schema and defaults, dashboard.ts with a template MDIS schema, i18n/ directory with an en-US.json template, and __tests__/ directory with test stubs.
+The module scaffolding CLI is the starting point for all module development. The command is: pnpm dumby scaffold --name my-module --tier standard. This generates a complete module directory at packages/modules/my-module/ with all required files: module.ts (implementing the IModule interface), commands/ directory with a template command, events/ directory, services/ directory, jobs/ directory, models/ directory with a template migration, permissions.ts with a template permission, config.ts with a Zod schema and defaults, dashboard.ts with a template MDIS schema, i18n/ directory with an en-US.json template, and __tests__/ directory with test stubs.
 
 The CLI also updates the pnpm-workspace.yaml file with the new module path and adds the module to the tsconfig.json paths for IDE autocompletion. For Marketplace modules, it adds the module to the marketplace catalog JSON file with a draft entry that the developer can fill in. The CLI validates the module name for kebab-case compliance and checks for collisions with existing modules.
 

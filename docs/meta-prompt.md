@@ -31,7 +31,7 @@ Do NOT skip the audit. Do NOT assume existing code is correct. A file that exist
 
 **6. The Enforcement Pass is mandatory.** The build is NOT complete until a full re-audit produces an all-COMPLETE Gap Manifest. Anything less than all-COMPLETE is not done.
 
-**7. Precedence is fixed.** `blueprint.md` over `directive.md` over `documentation.md` (archived legacy record — superseded decisions point at their blueprint.md 5.0.0 successors) over `interface.md` over `directory.md` over `concept.md` over `change-log.md` over `definitions.md`. When sources conflict, the higher one wins and you record the conflict. Design tensions resolved by the ADR series in `docs/adr/` are settled there; the frozen request records in `docs/ur/` are provenance, never overridden by the build.
+**7. Precedence is fixed.** The single normative precedence order is stated in `directive.md` §0.2; when sources conflict, the higher-precedence document wins and you record the conflict. Design tensions resolved by the ADR series in `docs/adr/` are settled there; the frozen request records in `docs/ur/` are provenance, never overridden by the build.
 
 **8. Honesty about status.** Known gaps from `change-log.md`'s defect lifecycle are addressed honestly — not replicated, not papered over. Where the spec says something is not yet implemented, the build implements it or tracks it as an open item.
 
