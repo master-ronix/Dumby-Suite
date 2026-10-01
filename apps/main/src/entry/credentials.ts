@@ -1,6 +1,5 @@
 import Fastify from 'fastify';
-import { randomBytes } from 'node:crypto';
-import argon2 from 'argon2';
+import rateLimit from '@fastify/rate-limit';
 import { parseEnv, pickEnvKeys } from '../config/env.schema.js';
 import { createLogger } from '../logging/logger.js';
 import { DbClient } from '../db/client.js';
@@ -11,6 +10,15 @@ import {
   generateCredentialValue,
   SealedCredentialService,
 } from '../credentials/sealed-credential.service.js';
+import { PostgresCredentialStore } from '../db/repositories/credential.repository.js';
+import {
+  CredentialVerificationError,
+  DeveloperCredentialService,
+} from '../credentials/developer-credential.service.js';
+import {
+  CREDENTIAL_REFUSAL_BODY,
+  CREDENTIAL_REFUSAL_STATUS,
+} from '../credentials/credential-refusal.js';
 
 const env = parseEnv(pickEnvKeys(process.env));
 const logger = createLogger(env.LOG_LEVEL);
@@ -27,12 +35,37 @@ const db = new DbClient({
 const rootKey = rootKeyFromBase64('local', env.ENCRYPTION_ROOT_KEY);
 const sealedStore = new PostgresSealedCredentialStore(db.knex);
 const sealedCredentialService = new SealedCredentialService(sealedStore, rootKey);
+const credentialStore = new PostgresCredentialStore(db.knex);
+const credentialService = new DeveloperCredentialService(credentialStore);
 
-const app = Fastify({ logger: false });
+const app = Fastify({ logger: false, bodyLimit: 4096 });
 
 registerInternalAuth(app, {
   expectedKey: env.INTERNAL_API_KEY,
 });
+
+// §22.8: every caller of this service is rate limited. The default key generator is the source
+// address, so the budget is per caller.
+await app.register(rateLimit, { max: 300, timeWindow: '1 minute' });
+
+async function writeAudit(fields: {
+  actorId: string;
+  action: string;
+  reason: string;
+  outcome: 'allowed' | 'rejected';
+  rejectionReason?: string | undefined;
+  metadata?: Record<string, unknown>;
+}): Promise<void> {
+  await db.knex('audit_logs').insert({
+    actorId: fields.actorId,
+    source: 'CREDENTIALS',
+    action: fields.action,
+    reason: fields.reason,
+    outcome: fields.outcome,
+    rejectionReason: fields.rejectionReason ?? null,
+    metadata: fields.metadata ?? {},
+  });
+}
 
 app.post<{ Body: { label: string; registeredBy: string; readable?: boolean } }>(
   '/credentials/issue',
@@ -53,22 +86,74 @@ app.post<{ Body: { label: string; registeredBy: string; readable?: boolean } }>(
         .code(201)
         .send({ id: issued.credentialId, token: issued.value, scheme: 'envelope' });
     }
-    const plaintext = randomBytes(32).toString('hex');
-    const hash = await argon2.hash(plaintext, { type: argon2.argon2id });
-    const id = randomBytes(16).toString('hex');
-
-    await db.knex('api_sessions').insert({
-      id,
-      credentialHash: hash,
-      label,
-      registeredBy,
-      revokedAt: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+    const issued = await credentialService.issue({ purpose: 'service_to_service' });
+    await writeAudit({
+      actorId: registeredBy,
+      action: 'credential.issue',
+      reason: label,
+      outcome: 'allowed',
+      metadata: { purpose: issued.purpose, status: issued.status },
     });
+    logger.info('credential-issued', { id: issued.keyId, label, registeredBy });
+    return reply.code(201).send({ id: issued.keyId, token: issued.secret, scheme: 'argon2id' });
+  },
+);
 
-    logger.info('credential-issued', { id, label, registeredBy });
-    return reply.code(201).send({ id, token: plaintext, scheme: 'argon2id' });
+app.post<{
+  Body: { devId: string; label?: string; registeredBy: string; status?: 'pending' | 'active' };
+}>('/credentials/issue-devid', async (request, reply) => {
+  const { devId, label, registeredBy, status } = request.body;
+  if (!devId || !registeredBy) {
+    return reply.code(400).send({ error: 'devId and registeredBy are required' });
+  }
+  const issued = await credentialService.issue({
+    purpose: 'devId',
+    devId,
+    ...(status === undefined ? {} : { status }),
+  });
+  await writeAudit({
+    actorId: registeredBy,
+    action: 'credential.issue',
+    reason: label ?? 'developer-registration',
+    outcome: 'allowed',
+    metadata: { purpose: issued.purpose, status: issued.status },
+  });
+  logger.info('developer-credential-issued', { id: issued.keyId, status: issued.status });
+  return reply.code(201).send({
+    keyId: issued.keyId,
+    secret: issued.secret,
+    purpose: issued.purpose,
+    status: issued.status,
+  });
+});
+
+// §22.8: verification is delegated here and only here. A refusal names no field: the precise
+// cause goes to the operator log, and the caller receives the shared refusal body.
+app.post<{
+  Body: { keyId: string; secret: string; devId?: string };
+}>(
+  '/credentials/verify',
+  { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } },
+  async (request, reply) => {
+    const { keyId, secret, devId } = request.body;
+    if (!keyId || !secret) {
+      logger.warn('credential-verify-refused', { reason: 'malformed-request' });
+      return reply.code(CREDENTIAL_REFUSAL_STATUS).send(CREDENTIAL_REFUSAL_BODY);
+    }
+    try {
+      const verified = await credentialService.verify(
+        devId === undefined ? { keyId, secret } : { keyId, secret, devId },
+      );
+      return reply.code(200).send({
+        valid: true,
+        purpose: verified.purpose,
+        status: verified.status,
+      });
+    } catch (err) {
+      const reason = err instanceof CredentialVerificationError ? err.reason : 'unexpected-error';
+      logger.warn('credential-verify-refused', { reason, keyId });
+      return reply.code(CREDENTIAL_REFUSAL_STATUS).send(CREDENTIAL_REFUSAL_BODY);
+    }
   },
 );
 
@@ -104,11 +189,14 @@ app.delete<{ Params: { credentialId: string } }>(
 
 app.delete<{ Params: { id: string } }>('/credentials/:id', async (request, reply) => {
   const { id } = request.params;
-  const rows = await db
-    .knex('api_sessions')
-    .where({ id })
-    .update({ revokedAt: new Date(), updatedAt: new Date() });
-  if (rows === 0) return reply.code(404).send({ error: 'Credential not found' });
+  const revoked = await credentialService.revoke(id);
+  if (!revoked) return reply.code(404).send({ error: 'Credential not found' });
+  await writeAudit({
+    actorId: 'credentials-service',
+    action: 'credential.revoke',
+    reason: 'operator revoke',
+    outcome: 'allowed',
+  });
   logger.info('credential-revoked', { id });
   return reply.code(204).send();
 });

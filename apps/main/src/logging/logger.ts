@@ -33,6 +33,18 @@ export const REDACT_PATHS = [
   '*.clientSecret',
   '*.accessToken',
   '*.refreshToken',
+  // §22.8 / TABLE 22-D: the credential secret and its Argon2id hashes must never reach a log
+  // line, at any nesting depth, under any of the names the credential surfaces use. `keyId` and
+  // `devId` are deliberately not redacted — they are the operator correlation handles the
+  // credential surfaces log deliberately.
+  'credentialHash',
+  '*.credentialHash',
+  '*.*.credentialHash',
+  'devIdHash',
+  '*.devIdHash',
+  '*.*.devIdHash',
+  '*.credential.secret',
+  '*.*.credential.secret',
 ];
 
 export class Logger {

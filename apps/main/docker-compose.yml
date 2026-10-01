@@ -78,6 +78,28 @@ services:
       retries: 12
       start_period: 30s
 
+  credentials:
+    build:
+      context: ..
+      dockerfile: apps/main/Dockerfile
+    restart: unless-stopped
+    command: ['node', 'dist/entry/credentials.js']
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://dumby:dumby_dev_password@postgres:5432/dumby
+      REDIS_URL: redis://redis:6379/0
+      QUEUE_REDIS_URL: redis://redis:6379/1
+      CREDENTIALS_SERVICE_BIND_HOST: 0.0.0.0
+    # Published to loopback only; every route is additionally gated by INTERNAL_API_KEY.
+    ports:
+      - '127.0.0.1:8086:8086'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
   swastik:
     build:
       context: ..
@@ -90,6 +112,7 @@ services:
       DATABASE_URL: postgres://dumby:dumby_dev_password@postgres:5432/dumby
       REDIS_URL: redis://redis:6379/0
       QUEUE_REDIS_URL: redis://redis:6379/1
+      CREDENTIALS_SERVICE_URL: http://credentials:8086
       MODULES_DIR: /mnt/modules
       SWASTIK_STAGING_VOLUME_PATH: /mnt/modules/swastik-staging
       SWASTIK_LIVE_VOLUME_PATH: /mnt/modules/modules-core

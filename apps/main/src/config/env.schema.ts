@@ -27,6 +27,10 @@ const baseEnvSchema = z
     SWASTIK_PORT: z.coerce.number().int().positive().default(8085),
     CREDENTIALS_SERVICE_BIND_HOST: z.string().default('127.0.0.1'),
     CREDENTIALS_SERVICE_PORT: z.coerce.number().int().positive().default(8086),
+    // Peer URL other surfaces call to reach the Credentials Service (§22.8 verification and
+    // issuance are delegated there alone). Hostname of the container/host running it.
+    CREDENTIALS_SERVICE_URL: z.string().url().default('http://127.0.0.1:8086'),
+    CREDENTIALS_SERVICE_TIMEOUT_MS: z.coerce.number().int().positive().default(2000),
     TWIXTER_PORT: z.coerce.number().int().positive().default(8090),
 
     BOT_TOKEN: z.string().default(''),

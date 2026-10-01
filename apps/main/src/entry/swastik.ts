@@ -1,4 +1,4 @@
-import Fastify from 'fastify';
+import Fastify, { type FastifyReply } from 'fastify';
 import { randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -38,6 +38,12 @@ import {
   verifyStagedBuild,
   type PromotionOutcome,
 } from '../module-system/promotion.js';
+import { HttpCredentialClient, type CredentialClient } from '../credentials/credential-client.js';
+import { CredentialVerificationError } from '../credentials/developer-credential.service.js';
+import {
+  CREDENTIAL_REFUSAL_BODY,
+  CREDENTIAL_REFUSAL_STATUS,
+} from '../credentials/credential-refusal.js';
 
 let env: Env;
 let logger: Logger;
@@ -47,6 +53,7 @@ let stagingVolume: string;
 let liveVolume: string;
 let promotionLock: RedisLockStore;
 let lockRedis: Redis;
+let credentialClient: CredentialClient;
 
 async function init(): Promise<void> {
   env = parseEnv(pickEnvKeys(process.env));
@@ -61,6 +68,13 @@ async function init(): Promise<void> {
   });
   lockRedis = new Redis(env.REDIS_URL);
   promotionLock = new RedisLockStore(lockRedis);
+  // §22.8: Swastik holds no developer credential material. It asks the Credentials Service to
+  // verify (and, at registration, to issue) and acts only on that verdict.
+  credentialClient = new HttpCredentialClient({
+    baseUrl: env.CREDENTIALS_SERVICE_URL,
+    internalApiKey: env.INTERNAL_API_KEY,
+    timeoutMs: env.CREDENTIALS_SERVICE_TIMEOUT_MS,
+  });
   modulesDir = env.MODULES_DIR;
   stagingVolume = env.SWASTIK_STAGING_VOLUME_PATH;
   liveVolume = env.SWASTIK_LIVE_VOLUME_PATH;
@@ -97,6 +111,81 @@ function redact(value: string): string {
 
 function safeModulePathSegment(moduleSlug: string, version: string): string {
   return `${assertSafeSlug(moduleSlug)}__${assertSafeVersion(version)}`;
+}
+
+interface DeveloperPrincipal {
+  readonly devId: string;
+  readonly keyId: string;
+  readonly dev: Record<string, unknown>;
+}
+
+/**
+ * Parses `Authorization: Bearer <keyId>.<secret>`. The devId is never a bearer token any more
+ * (UR-B-05): it is an opaque identifier that appears in response bodies and manifests only.
+ * Returns undefined for anything that is not exactly one keyId and one secret.
+ */
+function parseDeveloperCredential(
+  authorization: string | undefined,
+): { keyId: string; secret: string } | undefined {
+  if (!authorization?.startsWith('Bearer ')) return undefined;
+  const presented = authorization.slice('Bearer '.length);
+  const separator = presented.indexOf('.');
+  if (separator <= 0 || separator === presented.length - 1) return undefined;
+  const keyId = presented.slice(0, separator);
+  const secret = presented.slice(separator + 1);
+  if (keyId.length === 0 || secret.length === 0 || secret.includes('.')) return undefined;
+  return { keyId, secret };
+}
+
+/**
+ * Authenticates a developer route. §22.8: a missing credential, an unknown keyId, a wrong
+ * secret, a pending or revoked credential, a credential bound to another developer and a
+ * developer row that no credential points at all are one indistinguishable 401. The precise
+ * cause is written to the operator log and the audit trail, never to the caller.
+ */
+async function authenticateDeveloper(
+  authorization: string | undefined,
+  reply: FastifyReply,
+  route: string,
+): Promise<DeveloperPrincipal | undefined> {
+  const presented = parseDeveloperCredential(authorization);
+  if (!presented) {
+    logger.warn('swastik-developer-auth-refused', { route, reason: 'no-credential-presented' });
+    await writeAudit('DEVELOPER_AUTH_REFUSED', 'rejected', {
+      route,
+      error: 'no-credential-presented',
+    });
+    return reply.code(CREDENTIAL_REFUSAL_STATUS).send(CREDENTIAL_REFUSAL_BODY);
+  }
+  const dev = await db.knex('developers').where({ credentialKeyId: presented.keyId }).first();
+  const devId = dev === undefined ? undefined : String(dev['devId']);
+  let reason: string;
+  try {
+    await credentialClient.verify(devId === undefined ? presented : { ...presented, devId });
+  } catch (err) {
+    reason = err instanceof CredentialVerificationError ? err.reason : 'unexpected-error';
+    logger.warn('swastik-developer-auth-refused', { route, reason, keyId: presented.keyId });
+    await writeAudit('DEVELOPER_AUTH_REFUSED', 'rejected', {
+      route,
+      keyId: redact(presented.keyId),
+      error: reason,
+    });
+    return reply.code(CREDENTIAL_REFUSAL_STATUS).send(CREDENTIAL_REFUSAL_BODY);
+  }
+  if (dev === undefined || devId === undefined) {
+    logger.warn('swastik-developer-auth-refused', {
+      route,
+      reason: 'credential-not-bound-to-a-developer',
+      keyId: presented.keyId,
+    });
+    await writeAudit('DEVELOPER_AUTH_REFUSED', 'rejected', {
+      route,
+      keyId: redact(presented.keyId),
+      error: 'credential-not-bound-to-a-developer',
+    });
+    return reply.code(CREDENTIAL_REFUSAL_STATUS).send(CREDENTIAL_REFUSAL_BODY);
+  }
+  return { devId, keyId: presented.keyId, dev: dev as Record<string, unknown> };
 }
 
 const OPTIONAL_LICENSE_FIELDS = [
@@ -207,10 +296,14 @@ app.post('/swastik/developers/register', async (request, reply) => {
     return reply.code(400).send({ error: 'username is required' });
   }
   const rawDevId = `dev_${randomBytes(16).toString('hex')}`;
+  // Issuance is delegated to the Credentials Service (§22.8). Swastik mints nothing: it receives
+  // a keyId plus a secret shown exactly once and binds the keyId to the developer row.
+  const issued = await credentialClient.issueDevId({ devId: rawDevId, registeredBy: username });
   await db.knex('developers').insert({
     devId: rawDevId,
     username,
     approvalStatus: 'pending',
+    credentialKeyId: issued.keyId,
   });
   const pendingLicense = createPendingLicense(`lic_${randomBytes(16).toString('hex')}`, rawDevId);
   await db.knex('licenses').insert({
@@ -221,30 +314,44 @@ app.post('/swastik/developers/register', async (request, reply) => {
   });
   logger.info('swastik-developer-registered', { username, devId: redact(rawDevId) });
   await writeAudit('DEVELOPER_REGISTERED', 'allowed', { username, devId: redact(rawDevId) });
-  return reply.code(201).send({ devId: rawDevId, approvalStatus: 'pending' });
+  return reply.code(201).send({
+    devId: rawDevId,
+    approvalStatus: 'pending',
+    // The only time the secret is ever transmitted. It is stored only as an Argon2id hash and
+    // is never logged (TABLE 22-D).
+    credential: { keyId: issued.keyId, secret: issued.secret, format: '<keyId>.<secret>' },
+  });
 });
 
 app.get('/swastik/developers/me', async (request, reply) => {
-  const auth = request.headers.authorization;
-  if (!auth?.startsWith('Bearer '))
-    return reply.code(401).send({ error: 'missing or invalid Authorization header' });
-  const devId = auth.slice(7);
-  const dev = await db.knex('developers').where({ devId }).first();
-  if (!dev) return reply.code(404).send({ error: 'developer not found' });
-  return reply.send({ devId, username: dev.username, approvalStatus: dev.approvalStatus });
+  const principal = await authenticateDeveloper(request.headers.authorization, reply, 'me');
+  if (!principal) return reply;
+  return reply.send({
+    devId: principal.devId,
+    username: principal.dev['username'],
+    approvalStatus: principal.dev['approvalStatus'],
+  });
 });
 
 app.post('/swastik/modules/upload', async (request, reply) => {
-  const auth = request.headers.authorization;
-  if (!auth?.startsWith('Bearer '))
-    return reply.code(401).send({ error: 'missing or invalid Authorization header' });
-  const devId = auth.slice(7);
-  const dev = await db.knex('developers').where({ devId }).first();
-  if (!dev) return reply.code(404).send({ error: 'developer not found' });
-  if (dev.approvalStatus !== 'approved') {
-    return reply
-      .code(403)
-      .send({ error: `developer not approved (status: ${dev.approvalStatus})` });
+  const principal = await authenticateDeveloper(request.headers.authorization, reply, 'upload');
+  if (!principal) return reply;
+  const devId = principal.devId;
+  const dev = principal.dev;
+  // UR-B-01: only an approved developer may upload. Refused as the same indistinguishable 401,
+  // so the response cannot be used to probe approval state.
+  if (dev['approvalStatus'] !== 'approved') {
+    logger.warn('swastik-developer-auth-refused', {
+      route: 'upload',
+      reason: 'developer-not-approved',
+      keyId: principal.keyId,
+    });
+    await writeAudit('DEVELOPER_AUTH_REFUSED', 'rejected', {
+      route: 'upload',
+      keyId: redact(principal.keyId),
+      error: 'developer-not-approved',
+    });
+    return reply.code(CREDENTIAL_REFUSAL_STATUS).send(CREDENTIAL_REFUSAL_BODY);
   }
   const body = request.body as Record<string, unknown>;
   const {
@@ -350,11 +457,16 @@ app.post('/swastik/modules/upload', async (request, reply) => {
 
 app.get('/swastik/modules/:slug/builds/:buildId', async (request, reply) => {
   const { slug, buildId } = request.params as { slug: string; buildId: string };
-  const auth = request.headers.authorization;
-  if (!auth?.startsWith('Bearer '))
-    return reply.code(401).send({ error: 'missing or invalid Authorization header' });
-  const devId = auth.slice(7);
-  const build = await db.knex('builds').where({ buildId, devId, moduleSlug: slug }).first();
+  const principal = await authenticateDeveloper(
+    request.headers.authorization,
+    reply,
+    'build-status',
+  );
+  if (!principal) return reply;
+  const build = await db
+    .knex('builds')
+    .where({ buildId, devId: principal.devId, moduleSlug: slug })
+    .first();
   if (!build) return reply.code(404).send({ error: 'build not found' });
   return reply.send({
     buildId: build.buildId,

@@ -95,7 +95,7 @@ Each entry opens with a one-line metadata footer: _lines · size · basis of ver
 | 12  | FINAL      | 1,682           | 220 KB         | Core-only scope cut; long-standing defects closed out                                                                                                                                                                                                                                                                                                        |
 | 13  | v4.5.1     | 10,949 / 13,099 | 1.11 / 0.99 MB | Structure-Enforced Edition — merged UUR (1,389 findings) applied to the living reference pair                                                                                                                                                                                                                                                                |
 | 14  | v4.6.0     | 10,953 / 13,102 | 1.10 / 0.99 MB | Production-Readiness Edition — eight headline design decisions integrated across the suite; duplicate `src/core/` subsystem removed from the spec; Redis HA, pool sizing, gateway session resume, break-glass, and vulnerability-scanning requirements added; CLAI SSH, Dev-ID/Token split, AST manifest extraction, and per-module isolation made normative |
-| 15  | v5.0.0     | 13,139 / 9,808 / 1,876 / 1,631 / 598 / 581 / 365 | 0.93 MB · 0.99 MB · 0.12 MB · 0.09 MB · 0.05 MB · 0.07 MB · 0.03 MB | Consolidated Re-Baseline Edition — 121 requests (31 program URs · 88 implementation-flaw corrections · 2 RBAC redesign requirements) applied across twelve documents; Renderer + buffer presentation model, RBAC Layer 6/7, tier volumes, license state machine, Compatibility Ledger, Global Data Emit, Twixter, envelope encryption, 11 ADRs, three frozen source records |
+| 15  | v5.0.0     | 13,147 / 9,808 / 1,876 / 1,631 / 598 / 583 / 365 | 0.93 MB · 0.99 MB · 0.12 MB · 0.09 MB · 0.05 MB · 0.07 MB · 0.03 MB | Consolidated Re-Baseline Edition — 121 requests (31 program URs · 88 implementation-flaw corrections · 2 RBAC redesign requirements) applied across twelve documents; Renderer + buffer presentation model, RBAC Layer 6/7, tier volumes, license state machine, Compatibility Ledger, Global Data Emit, Twixter, envelope encryption, 11 ADRs, three frozen source records |
 
 ---
 
@@ -459,7 +459,7 @@ _Recorded 2026-09-13. `documentation.md`: 10,953 lines · `blueprint.md`: 13,102
 - **Database pool sizing formula**: N × DATABASE_POOL_MAX ≤ PostgreSQL max_connections; reference Terraform module sets max_connections = (max_pods × pool_max × 1.2) + 20.
 - **Gateway session resume for zero-downtime core restarts**: release-triggered restarts using Discord `RESUME` opcode with stored session_id/sequence; hygiene restarts decoupled.
 - **Emergency break-glass hotfix procedure** for the two-approver gate: single verified-2FA approver, audit_logs record, mandatory post-incident review, rate-limited.
-- **Runtime vulnerability scanning in the DRM pipeline**: Trivy/Grype on built images, failing deploys on Critical CVEs.
+- **Runtime vulnerability scanning in the Release Manager pipeline**: Trivy/Grype on built images, failing deploys on Critical CVEs.
 - **Implementation Status appendix** in `documentation.md` (the blueprint already carries one from v4.5.1): per-subsystem [SPEC]/[IMPL]/[TESTED]/[DEPLOYED] table with honest recording of what is built vs. specified.
 
 **Changed**
@@ -644,7 +644,8 @@ of record is this section plus the dated snapshot in `docs/migration-ledger-temp
   seeded with the snapshot.
 
 **M0 — P0 security flaws (rows 34–37, 64–69, 92–98; IN-PROGRESS; slices 1–5 landed on `feature/dev`
-in commit `0c625c1`, 2026-09-29; 75 files / 876 tests green at slice-5 close):**
+in commit `0c625c1`, 2026-09-29 (75 files / 876 tests green at slice-5 close); slice 6a landed in this
+session — 76 files / 901 tests green):**
 
 | Request | Row | M0 slice | Record | Status |
 |---|---|---|---|---|
@@ -656,19 +657,31 @@ in commit `0c625c1`, 2026-09-29; 75 files / 876 tests green at slice-5 close):**
 | UR-B-02 | 65 | 2 | Zod slug/version validation + `assertPathInside` containment on the Swastik filesystem joins; loader entry-name parse and realpath containment | PARTIAL |
 | UR-B-03 | 66 | 1 | Constant-time preHandler on the API server's `/admin/*` plus PEP/CLAI/Twixter/credentials; three bind hosts loopback-default; compose ports loopback-pinned — **reopened to PARTIAL by UR 2.0 (SC-01): bind-host coverage is 4/8 surfaces** | PARTIAL |
 | UR-B-04 | 67 | — | No hash/Ed25519 verification, quarantine, or provenance columns on `builds` yet | OPEN (slice 6) |
-| UR-B-05 | 68 | — | No `credentials` table; `devId` remains a plaintext primary key used as the bearer token | OPEN (slice 6) |
+| UR-B-05 | 68 | 6a | `credentials` table (migrations 37–38, closed `purpose`/`status` enums, Argon2id-only storage); `Authorization: Bearer <keyId>.<secret>` on all three developer routes; `devId` remains the PK/FK **identifier** but no longer authenticates anyone. Proof: `tests/unit/m0-developer-credentials.test.ts` 25 tests (bare-devId bearer refused; issue stores only `$argon2id$` hashes; one refusal message across every cause); 901/901 unit suite; both migrations `up()`/`down()` exercised on live Postgres 16 | DONE |
 | UR-B-06 | 69 | 1 | Server-derived `source` on all three surfaces; the false `allowed` audit rows the no-op handlers produced are removed | DONE |
 | UR-C-01 | 92 | 2 | `safeJoin` / `assertPathInside` / `assertSafeSlug` / `assertSafeVersion` applied in the loader | PARTIAL |
 | UR-C-02 | 93 | 5 | One shared constant-time `registerInternalAuth` preHandler gates the whole Swastik surface; rejections write an `INTERNAL_AUTH_DENIED` audit row; both in-repo clients present the header | DONE |
 | UR-C-03 | 94 | — | Auto-approver gone; no ownership table, no non-owner 403; `manifest.devId` optional | PARTIAL |
-| UR-C-04 | 95 | — | Sealed store is real; the argon2 branch targets the wrong table; no rate limit/bodyLimit | PARTIAL |
-| UR-C-05 | 96 | — | No `devIdHash`; the 401-vs-404 failure oracle remains | OPEN (slice 6) |
+| UR-C-04 | 95 | 6a | Argon2 branch retargeted from `api_sessions` (which could never accept it) to the new `credentials` table; added `POST /credentials/verify` + `POST /credentials/issue-devid`, `bodyLimit: 4096`, `@fastify/rate-limit` (300/min app-wide, 60/min on verify), and `source: 'CREDENTIALS'` audit rows | DONE |
+| UR-C-05 | 96 | 6a | `devIdHash` persisted per §22.8 and **load-bearing** — verification re-checks it, so repointing `developers.credentialKeyId` at another developer fails; every refusal (missing/unknown/wrong/revoked/pending/unbound/transport-failure/unapproved) returns one frozen `{}` at 401 from a shared constant, replacing three 401-vs-404 pairs and a 403 that named `approvalStatus`; `REDACT_PATHS` covers `credentialHash`, `devIdHash` and nested `credential.secret`, verified against a real pino stream | DONE |
 | UR-C-06 | 97 | — | ssh2 public-key-only server (same fix as UR-A-02) — **reopened to PARTIAL by UR 2.0 (SC-01): the connection/byte limits clause is absent** | PARTIAL |
 | UR-C-07 | 98 | 2 | Manifest/directory match and symlink containment added in the loader; hash verification, quarantine, and cache-busted import URLs remain | PARTIAL |
 
 Slice ledger: 1 (admin surface auth) DONE · 2 (loader path containment) DONE · 3 (honest 501) DONE ·
-4 (fail-closed unknown tier) DONE · 5 (Swastik internal auth) DONE · **6 (provenance, ownership,
-credentials — the three OPEN rows plus the closable partials) NEXT — the last M0 slice.**
+4 (fail-closed unknown tier) DONE · 5 (Swastik internal auth) DONE · **6a (developer credentials) DONE**
+(UR-B-05, UR-C-04, UR-C-05) · **6b (build provenance — UR-B-04, UR-C-07) NEXT** · 6c (ownership,
+approval workflow, bind hosts — UR-B-01, UR-B-03, UR-C-03, UR-C-06) still to come. Slice 6 is the
+last M0 slice.
+
+**M0 slice 6a — supporting records (2026-10-01).** The `credentials` compose service did not exist, so
+delegation had no reachable endpoint; added it plus `CREDENTIALS_SERVICE_URL` and
+`CREDENTIALS_SERVICE_TIMEOUT_MS` in `env.schema.ts` and `.env.example` together. Registration now
+depends on that service (it fails loudly rather than leaving an unbound developer row). New rows start
+`pending` and cannot become `active` until the §15.8 owner approval workflow lands in 6c — a deliberate
+sequence, not a shortcut. `pnpm migrate` is broken in this workspace for a pre-existing reason (the local
+DB records migrations as `*.js` while the tsx runner loads `*.ts`), so the two migrations were verified
+against a scratch Postgres database instead; M11 should re-run them through the real runner. Full detail
+and the five slice deviations are in `migration-ledger.md` §M0 slice 6a.
 
 ### UR 2.0 — Post-Re-Baseline Conformance & Audit Evidence (recorded 2026-10-01)
 
@@ -720,8 +733,10 @@ file owed (CF-22, CF-27), and the protocol revision they triggered._
   ledger it was never recorded in — the triage's job is to credit or route it, not to rediscover it.
 - **SC-03 — ledger rebuilt from the tree.** All 121 rows must be re-triaged against working HEAD (not the
   snapshot) before any M-item executes (prompt R12 / §3.0.2).
-- **SC-04 — master-table line counts corrected** (row 15 above): blueprint.md **13,139** (not 13,258);
-  concept.md **581** (not 582).
+- **SC-04 — master-table line counts corrected and re-verified** (row 15 above): blueprint.md **13,147**;
+  concept.md **583**. The UR's 2.0 figures (13,139 / 581) were themselves stale — the working tree
+  had drifted further, so the counts were re-measured on 2026-10-01 rather than transcribed. See
+  the note under SC-04 in `migration-ledger.md` deviation #13.
 - **CF-22 — legacy "DRM" corrected** in the living open-items section (D-8.5 → Release Manager).
 - **CF-28 / derived-status docs** (`GAP_MANIFEST.md`, `STATUS.md`, `replit.md`, `apps/main/docs/*`) still
   present a v4.6.1-era world unmarked; their reconciliation is a documentation action tracked in the UR's
