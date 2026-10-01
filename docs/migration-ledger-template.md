@@ -7,7 +7,9 @@
 >
 > **UR 2.0 correction (01/10/2026).** The snapshot below was itself corrected: UR-20260918-001 revision 2.0 (the E1–E10 Conformance & Audit Evidence Set) found the state of record stale in **both** directions — the M0 tally was overstated, and M1–M9-shaped code already exists in the tree while the record says NOT STARTED. The snapshot now carries both facts, and the reconciliation gate (prompt R12 / §3.0.2) supersedes it: re-triage all 121 rows against the TREE before any M-item executes.
 >
-> Protocol: `docs/migration-prompt.md` **v5.2.0** (twenty-item work order, three blocks: M0–M8 → MR-1–MR-8 → M9–M11; rules R1–R12; slice mechanics §5; change-log protocol §6; reconciliation gate §3.0.2)
+> **5.3.0 evidence extraction (01/10/2026).** All ten evidence documents (E1–E10) were then read finding-by-finding. The snapshot now carries the **provenance** of the ahead-of-record work (commits `d334cfb`/`581499e`, 2026-09-26; prior ledger removed at `9f7e427`), a **tree-state evidence map** (prompt §3.0.3) and the **true-unknowns register** (prompt §3.0.4).
+>
+> Protocol: `docs/migration-prompt.md` **v5.3.0** (twenty-item work order, three blocks: M0–M8 → MR-1–MR-8 → M9–M11; rules R1–R12; slice mechanics §5; change-log protocol §6; reconciliation gate §3.0.2; tree-state evidence map §3.0.3; true-unknowns register §3.0.4)
 
 ---
 
@@ -31,7 +33,7 @@
 
 ---
 
-## 2. Status Snapshot — TRUE STATE as of 2026-10-01 (UR 2.0 corrected)
+## 2. Status Snapshot — TRUE STATE as of 2026-10-01 (UR 2.0 + E1–E10 extraction)
 
 This is the actual state of the migration. The 5.0.2-era template showed every item NOT STARTED (false since 2026-09-26); the 2.0 template showed M0 as 8 DONE (overstated); **UR 2.0 (01/10/2026) corrects both** — the M0 tally is 5 DONE / 9 PARTIAL / 3 OPEN, and M1–M9-shaped code exists in the tree while the record says NOT STARTED. Until a fresh ledger is constructed, this snapshot is the state of record; once constructed, the ledger is authoritative past this date.
 
@@ -78,6 +80,14 @@ UR 2.0 §8.13.2 SC-01 reopened three rows from DONE to PARTIAL: **UR-B-01** (own
 
 **State-of-record reconciliation (UR 2.0 §8.13.2; prompt R12):** before any M-item executes, the fresh ledger must record — (a) all 121 rows re-triaged against the tree; (b) the M0 correction (5/9/3); (c) the ahead-of-record M1–M9-shaped work, each with its R11 line marked **PRESENT IN TREE (uncredited pending UR §8.1.3 #19)**; (d) the SC-04 line-count corrections (blueprint 13,139; concept 581) and the CF-22 "DRM" fix. Crediting ahead-of-record work as DONE/PARTIAL is the open policy question (UR §8.1.3 #19) — record, never assume.
 
+**Provenance of the ahead-of-record work (E10 RC-5; commits verified against the repo):** the prior migration ledger was removed at `9f7e427` (2026-09-26), and the v5.0.0 re-baseline work landed at `d334cfb` and `581499e` (2026-09-26) with no ledger record and no R11 lines — so the M1–M9 "tree: shaped code present" rows above are *work that was done but never recorded*, not work discovered mid-flight. This template's own earlier version (v1.0) and migration-prompt 5.0.0–5.0.2 likewise carried no change-log lines (E6 GOV-23).
+
+**Tree-state evidence map (prompt §3.0.3):** per-item file-and-test evidence — M1 (loader / tier volumes / `packages/swastik`), M2 (unified `src/commands`), M3 (`core-renderer.ts`), M4 (RBAC tables + `src/permissions/*`), M5 (`src/licensing/*`), M6 (`promotion.ts`), M7 (`src/personas/*`), M8 (`src/crypto/*` + sealed credentials), M9 (`m9-*` suites). Use it to seed each item's **Tree state** field during reconciliation.
+
+**True unknowns (prompt §3.0.4):** flat `src/` vs `src/core/`; dead husky/commitlint; missing `scripts/check-configmap-keys.mjs`; §32.10 InputSanitizer; §32.8 token-leak scanning; D-7.5.5 policy lockfile; split-brained maintenance mode; and the ~24 UR §8.13.4 items — each needs an owner or a logged deviation.
+
+**Volume-path vocabulary (E7 F3; E10 C-10/I12):** deployed staging `/mnt/modules/swastik-staging`, live `/mnt/modules/modules-core`, both nested inside `MODULES_DIR=/mnt/modules`; the `/data/swastik-*` vocabulary in STATUS.md/directory.md is the wrong one.
+
 ---
 
 ## 3. Item Record Shape (one per item, M0–M11 and MR-1–MR-8)
@@ -91,6 +101,7 @@ Every item record in the live ledger carries ALL of these fields — the six-fie
 - **Started:** <date> · **Completed:** <date or —>
 - **Request rows owned (from the coverage map, prompt §3.0):** <UR §8.1.2 row numbers + request IDs>
 - **Evidence references (UR 2.0 §8.13):** <CF / SC / UB / TU ids that touch this item — the conformance findings it must answer>
+- **Provenance of ahead-of-record work (if any):** <the commit(s) that landed unrecorded work this item owns — e.g. `d334cfb` / `581499e` (2026-09-26) — or "none">
 - **Source of truth read:** <documents, sections, ADRs — with the date read>
 - **Blast radius (declared before editing — R2):** <exact files/directories; everything else read-only>
 - **Row triage (tree-vs-UR, before editing):** <per row: DONE / PARTIAL / OPEN against the tree,
@@ -177,3 +188,4 @@ The master traceability index is and remains the frozen UR's own §8.1.2 table (
 | 1.0 | 2026-09-24 | Dumby Core Engineering | Initial template shipped with migration-prompt 5.0.0 |
 | 2.0 | 2026-09-30 | Dumby Core Engineering | Complete rewrite for protocol 5.1.0: withdrawn the copy-on-first-run role (the live ledger at the repository root is authoritative — resume it); the all-NOT-STARTED summary replaced with a dated true-state snapshot (M0 IN-PROGRESS, slices 1–5 DONE, P0 row board, slice map, landing commit); item record shape extended to the fields practice actually writes (rows owned, source-of-truth-read, row triage, change-log entry, deliberate-not-done-with-routing); slice record shape added with the five standing constraints; change-log discipline section added (R11); protocol path corrected (`docs/migration-prompt.md`, not `workspace/docs/…`) |
 | 2.1 | 2026-10-01 | Dumby Core Engineering | Conformance-reconciliation revision for protocol 5.2.0 (UR-20260918-001 rev 2.0, the E1–E10 evidence set): snapshot corrected in both directions — M0 tally 5 DONE / 9 PARTIAL / 3 OPEN (UR-B-01/UR-B-03/UR-C-06 reopened), and M1–M9 marked "record: NOT STARTED — tree: shaped code present" for reconciliation; reconciliation gate and evidence-corpus references added (R12, §3.0.1/§3.0.2); item record shape extended with Evidence references, Tree state, and Ahead-of-record fields; deviation rule range widened to R1–R12 |
+| 2.2 | 2026-10-01 | Dumby Core Engineering | Evidence-extraction revision for protocol 5.3.0: snapshot gains the ahead-of-record **provenance** (commits `d334cfb`/`581499e`, 2026-09-26; prior ledger removed at `9f7e427`), a pointer to the prompt's **tree-state evidence map** (§3.0.3) and **true-unknowns register** (§3.0.4), and the corrected **volume-path vocabulary**; item record shape gains a **Provenance of ahead-of-record work** field |
