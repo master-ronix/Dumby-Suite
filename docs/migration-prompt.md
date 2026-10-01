@@ -8,13 +8,13 @@
 
 **Project:** Dumby — Discord Unified Modular Bot System
 
-**Version:** 5.1.0 — governance revision. Supersedes 5.0.2 in full (see §1.1 for the corrections and Appendix A for the revision record). The scope fence R1–R10 carries forward from 5.0.2 essentially unchanged; 5.1.0 adds the ledger-resume rule, the slice mechanics, the request-row coverage map, and the change-log rule (R11) that the program's own per-request discipline requires.
+**Version:** 5.2.0 — conformance-reconciliation revision. Supersedes 5.1.0 in full (see §1.1 and §1.2 for the corrections and Appendix A for the revision record). 5.1.0 carried the ledger-resume rule, the slice mechanics, the request-row coverage map, and the change-log rule (R11); 5.2.0 absorbs UR-20260918-001 revision 2.0 — the post-re-baseline Conformance & Audit Evidence Set (E1–E10) — by correcting the migration state of record (M0 tally 5 DONE / 9 PARTIAL / 3 OPEN; M1–M9-shaped code present in the tree), adding the state-of-record reconciliation gate (R12), correcting the module source home to `packages/modules/`, and fixing the MR-1 checklist citation.
 
-**Derived from:** `docs/change-log.md` v5.0.0 entry (the consolidated re-baseline and the per-request record discipline it adopts), the frozen request record `docs/ur/UR-20260918-001_Consolidated_Re-Baseline_Request.md` (provenance, impact matrix, and the 121-request master table at its §8.1.2), and `docs/blueprint.md` 5.0.0 (sole architectural authority).
+**Derived from:** `docs/change-log.md` (the v5.0.0 entry and its per-request record discipline, plus the UR 2.0 implementation-track record), the frozen request record `docs/ur/UR-20260918-001_Consolidated_Re-Baseline_Request.md` **revision 2.0** (provenance, impact matrix, the 121-request master table at its §8.1.2, and the conformance-finding register at its §8.13), and `docs/blueprint.md` 5.0.0 (sole architectural authority). UR 2.0's evidence base — the ten-document Conformance & Audit Evidence Set (E1–E10, verified against `df1225e` and `0c625c1`) — is a registered verification record, not a source of new requests.
 
 **When to use this prompt:** the codebase exists and was built against a spec version older than the documentation (typically v4.6.x). The docs have moved to v5.0.0. Your job is to migrate the code, not to re-audit or re-scaffold it.
 
-**CURRENT STATE — read before anything else.** This migration is UNDERWAY, not starting: **M0 is IN-PROGRESS** (slices 1–5 DONE; 8 of 17 P0 rows closed, 6 partial, 3 open; slice 6 is the next — and last — M0 slice), every other item is NOT STARTED. Slices 1–5 landed on `feature/dev` in commit `0c625c1` (2026-09-29). The session-generated ledger that recorded them was retired from the repository root on 2026-09-30 at the document set owner's direction: its records remain recoverable in git history at `0c625c1`, and the state of record is now the per-request record in `docs/change-log.md` plus the dated snapshot in `docs/migration-ledger-template.md` §2. **On the first migration session after this revision:** construct a fresh `migration-ledger.md` at the repository root from the template's record shapes, seed it with the snapshot state (M0 IN-PROGRESS at slice 6), then resume. From that moment the ledger is live and authoritative — you update it at the end of every item and slice, and never re-create, re-initialize, or overwrite it.
+**CURRENT STATE — read before anything else.** This migration is UNDERWAY, not starting, and **the state of record is stale in both directions** (UR 2.0 finding 17 / §8.13.2). M0 is IN-PROGRESS: slices 1–5 landed on `feature/dev` in commit `0c625c1` (2026-09-29), but the tally is **corrected to 5 DONE / 9 PARTIAL / 3 OPEN** — UR-B-01, UR-B-03 and UR-C-06 reopen from DONE to PARTIAL (owner-approval workflow; bind-host coverage 4/8; connection/byte limits). M1–M9 are recorded NOT STARTED, but the tree at `df1225e` **already contains M1/M2/M3/M5/M6/M7/M8/M9-shaped code and tests** (tier volumes + blind discovery + `packages/swastik`; unified `src/commands`; the CoreRenderer + embed/DM gates; the license machine; the promotion pipeline; the persona model; envelope encryption) with **no R11 change-log lines**. The first-party module sources live in **`packages/modules/`** — not the `apps/main/src/modules/` a 5.1.0-era reading might assume. The session-generated ledger was retired from the repository root on 2026-09-30 (recoverable at `0c625c1`); the state of record is the change-log per-request record plus the template's §2 snapshot. **Before any M-item executes, run the state-of-record reconciliation (R12, §3.0.2):** rebuild the ledger from the template's shapes, re-triage all 121 rows against the TREE (not the snapshot), and record ahead-of-record work honestly. Never follow this work order verbatim against the snapshot — that is exactly the redo-landed-work risk UR 2.0 raises (its risk #15).
 
 **Relationship to the Master Build Prompt:** this prompt is a scoped *predecessor* to it. When every item in the Migration Work Order (§3) is marked DONE in the ledger, the master prompt's audit protocol and enforcement pass become the governing protocol again — not before.
 
@@ -50,6 +50,18 @@ These are recorded because a protocol that drifts from reality is the exact fail
 | 4 | No slice mechanics | The live migration already runs on slices with hard-won conventions (triage-before-code, fail-before/pass-after proof, full-suite gate per slice, PARTIAL-with-routing) — none of it was in the protocol, so each session had to re-derive it. | §5 makes slices first-class: when to slice, the slice record shape, and the five standing slice constraints the ledger earned the expensive way. |
 | 5 | The MR table's separator row was malformed (`\|---\|---\|---\|---\|---n\| MR-1 \|…`), swallowing MR-1's row; "twenty items in two blocks" (it is three blocks); `tools/release-manager` (the tree has `tools/release_manager`) | Small defects, but a protocol document that fails its own grep gates is misleading in exactly the way it forbids. | Fixed throughout; the MR table is whole. |
 
+### 1.2 Corrections made in 5.2.0 — what UR 2.0 changed
+
+The frozen request record advanced to **revision 2.0** (01/10/2026), absorbing a post-re-baseline Conformance & Audit Evidence Set (E1–E10). It does not add source requests — the master table stays at exactly 121 rows — but it corrects this prompt's facts. Full detail in Appendix A.
+
+| # | 5.1.0 said | UR 2.0 evidence | The 5.2.0 correction |
+|---|---|---|---|
+| 1 | M0: 8 DONE / 6 PARTIAL / 3 OPEN | Three DONE rows overstated — UR-B-01 (owner-approval clause), UR-B-03 (bind-host coverage 4/8), UR-C-06 (connection/byte limits) (E1 §3; E3 §1.2; E6 GOV-01) | M0 tally corrected to **5 DONE / 9 PARTIAL / 3 OPEN**; the three rows reopen to PARTIAL (§M0; change-log SC-01) |
+| 2 | Every item but M0 "NOT STARTED" | M1/M2/M3/M5/M6/M7/M8/M9-shaped code + tests exist in the tree, with no R11 lines (E6 GOV-13; E4 PRE-45; E2 S-41; E5 XC-03; E10 RC-5) | Rule R12 + §3.0.2: reconcile the state of record against the tree before any M-item; record ahead-of-record work (SC-02/SC-03) |
+| 3 | MR modules come from `apps/main/src/modules/<module>/` | The real home is `packages/modules/`; `apps/main/src/modules/` does not exist (E6 GOV-12; E2 S-27; E5 MOD-02) | MR block's source path corrected to `packages/modules/` (§MR) |
+| 4 | MR-1 reads "Division 8.10 testing checklist" | Division 8.10 is a miscite; the checklist is §10.10 (E10 C-8/R3; E6 GOV-25) | MR-1 citation corrected to §10.10 |
+| 5 | UR-20260918-001 revision 1.0 | Revision 2.0 registers E1–E10 and a conformance-finding register (UR §3.1.1, §8.13) | "Derived from" and the sources of truth now cite UR 2.0 and the evidence corpus |
+
 ---
 
 ## 2. HARD RULES — THE SCOPE FENCE
@@ -77,6 +89,8 @@ These rules override every other instruction you may have read in the documentat
 **R10 — One item at a time, in order.** You do not interleave items, work ahead, or batch "quick wins" across items. The order in §3 is the order. Each item builds on the completed ones before it.
 
 **R11 — The change-log line is part of the done-gate.** When a work-order item (or slice) closes request rows in code, you append one line per closed row to `docs/change-log.md` under the **v5.0.0 implementation track — per-request record** (format in §6). An item is not DONE while any row it closed lacks its line. Rows that close PARTIAL get their line with the PARTIAL status and the routing; rows that stay OPEN get none until they close. Missed lines are backfilled at discovery, logged as a deviation — never skipped, never batched to "later" without a ledger record.
+
+**R12 — Reconcile the state of record before you execute.** Before claiming any M-item, run the state-of-record reconciliation (§3.0.2): rebuild the ledger from the template's shapes and re-triage every row the item owns against the TREE at working HEAD — never against the snapshot or the UR text, which are frozen and lag the tree. The UR 2.0 evidence shows M1–M9-shaped code already exists; following the work order verbatim without reconciling would redo landed work or reopen closed rows (UR 2.0 risk #15). Ahead-of-record work is recorded as **PRESENT IN TREE** with its evidence; whether it is credited as DONE/PARTIAL is governed by the open policy question (UR §8.1.3 #19) and must not be decided unilaterally — until it is, such rows stay recorded-but-uncredited, never silently marked DONE and never marked NOT STARTED.
 
 ---
 
@@ -110,13 +124,29 @@ The governing program record (UR-20260918-001) puts all 121 requests in one mast
 
 Two coverage notes, recorded as corrections of 5.0.2: **UR-07 (Global Data Emit) and UR-31 (per-guild Redis pub/sub MDIS sync) were named by no work-order item and by no phase of the UR's own rollout table.** Both are assigned to M9 above; if M9's execution reveals a better home, move them by a logged deviation, never silently. A third note: several rows are *shared-carrier* rows — UR-01's console lands via UR-A-02/UR-B-09/UR-C-06, UR-17's credential domain via UR-B-05/UR-C-04/UR-C-05, UR-24's PEP surface via UR-B-08 — the M9 record must state, per program row, which suite rows carried it.
 
+### 3.0.1 The Evidence Corpus (UR 2.0)
+
+UR-20260918-001 revision 2.0 registers a ten-document **Conformance & Audit Evidence Set** (its §3.1.1; E1–E10), verified against `df1225e` (conformance + architecture) and `0c625c1` (full codebase audit). It carries 242 conformance findings across five workstreams (structure 47, security 40, presentation 50, data/ops 74, governance 31), a 310-file architecture audit (E9, superseding E8), and a documentation-system audit (E10: RC-1…RC-5, C-1…C-10, R1…R13, I1…I13). It is a **verification record, not a source of requests** — the master table (§3.0) stays at exactly 121 rows. Its documentation actions are catalogued in the UR's §8.13 register (CF-01…CF-30 spec defects, SC-01…SC-04 state corrections, UB-01…UB-15 undocumented reality, TU-01…TU-24 true unknowns). Read it before reconciling the state of record; do not treat its code-defect findings as migration work (they execute under their own programs).
+
+### 3.0.2 The State-of-Record Reconciliation Gate (R12) — run before M1
+
+The evidence set found the record and the tree disagree (UR 2.0 finding 17). Before any M-item beyond the M0 slice already in flight, perform, and record in the ledger:
+
+1. **Rebuild the ledger from the tree.** Construct the fresh ledger (template shapes), then re-triage **all 121 rows** against working HEAD — for each row: `DONE / PARTIAL / PRESENT-IN-TREE / ABSENT`, with the file/test evidence that proves it. This supersedes the template's §2 snapshot, which is a starting orientation only.
+2. **Correct the M0 record.** Reopen UR-B-01, UR-B-03, UR-C-06 to PARTIAL (their clauses are in the UR §8.13.2 SC-01); record M0 as 5 DONE / 9 PARTIAL / 3 OPEN.
+3. **Record ahead-of-record work (SC-02).** For each M1–M9-shaped implementation the triage finds, write the R11 change-log line the protocol owed — marked **PRESENT IN TREE (uncredited pending UR §8.1.3 #19)**. Do not credit it as DONE; do not leave it invisible.
+4. **Record the corrections SC-04** (change-log master-table line counts: blueprint 13,139 not 13,258; concept 581 not 582) and CF-22 (legacy "DRM" in the change-log's living open-items section).
+5. **Resolve or carry the blocking open questions** (UR §8.1.3 #13 layout model, #14 module source home, #15 hello-world tier, #18 Swastik path vocabulary, #19 state-of-record policy) — each is OPEN and gates a specific item's start.
+
+Until steps 1–3 are recorded, no item past the in-flight M0 slice may be claimed.
+
 ### M0 — P0 Security Flaws (do first, smallest blast radius, highest stakes)
 
 **Request rows owned:** the 17 severity-Critical suite rows (§3.0): UR-A-01…04, UR-B-01…06, UR-C-01…07.
 **Source of truth:** `docs/ur/UR-20260918-001` §8.1.2 rows 34–37, 64–69, 92–98 — read the rows before touching anything.
 **Blast radius:** only the files named by P0 flaw rows (declared per slice in the ledger; the retired pre-5.1.0 M0 record with the standing declarations is recoverable in git history at `0c625c1` — re-declare slice 6's radius from its rows before editing).
 **Done-gate:** each P0 flaw row has a test that fails before the fix and passes after; no control plane accepts unauthenticated connections; all path handling is contained. A row whose full remedy depends on a P1/P2 row (e.g. UR-A-03 and UR-C-07 name UR-C-09 as their own dependency) closes PARTIAL with routing evidence, never force-fitted.
-**Current state:** slices 1–5 DONE (admin auth; loader path containment; honest 501s; fail-closed unknown tier; Swastik internal auth); slice 6 — provenance, ownership, credentials (UR-B-04, UR-B-05, UR-C-05 plus closable partials) — is the last M0 slice. 8 of 17 rows DONE, 6 PARTIAL, 3 OPEN. Last verified: 75 files / 876 tests green; typecheck, lint, format, coverage clean.
+**Current state:** slices 1–5 landed (admin auth; loader path containment; honest 501s; fail-closed unknown tier; Swastik internal auth); slice 6 — provenance, ownership, credentials (UR-B-04, UR-B-05, UR-C-05 plus closable partials) — is the last M0 slice. **Tally corrected by UR 2.0 (§8.13.2 SC-01): 5 DONE / 9 PARTIAL / 3 OPEN** — UR-B-01, UR-B-03 and UR-C-06 reopen from DONE to PARTIAL. Last verified: 75 files / 876 tests green; typecheck, lint, format, coverage clean.
 
 ### M1 — Tier Volumes & Blind Discovery (module relocation)
 
@@ -190,7 +220,7 @@ Runs after M8 and before M9. Prerequisites: every item M0–M8 DONE — the modu
 
 Each MR item follows the per-item execution loop (§4) with these bindings:
 
-**Source and target.** The module's old implementation comes from the git tag `pre-m1-modules` (`git show pre-m1-modules:apps/main/src/modules/<module>/`). Begin with a salvage audit: keep every behavior v5.0.0 still calls for, and record the kept-vs-superseded split in the ledger. The target is the `swastik` `_template` 11-folder layout with the full v5.0.0 manifest (tier, version, granular permissions, dependencies, configSchema, commands, events, assets), colocated tests, and the en-US base locale.
+**Source and target.** The current first-party module sources live in **`packages/modules/<module>/`** — the tree's real home (`apps/main/src/modules/` does not exist; UR 2.0 finding 18 / UB-01); the pre-M1 implementation is recoverable from the git tag `pre-m1-modules` (`git show pre-m1-modules:apps/main/src/modules/<module>/`). Begin with a salvage audit: keep every behavior v5.0.0 still calls for, and record the kept-vs-superseded split in the ledger. The target is the `swastik` `_template` 11-folder layout with the full v5.0.0 manifest (tier, version, granular permissions, dependencies, configSchema, commands, events, assets), colocated tests, and the en-US base locale.
 
 **Presentation.** Exclusively through the Renderer: Components v2 Modes D/M/C, buffer-then-render (instant buffer embed, exactly one edit into the final render or the formal notice frame with reason code + trace correlation ID), the single official accent `#5865F2`, and the A4 title/attribution grammar — attribution in the footer slot, never the title (ADR-001, ADR-002, ADR-009, ADR-010). No classic `EmbedBuilder`/`MessageEmbed` anywhere in module code; the main bot never DMs.
 
@@ -204,7 +234,7 @@ Each MR item follows the per-item execution loop (§4) with these bindings:
 
 | Item | Module | Tier | Read before coding | Done-gate |
 |---|---|---|---|---|
-| MR-1 | `hello-world` | Standard | `interface.md` hello-world division + Division 8.10 testing checklist; blueprint §11, §12.21 | Every Division 8.10 checklist item passes live |
+| MR-1 | `hello-world` | Standard | `interface.md` hello-world division + the §10.10 testing checklist (UR 2.0 CF-17: "Division 8.10" was a miscite); blueprint §11, §12.21 | Every §10.10 checklist item passes live |
 | MR-2 | `health` | Core | `interface.md` `/health` card spec | Full card renders exactly; edit-in-place only, never a second message |
 | MR-3 | `browse` | Core | `interface.md` browse division | Install/uninstall round-trips through the Swastik pipeline |
 | MR-4 | `queue` | Core | `interface.md` queue division; blueprint §17.8 + §17.8.1 (BCCM, `guild_command_queue`) | Renames/aliases/disables queue in the 12–13h window, respect Discord's 200/day creation limit, honest pending UI |
@@ -279,7 +309,8 @@ The v5.0.0 entry of `docs/change-log.md` adopts the per-request record disciplin
 - **When:** at slice/item close (loop step 9), for every row that reached DONE or PARTIAL in that pass. OPEN rows get no line yet.
 - **What each line records:** the request ID, its UR §8.1.2 row number, the ledger item/slice that landed it, a one-clause record of the change, the status (DONE / PARTIAL-routed), and the proof (test name or revert experiment).
 - **Protocol revisions of this prompt or the ledger template** are recorded as lines in the same section, citing their own version history (Appendix A) — this prompt is a governed document like any other in the set; its revisions are change-log events, not silent edits.
-- **Backfilling:** lines missed before R11 existed are recorded at discovery with their true landing dates (M0 slices 1–5 have been backfilled in the change-log at the time of this revision). Backfills are logged as deviations in the ledger.
+- **Backfilling:** lines missed before R11 existed are recorded at discovery with their true landing dates (M0 slices 1–5 have been backfilled in the change-log at the time of the 5.1.0 revision). Backfills are logged as deviations in the ledger.
+- **Ahead-of-record work (UR 2.0 SC-02):** implementations the tree already contains before the protocol recorded them — the M1–M9-shaped code (tier volumes, unified commands, Renderer, license machine, promotion pipeline, persona model, envelope encryption) — get their R11 lines written at reconciliation (§3.0.2), marked **PRESENT IN TREE (uncredited pending UR §8.1.3 #19)**. Crediting them as DONE/PARTIAL is the open policy question; record, never assume.
 - **Reconciliation:** M11's done-gate includes a count match — ledger rows DONE/PARTIAL vs. change-log lines, and the 121/121 coverage map. Any mismatch fails the convergence pass.
 
 ---
@@ -289,6 +320,7 @@ The v5.0.0 entry of `docs/change-log.md` adopts the per-request record disciplin
 You are explicitly forbidden, for the entire duration of this migration, from:
 
 - Overwriting, re-initializing, or re-creating `migration-ledger.md` (or copying `docs/migration-ledger-template.md` over it) — the ONE exception being the first-session construction sanctioned by the CURRENT STATE section above. The live ledger is the source of truth; resume from it.
+- Following the work order verbatim without first reconciling the state of record (R12, §3.0.2) — the UR 2.0 risk of redoing landed work or reopening closed rows.
 - Running a full-project `tsc --noEmit` fix-loop before or between items (only at M11).
 - Fixing compile errors in files outside the current blast radius (log them, R3).
 - Deleting or rewriting bootstrap, DI, shutdown, or any core subsystem not named in the current item's blast radius.
@@ -301,7 +333,7 @@ You are explicitly forbidden, for the entire duration of this migration, from:
 
 ## 8. COMPLETION
 
-The migration is complete when: every item in the work order — M0–M11 and MR-1–MR-8 — is DONE in the ledger; the convergence pass is green; the coverage map reconciles (121 rows, 121 owners, 0 orphans); every DONE and PARTIAL row has its change-log line; and the ledger's final entry hands control back to the Master Build Prompt as the governing protocol.
+The migration is complete when: the state-of-record reconciliation (R12) is recorded (every row re-triaged against the tree; ahead-of-record work credited or carried per UR §8.1.3 #19); every item in the work order — M0–M11 and MR-1–MR-8 — is DONE in the ledger; the convergence pass is green; the coverage map reconciles (121 rows, 121 owners, 0 orphans); every DONE and PARTIAL row has its change-log line; the UR 2.0 completion criteria that touch the corpus (its §12.1: spec-corpus defects repaired, state of record reconciled, `packages/modules/` documented, every true unknown owned) are met; and the ledger's final entry hands control back to the Master Build Prompt as the governing protocol.
 
 **Anything less is not done. Anything more (out-of-scope fixes smuggled in) is a defect of this protocol's execution and must be reverted or recorded in the ledger as a deviation.**
 
@@ -317,5 +349,6 @@ This prompt is a governed document: its revisions are change-log events (recorde
 | 5.0.1 | 2026-09-25 | Dumby Core Engineering | Work-order refinements from the first sessions; ledger checkpoint rules tightened |
 | 5.0.2 | 2026-09-25 | Dumby Core Engineering | Absorbed and superseded `module-rewrite-prompt.md` and `one-time-mr-prompt.md` (both obsolete, discarded); added the MR-1…MR-8 module-rewrite block |
 | 5.1.0 | 2026-09-30 | Dumby Core Engineering | Governance revision after M0 slices 1–5: withdrew the destructive first-run ledger-copy instruction (the ledger is live — resume it); added R11 and §6 (change-log lines are part of the done-gate, per the UR-20260918-001 §8.8 discipline the 5.0.x prompt never enforced); added §3.0 request-row coverage map (all 121 UR rows assigned; UR-07 and UR-31 gain an owning item); added §5 slice mechanics (triage-before-code, fail-before/pass-after, full-suite gate, PARTIAL-with-routing — the conventions M0 earned); fixed the malformed MR table, the block count, and the `release_manager` path |
+| 5.2.0 | 2026-10-01 | Dumby Core Engineering | Conformance-reconciliation revision after UR-20260918-001 advanced to revision 2.0 (the E1–E10 Conformance & Audit Evidence Set): corrected the migration state of record (M0 tally 5 DONE / 9 PARTIAL / 3 OPEN — UR-B-01/UR-B-03/UR-C-06 reopened; M1–M9-shaped code present in the tree); added rule R12 and §3.0.2 (state-of-record reconciliation gate); added §3.0.1 (evidence corpus); corrected the MR module source home to `packages/modules/`; fixed the MR-1 §10.10 checklist citation; extended §6 (ahead-of-record R11 backfill) and §7; added the UR 2.0 completion criteria to §8 |
 
-*End of Re-Baseline Migration Prompt. Version 5.1.0. Record all future revisions in `change-log.md` (implementation track) and in Appendix A.*
+*End of Re-Baseline Migration Prompt. Version 5.2.0. Record all future revisions in `change-log.md` (implementation track) and in Appendix A.*
