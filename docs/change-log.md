@@ -2,7 +2,7 @@
 
 > **One project. One continuous history.**
 > Archive lineage: v1.0.0 → FINAL (13 drafts) · Living reference pair: v4.5.1 (`documentation.md` · `blueprint.md`) · Living document set: v5.0.0 (nine canonical documents · `docs/adr/` · `docs/ur/`)
-> Last recorded: 2026-10-01 (UR-20260918-001 rev 2.0 — post-re-baseline Conformance & Audit Evidence Set; migration protocol 5.2.0 and the corrected M0 per-request record)
+> Last recorded: 2026-10-01 (UR-20260918-001 rev 2.0 — post-re-baseline Conformance & Audit Evidence Set read finding-by-finding; migration protocol 5.3.0 and the corrected M0 per-request record)
 
 ---
 
@@ -687,6 +687,19 @@ file owed (CF-22, CF-27), and the protocol revision they triggered._
   reconciliation gate — re-triage all 121 rows against the tree before any M-item); added §3.0.1
   (evidence corpus); corrected the migration state of record (below); corrected the MR module source
   home to `packages/modules/` and the MR-1 checklist citation to §10.10.
+- **2026-10-01 — migration-prompt.md 5.2.0 → 5.3.0** (evidence-extraction revision) and
+  **migration-ledger-template.md 2.1 → 2.2**: all ten evidence documents (E1–E10) were read
+  finding-by-finding and the specifics landed — the ahead-of-record **provenance** (below), a per-item
+  **tree-state evidence map** (prompt §3.0.3), a **true-unknowns register** (prompt §3.0.4), the
+  evidence classification matrix and the executed 876/876 verification (prompt §3.0.1), and the
+  corrected volume-path vocabulary.
+- **Change-log debt paid (E6 GOV-23).** This protocol's own earlier versions had no change-log lines:
+  migration-prompt.md **5.0.0** (2026-09-24, first release — the twenty-item delta work order),
+  **5.0.1** (2026-09-25, work-order refinements), **5.0.2** (2026-09-25, absorbed
+  `module-rewrite-prompt.md` / `one-time-mr-prompt.md`; added the MR-1…MR-8 block), and
+  migration-ledger-template.md **1.0** (2026-09-24, initial template). Recorded retroactively here,
+  dated to their original issue dates, under the same per-request discipline the set demands of every
+  other document.
 
 **State-of-record corrections (UR §8.13.2):**
 
@@ -700,6 +713,11 @@ file owed (CF-22, CF-27), and the protocol revision they triggered._
   credited, with no R11 lines. Recorded here as **PRESENT IN TREE (uncredited pending UR §8.1.3 #19)**
   — the open policy question on whether ahead-of-record work is credited as DONE/PARTIAL or logged as a
   deviation). Crediting is deferred; visibility is not.
+  **Provenance (E10 RC-5; commits verified against the repo):** the work landed at `d334cfb`
+  (2026-09-26, "land v5.0.0 re-baseline module system, renderer, RBAC, governance, persona, and crypto
+  work") and `581499e` (2026-09-26, "promote builds into tier volumes and seed first-party modules");
+  the prior migration ledger was removed at `9f7e427` (2026-09-26). The work therefore predates the
+  ledger it was never recorded in — the triage's job is to credit or route it, not to rediscover it.
 - **SC-03 — ledger rebuilt from the tree.** All 121 rows must be re-triaged against working HEAD (not the
   snapshot) before any M-item executes (prompt R12 / §3.0.2).
 - **SC-04 — master-table line counts corrected** (row 15 above): blueprint.md **13,139** (not 13,258);
