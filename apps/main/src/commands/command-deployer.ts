@@ -40,6 +40,13 @@ export class CommandDeployer {
     const { registry, logger, config, rest } = this.deps;
     const commands = registry.all();
 
+    // Always clear stale registrations first. A previous deployment may have
+    // registered commands; an empty registry must never leave them live on the
+    // platform. (F3 — command-deployer short-circuit left stale commands up.)
+    if (rest) {
+      await rest.put(Routes.applicationCommands(config.applicationId), { body: [] });
+    }
+
     if (commands.length === 0) {
       logger.info('command-deployer-skip', { reason: 'no commands registered' });
       return;

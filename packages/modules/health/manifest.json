@@ -10,7 +10,12 @@
   "provides": [],
   "intents": [],
   "partials": [],
-  "commands": [],
+  "commands": [
+    {
+      "name": "health",
+      "description": "Ping latency and system health information."
+    }
+  ],
   "events": [],
   "services": [],
   "repositories": [],
@@ -19,7 +24,9 @@
   "routes": [],
   "middleware": [],
   "migrations": [],
-  "locales": ["en-US"],
+  "locales": [
+    "en-US"
+  ],
   "config": {},
   "eventsCatalog": [],
   "crossModuleReads": []

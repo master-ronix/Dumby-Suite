@@ -162,6 +162,7 @@ export async function loadModulesFromTierVolumes(
         if (pkg.onLoad) loadedModule.onLoad = pkg.onLoad;
         if (pkg.onReady) loadedModule.onReady = pkg.onReady;
         if (pkg.onUnload) loadedModule.onUnload = pkg.onUnload;
+        if (pkg.registerCommands) loadedModule.registerCommands = pkg.registerCommands;
         registry.register(loadedModule);
 
         loaded.push(manifest.name);

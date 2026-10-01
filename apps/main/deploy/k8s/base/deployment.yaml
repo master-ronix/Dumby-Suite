@@ -10,7 +10,6 @@ spec:
   selector:
     matchLabels:
       app: dumby
-  # Rolling update — new pods fully ready before old ones terminate.
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -23,14 +22,13 @@ spec:
         tier: bot
     spec:
       serviceAccountName: dumby
-      # 190s = longest shutdown step sum (30 + 30 + 30 + 60 + 10 + 5 + 5 + 5 + 5)
-      # plus a 10s orchestrator buffer. MUST be > SHUTDOWN_TIMEOUT_MS/1000.
-      # See blueprint.md §4.3 and master-prompt.md Part 4.3.
       terminationGracePeriodSeconds: 190
       containers:
         - name: dumby
+          # Pin to an immutable digest in production. `Always` at minimum, so a
+          # node cannot keep serving a cached dumby:latest after a new build.
           image: dumby:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           command: ['node', 'dist/entry/main.js']
           envFrom:
             - configMapRef:
@@ -44,20 +42,10 @@ spec:
               containerPort: 9090
             - name: metrics
               containerPort: 9091
-          # Three distinct probes — each gate on its own bootstrap stage
-          # (blueprint.md §8.2: "Never collapse these into one endpoint").
-          #
-          # startupProbe  → /health/startup  (200 once Stage 15 DISCORD_LOGIN reached)
-          #   Prevents premature liveness checks during slow cold starts.
-          # livenessProbe → /health/liveness (200 once Stage 04 OBSERVABILITY_INIT reached)
-          #   Restarts the pod if the process hangs past the live threshold.
-          # readinessProbe→ /health/readiness(200 once Stage 18 + required modules healthy)
-          #   Removes the pod from Service endpoints while it is booting or draining.
           startupProbe:
             httpGet:
               path: /health/startup
               port: health
-            # Allow up to 60s (12 × 5s) for Discord login before failing.
             initialDelaySeconds: 5
             periodSeconds: 5
             failureThreshold: 12
@@ -96,7 +84,6 @@ spec:
           lifecycle:
             preStop:
               exec:
-                # Give the PID time to receive SIGTERM before SIGKILL.
                 command: ['/bin/sleep', '5']
       volumes:
         - name: modules-admin
