@@ -782,6 +782,7 @@ and the five slice deviations are in `migration-ledger.md` §M0 slice 6a.
 | #1 | — | M9 | `AGENTS.md` stale paths — verified against the tree: the paths it names all match and the retired references are gone (fixed during M0/M1). Its note about the ESLint/vitest blocks still targeting `src/modules/**` is accurate and left as a follow-up | DONE (verified) |
 | #10 | — | M9 | Unused CLAI env keys — removed the two genuinely-dead keys (`CLAI_MFA_ISSUER`, `CLAI_BREAK_GLASS_SCRIPT_URL`) from `env.schema.ts` + `.env.example` (`CLAI_AUTHKEY_STORAGE_URL` is read, so the finding was partly stale); `m9-env-hygiene.test.ts` gates the CLAI family; 16 inert-runtime keys recorded, not removed | DONE |
 | #15 | — | M9 | `QueueManager.pause()`/`resume()` unrouted — the power-engine `pauseQueue`/`resumeQueue` admin routes now call them (optional `queueManager` dep + `QueueManager.list()` + the bootstrap wiring; the 501 fallback stays). Proof: `m9-queue-pause-routing.test.ts` (3 tests). No queues are registered yet — that is the inert-runtime block | DONE |
+| #17 | — | M9 | `createMiddlewareContext` returned `meta: {}`, so `DeferMiddleware` (which reads `ctx.meta['interaction']`) was dead by construction. The context now carries the interaction; `m9-defer-stage.test.ts` proves a `requiresDefer` command is deferred through the pipeline | DONE |
 
 ### UR 2.0 — Post-Re-Baseline Conformance & Audit Evidence (recorded 2026-10-01)
 

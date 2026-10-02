@@ -223,7 +223,9 @@ export class CommandRouter {
       guildId: interaction.guildId,
       commandName: interaction.commandName,
       correlationId: null,
-      meta: {},
+      // Finding #17 — `DeferMiddleware` reads the interaction from the context; an empty `meta`
+      // made the defer stage dead by construction.
+      meta: { interaction },
     };
   }
 
