@@ -717,7 +717,7 @@ and the five slice deviations are in `migration-ledger.md` §M0 slice 6a.
 | Request | Row | item | Record | Status |
 |---|---|---|---|---|
 | R1 | 32 | M4 | Layer 6 canonical ranks (OWNER/ADMINISTRATOR/MODERATOR/HELPER/MEMBER/RESTRICTED) + `CANONICAL_RANK_NAMES` (D21 drift handled); `resolver.ts` layer sequence | DONE (credited) |
-| R2 | 33 | M4 | Layer 7 grant surface (`OVERRIDE_BOUNDARY`, `applyGrant`/`removeGrant`, `InMemoryGrantSurface`) + `rbac.ts` resolution; **no runtime grant writer** (no Postgres `rbac_grants` surface) | PARTIAL |
+| R2 | 33 | M4 | Layer 7 grant surface (`grant-surface.ts`) + `rbac.ts` resolution + the **runtime grant writer** `rbac-grant.repository.ts` (`PostgresGrantWriter`/`InMemoryGrantWriter` over `rbac_grants`, rate-limit↔quota alias). Proof: `tests/unit/m4-grant-writer.test.ts` (7 tests; revert → cannot load); 957/957 suite | DONE |
 | UR-A-07 | 40 | M4 | Layer 2 blacklist — `db-blacklist.ts` `DbBlacklistLookup` | DONE (credited) |
 | UR-A-08 | 41 | M4 | RBAC persistence — `rbac.ts` + migrations 14–17 | DONE (credited) |
 | UR-A-09 | 42 | M4 | Layer order — `resolver.ts` | DONE (credited) |
