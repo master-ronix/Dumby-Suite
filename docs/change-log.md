@@ -693,6 +693,12 @@ and the five slice deviations are in `migration-ledger.md` §M0 slice 6a.
 | UR-05 | 5 | M1 | Blind discovery from tier volumes at bootstrap; no hardcoded module list — `bootstrap.ts` calls `loadModulesFromTierVolumes` at `MODULE_DISCOVER`, no registry seed | DONE (credited) |
 | UR-19 | 19 | M1 | Four per-tier volumes + `swastik-staging` under `MODULES_DIR=/mnt/modules`; tier-at-rest enforced by volume; `src/modules` absent | DONE (credited) |
 
+**M2 — Unified command tree (row 74; PARTIAL-routed 2026-10-02):**
+
+| Request | Row | item | Record | Status |
+|---|---|---|---|---|
+| UR-B-11 | 74 | M2 | Merge clause DONE — unified `src/commands/`, no `src/core/commands` remnant. Enqueue-guild-changes clause NOT done: `command-deployer.ts` still does boot-time delete-then-reregister; the change-queue/BCCM that replaces it is M9's row 44 (`UR-A-11`) | PARTIAL (routed → M9) |
+
 ### UR 2.0 — Post-Re-Baseline Conformance & Audit Evidence (recorded 2026-10-01)
 
 _Basis: UR-20260918-001 revision 2.0 (01/10/2026), which registers the ten-document Conformance &

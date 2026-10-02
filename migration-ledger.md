@@ -3,7 +3,7 @@
 > This file is the single source of truth for migration progress. The agent reads it at the start of every session and updates it at the end of every item and slice. An item without a record here did not happen; an IN-PROGRESS item with a resume note is continued, never restarted. A closed request row without its change-log line (rule R11) did not happen either.
 
 - **Created:** 2026-10-01
-- **Last updated:** 2026-10-02 (v1.8) · **Current item:** **M1 DONE** · **Next item:** M2 (row 74)
+- **Last updated:** 2026-10-02 (v1.9) · **Current item:** **M2 PARTIAL** · **Next item:** M3 (the Core Renderer + module rewrites)
 - **Protocol:** `docs/migration-prompt.md` v5.3.0 (rules R1–R12; work order M0–M8 → MR-1…MR-8 → M9–M11)
 - **Record shapes:** `docs/migration-ledger-template.md` v2.2 §3 (item) and §4 (slice)
 - **Coverage map:** 121 request rows (UR-20260918-001 §8.1.2) → one owning item each, per the prompt's §3.0
@@ -18,7 +18,7 @@
 |------|-------|--------|
 | M0 | P0 security flaws (17 severity-Critical suite rows) | **DONE** — slices 1–5 landed (`0c625c1`); slices 6a, 6b, 6c-i, 6c-ii, 6c-iii and 6c-iv landed. Row board **16 DONE / 1 PARTIAL / 0 OPEN** (UR-A-03 routed to M9). |
 | M1 | Tier volumes & blind discovery | **DONE** — R12-credited (rows 4/5/19); directory target met, `packages/swastik` present; manifest-contract drift routed to M6 |
-| M2 | Unified command tree | Record: NOT STARTED — **tree: shaped code present** (unified `src/commands`) — reconcile, R12 |
+| M2 | Unified command tree | **PARTIAL** — R12: merge DONE (unified `src/commands`, no `src/core`); the deployer still does boot-time delete-then-reregister, whose remedy (change queue/BCCM) is M9's row 44 |
 | M3 | Core Renderer, buffer-then-render, embed ban | Record: NOT STARTED — **tree: shaped code present** (`src/rendering/core-renderer.ts`) — reconcile, R12 |
 | M4 | RBAC Layer 6/7 redesign | Record: NOT STARTED — **tree: shaped code present** (migrations 14–17, `src/permissions/*`) — reconcile, R12 |
 | M5 | License machine, Compatibility Ledger, Deployment Records | Record: NOT STARTED — **tree: shaped code present** (`src/licensing/*`, migration 33) — reconcile, R12 |
@@ -410,13 +410,14 @@ Each item's row-level triage is copied into its item record when it is claimed (
 
 ### M2 — Unified command tree
 
-- **Status:** NOT STARTED (tree: shaped code present — reconcile, R12) · **Started:** — · **Completed:** —
+- **Status:** PARTIAL (R12-credited; row 74's enqueue-changes clause routed to M9) · **Started:** 2026-10-02 · **Completed:** —
 - **Request rows owned:** row 74 (`UR-B-11`)
-- **Evidence references:** E2 S-15; E1 §5 (flat `src/` vs `src/core/` — no owning item, prompt §3.0.4)
-- **Provenance of ahead-of-record work:** `d334cfb` (2026-09-26)
-- **Source of truth read:** `directory.md` (`src/commands/`), `blueprint.md` §17, change-log "Removed" — **not yet read**
-- **Blast radius (declare before editing):** —
-- **Row triage / Tree state / Ahead-of-record work:** — **Done-gate evidence:** — **Change-log entry (R11):** — **What changed:** — **Judgment calls / deviations:** — **Deliberately NOT done, with routing:** — **Resume note:** blocked (M0 first; R12).
+- **Source of truth read (2026-10-02):** `blueprint.md` §17, §15.4; `directory.md` (`src/commands/`); ADR-002; prompt §M2.
+- **Row triage (tree vs UR, at `eef2f71`):** **Row 74 (`UR-B-11`)** — "boot-time delete-then-reregister of commands; enqueue guild changes; merge `src/core/commands` into `src/commands`, resolving ADR 002" → **PARTIAL**. *Merge clause* → **DONE**: unified `src/commands/` (`command-router`, `-registry`, `-deployer`, `-ceiling`, `collision-resolution`); no `src/core/commands` remnant. *Enqueue-guild-changes clause* → **NOT DONE, routed**: `command-deployer.ts` still `put`s an empty body then the new set at boot (global + per guild); the change-queue/BCCM that replaces it is **M9's row 44** (`UR-A-11` — "command-change machinery unwired").
+- **Blast radius:** none (triage only).
+- **Done-gate:** the merge is met; the deploy-then-reregister clause is not, and its remedy is M9's row 44.
+- **Change-log (R11):** row 74 written (PARTIAL-routed).
+- **Resume note:** M2 is PARTIAL; the enqueue residue is M9's. Next is **M3**.
 
 ### M3 — Core Renderer, buffer-then-render & the embed ban
 
@@ -658,3 +659,4 @@ Every request row that reaches DONE or PARTIAL-routed in a pass gets **one line*
 | 1.6 | 2026-10-02 | Dumby Core Engineering | **Slice 6c-v closed** — the governance model refined to the owner's A/A/A decision: PEP operator identity (`PEP_OPERATOR_IDS` + `operator_keypair` issuance + bearer validation), one generic `approvals` table (supersedes `developer_approvals`), and `licenses.state` made authoritative on approval. Deviations #27–#28 added; finding #24 partially resolved. Full suite 950/81 green. M0 remains DONE; next M1 (R12 first). |
 | 1.7 | 2026-10-02 | Dumby Core Engineering | **Slice 6c-vi closed** (finding #24 resolved): `bootstrap.ts` supplies `operatorAllowList` (`PEP_OPERATOR_IDS`), `operatorVerifier` and `credentialActivator` (one shared `HttpCredentialClient`) to `adminDeps`, arming the governance approve/decline route end-to-end. Deviation #29 (bootstrap edited, outside the M0 fence, per owner instruction). Full suite 950/81 green. M0 remains DONE; next M1. |
 | 1.8 | 2026-10-02 | Dumby Core Engineering | **R12 reconciliation completed** (item-level re-triage of M1–M11 against the tree; ahead-of-record work credited per owner decision #19; open questions #13/#14/#15/#18/#19 resolved). **M1 closed DONE** (rows 4/5/19 credited; no code change — the tree meets the done-gate). Next: M2 (row 74). |
+| 1.9 | 2026-10-02 | Dumby Core Engineering | **M2 triaged → PARTIAL.** Row 74 (`UR-B-11`): merge clause DONE (unified `src/commands`, no `src/core`); enqueue-guild-changes clause NOT done — `command-deployer.ts` still does boot-time delete-then-reregister — routed to M9's row 44 (change queue/BCCM). Next: M3. |
