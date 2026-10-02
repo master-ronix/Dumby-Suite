@@ -773,6 +773,12 @@ and the five slice deviations are in `migration-ledger.md` §M0 slice 6a.
 |---|---|---|---|---|
 | — | — | MR-2…MR-8 | All seven Core-tier modules rewritten one-shot into the template layout: a full Core manifest, a schema-declared command (`defineCommand`; `queue`/`permit` carry slash-command options), the en-US locale, `package.json`, and the `_template` folders. Proof: `mr2-8-core-modules.test.ts` (14 tests); all 8 modules build | DONE (live items routed) |
 
+**M9 — Remaining implementation-flaw corrections (57 rows; started 2026-10-02):**
+
+| Request | Row | item | Record | Status |
+|---|---|---|---|---|
+| UR-C-13 / UR-B-21 | — | M9 | CI hygiene — `.github/workflows/ci.yml` verified (secrets stay off `run:`); `.github/dependabot.yml` added (github-actions + npm, weekly, grouped) | PARTIAL (SHA pins pending the real SHAs) |
+
 ### UR 2.0 — Post-Re-Baseline Conformance & Audit Evidence (recorded 2026-10-01)
 
 _Basis: UR-20260918-001 revision 2.0 (01/10/2026), which registers the ten-document Conformance &

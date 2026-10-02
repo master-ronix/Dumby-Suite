@@ -3,7 +3,7 @@
 > This file is the single source of truth for migration progress. The agent reads it at the start of every session and updates it at the end of every item and slice. An item without a record here did not happen; an IN-PROGRESS item with a resume note is continued, never restarted. A closed request row without its change-log line (rule R11) did not happen either.
 
 - **Created:** 2026-10-01
-- **Last updated:** 2026-10-02 (v1.21) · **Current item:** **MR-1…MR-8 DONE (the module-rewrite block)** · **Next item:** M9 (remaining implementation-flaw corrections)
+- **Last updated:** 2026-10-02 (v1.22) · **Current item:** **M9 IN PROGRESS (CI hygiene started)** · **Next item:** M9 (57 rows, row-by-row)
 - **Protocol:** `docs/migration-prompt.md` v5.3.0 (rules R1–R12; work order M0–M8 → MR-1…MR-8 → M9–M11)
 - **Record shapes:** `docs/migration-ledger-template.md` v2.2 §3 (item) and §4 (slice)
 - **Coverage map:** 121 request rows (UR-20260918-001 §8.1.2) → one owning item each, per the prompt's §3.0
@@ -33,7 +33,7 @@
 | MR-6 | permit module rewrite (Core-tier) | **DONE** — schema-declared command + full manifest + locale; live items routed |
 | MR-7 | modules module rewrite (Core-tier) | **DONE** — schema-declared command + full manifest + locale; live items routed |
 | MR-8 | dashboard module rewrite (Core-tier) | **DONE** — schema-declared command + full manifest + locale; live items routed |
-| M9 | Remaining implementation-flaw corrections | Record: NOT STARTED — **tree: shaped code present** (`m9-*` suites) — reconcile, R12 |
+| M9 | Remaining implementation-flaw corrections | **IN PROGRESS** — 57 rows. Done: Dependabot (UR-C-13/UR-B-21) + the CI secret check (secrets stay off `run:`). Remaining: the SHA pins (need 2 dereferenced tag commits + dependency-review's), the `isMainEntry` guards (UR-C-23, a 5-entry-point refactor), the inert runtime (queues/scheduler/gateway/tracing/metrics), and the residual clauses. |
 | M10 | Terminology & legacy-name sweep | NOT STARTED — record says NOT STARTED, §3.0.3 reports the living set already clean |
 | M11 | Convergence pass | NOT STARTED — the only item that may run a full-project gate (R5) and the master prompt's audit protocol |
 
@@ -557,13 +557,15 @@ Each item's row-level triage is copied into its item record when it is claimed (
 
 ### M9 — Remaining implementation-flaw corrections
 
-- **Status:** NOT STARTED (tree: shaped code present — reconcile, R12) · **Started:** — · **Completed:** —
-- **Request rows owned:** 57 rows — program rows 1 (`UR-01`), 7 (`UR-07`), 17 (`UR-17`), 24 (`UR-24`), 31 (`UR-31`) and every suite row not owned by M0–M8, including the residual clauses of rows M0 closed PARTIAL (UR-A-03's middleware wiring, UR-C-07's verify/quarantine/cache-bust if slice 6 does not land, UR-B-02's and UR-C-01's remaining clauses, UR-C-03, UR-C-04)
-- **Evidence references:** E1 §2.2 + E5 §31 (CI hygiene: SHA-pin, secrets off `run:`, Dependabot); true unknowns routed here — UR-C-23 (`isMainEntry` guards, findings #11/#16), UR-B-08 (finding #15 `QueueManager.pause()`), finding #3 (inert middlewares), finding #17 (`createMiddlewareContext` `meta: {}`), finding #18 (layer-7 backstop masking earlier defects), finding #19 (`command-registry.register` accepts an unregistered module), finding #1 (`AGENTS.md` stale paths)
-- **Provenance of ahead-of-record work:** `d334cfb` (2026-09-26) — `m9-*` suites and `createHmac` (UR-B-19)
-- **Source of truth read:** UR §8.1.2 — the suite rows not owned elsewhere, excluding the P0 rows — **not yet read**
-- **Blast radius (declare before editing):** per flaw row, declared before each fix
-- **Row triage / Tree state / Done-gate evidence / Change-log entry (R11) / What changed / Judgment calls / routing:** — **Resume note:** blocked (M0 first).
+- **Status:** IN PROGRESS (started 2026-10-02; 57 rows, row-by-row) · **Started:** 2026-10-02 · **Completed:** —
+- **Request rows owned:** 57 rows — program rows 1 (`UR-01`), 7 (`UR-07`), 17 (`UR-17`), 24 (`UR-24`), 31 (`UR-31`) and every suite row not owned by M0–M8, including the residual clauses of rows M0 closed PARTIAL (UR-A-03's middleware wiring, UR-C-07's verify/quarantine/cache-bust, UR-B-02's and UR-C-01's remaining clauses, UR-C-03, UR-C-04)
+- **Source of truth read (2026-10-02):** `docs/ur/UR-20260918-001` §8.1.2 (the suite rows not owned elsewhere, excluding the P0 rows); prompt §M9.
+- **Row triage (tree vs UR, at `c8268e0`):** **CI hygiene (UR-C-13 / UR-B-21)** — `.github/workflows/ci.yml` analysed: secrets are already off `run:` (the only `secrets.*` is `GITHUB_TOKEN` in an `env:` block), so that clause holds; **done** — added `.github/dependabot.yml` (github-actions + npm, weekly, grouped). The **SHA pins** are outstanding: 4 of the 6 action tags resolve to commit SHAs, but `pnpm/action-setup@v6` and `gitleaks/gitleaks-action@v2` are annotated tags needing dereferencing and `actions/dependency-review-action@v5` did not resolve — so the pins will be done with the real SHAs rather than guessed. **UR-C-23 (`isMainEntry` guards, findings #11/#16)** — `main.ts` and `worker.ts` carry the guard; `pep.ts`, `ssh-clai.ts`, `credentials.ts`, `swastik.ts` and `twixter.ts` run their `listen`/`start` at module scope behind no guard. The fix is a real refactor (the module-scope body must move behind the guard for the files to be importable), so it is scoped as its own step. **The inert runtime** (queues/scheduler/gateway handlers/tracing/metrics) is the block's largest remaining piece.
+- **What changed:** `.github/dependabot.yml` (new).
+- **Done-gate evidence:** the Dependabot config is a CI-hygiene artifact (no unit test applies); verified by inspection against UR-C-13/UR-B-21.
+- **Deliberately NOT done, with routing (within M9):** the SHA pins (need the dereferenced SHAs), the `isMainEntry` guards, the inert runtime, and the residual clauses — each its own step in this block.
+- **Change-log (R11):** UR-C-13/UR-B-21 recorded (partial).
+- **Resume note:** M9 is IN PROGRESS — continue row-by-row (SHA pins → `isMainEntry` guards → the runtime → the residual clauses). Next is the M9 continuation.
 
 ### M10 — Terminology & legacy-name sweep
 
@@ -698,4 +700,5 @@ Every request row that reaches DONE or PARTIAL-routed in a pass gets **one line*
 | 1.18 | 2026-10-02 | Dumby Core Engineering | **M4 finding #25 RESOLVED** — `bootstrap.ts` constructs `new PostgresGrantWriter(db.knex)` and passes it as the router's `grantStore`; `command-router.ts` now loads a guild's Layer-7 grants at dispatch time (falls back to the static list). `tests/unit/m4-grant-writer-wiring.test.ts` (2 tests; drop the wiring → fails). Full suite 987/89 green; tsc clean. All M-series residuals are now closed. Next: **MR-1**. |
 | 1.19 | 2026-10-02 | Dumby Core Engineering | **MR precondition + M3 row 11.** Owner decisions: (1) the MR block's precondition ("every M0–M8 DONE") is unsatisfiable as written because M3's done-gate needs the command surface MR delivers — read it as "every interface the modules need exists" and proceed; (2) the schema-declared authoring mechanism (`defineCommand` + the Renderer page model), which MR-1 needs and the MR fence forbids MR items from adding, is M3's row 11 — build it as M3 framework work. Built: `packages/swastik/src/commands.ts`, the Renderer page-data model (`core-renderer.ts`), `src/commands/module-command.ts`. `m3-schema-authoring.test.ts` (5 tests; un-export → fails). Full suite 992/90 green; tsc clean. Row 11 now DONE. Next: MR-1. |
 | 1.21 | 2026-10-02 | Dumby Core Engineering | **MR-2…MR-8 closed DONE (one-shot).** Rewrote all seven Core-tier modules (`health`, `browse`, `queue`, `persona`, `permit`, `modules`, `dashboard`) into the template layout — full Core manifest, a schema-declared command (`defineCommand`, with options for `queue`/`permit`), the en-US locale, `package.json`, and the `_template` folders. Added optional slash-command options to the authoring API + the bridge. `mr2-8-core-modules.test.ts` (14 tests). All 8 modules build. Full suite 1009/92 green; tsc clean. The MR block is complete; live done-gate items routed to a deployment run. Next: M9. |
+| 1.22 | 2026-10-02 | Dumby Core Engineering | **M9 started (IN PROGRESS, 57 rows).** CI hygiene: verified secrets stay off `run:` in `.github/workflows/ci.yml` and added `.github/dependabot.yml` (github-actions + npm). SHA pins, the `isMainEntry` guards (UR-C-23), the inert runtime and the residual clauses are each scoped as their own step. Next: continue M9 row-by-row. |
 | 1.20 | 2026-10-02 | Dumby Core Engineering | **MR-1 closed DONE (hello-world).** Rewrote `packages/modules/hello-world` into the template layout with the full manifest + a schema-declared `/hello` (`defineCommand`) + locale; completed the mechanism wiring (`LoadedModule.commands` → the volume loader → `ModuleLoader.loadAll` registers via `toCommandDefinition`). `mr1-hello-world.test.ts` (3 tests; un-export → 2 fail). Build emits a 1544-byte bundle. Full suite 995/91 green; tsc clean. §10.10 live items routed to a deployment run. Next: MR-2. |
