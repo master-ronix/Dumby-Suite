@@ -1,85 +1,133 @@
 import { describe, expect, test } from 'vitest';
-import { InMemoryDeveloperApprovalStore } from '../../src/db/repositories/developer-approval.repository.js';
-import { decideDeveloperApproval } from '../../src/governance/developer-approval.js';
+import { InMemoryApprovalStore } from '../../src/db/repositories/approval.repository.js';
+import { decideApproval } from '../../src/governance/approval.js';
+import { createPendingLicense } from '../../src/licensing/license-machine.js';
+import { approveLicenseRecord, licenseFromRow } from '../../src/licensing/license-store.js';
 
-const OWNERS = ['owner-1', 'owner-2'];
+const OPERATORS = ['operator-1', 'operator-2'];
 
-describe('developer approval decision (§15.8)', () => {
-  test('a project owner may approve or decline', () => {
+describe('approval decision (§15.8 / §22.5)', () => {
+  test('an operator in the allow-list may approve or decline', () => {
     expect(
-      decideDeveloperApproval({
-        actorId: 'owner-1',
-        subjectDevId: 'dev-a',
-        projectOwnerIds: OWNERS,
+      decideApproval({
+        actorId: 'operator-1',
+        subjectType: 'developer',
+        subjectId: 'dev-a',
+        operatorAllowList: OPERATORS,
         decision: 'approve',
       }),
     ).toEqual({ kind: 'approved' });
     expect(
-      decideDeveloperApproval({
-        actorId: 'owner-2',
-        subjectDevId: 'dev-a',
-        projectOwnerIds: OWNERS,
+      decideApproval({
+        actorId: 'operator-2',
+        subjectType: 'developer',
+        subjectId: 'dev-a',
+        operatorAllowList: OPERATORS,
         decision: 'decline',
       }),
     ).toEqual({ kind: 'declined' });
   });
 
-  test('a non-owner is refused', () => {
-    const d = decideDeveloperApproval({
-      actorId: 'dev-b',
-      subjectDevId: 'dev-a',
-      projectOwnerIds: OWNERS,
-      decision: 'approve',
-    });
-    expect(d.kind).toBe('refused');
+  test('a non-operator is refused', () => {
+    expect(
+      decideApproval({
+        actorId: 'dev-b',
+        subjectType: 'developer',
+        subjectId: 'dev-a',
+        operatorAllowList: OPERATORS,
+        decision: 'approve',
+      }).kind,
+    ).toBe('refused');
   });
 
-  test('the subject cannot decide their own approval', () => {
-    const d = decideDeveloperApproval({
-      actorId: 'owner-1',
-      subjectDevId: 'owner-1',
-      projectOwnerIds: OWNERS,
-      decision: 'approve',
-    });
-    expect(d.kind).toBe('refused');
+  test('the subject cannot decide its own approval', () => {
+    expect(
+      decideApproval({
+        actorId: 'operator-1',
+        subjectType: 'developer',
+        subjectId: 'operator-1',
+        operatorAllowList: OPERATORS,
+        decision: 'approve',
+      }).kind,
+    ).toBe('refused');
   });
 
   test('a service/automation actor is refused even if listed', () => {
-    const d = decideDeveloperApproval({
-      actorId: 'service',
-      subjectDevId: 'dev-a',
-      projectOwnerIds: [...OWNERS, 'service'],
-      decision: 'approve',
-    });
-    expect(d.kind).toBe('refused');
+    expect(
+      decideApproval({
+        actorId: 'service',
+        subjectType: 'module',
+        subjectId: 'foo',
+        operatorAllowList: [...OPERATORS, 'service'],
+        decision: 'approve',
+      }).kind,
+    ).toBe('refused');
   });
 
   test('an empty actor is refused', () => {
     expect(
-      decideDeveloperApproval({
-        actorId: '  ',
-        subjectDevId: 'dev-a',
-        projectOwnerIds: OWNERS,
+      decideApproval({
+        actorId: '   ',
+        subjectType: 'developer',
+        subjectId: 'dev-a',
+        operatorAllowList: OPERATORS,
         decision: 'approve',
       }).kind,
     ).toBe('refused');
   });
 });
 
-describe('developer approval store (in-memory)', () => {
+describe('approval store (generic, in-memory)', () => {
   test('a pending request is created once and decided in place', async () => {
-    const store = new InMemoryDeveloperApprovalStore();
-    await store.requestPending('dev-a');
-    await store.requestPending('dev-a'); // idempotent
-    expect((await store.findPending('dev-a'))?.status).toBe('pending');
-    await store.decide('dev-a', 'approved', 'owner-1', 'looks good');
-    const after = await store.findPending('dev-a');
-    expect(after).toBeUndefined();
+    const store = new InMemoryApprovalStore();
+    await store.requestPending('developer', 'dev-a');
+    await store.requestPending('developer', 'dev-a'); // idempotent
+    expect((await store.findPending('developer', 'dev-a'))?.status).toBe('pending');
+    await store.decide('developer', 'dev-a', 'approved', 'operator-1', 'ok');
+    expect(await store.findPending('developer', 'dev-a')).toBeUndefined();
+  });
+
+  test('subjects are keyed by (subjectType, subjectId)', async () => {
+    const store = new InMemoryApprovalStore();
+    await store.requestPending('module', 'dev-a');
+    expect(await store.findPending('developer', 'dev-a')).toBeUndefined();
+    expect(await store.findPending('module', 'dev-a')).toBeDefined();
   });
 
   test('a decision with no open request still records a row', async () => {
-    const store = new InMemoryDeveloperApprovalStore();
-    await store.decide('dev-z', 'declined', 'owner-1', 'no license');
-    expect(await store.findPending('dev-z')).toBeUndefined();
+    const store = new InMemoryApprovalStore();
+    await store.decide('developer', 'dev-z', 'declined', 'operator-1', 'no license');
+    expect(await store.findPending('developer', 'dev-z')).toBeUndefined();
+  });
+});
+
+describe('license is authoritative on approval (§15.7)', () => {
+  test('approveLicenseRecord drives pending -> under-review -> approved', () => {
+    const approved = approveLicenseRecord(createPendingLicense('lic-1', 'dev-a'), 'operator-1', 'ok');
+    expect(approved.state).toBe('approved');
+    expect(approved.approvedBy).toBe('operator-1');
+    expect(approved.approvedAt).toBeDefined();
+  });
+
+  test('an already-approved license is returned unchanged', () => {
+    const first = approveLicenseRecord(createPendingLicense('lic-1', 'dev-a'), 'operator-1');
+    expect(approveLicenseRecord(first, 'operator-1').state).toBe('approved');
+  });
+
+  test('a revoked license has no path back to approved', () => {
+    const revoked = { ...createPendingLicense('lic-1', 'dev-a'), state: 'revoked' as const };
+    expect(approveLicenseRecord(revoked, 'operator-1').state).toBe('revoked');
+  });
+
+  test('licenseFromRow maps a database row', () => {
+    const record = licenseFromRow({
+      licenseId: 'lic-1',
+      subjectDevId: 'dev-a',
+      tierClass: 'core',
+      state: 'pending',
+      approvedBy: 'operator-1',
+    });
+    expect(record.tierClass).toBe('core');
+    expect(record.approvedBy).toBe('operator-1');
   });
 });

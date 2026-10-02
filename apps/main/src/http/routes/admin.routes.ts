@@ -4,8 +4,15 @@ import type { ConfigService } from '../../config/config.service.js';
 import type { DbClient } from '../../db/client.js';
 import type { CommandCeilingService } from '../../commands/command-ceiling.js';
 import type { CollisionResolutionService } from '../../commands/collision-resolution.js';
-import { PostgresDeveloperApprovalStore } from '../../db/repositories/developer-approval.repository.js';
-import { decideDeveloperApproval } from '../../governance/developer-approval.js';
+import { PostgresApprovalStore } from '../../db/repositories/approval.repository.js';
+import { decideApproval } from '../../governance/approval.js';
+import { PostgresLicenseStore, approveLicenseRecord } from '../../licensing/license-store.js';
+import { transitionLicense } from '../../licensing/license-machine.js';
+import { parseDeveloperCredential } from '../../credentials/developer-bearer.js';
+import {
+  CREDENTIAL_REFUSAL_BODY,
+  CREDENTIAL_REFUSAL_STATUS,
+} from '../../credentials/credential-refusal.js';
 
 interface PowerEngineBody {
   actorId: string;
@@ -47,8 +54,12 @@ export interface AdminRoutesDeps {
   ceilingService?: CommandCeilingService;
   collisionResolution?: CollisionResolutionService;
   getGuildCommandCount?: (guildId: string) => Promise<number> | number;
-  /** §15.8: the identities that resolve to a project owner and may decide an approval. */
-  projectOwnerIds?: readonly string[];
+  /** §22.5: the independently-configured PEP operator allow-list — identities that may decide. */
+  operatorAllowList?: readonly string[];
+  /** §22.5: verifies a presented PEP operator credential (delegated to the Credentials Service). */
+  operatorVerifier?: {
+    verify(input: { keyId: string; secret: string; devId?: string }): Promise<unknown>;
+  };
   /** §15.8: activates a developer credential on approval (delegated to the Credentials Service). */
   credentialActivator?: { activate(keyId: string): Promise<boolean> };
 }
@@ -236,9 +247,10 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
     },
   );
 
-  // §15.8 "Owner Approval, Never Auto-Approval": the governance surface that decides a pending
-  // developer approval request. Only a project owner may decide, never the subject or an
-  // automation; approval transitions the developer to `approved` and activates their credential.
+  // §15.8 "Owner Approval, Never Auto-Approval" + §22.5: the caller must present a PEP operator
+  // credential (validated by the Credentials Service) whose identity is in the independently-
+  // configured operator allow-list. Approval drives the developer's license to `approved` (§15.7,
+  // the authoritative state); `developers.approvalStatus` is derived from it.
   const decideDeveloper = async (
     req: FastifyRequest,
     reply: FastifyReply,
@@ -246,10 +258,24 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
   ): Promise<FastifyReply> => {
     const { devId } = req.params as { devId: string };
     const body = extractRequest(req);
-    const verdict = decideDeveloperApproval({
+    const presented = parseDeveloperCredential(req.headers.authorization);
+    if (!presented || deps.operatorVerifier === undefined) {
+      return reply.code(CREDENTIAL_REFUSAL_STATUS).send(CREDENTIAL_REFUSAL_BODY);
+    }
+    try {
+      await deps.operatorVerifier.verify({
+        keyId: presented.keyId,
+        secret: presented.secret,
+        devId: body.actorId,
+      });
+    } catch {
+      return reply.code(CREDENTIAL_REFUSAL_STATUS).send(CREDENTIAL_REFUSAL_BODY);
+    }
+    const verdict = decideApproval({
       actorId: body.actorId,
-      subjectDevId: devId,
-      projectOwnerIds: deps.projectOwnerIds ?? [],
+      subjectType: 'developer',
+      subjectId: devId,
+      operatorAllowList: deps.operatorAllowList ?? [],
       decision,
     });
     if (verdict.kind === 'refused') {
@@ -258,13 +284,33 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
         .send({ error: { code: 'DEVELOPER_APPROVAL_REFUSED', reason: verdict.reason } });
     }
     const status = verdict.kind === 'approved' ? 'approved' : 'declined';
+    const licenseStore = new PostgresLicenseStore(deps.db.knex);
+    const license = await licenseStore.findBySubjectDevId(devId);
+    const nextLicense =
+      license === undefined
+        ? undefined
+        : status === 'approved'
+          ? approveLicenseRecord(license, body.actorId, body.reason)
+          : license.state === 'revoked'
+            ? license
+            : transitionLicense(license, 'revoked', { actor: body.actorId, reason: body.reason });
+    if (status === 'approved' && (nextLicense === undefined || nextLicense.state !== 'approved')) {
+      return reply.code(409).send({
+        error: {
+          code: 'LICENSE_NOT_APPROVABLE',
+          reason: license === undefined ? 'no license row' : `license state "${license.state}"`,
+        },
+      });
+    }
     const outcome = await deps.dispatcher.dispatch(`developer.${decision}`, body, async () => {
-      await new PostgresDeveloperApprovalStore(deps.db.knex).decide(
+      await new PostgresApprovalStore(deps.db.knex).decide(
+        'developer',
         devId,
         status,
         body.actorId,
         body.reason,
       );
+      if (nextLicense !== undefined) await licenseStore.save(nextLicense);
       await deps.db
         .knex('developers')
         .where({ devId })

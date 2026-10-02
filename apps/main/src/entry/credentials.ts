@@ -127,6 +127,37 @@ app.post<{
   });
 });
 
+// §22.5/§22.8: PEP operator credentials (`purpose: 'operator_keypair'`) are issued here, bound to
+// the named operator identity and started `active` — the independently-configured PEP operator
+// allow-list is the approval, so no further owner approval is required for an operator credential.
+app.post<{
+  Body: { operatorId: string; registeredBy: string; label?: string };
+}>('/credentials/issue-operator', async (request, reply) => {
+  const { operatorId, registeredBy, label } = request.body;
+  if (!operatorId || !registeredBy) {
+    return reply.code(400).send({ error: 'operatorId and registeredBy are required' });
+  }
+  const issued = await credentialService.issue({
+    purpose: 'operator_keypair',
+    devId: operatorId,
+    status: 'active',
+  });
+  await writeAudit({
+    actorId: registeredBy,
+    action: 'credential.issue',
+    reason: label ?? 'operator-issuance',
+    outcome: 'allowed',
+    metadata: { purpose: issued.purpose, status: issued.status },
+  });
+  logger.info('operator-credential-issued', { id: issued.keyId });
+  return reply.code(201).send({
+    keyId: issued.keyId,
+    secret: issued.secret,
+    purpose: issued.purpose,
+    status: issued.status,
+  });
+});
+
 // §22.8: verification is delegated here and only here. A refusal names no field: the precise
 // cause goes to the operator log, and the caller receives the shared refusal body.
 app.post<{

@@ -22,6 +22,12 @@ export interface CredentialIssuer {
     registeredBy: string;
     label?: string;
   }): Promise<{ keyId: string; secret: string; status: string }>;
+  /** §22.5/§22.8: issue a PEP operator credential (`operator_keypair`) bound to the operator id. */
+  issueOperator(input: {
+    operatorId: string;
+    registeredBy: string;
+    label?: string;
+  }): Promise<{ keyId: string; secret: string; status: string }>;
 }
 
 /** §15.8: an owner approval activates the credential through the Credentials Service alone. */
@@ -98,6 +104,22 @@ export class HttpCredentialClient implements CredentialClient {
   async activate(keyId: string): Promise<boolean> {
     const body = await this.post(`/credentials/${encodeURIComponent(keyId)}/activate`, {});
     return (body as { status?: unknown }).status === 'active';
+  }
+
+  async issueOperator(input: {
+    operatorId: string;
+    registeredBy: string;
+    label?: string;
+  }): Promise<{ keyId: string; secret: string; status: string }> {
+    const body = await this.post('/credentials/issue-operator', input);
+    if (typeof body.keyId !== 'string' || typeof body.secret !== 'string') {
+      throw new CredentialVerificationError('malformed-issue-response');
+    }
+    return {
+      keyId: body.keyId,
+      secret: body.secret,
+      status: typeof body.status === 'string' ? body.status : 'active',
+    };
   }
 
   private async post(

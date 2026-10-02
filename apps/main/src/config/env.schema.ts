@@ -99,6 +99,9 @@ const baseEnvSchema = z
         }
       }, 'ENCRYPTION_ROOT_KEY must decode to exactly 32 bytes'),
     PEP_TRUSTED_SOURCES: csvIds(),
+    // §22.5: the independently-configured PEP operator allow-list — the identities that may
+    // decide governance approvals. Distinct from (but typically overlapping) BOT_OWNER_IDS.
+    PEP_OPERATOR_IDS: csvIds(),
     CLAI_MFA_ISSUER: z.string().default('DUMBY-CLAI'),
     CLAI_AUTHKEY_STORAGE_URL: z.string().default(''),
     CLAI_BREAK_GLASS_SCRIPT_URL: z.string().default(''),
