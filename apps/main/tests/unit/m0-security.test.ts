@@ -647,14 +647,19 @@ describe('M0 command scope fails closed on an unresolved module tier (UR-A-03)',
   }) {
     const registry = new CommandRegistry();
     const handler = vi.fn().mockResolvedValue(undefined);
-    if (options.registerTier) registry.registerModule('ops', 'core');
-    // Deliberately no registerModule when registerTier is false: the module never registered one.
+    // The registry refuses a command from a module that was never registered (finding #19), so the
+    // unresolved-tier state is constructed white-box here — the router's own fail-closed defence
+    // (UR-A-03) must stay under test as defence in depth.
+    registry.registerModule('ops', 'core');
     registry.register({
       data: { name: 'ops', description: 'O' },
       execute: handler,
       moduleId: 'ops',
       permissionDeclared: options.permissionDeclared,
     });
+    if (!options.registerTier) {
+      (registry as unknown as { moduleTiers: Map<string, unknown> }).moduleTiers.delete('ops');
+    }
     const permissionResolver = {
       resolve: vi.fn().mockReturnValue({ allowed: true, layerIndex: 0, reason: 'ok' }),
     } as unknown as PermissionResolver;

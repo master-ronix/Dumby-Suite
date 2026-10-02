@@ -52,6 +52,7 @@ describe('CommandRegistry', () => {
   test('registers a command and retrieves it by name', () => {
     const reg = new CommandRegistry();
     const handler = vi.fn();
+    reg.registerModule('core', 'core');
     reg.register({
       data: { name: 'ping', description: 'Ping' },
       execute: handler,
@@ -79,6 +80,7 @@ describe('CommandRegistry', () => {
 
   test('has() returns true for registered command', () => {
     const reg = new CommandRegistry();
+    reg.registerModule('core', 'core');
     reg.register({
       data: { name: 'ping', description: 'Ping' },
       execute: vi.fn(),
@@ -99,6 +101,8 @@ describe('CommandRegistry', () => {
 
   test('all() returns all registered commands', () => {
     const reg = new CommandRegistry();
+    reg.registerModule('m1', 'core');
+    reg.registerModule('m2', 'core');
     reg.register({ data: { name: 'a', description: 'A' }, execute: vi.fn(), moduleId: 'm1' });
     reg.register({ data: { name: 'b', description: 'B' }, execute: vi.fn(), moduleId: 'm2' });
     expect(reg.all().length).toBe(2);
@@ -106,6 +110,7 @@ describe('CommandRegistry', () => {
 
   test('toApiPayloads() returns the REST-ready JSON for each command', () => {
     const reg = new CommandRegistry();
+    reg.registerModule('core', 'core');
     reg.register({
       data: { name: 'health', description: 'Health check' },
       execute: vi.fn(),
@@ -117,6 +122,8 @@ describe('CommandRegistry', () => {
 
   test('throws CommandCollisionError on duplicate command name', () => {
     const reg = new CommandRegistry();
+    reg.registerModule('core', 'core');
+    reg.registerModule('other', 'core');
     reg.register({
       data: { name: 'health', description: 'H' },
       execute: vi.fn(),
@@ -133,6 +140,8 @@ describe('CommandRegistry', () => {
 
   test('CommandCollisionError includes both module names', () => {
     const reg = new CommandRegistry();
+    reg.registerModule('core', 'core');
+    reg.registerModule('other', 'core');
     reg.register({
       data: { name: 'health', description: 'H' },
       execute: vi.fn(),

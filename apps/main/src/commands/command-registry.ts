@@ -27,6 +27,20 @@ export class CommandCollisionError extends Error {
   }
 }
 
+/**
+ * Finding #19 — `register` used to accept a command from a module that was never registered, so a
+ * command could exist with no module (and no tier) behind it. It now fails closed.
+ */
+export class CommandModuleNotRegisteredError extends Error {
+  constructor(moduleId: string, commandName: string) {
+    super(
+      `Command "${commandName}" is registered by module "${moduleId}", which was never ` +
+        `registered — call registerModule("${moduleId}", tier) first`,
+    );
+    this.name = 'CommandModuleNotRegisteredError';
+  }
+}
+
 export class CommandRegistry {
   private readonly commands = new Map<string, CommandDefinition>();
   private readonly moduleTiers = new Map<string, ModuleTier>();
@@ -36,6 +50,9 @@ export class CommandRegistry {
   }
 
   register(def: CommandDefinition): void {
+    if (!this.moduleTiers.has(def.moduleId)) {
+      throw new CommandModuleNotRegisteredError(def.moduleId, def.data.name);
+    }
     const existing = this.commands.get(def.data.name);
     if (existing) {
       throw new CommandCollisionError(def.data.name, existing.moduleId, def.moduleId);
