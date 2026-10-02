@@ -59,6 +59,8 @@ export interface CommandRouterOptions {
   permissionResolver?: PermissionResolver;
   botOwnerIds?: readonly string[];
   guildGrants?: readonly RbacGrant[];
+  /** §21 Layer 7 — loads a guild's grants at dispatch time (the runtime grant writer). */
+  grantStore?: { list(guildId: string): Promise<readonly RbacGrant[]> };
   renderer?: CoreRenderer;
   resolveCommandOwner?: (guildId: string, moduleSlug: string) => Promise<string | undefined>;
   residentPersonaId?: string;
@@ -109,7 +111,7 @@ export class CommandRouter {
 
     try {
       await this.assertCommandInScope(def, interaction.guildId);
-      this.assertPermissionAllowed(def, interaction);
+      await this.assertPermissionAllowed(def, interaction);
       await this.assertPersonaOwnsCommand(def, interaction.guildId);
 
       let declaredResponse: unknown;
@@ -156,10 +158,16 @@ export class CommandRouter {
     }
   }
 
-  private assertPermissionAllowed(
+  private async assertPermissionAllowed(
     command: CommandDefinition,
     interaction: CommandInteraction,
-  ): void {
+  ): Promise<void> {
+    // Finding #25: Layer 7 grants are loaded from the runtime store at dispatch time, so a grant
+    // written through the app takes effect without a restart. Falls back to the static list.
+    const guildGrants =
+      interaction.guildId !== null && this.options.grantStore !== undefined
+        ? await this.options.grantStore.list(interaction.guildId)
+        : (this.options.guildGrants ?? []);
     const result = this.options.permissionResolver?.resolve({
       tier: this.requireModuleTier(command, interaction.guildId),
       actorId: interaction.user.id,
@@ -191,7 +199,7 @@ export class CommandRouter {
           groupIds: [],
           setIds: [],
         },
-        guildGrants: this.options.guildGrants ?? [],
+        guildGrants,
       },
       hasExplicitPermissionDeclaration: command.permissionDeclared === true,
       channel: interaction.channel ?? { id: 'unknown', categoryId: null, isNsfw: false },

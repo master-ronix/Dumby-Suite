@@ -721,6 +721,7 @@ and the five slice deviations are in `migration-ledger.md` §M0 slice 6a.
 | UR-A-07 | 40 | M4 | Layer 2 blacklist — `db-blacklist.ts` `DbBlacklistLookup` | DONE (credited) |
 | UR-A-08 | 41 | M4 | RBAC persistence — `rbac.ts` + migrations 14–17 | DONE (credited) |
 | UR-A-09 | 42 | M4 | Layer order — `resolver.ts` | DONE (credited) |
+| #25 | — | M4 | Runtime grant writer not wired — `bootstrap.ts` constructs `new PostgresGrantWriter(db.knex)` as the router's `grantStore`; `command-router.ts` loads a guild's grants at dispatch time. Proof: `m4-grant-writer-wiring.test.ts` (2 tests; drop the wiring → fails) | DONE |
 
 **M5 — License machine, Compatibility Ledger & Deployment Records (rows 2, 6, 8, 18, 20, 23; 2026-10-02):**
 

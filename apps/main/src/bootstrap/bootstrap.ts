@@ -20,6 +20,7 @@ import { buildApiServer, buildHealthServer, buildMetricsServer } from '../http/s
 import { PowerEngineDispatcher } from '../http/power-engine-dispatcher.js';
 import { loadModulesFromTierVolumes } from '../module-system/swastik-loader.js';
 import { PostgresBuildStore } from '../db/repositories/build.repository.js';
+import { PostgresGrantWriter } from '../db/repositories/rbac-grant.repository.js';
 import { BuildSignatureVerifier } from '../module-system/build-signing.js';
 import { createPublicKey } from 'node:crypto';
 import { InFlightTracker } from '../shutdown/in-flight-tracker.js';
@@ -291,6 +292,7 @@ export async function bootstrap(): Promise<void> {
     botOwnerIds: config.get('BOT_OWNER_IDS'),
     middlewarePipeline: commandMiddleware,
     renderer,
+    grantStore: new PostgresGrantWriter(db.knex),
     resolveCommandOwner: (guildId, moduleSlug) =>
       personaBindingService.resolveCommandOwner(guildId, moduleSlug),
     ...(config.get('PERSONA_ID') !== '' ? { residentPersonaId: config.get('PERSONA_ID') } : {}),
