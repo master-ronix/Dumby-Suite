@@ -15,6 +15,10 @@ export interface CommandDefinition {
   guildOnly?: boolean;
   permissionDeclared?: boolean;
   permissions?: CommandPermissions;
+  /** UR-A-03 / finding #3 — the metadata the built-in middlewares read. */
+  requiresDefer?: boolean;
+  ephemeral?: boolean;
+  cooldownMs?: number;
 }
 
 export class CommandCollisionError extends Error {

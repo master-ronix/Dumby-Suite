@@ -52,6 +52,9 @@ export function toCommandDefinition(
     moduleId: options.moduleId,
     guildOnly: declaration.guildOnly ?? true,
     permissionDeclared: declared !== undefined,
+    ...(declaration.requiresDefer !== undefined ? { requiresDefer: declaration.requiresDefer } : {}),
+    ...(declaration.ephemeral !== undefined ? { ephemeral: declaration.ephemeral } : {}),
+    ...(declaration.cooldownMs !== undefined ? { cooldownMs: declaration.cooldownMs } : {}),
     ...(declared !== undefined
       ? {
           permissions: {

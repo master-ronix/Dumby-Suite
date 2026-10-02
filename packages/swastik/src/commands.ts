@@ -49,6 +49,10 @@ export interface CommandDeclaration {
   readonly guildOnly?: boolean;
   readonly options?: readonly CommandOptionDeclaration[];
   readonly permissions?: CommandPermissionsDeclaration;
+  /** UR-A-03 / finding #3 — the middleware metadata the framework reads. */
+  readonly requiresDefer?: boolean;
+  readonly ephemeral?: boolean;
+  readonly cooldownMs?: number;
 }
 
 export function defineCommand(declaration: CommandDeclaration): CommandDeclaration {

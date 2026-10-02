@@ -68,6 +68,16 @@ import { CommandDeployer } from '../commands/command-deployer.js';
 import { CoreRenderer } from '../rendering/core-renderer.js';
 import { InteractionRegistry } from '../interactions/interaction-registry.js';
 
+/** The resolver's `Rank` is the long form; the RBAC middleware's ladder is the short form. */
+const RANK_TO_RBAC: Record<string, 'RESTRICTED' | 'MEMBER' | 'HELPER' | 'MOD' | 'ADMIN' | 'OWNER'> = {
+  RESTRICTED: 'RESTRICTED',
+  MEMBER: 'MEMBER',
+  HELPER: 'HELPER',
+  MODERATOR: 'MOD',
+  ADMINISTRATOR: 'ADMIN',
+  OWNER: 'OWNER',
+};
+
 export async function bootstrap(): Promise<void> {
   const progress = new BootstrapProgress();
   const container = new Container();
@@ -240,26 +250,47 @@ export async function bootstrap(): Promise<void> {
     )
     .add(
       new PermissionMiddleware({
-        getMemberPermissions: async () => [],
-        getRequiredPermissions: () => [],
+        // Finding #3: live sources — the member's permissions from Discord, the requirement from
+        // the command's declared Discord permissions.
+        getMemberPermissions: async (userId, guildId) => {
+          const guild = discordClient?.guilds.cache.get(guildId);
+          if (guild === undefined) return [];
+          const member = await guild.members.fetch(userId).catch(() => null);
+          return member === null ? [] : [...member.permissions.toArray()];
+        },
+        getRequiredPermissions: (commandName) =>
+          commandRegistry.get(commandName)?.permissions?.discord ?? [],
       }),
     )
     .add(
       new RBACMiddleware({
-        getHighestRole: async () => null,
-        getRequiredRole: () => null,
+        // Layer 6 (rank function): evaluated from live Discord state, never written.
+        getHighestRole: async (userId, guildId) => {
+          const guild = discordClient?.guilds.cache.get(guildId);
+          if (guild === undefined) return null;
+          if (guild.ownerId === userId) return 'OWNER';
+          const member = await guild.members.fetch(userId).catch(() => null);
+          if (member === null) return null;
+          if (member.permissions.has('Administrator')) return 'ADMIN';
+          if (member.permissions.has('ManageGuild')) return 'MOD';
+          return 'MEMBER';
+        },
+        getRequiredRole: (commandName) => {
+          const rank = commandRegistry.get(commandName)?.permissions?.rbac;
+          return rank === undefined ? null : (RANK_TO_RBAC[rank] ?? null);
+        },
         isCoreTierCommand,
       }),
     )
     .add(
       new CooldownMiddleware(new InMemoryCooldownStore(), {
-        getCooldownMs: () => 0,
+        getCooldownMs: (commandName) => commandRegistry.get(commandName)?.cooldownMs ?? 0,
       }),
     )
     .add(
       new DeferMiddleware({
-        requiresDefer: () => false,
-        isEphemeral: () => false,
+        requiresDefer: (commandName) => commandRegistry.get(commandName)?.requiresDefer ?? false,
+        isEphemeral: (commandName) => commandRegistry.get(commandName)?.ephemeral ?? false,
       }),
     )
     .add(new AnalyticsMiddleware(logger));
