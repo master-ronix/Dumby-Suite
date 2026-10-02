@@ -24,7 +24,12 @@ export interface CredentialIssuer {
   }): Promise<{ keyId: string; secret: string; status: string }>;
 }
 
-export interface CredentialClient extends CredentialVerifier, CredentialIssuer {}
+/** §15.8: an owner approval activates the credential through the Credentials Service alone. */
+export interface CredentialActivator {
+  activate(keyId: string): Promise<boolean>;
+}
+
+export interface CredentialClient extends CredentialVerifier, CredentialIssuer, CredentialActivator {}
 
 interface IssueResponseBody {
   readonly keyId?: unknown;
@@ -88,6 +93,11 @@ export class HttpCredentialClient implements CredentialClient {
       secret: body.secret,
       status: typeof body.status === 'string' ? body.status : 'pending',
     };
+  }
+
+  async activate(keyId: string): Promise<boolean> {
+    const body = await this.post(`/credentials/${encodeURIComponent(keyId)}/activate`, {});
+    return (body as { status?: unknown }).status === 'active';
   }
 
   private async post(

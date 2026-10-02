@@ -26,6 +26,9 @@ const baseEnvSchema = z
     PEP_PORT: z.coerce.number().int().positive().default(8083),
     CLAI_BIND_HOST: z.string().default('127.0.0.1'),
     CLAI_PORT: z.coerce.number().int().positive().default(8084),
+    // UR-C-06: CLAI session bounds.
+    CLAI_MAX_SESSIONS: z.coerce.number().int().positive().default(5),
+    CLAI_MAX_BYTES_PER_SESSION: z.coerce.number().int().positive().default(65_536),
     SWASTIK_BIND_HOST: z.string().default('127.0.0.1'),
     SWASTIK_PORT: z.coerce.number().int().positive().default(8085),
     CREDENTIALS_SERVICE_BIND_HOST: z.string().default('127.0.0.1'),

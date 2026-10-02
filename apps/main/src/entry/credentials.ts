@@ -187,6 +187,24 @@ app.delete<{ Params: { credentialId: string } }>(
   },
 );
 
+// §15.8/§22.8: an owner approval transitions the developer's credential from `pending` to
+// `active`. Verification refuses a `pending` credential, so this is the step that makes a
+// registered developer usable end-to-end.
+app.post<{ Params: { keyId: string } }>('/credentials/:keyId/activate', async (request, reply) => {
+  const { keyId } = request.params;
+  const activated = await credentialService.setStatus(keyId, 'active');
+  if (!activated) return reply.code(404).send({ error: 'Credential not found' });
+  await writeAudit({
+    actorId: 'credentials-service',
+    action: 'credential.activate',
+    reason: 'owner approval',
+    outcome: 'allowed',
+    metadata: { keyId },
+  });
+  logger.info('credential-activated', { id: keyId });
+  return reply.code(200).send({ keyId, status: 'active' });
+});
+
 app.delete<{ Params: { id: string } }>('/credentials/:id', async (request, reply) => {
   const { id } = request.params;
   const revoked = await credentialService.revoke(id);

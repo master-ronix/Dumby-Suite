@@ -44,6 +44,7 @@ import {
   type ModuleOwnershipStore,
 } from '../module-system/module-ownership.js';
 import { PostgresModuleOwnershipStore } from '../db/repositories/module-ownership.repository.js';
+import { PostgresDeveloperApprovalStore } from '../db/repositories/developer-approval.repository.js';
 import { CredentialVerificationError } from '../credentials/developer-credential.service.js';
 import {
   CREDENTIAL_REFUSAL_BODY,
@@ -358,6 +359,8 @@ app.post('/swastik/modules/upload', async (request, reply) => {
   // UR-B-01: only an approved developer may upload. Refused as the same indistinguishable 401,
   // so the response cannot be used to probe approval state.
   if (dev['approvalStatus'] !== 'approved') {
+    // §15.8: the attempt creates a pending approval request the owner reviews.
+    await new PostgresDeveloperApprovalStore(db.knex).requestPending(devId);
     logger.warn('swastik-developer-auth-refused', {
       route: 'upload',
       reason: 'developer-not-approved',
@@ -685,6 +688,13 @@ app.post('/internal/deploy', async (request, reply) => {
     return reply.code(403).send({ error: 'developer is not registered for deployment' });
   }
   if (dev.approvalStatus !== 'approved') {
+    // §15.8: the attempt creates a pending approval request the owner reviews.
+    await new PostgresDeveloperApprovalStore(db.knex).requestPending(providedDevId);
+    await writeAudit('DEVELOPER_DEPLOY_DENIED', 'rejected', {
+      moduleSlug: safeModuleSlug,
+      version: safeModuleVersion,
+      devId: redact(providedDevId),
+    });
     return reply
       .code(403)
       .send({ error: `developer not approved (status: ${dev.approvalStatus})` });

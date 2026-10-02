@@ -5,6 +5,7 @@ import { parseEnv, pickEnvKeys } from '../config/env.schema.js';
 import { createLogger } from '../logging/logger.js';
 import { DbClient } from '../db/client.js';
 import { PowerEngineDispatcher } from '../http/power-engine-dispatcher.js';
+import { ClaiSessionLimiter, stripAnsi as stripAnsiControl } from './clai-session-limits.js';
 
 const env = parseEnv(pickEnvKeys(process.env));
 const logger = createLogger(env.LOG_LEVEL);
@@ -33,6 +34,11 @@ const dispatcher = new PowerEngineDispatcher(
       });
     },
   },
+);
+
+const claiSessionLimiter = new ClaiSessionLimiter(
+  env.CLAI_MAX_SESSIONS,
+  env.CLAI_MAX_BYTES_PER_SESSION,
 );
 
 interface Operator {
@@ -66,7 +72,8 @@ async function authenticateOperator(ctx: AuthContext): Promise<Operator | null> 
 }
 
 function stripAnsi(input: string): string {
-  return input.replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, '');
+  // UR-C-06: delegate to the hardened stripper in clai-session-limits.ts.
+  return stripAnsiControl(input);
 }
 
 class PepActionNotImplementedError extends Error {
@@ -106,12 +113,18 @@ async function handlePepCommand(
   }
 }
 
-function openShell(channel: ServerChannel, operator: Operator): void {
+function openShell(channel: ServerChannel, operator: Operator, sessionToken: string): void {
   channel.write('CLAI - Dumby Command Line Administrative Interface\n');
   channel.write('Type "help" for commands. "quit" to exit.\n\n$ ');
   let buffer = '';
 
   channel.on('data', (chunk: Buffer) => {
+    // UR-C-06: bound the bytes a single session may send.
+    if (!claiSessionLimiter.account(sessionToken, chunk.length)) {
+      channel.write('Session byte limit exceeded; closing.\n');
+      channel.close();
+      return;
+    }
     buffer += chunk.toString('utf8');
     const lines = buffer.split(/\r?\n/);
     buffer = lines.pop() ?? '';
@@ -153,6 +166,14 @@ async function handleLine(channel: ServerChannel, line: string, operator: Operat
 
 export function startClaiSshServer(): Server {
   const server = new Server({ hostKeys: [ephemeralHostKey()] }, (client) => {
+    // UR-C-06: cap concurrent sessions.
+    const sessionToken = claiSessionLimiter.open();
+    if (sessionToken === null) {
+      logger.warn('clai-session-refused', { reason: 'max-sessions-reached' });
+      client.end();
+      return;
+    }
+    client.on('close', () => claiSessionLimiter.close(sessionToken));
     let operator: Operator | null = null;
 
     client.on('authentication', (ctx) => {
@@ -174,7 +195,7 @@ export function startClaiSshServer(): Server {
             channel.close();
             return;
           }
-          openShell(channel, operator);
+          openShell(channel, operator, sessionToken);
         });
       });
     });

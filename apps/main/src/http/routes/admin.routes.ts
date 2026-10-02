@@ -4,6 +4,8 @@ import type { ConfigService } from '../../config/config.service.js';
 import type { DbClient } from '../../db/client.js';
 import type { CommandCeilingService } from '../../commands/command-ceiling.js';
 import type { CollisionResolutionService } from '../../commands/collision-resolution.js';
+import { PostgresDeveloperApprovalStore } from '../../db/repositories/developer-approval.repository.js';
+import { decideDeveloperApproval } from '../../governance/developer-approval.js';
 
 interface PowerEngineBody {
   actorId: string;
@@ -45,6 +47,10 @@ export interface AdminRoutesDeps {
   ceilingService?: CommandCeilingService;
   collisionResolution?: CollisionResolutionService;
   getGuildCommandCount?: (guildId: string) => Promise<number> | number;
+  /** §15.8: the identities that resolve to a project owner and may decide an approval. */
+  projectOwnerIds?: readonly string[];
+  /** §15.8: activates a developer credential on approval (delegated to the Credentials Service). */
+  credentialActivator?: { activate(keyId: string): Promise<boolean> };
 }
 
 export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps): void {
@@ -228,6 +234,59 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
       });
       return sendDispatchResult(reply, outcome);
     },
+  );
+
+  // §15.8 "Owner Approval, Never Auto-Approval": the governance surface that decides a pending
+  // developer approval request. Only a project owner may decide, never the subject or an
+  // automation; approval transitions the developer to `approved` and activates their credential.
+  const decideDeveloper = async (
+    req: FastifyRequest,
+    reply: FastifyReply,
+    decision: 'approve' | 'decline',
+  ): Promise<FastifyReply> => {
+    const { devId } = req.params as { devId: string };
+    const body = extractRequest(req);
+    const verdict = decideDeveloperApproval({
+      actorId: body.actorId,
+      subjectDevId: devId,
+      projectOwnerIds: deps.projectOwnerIds ?? [],
+      decision,
+    });
+    if (verdict.kind === 'refused') {
+      return reply
+        .code(403)
+        .send({ error: { code: 'DEVELOPER_APPROVAL_REFUSED', reason: verdict.reason } });
+    }
+    const status = verdict.kind === 'approved' ? 'approved' : 'declined';
+    const outcome = await deps.dispatcher.dispatch(`developer.${decision}`, body, async () => {
+      await new PostgresDeveloperApprovalStore(deps.db.knex).decide(
+        devId,
+        status,
+        body.actorId,
+        body.reason,
+      );
+      await deps.db
+        .knex('developers')
+        .where({ devId })
+        .update({
+          approvalStatus: status,
+          approvedAt: status === 'approved' ? new Date() : null,
+          approvedBy: status === 'approved' ? body.actorId : null,
+          updatedAt: new Date(),
+        });
+      if (status === 'approved' && deps.credentialActivator) {
+        const dev = await deps.db.knex('developers').where({ devId }).first();
+        if (dev?.credentialKeyId) await deps.credentialActivator.activate(dev.credentialKeyId);
+      }
+    });
+    return sendDispatchResult(reply, outcome);
+  };
+
+  app.post('/admin/governance/developers/:devId/approve', (req: FastifyRequest, reply: FastifyReply) =>
+    decideDeveloper(req, reply, 'approve'),
+  );
+  app.post('/admin/governance/developers/:devId/decline', (req: FastifyRequest, reply: FastifyReply) =>
+    decideDeveloper(req, reply, 'decline'),
   );
 
   app.post(
