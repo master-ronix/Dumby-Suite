@@ -699,6 +699,19 @@ and the five slice deviations are in `migration-ledger.md` §M0 slice 6a.
 |---|---|---|---|---|
 | UR-B-11 | 74 | M2 | Merge clause DONE — unified `src/commands/`, no `src/core/commands` remnant. Enqueue-guild-changes clause NOT done: `command-deployer.ts` still does boot-time delete-then-reregister; the change-queue/BCCM that replaces it is M9's row 44 (`UR-A-11`) | PARTIAL (routed → M9) |
 
+**M3 — Core Renderer, buffer-then-render & the embed ban (rows 9–12, 21, 28, 111, 120; 2026-10-02):**
+
+| Request | Row | item | Record | Status |
+|---|---|---|---|---|
+| UR-09 | 9 | M3 | Core renderer present — `core-renderer.ts` (Modes D/M/C, `RenderDescriptor`/`FormalNoticeDescriptor`), accent `0x5865f2`, A4 footer attribution | DONE (credited) |
+| UR-10 | 10 | M3 | Buffer-then-render (buffer → single edit) + formal notice frames; 13-min follow-up watchdog (`FOLLOWUP_ALARM_MS`) | DONE (credited) |
+| UR-11 | 11 | M3 | Schema-declared authoring — the renderer derives presentation from a descriptor; unexercised (no module declares commands) | PARTIAL (→ MR-1…MR-8) |
+| UR-12 | 12 | M3 | Embed ban — `eslint.config.mjs` bans `EmbedBuilder`/`MessageEmbed`; `m3-embed-and-dm.test.ts` | DONE |
+| UR-21 | 21 | M3 | DM prohibition enforced in the router; covered by `m3-embed-and-dm.test.ts` | DONE (credited) |
+| UR-28 | 28 | M3 | Prefix-ban completeness — the four enforcement layers' coverage is not recorded | PARTIAL |
+| UR-C-20 | 111 | M3 | Component/autocomplete dispatch — `interaction-registry.ts` (minted customIds, invoker re-check, idempotency, `AUTOCOMPLETE_BUDGET_MS = 800`) | DONE (credited) |
+| UR-C-29 | 120 | M3 | RetryPolicy consumer — `withRetry` has no consumer; the §44.4 HttpClient honouring 429 is absent | PARTIAL (routed → M9) |
+
 ### UR 2.0 — Post-Re-Baseline Conformance & Audit Evidence (recorded 2026-10-01)
 
 _Basis: UR-20260918-001 revision 2.0 (01/10/2026), which registers the ten-document Conformance &

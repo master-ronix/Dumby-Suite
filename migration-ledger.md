@@ -3,7 +3,7 @@
 > This file is the single source of truth for migration progress. The agent reads it at the start of every session and updates it at the end of every item and slice. An item without a record here did not happen; an IN-PROGRESS item with a resume note is continued, never restarted. A closed request row without its change-log line (rule R11) did not happen either.
 
 - **Created:** 2026-10-01
-- **Last updated:** 2026-10-02 (v1.9) · **Current item:** **M2 PARTIAL** · **Next item:** M3 (the Core Renderer + module rewrites)
+- **Last updated:** 2026-10-02 (v1.10) · **Current item:** **M3 PARTIAL** · **Next item:** M4 (RBAC Layer 6/7)
 - **Protocol:** `docs/migration-prompt.md` v5.3.0 (rules R1–R12; work order M0–M8 → MR-1…MR-8 → M9–M11)
 - **Record shapes:** `docs/migration-ledger-template.md` v2.2 §3 (item) and §4 (slice)
 - **Coverage map:** 121 request rows (UR-20260918-001 §8.1.2) → one owning item each, per the prompt's §3.0
@@ -19,7 +19,7 @@
 | M0 | P0 security flaws (17 severity-Critical suite rows) | **DONE** — slices 1–5 landed (`0c625c1`); slices 6a, 6b, 6c-i, 6c-ii, 6c-iii and 6c-iv landed. Row board **16 DONE / 1 PARTIAL / 0 OPEN** (UR-A-03 routed to M9). |
 | M1 | Tier volumes & blind discovery | **DONE** — R12-credited (rows 4/5/19); directory target met, `packages/swastik` present; manifest-contract drift routed to M6 |
 | M2 | Unified command tree | **PARTIAL** — R12: merge DONE (unified `src/commands`, no `src/core`); the deployer still does boot-time delete-then-reregister, whose remedy (change queue/BCCM) is M9's row 44 |
-| M3 | Core Renderer, buffer-then-render, embed ban | Record: NOT STARTED — **tree: shaped code present** (`src/rendering/core-renderer.ts`) — reconcile, R12 |
+| M3 | Core Renderer, buffer-then-render, embed ban | **PARTIAL** — R12: renderer + embed ban + DM prohibition + interaction registry present; done-gate gated on MR-1…MR-8 (command surface is stubs); row 120 (HttpClient/retry) routed to M9 |
 | M4 | RBAC Layer 6/7 redesign | Record: NOT STARTED — **tree: shaped code present** (migrations 14–17, `src/permissions/*`) — reconcile, R12 |
 | M5 | License machine, Compatibility Ledger, Deployment Records | Record: NOT STARTED — **tree: shaped code present** (`src/licensing/*`, migration 33) — reconcile, R12 |
 | M6 | Swastik promotion pipeline | Record: NOT STARTED — **tree: shaped code present** (`src/module-system/promotion.ts`) — reconcile, R12 |
@@ -421,13 +421,14 @@ Each item's row-level triage is copied into its item record when it is claimed (
 
 ### M3 — Core Renderer, buffer-then-render & the embed ban
 
-- **Status:** NOT STARTED (tree: shaped code present — reconcile, R12) · **Started:** — · **Completed:** —
+- **Status:** PARTIAL (R12-credited; done-gate gated on MR-1…MR-8) · **Started:** 2026-10-02 · **Completed:** —
 - **Request rows owned:** rows 9–12 (`UR-09`…`UR-12`), 21 (`UR-21`), 28 (`UR-28`), plus 111 (`UR-C-20`), 120 (`UR-C-29`)
-- **Evidence references:** E4 PRE-45, PRE-28; E6 GOV-13; E3 SEC-32 (`no-direct-interaction-reply` lint, D-7.5.5 policy lockfile); component-path bypass of the Renderer (true unknown)
-- **Provenance of ahead-of-record work:** `d334cfb` (2026-09-26) — `src/rendering/core-renderer.ts`, wired at `bootstrap.ts:162`
-- **Source of truth read:** `blueprint.md` §10.2, §16.5, §20 (esp. §20.8–§20.9), §17.11, §19.2, §28.6; `interface.md` renderer + interaction-lifecycle sections; ADR-001, ADR-002, ADR-009, ADR-010 — **not yet read**
-- **Blast radius (declare before editing):** —
-- **Row triage / Tree state / Ahead-of-record work:** — **Done-gate evidence:** — **Change-log entry (R11):** — **What changed:** — **Judgment calls / deviations:** — **Deliberately NOT done, with routing:** the whole command surface is absent (all 8 first-party modules are lifecycle-only stubs with `commands: []`), so this item's done-gate cannot be met before the MR block — **Resume note:** blocked.
+- **Source of truth read (2026-10-02):** `blueprint.md` §20.8/§20.9 (renderer grammar, buffer/notice frames), §17.11, §19.2, §28.6; `interface.md`; ADR-001 (embed ban), ADR-002 (DM), ADR-009/010 (title/accent); prompt §M3.
+- **Row triage (tree vs UR, at `450f5e8`):** Row 9 **PRESENT** — `core-renderer.ts` (288 ln): `CoreRenderer`, Modes D/M/C, `RenderDescriptor`/`FormalNoticeDescriptor`/`NoticeReasonCode`, accent `DEFAULT_ACCENT_COLOR = 0x5865f2` (`shared/utils/components-v2.ts`), A4 footer attribution. Row 10 **PRESENT** — buffer→single-edit + formal notice frames; `FOLLOWUP_ALARM_MS` (13-min watchdog). Row 11 **PARTIAL** — the renderer derives presentation from a descriptor, but is unexercised (no module declares commands) → **MR-1…MR-8**. Row 12 **DONE** — `eslint.config.mjs` `no-restricted-imports`/`no-restricted-syntax` on `EmbedBuilder`/`MessageEmbed`; `m3-embed-and-dm.test.ts` greps source. Row 21 **PRESENT** — DM prohibition in the router; same test. Row 28 **PARTIAL** — the four prefix-ban enforcement layers' coverage is not recorded. Row 111 **PRESENT** — `interaction-registry.ts`: `mintCustomId`, `invokerMatches` re-check, idempotency key, `AUTOCOMPLETE_BUDGET_MS = 800`. Row 120 **PARTIAL** — the 13-min watchdog is present; `withRetry` (`shared/utils/retry.ts`) has no consumer — the §44.4 HttpClient honouring 429 is absent → **M9** (§28).
+- **Blast radius:** none this pass (triage only).
+- **Done-gate:** NOT met — the command surface is stubs (`commands: []`), so "every user-facing surface is renderer-issued" holds only after **MR-1…MR-8**; the renderer/bans/dispatch themselves are present.
+- **Change-log (R11):** rows 9–12/21/28/111/120 written.
+- **Resume note:** M3 is PARTIAL. Next is **M4** (RBAC Layer 6/7).
 
 ### M4 — RBAC Layer 6/7 redesign
 
@@ -660,3 +661,4 @@ Every request row that reaches DONE or PARTIAL-routed in a pass gets **one line*
 | 1.7 | 2026-10-02 | Dumby Core Engineering | **Slice 6c-vi closed** (finding #24 resolved): `bootstrap.ts` supplies `operatorAllowList` (`PEP_OPERATOR_IDS`), `operatorVerifier` and `credentialActivator` (one shared `HttpCredentialClient`) to `adminDeps`, arming the governance approve/decline route end-to-end. Deviation #29 (bootstrap edited, outside the M0 fence, per owner instruction). Full suite 950/81 green. M0 remains DONE; next M1. |
 | 1.8 | 2026-10-02 | Dumby Core Engineering | **R12 reconciliation completed** (item-level re-triage of M1–M11 against the tree; ahead-of-record work credited per owner decision #19; open questions #13/#14/#15/#18/#19 resolved). **M1 closed DONE** (rows 4/5/19 credited; no code change — the tree meets the done-gate). Next: M2 (row 74). |
 | 1.9 | 2026-10-02 | Dumby Core Engineering | **M2 triaged → PARTIAL.** Row 74 (`UR-B-11`): merge clause DONE (unified `src/commands`, no `src/core`); enqueue-guild-changes clause NOT done — `command-deployer.ts` still does boot-time delete-then-reregister — routed to M9's row 44 (change queue/BCCM). Next: M3. |
+| 1.10 | 2026-10-02 | Dumby Core Engineering | **M3 triaged → PARTIAL.** Rows 9/10/12/21/111 present (renderer, buffer-then-render, embed ban, DM prohibition, interaction registry); row 11 unexercised (→ MR-1…MR-8); row 28 (prefix-ban audit) and row 120 (HttpClient/retry → M9) partial. Done-gate gated on MR-1…MR-8. Next: M4. |
