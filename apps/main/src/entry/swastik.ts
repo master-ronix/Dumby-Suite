@@ -39,6 +39,11 @@ import {
   type PromotionOutcome,
 } from '../module-system/promotion.js';
 import { HttpCredentialClient, type CredentialClient } from '../credentials/credential-client.js';
+import {
+  decideModuleOwnership,
+  type ModuleOwnershipStore,
+} from '../module-system/module-ownership.js';
+import { PostgresModuleOwnershipStore } from '../db/repositories/module-ownership.repository.js';
 import { CredentialVerificationError } from '../credentials/developer-credential.service.js';
 import {
   CREDENTIAL_REFUSAL_BODY,
@@ -333,6 +338,18 @@ app.get('/swastik/developers/me', async (request, reply) => {
   });
 });
 
+async function resolveModuleOwnership(
+  store: ModuleOwnershipStore,
+  slug: string,
+  devId: string,
+): Promise<{ readonly allowed: boolean }> {
+  const existing = await store.findBySlug(slug);
+  const decision = decideModuleOwnership(existing, devId);
+  if (decision.kind === 'denied') return { allowed: false };
+  if (decision.kind === 'claim') await store.claim(slug, devId);
+  return { allowed: true };
+}
+
 app.post('/swastik/modules/upload', async (request, reply) => {
   const principal = await authenticateDeveloper(request.headers.authorization, reply, 'upload');
   if (!principal) return reply;
@@ -393,7 +410,10 @@ app.post('/swastik/modules/upload', async (request, reply) => {
       error: `manifest name "${manifest.name}" does not match moduleSlug "${moduleSlug}"`,
     });
   }
-  if (manifest.devId && manifest.devId !== devId) {
+  if (!manifest.devId) {
+    return reply.code(422).send({ error: 'manifest devId is required (§15.6)' });
+  }
+  if (manifest.devId !== devId) {
     return reply.code(422).send({ error: 'manifest devId does not match authenticated developer' });
   }
   const licenseRow = await db.knex('licenses').where({ subjectDevId: devId }).first();
@@ -418,6 +438,20 @@ app.post('/swastik/modules/upload', async (request, reply) => {
       error: licenseViolations.join('; '),
     });
     return reply.code(403).send({ error: `license gate refused: ${licenseViolations.join('; ')}` });
+  }
+  // UR-C-03 (§15.8): module ownership — claim a fresh slug, refuse a non-owner before staging.
+  const uploadOwnership = await resolveModuleOwnership(
+    new PostgresModuleOwnershipStore(db.knex),
+    moduleSlug,
+    devId,
+  );
+  if (!uploadOwnership.allowed) {
+    await writeAudit('MODULE_UPLOAD_DENIED_NON_OWNER', 'rejected', {
+      moduleSlug,
+      version,
+      devId: redact(devId),
+    });
+    return reply.code(403).send({ error: 'module is owned by another developer' });
   }
   const uploadGate = deploymentGateOutcome(await runtimeLedger(), moduleSlug);
   if (!uploadGate.allowed) {
@@ -672,6 +706,20 @@ app.post('/internal/deploy', async (request, reply) => {
       error: licenseViolations.join('; '),
     });
     return reply.code(403).send({ error: `license gate refused: ${licenseViolations.join('; ')}` });
+  }
+  // UR-C-03 (§15.8): module ownership applies to deploy as well as upload.
+  const deployOwnership = await resolveModuleOwnership(
+    new PostgresModuleOwnershipStore(db.knex),
+    safeModuleSlug,
+    providedDevId,
+  );
+  if (!deployOwnership.allowed) {
+    await writeAudit('MODULE_DEPLOY_DENIED_NON_OWNER', 'rejected', {
+      moduleSlug: safeModuleSlug,
+      version: safeModuleVersion,
+      devId: redact(providedDevId),
+    });
+    return reply.code(403).send({ error: 'module is owned by another developer' });
   }
   const deployGate = deploymentGateOutcome(await runtimeLedger(), safeModuleSlug);
   if (!deployGate.allowed) {

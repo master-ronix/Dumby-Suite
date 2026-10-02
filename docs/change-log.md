@@ -645,7 +645,7 @@ of record is this section plus the dated snapshot in `docs/migration-ledger-temp
 
 **M0 — P0 security flaws (rows 34–37, 64–69, 92–98; IN-PROGRESS; slices 1–5 landed on `feature/dev`
 in commit `0c625c1`, 2026-09-29 (75 files / 876 tests green at slice-5 close); slice 6a landed in this
-session (76 files / 901 tests green); slices 6b and 6c-i landed in this session — 78 files / 925 tests green):**
+session (76 files / 901 tests green); slices 6b, 6c-i and 6c-ii landed in this session — 79 files / 931 tests green):**
 
 | Request | Row | M0 slice | Record | Status |
 |---|---|---|---|---|
@@ -661,7 +661,7 @@ session (76 files / 901 tests green); slices 6b and 6c-i landed in this session 
 | UR-B-06 | 69 | 1 | Server-derived `source` on all three surfaces; the false `allowed` audit rows the no-op handlers produced are removed | DONE |
 | UR-C-01 | 92 | 2 | `safeJoin` / `assertPathInside` / `assertSafeSlug` / `assertSafeVersion` applied in the loader | PARTIAL |
 | UR-C-02 | 93 | 5 | One shared constant-time `registerInternalAuth` preHandler gates the whole Swastik surface; rejections write an `INTERNAL_AUTH_DENIED` audit row; both in-repo clients present the header | DONE |
-| UR-C-03 | 94 | — | Auto-approver gone; no ownership table, no non-owner 403; `manifest.devId` optional | PARTIAL |
+| UR-C-03 | 94 | 6c-ii | Auto-approver gone; slice 6c-ii adds the `modules` ownership table (migration 40), claims a fresh slug on the first accepted upload/deploy, refuses a non-owner with `MODULE_UPLOAD_DENIED_NON_OWNER`/`MODULE_DEPLOY_DENIED_NON_OWNER` before staging, and requires `manifest.devId`. **Residue: the DB constraint against internal approvals** (needs the approvals table) → 6c-iii. Proof: `tests/unit/m0-module-ownership.test.ts` (6 tests; revert → cannot load); 931/931 unit suite | PARTIAL |
 | UR-C-04 | 95 | 6a | Argon2 branch retargeted from `api_sessions` (which could never accept it) to the new `credentials` table; added `POST /credentials/verify` + `POST /credentials/issue-devid`, `bodyLimit: 4096`, `@fastify/rate-limit` (300/min app-wide, 60/min on verify), and `source: 'CREDENTIALS'` audit rows | DONE |
 | UR-C-05 | 96 | 6a | `devIdHash` persisted per §22.8 and **load-bearing** — verification re-checks it, so repointing `developers.credentialKeyId` at another developer fails; every refusal (missing/unknown/wrong/revoked/pending/unbound/transport-failure/unapproved) returns one frozen `{}` at 401 from a shared constant, replacing three 401-vs-404 pairs and a 403 that named `approvalStatus`; `REDACT_PATHS` covers `credentialHash`, `devIdHash` and nested `credential.secret`, verified against a real pino stream | DONE |
 | UR-C-06 | 97 | — | ssh2 public-key-only server (same fix as UR-A-02) — **reopened to PARTIAL by UR 2.0 (SC-01): the connection/byte limits clause is absent** | PARTIAL |
@@ -670,8 +670,9 @@ session (76 files / 901 tests green); slices 6b and 6c-i landed in this session 
 Slice ledger: 1 (admin surface auth) DONE · 2 (loader path containment) DONE · 3 (honest 501) DONE ·
 4 (fail-closed unknown tier) DONE · 5 (Swastik internal auth) DONE · **6a (developer credentials) DONE**
 (UR-B-05, UR-C-04, UR-C-05) · **6b (build provenance — UR-B-04, UR-C-07) DONE** · **6c-i (bind hosts —
-UR-B-03) DONE** · 6c-ii (ownership, approval workflow — UR-C-03, UR-B-01) and 6c-iii (CLAI limits —
-UR-C-06) still to come. Slice 6 is the last M0 slice.
+UR-B-03) DONE** · **6c-ii (module ownership — UR-C-03) DONE** · 6c-iii (owner-approval workflow +
+approvals-table constraint — UR-B-01, UR-C-03) and 6c-iv (CLAI limits — UR-C-06) still to come. Slice 6
+is the last M0 slice.
 
 **M0 slice 6a — supporting records (2026-10-01).** The `credentials` compose service did not exist, so
 delegation had no reachable endpoint; added it plus `CREDENTIALS_SERVICE_URL` and
