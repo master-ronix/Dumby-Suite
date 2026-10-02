@@ -62,6 +62,12 @@ export interface AdminRoutesDeps {
   };
   /** §15.8: activates a developer credential on approval (delegated to the Credentials Service). */
   credentialActivator?: { activate(keyId: string): Promise<boolean> };
+  /** Finding #15 — the queue manager behind the power-engine pause/resume routes. */
+  queueManager?: {
+    list(): readonly string[];
+    pause(queueName: string): Promise<void>;
+    resume(queueName: string): Promise<void>;
+  };
 }
 
 export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps): void {
@@ -373,12 +379,24 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
     },
   );
 
-  app.post('/admin/power-engine/pauseQueue', async (_req: FastifyRequest, reply: FastifyReply) => {
-    return sendNotImplemented(reply, 'pauseQueue');
+  app.post('/admin/power-engine/pauseQueue', async (req: FastifyRequest, reply: FastifyReply) => {
+    if (deps.queueManager === undefined) return sendNotImplemented(reply, 'pauseQueue');
+    const { queue } = (req.body as { queue?: string } | undefined) ?? {};
+    const names = queue === undefined ? [...deps.queueManager.list()] : [queue];
+    for (const name of names) {
+      await deps.queueManager.pause(name);
+    }
+    return reply.code(200).send({ paused: names });
   });
 
-  app.post('/admin/power-engine/resumeQueue', async (_req: FastifyRequest, reply: FastifyReply) => {
-    return sendNotImplemented(reply, 'resumeQueue');
+  app.post('/admin/power-engine/resumeQueue', async (req: FastifyRequest, reply: FastifyReply) => {
+    if (deps.queueManager === undefined) return sendNotImplemented(reply, 'resumeQueue');
+    const { queue } = (req.body as { queue?: string } | undefined) ?? {};
+    const names = queue === undefined ? [...deps.queueManager.list()] : [queue];
+    for (const name of names) {
+      await deps.queueManager.resume(name);
+    }
+    return reply.code(200).send({ resumed: names });
   });
 
   app.post(

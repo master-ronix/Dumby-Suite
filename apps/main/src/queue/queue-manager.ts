@@ -86,6 +86,11 @@ export class QueueManager {
     return job.id ?? '';
   }
 
+  /** The names of every registered queue (finding #15 — the admin pause/resume routes need them). */
+  list(): readonly string[] {
+    return [...this.entries.keys()];
+  }
+
   async pause(queueName: string): Promise<void> {
     await this.getEntry(queueName).queue.pause();
   }

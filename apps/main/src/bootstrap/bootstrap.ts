@@ -559,6 +559,8 @@ export async function bootstrap(): Promise<void> {
       operatorAllowList: config.get('PEP_OPERATOR_IDS'),
       operatorVerifier: credentialsClient,
       credentialActivator: credentialsClient,
+      // Finding #15: arm the power-engine pause/resume routes with the queue manager.
+      queueManager: queue,
     },
   });
   apiServer.addHook('onRequest', async () => inFlightTracker.increment());
