@@ -102,9 +102,7 @@ const baseEnvSchema = z
     // §22.5: the independently-configured PEP operator allow-list — the identities that may
     // decide governance approvals. Distinct from (but typically overlapping) BOT_OWNER_IDS.
     PEP_OPERATOR_IDS: csvIds(),
-    CLAI_MFA_ISSUER: z.string().default('DUMBY-CLAI'),
     CLAI_AUTHKEY_STORAGE_URL: z.string().default(''),
-    CLAI_BREAK_GLASS_SCRIPT_URL: z.string().default(''),
 
     MODULES_DIR: z.string().default('/mnt/modules'),
     SWASTIK_STAGING_VOLUME_PATH: z.string().default('/mnt/modules/swastik-staging'),

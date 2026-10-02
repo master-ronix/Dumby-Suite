@@ -779,6 +779,8 @@ and the five slice deviations are in `migration-ledger.md` §M0 slice 6a.
 |---|---|---|---|---|
 | UR-C-13 / UR-B-21 | — | M9 | CI hygiene — all 10 `uses:` in `.github/workflows/ci.yml` pinned to commit SHAs (the two annotated tags dereferenced; dependency-review pinned to v5.0.0's commit); secrets confirmed off `run:`; `.github/dependabot.yml` added (github-actions + npm). Proof: `m9-ci-hygiene.test.ts` (3 tests) | DONE |
 | #19 | — | M9 | `CommandRegistry.register` accepted a command from a module that was never registered — it now fails closed (`CommandModuleNotRegisteredError`). Fixtures updated; the M0 UR-A-03 unresolved-tier tests build their state white-box so the router's defence-in-depth stays under test | DONE |
+| #1 | — | M9 | `AGENTS.md` stale paths — verified against the tree: the paths it names all match and the retired references are gone (fixed during M0/M1). Its note about the ESLint/vitest blocks still targeting `src/modules/**` is accurate and left as a follow-up | DONE (verified) |
+| #10 | — | M9 | Unused CLAI env keys — removed the two genuinely-dead keys (`CLAI_MFA_ISSUER`, `CLAI_BREAK_GLASS_SCRIPT_URL`) from `env.schema.ts` + `.env.example` (`CLAI_AUTHKEY_STORAGE_URL` is read, so the finding was partly stale); `m9-env-hygiene.test.ts` gates the CLAI family; 16 inert-runtime keys recorded, not removed | DONE |
 
 ### UR 2.0 — Post-Re-Baseline Conformance & Audit Evidence (recorded 2026-10-01)
 
