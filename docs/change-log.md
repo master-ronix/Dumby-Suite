@@ -708,9 +708,9 @@ and the five slice deviations are in `migration-ledger.md` §M0 slice 6a.
 | UR-11 | 11 | M3 | Schema-declared authoring — the renderer derives presentation from a descriptor; unexercised (no module declares commands) | PARTIAL (→ MR-1…MR-8) |
 | UR-12 | 12 | M3 | Embed ban — `eslint.config.mjs` bans `EmbedBuilder`/`MessageEmbed`; `m3-embed-and-dm.test.ts` | DONE |
 | UR-21 | 21 | M3 | DM prohibition enforced in the router; covered by `m3-embed-and-dm.test.ts` | DONE (credited) |
-| UR-28 | 28 | M3 | Prefix-ban completeness — the four enforcement layers' coverage is not recorded | PARTIAL |
+| UR-28 | 28 | M3 | Prefix-ban completeness — the four enforcement layers recorded and gated (`m3-prefix-ban-layers.test.ts`: intents / registration / handlers / source gate) | DONE |
 | UR-C-20 | 111 | M3 | Component/autocomplete dispatch — `interaction-registry.ts` (minted customIds, invoker re-check, idempotency, `AUTOCOMPLETE_BUDGET_MS = 800`) | DONE (credited) |
-| UR-C-29 | 120 | M3 | RetryPolicy consumer — `withRetry` has no consumer; the §44.4 HttpClient honouring 429 is absent | PARTIAL (routed → M9) |
+| UR-C-29 | 120 | M3 | RetryPolicy consumer — `HttpClient` now consumes `withRetry`, retrying 429/5xx and honouring `Retry-After` (`retry.ts` gained `retryAfterMs`). Proof: `m3-http-client-retry.test.ts` (4 tests) | DONE |
 
 **M4 — RBAC Layer 6/7 redesign (rows 32–33, 40–42; 2026-10-02):**
 
