@@ -753,6 +753,13 @@ and the five slice deviations are in `migration-ledger.md` §M0 slice 6a.
 | UR-C-21 | 112 | M7 | Persona model wiring | DONE (credited) |
 | E9 §21 | — | M7 | ADR-003 gap — `persona.botTokenDigest` hashed a value Twixter must *use*. Now stored sealed (`botTokenSealed: SealedEnvelope`, `crypto/envelope.ts`; `persona_identities.botTokenSealed`, migration 42). Proof: `m7-persona-sealed-token.test.ts` (5 tests; revert → 2 fail) | DONE |
 
+**M8 — Envelope encryption (row 22; 2026-10-02):**
+
+| Request | Row | item | Record | Status |
+|---|---|---|---|---|
+| UR-22 | 22 | M8 | Envelope encryption scoped to in-process-readable credentials — `crypto/{envelope,envelope-scope}.ts`, `credentials/sealed-credential.service.ts`, migration 35 | DONE (credited) |
+| E6 GOV-13 | — | M8 | Scope-boundary verification — `CREDENTIAL_STORE_INVENTORY` + `verifyEnvelopeScope` (`crypto/envelope-scope.ts`) + migration audits. Proof: `m8-scope-verification.test.ts` (6 tests; un-export → 3 fail) | DONE |
+
 ### UR 2.0 — Post-Re-Baseline Conformance & Audit Evidence (recorded 2026-10-01)
 
 _Basis: UR-20260918-001 revision 2.0 (01/10/2026), which registers the ten-document Conformance &

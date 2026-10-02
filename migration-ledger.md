@@ -3,7 +3,7 @@
 > This file is the single source of truth for migration progress. The agent reads it at the start of every session and updates it at the end of every item and slice. An item without a record here did not happen; an IN-PROGRESS item with a resume note is continued, never restarted. A closed request row without its change-log line (rule R11) did not happen either.
 
 - **Created:** 2026-10-01
-- **Last updated:** 2026-10-02 (v1.15) · **Current item:** **M7 DONE** · **Next item:** M8 (envelope encryption)
+- **Last updated:** 2026-10-02 (v1.16) · **Current item:** **M8 DONE** · **Next item:** M3/M4 residuals (HttpClient 429, prefix-ban audit, grant-writer wiring) → MR-1
 - **Protocol:** `docs/migration-prompt.md` v5.3.0 (rules R1–R12; work order M0–M8 → MR-1…MR-8 → M9–M11)
 - **Record shapes:** `docs/migration-ledger-template.md` v2.2 §3 (item) and §4 (slice)
 - **Coverage map:** 121 request rows (UR-20260918-001 §8.1.2) → one owning item each, per the prompt's §3.0
@@ -24,7 +24,7 @@
 | M5 | License machine, Compatibility Ledger, Deployment Records | **DONE** — R12: rows 2/6/18/20 already landed (M0); row 8 deployment-records writer implemented + wired; E4 `tools/release_manager` now under the typecheck gate; row 23 routed to M6 |
 | M6 | Swastik promotion pipeline | **PARTIAL** — R12: pipeline + provenance present; finding #23 fixed (loader guard armed in `bootstrap.ts`); **manifest single-source (E9 D3) + `packages/swastik` layout drift (E2 S-26) outstanding** |
 | M7 | Twixter persona model | **DONE** — R12: persona model/bindings/migrations present; ADR-003 gap fixed (persona bot token now stored sealed, not only as a digest) |
-| M8 | Envelope encryption | Record: NOT STARTED — **tree: shaped code present** (`src/crypto/*`, sealed credentials, migration 35) — reconcile, R12 |
+| M8 | Envelope encryption | **DONE** — R12: envelope + sealed credentials present; scope-boundary verification implemented (`CREDENTIAL_STORE_INVENTORY` + `verifyEnvelopeScope` + audit test) |
 | MR-1 | hello-world module rewrite (Standard-tier) | NOT STARTED — module sources live in `packages/modules/` (lifecycle-only stubs today) |
 | MR-2 | health module rewrite (Core-tier) | NOT STARTED |
 | MR-3 | browse module rewrite (Core-tier) | NOT STARTED |
@@ -481,13 +481,15 @@ Each item's row-level triage is copied into its item record when it is claimed (
 
 ### M8 — Envelope encryption
 
-- **Status:** NOT STARTED (tree: shaped code present — reconcile, R12) · **Started:** — · **Completed:** —
+- **Status:** DONE (R12-credited; scope-boundary verification implemented) · **Started:** 2026-10-02 · **Completed:** 2026-10-02
 - **Request rows owned:** row 22 (`UR-22`)
-- **Evidence references:** E6 GOV-13; scope-boundary verification outstanding
-- **Provenance of ahead-of-record work:** `d334cfb` (2026-09-26)
-- **Source of truth read:** `blueprint.md` §32.7; ADR-003 — **not yet read**
-- **Blast radius (declare before editing):** —
-- **Row triage / Tree state / Ahead-of-record work:** — **Done-gate evidence:** — **Change-log entry (R11):** — **What changed:** — **Judgment calls / deviations:** — **Deliberately NOT done, with routing:** slice 6a writes to the `credentials` table, which sits **adjacent** to M8's sealed-credential store — read M8's record and ADR-003 before 6a's migration lands, so the two scopes stay disjoint (6a stores Argon2id hashes only; no sealed values). **Resume note:** blocked.
+- **Source of truth read (2026-10-02):** `blueprint.md` §32.7; ADR-003; prompt §M8.
+- **Row triage (tree vs UR, at `01fd7d6`):** Row 22 (`UR-22`) **DONE** — `src/crypto/{envelope,envelope-scope}.ts` + `src/credentials/sealed-credential.service.ts` + `src/db/repositories/sealed-credential.repository.ts` + migration 35 + `m8-envelope.test.ts` are present (root key → DEK → AES-256-GCM, rotation, the boundary guard). **E6 GOV-13 (scope-boundary verification) DONE** — added `CREDENTIAL_STORE_INVENTORY` + `verifyEnvelopeScope` (checks the at-rest stores against ADR-003's invariant) and a verification test that also audits the migrations (`credentials` holds hashes only; `sealed_credentials` + `persona_identities.botTokenSealed` hold envelopes).
+- **What changed:** `src/crypto/envelope-scope.ts` (inventory + `verifyEnvelopeScope`); `tests/unit/m8-scope-verification.test.ts` (new).
+- **Done-gate evidence (tests):** `m8-scope-verification.test.ts` (6 tests) — the inventory verifies clean, both violation directions, and the three migration audits. **Revert experiment:** un-exporting `verifyEnvelopeScope` → 3 tests fail. Full unit suite **977 passed / 86 files**; `tsc --noEmit` clean.
+- **Blast radius:** `src/crypto/envelope-scope.ts`, the new test.
+- **Change-log (R11):** row 22 written.
+- **Resume note:** M8 is DONE. Next: the M3/M4 residuals, then **MR-1…MR-8**.
 
 ### MR-1 — hello-world module rewrite (Standard-tier)
 
@@ -677,3 +679,4 @@ Every request row that reaches DONE or PARTIAL-routed in a pass gets **one line*
 | 1.13 | 2026-10-02 | Dumby Core Engineering | **M5 closed DONE** — implemented the deployment-records writer (`src/db/repositories/deployment-record.repository.ts`) and wired it into `/internal/deploy`; brought `tools/release_manager` under the typecheck gate as a workspace package (`@workspace/release-manager`). `tests/unit/m5-deployment-records.test.ts` (6 tests; revert → cannot load). Full suite 963/83 green; both tsc projects clean. Row 23 routed to M6. Next: M6. |
 | 1.14 | 2026-10-02 | Dumby Core Engineering | **M6 triaged → PARTIAL, finding #23 fixed.** `bootstrap.ts` now arms the loader's §15.8/§15.9 provenance guard (`PostgresBuildStore` + `BuildSignatureVerifier`, key from `BUILD_SIGNING_*`). `tests/unit/m6-loader-guard-wiring.test.ts` (3 tests; drop the guard argument → fails). Full suite 966/84 green. Outstanding: manifest single-source (E9 D3) + `packages/swastik` layout drift (E2 S-26). Next: M7. |
 | 1.15 | 2026-10-02 | Dumby Core Engineering | **M7 closed DONE** — implemented the ADR-003 fix: the persona bot token is now stored sealed (`botTokenSealed: SealedEnvelope` via `crypto/envelope.ts`; `sealPersonaBotToken`/`openPersonaBotToken`/`derivePersonaBotTokenDigest`; `persona_identities.botTokenSealed`, migration 42), not only as a digest. `tests/unit/m7-persona-sealed-token.test.ts` (5 tests; revert → 2 fail). Full suite 971/85 green; tsc clean. Next: M8. |
+| 1.16 | 2026-10-02 | Dumby Core Engineering | **M8 closed DONE** — implemented the E6 GOV-13 scope-boundary verification: `CREDENTIAL_STORE_INVENTORY` + `verifyEnvelopeScope` in `crypto/envelope-scope.ts`, plus `tests/unit/m8-scope-verification.test.ts` (6 tests incl. migration audits; un-export → 3 fail). Full suite 977/86 green; tsc clean. Next: M3/M4 residuals, then MR-1. |
