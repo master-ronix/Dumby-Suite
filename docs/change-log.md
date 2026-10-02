@@ -685,6 +685,14 @@ DB records migrations as `*.js` while the tsx runner loads `*.ts`), so the two m
 against a scratch Postgres database instead; M11 should re-run them through the real runner. Full detail
 and the five slice deviations are in `migration-ledger.md` §M0 slice 6a.
 
+**M1 — Tier volumes & blind discovery (rows 4, 5, 19; DONE — R12-credited 2026-10-02, no code change):**
+
+| Request | Row | item | Record | Status |
+|---|---|---|---|---|
+| UR-04 | 4 | M1 | Versioned standalone `swastik` SDK package with scoped entry points — `packages/swastik` (`@workspace/swastik` 0.1.0) exports `./manifest` and `./entrypoints/{core,admin,standard,marketplace}`. Present in the tree at `d334cfb`/`581499e`; credited per owner decision #19. The manifest-contract drift (TS types vs a Zod schema) is M6's rows (57–58, 75–76, 78, 83, 89, 105, 113, 117) | DONE (credited) |
+| UR-05 | 5 | M1 | Blind discovery from tier volumes at bootstrap; no hardcoded module list — `bootstrap.ts` calls `loadModulesFromTierVolumes` at `MODULE_DISCOVER`, no registry seed | DONE (credited) |
+| UR-19 | 19 | M1 | Four per-tier volumes + `swastik-staging` under `MODULES_DIR=/mnt/modules`; tier-at-rest enforced by volume; `src/modules` absent | DONE (credited) |
+
 ### UR 2.0 — Post-Re-Baseline Conformance & Audit Evidence (recorded 2026-10-01)
 
 _Basis: UR-20260918-001 revision 2.0 (01/10/2026), which registers the ten-document Conformance &

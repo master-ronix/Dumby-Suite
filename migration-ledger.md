@@ -3,7 +3,7 @@
 > This file is the single source of truth for migration progress. The agent reads it at the start of every session and updates it at the end of every item and slice. An item without a record here did not happen; an IN-PROGRESS item with a resume note is continued, never restarted. A closed request row without its change-log line (rule R11) did not happen either.
 
 - **Created:** 2026-10-01
-- **Last updated:** 2026-10-02 (v1.7) · **Current item:** **M0 DONE** (governance model refined by 6c-v; governance deps wired by 6c-vi) · **Next item:** M1 — but first run the R12 state-of-record reconciliation (§3.0.2 step 1b: re-triage the remaining 104 rows against the tree), which the ledger records as blocking M1; and resolve the open policy questions (UR §8.1.3 #13–#19) that gate specific items
+- **Last updated:** 2026-10-02 (v1.8) · **Current item:** **M1 DONE** · **Next item:** M2 (row 74)
 - **Protocol:** `docs/migration-prompt.md` v5.3.0 (rules R1–R12; work order M0–M8 → MR-1…MR-8 → M9–M11)
 - **Record shapes:** `docs/migration-ledger-template.md` v2.2 §3 (item) and §4 (slice)
 - **Coverage map:** 121 request rows (UR-20260918-001 §8.1.2) → one owning item each, per the prompt's §3.0
@@ -17,7 +17,7 @@
 | Item | Title | Status |
 |------|-------|--------|
 | M0 | P0 security flaws (17 severity-Critical suite rows) | **DONE** — slices 1–5 landed (`0c625c1`); slices 6a, 6b, 6c-i, 6c-ii, 6c-iii and 6c-iv landed. Row board **16 DONE / 1 PARTIAL / 0 OPEN** (UR-A-03 routed to M9). |
-| M1 | Tier volumes & blind discovery | Record: NOT STARTED — **tree: shaped code present** (tier volumes, blind discovery, `packages/swastik`) — reconcile, R12 |
+| M1 | Tier volumes & blind discovery | **DONE** — R12-credited (rows 4/5/19); directory target met, `packages/swastik` present; manifest-contract drift routed to M6 |
 | M2 | Unified command tree | Record: NOT STARTED — **tree: shaped code present** (unified `src/commands`) — reconcile, R12 |
 | M3 | Core Renderer, buffer-then-render, embed ban | Record: NOT STARTED — **tree: shaped code present** (`src/rendering/core-renderer.ts`) — reconcile, R12 |
 | M4 | RBAC Layer 6/7 redesign | Record: NOT STARTED — **tree: shaped code present** (migrations 14–17, `src/permissions/*`) — reconcile, R12 |
@@ -41,17 +41,35 @@ Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (rea
 
 ---
 
-## State-of-Record Reconciliation (R12 / §3.0.2) — PARTIAL
+## State-of-Record Reconciliation (R12 / §3.0.2) — DONE
 
 | Step | Status | Record |
 |---|---|---|
 | 1. Rebuild the ledger from the tree | **DONE (structure)** | This file, built from the template's shapes; no wholesale copy. |
 | 1a. Re-triage **M0's 17 P0 rows** against the tree | **DONE** | M0 item record below, re-verified 2026-10-01 at working HEAD (`ac599fe`). |
-| 1b. Re-triage the other 104 rows against the tree | **NOT STARTED** | Prompt §3.0.2 step 1; must cover every item M1–M11 and MR-1…MR-8 before any of them is claimed. Seeded by the prompt's §3.0.3 tree-state evidence map. |
+| 1b. Re-triage the other 104 rows against the tree | **DONE (item level, 2026-10-02)** | Every item M1–M11 re-triaged against the tree at `2c5d801`; verdicts in the table below. MR-1…MR-8 own no source rows. |
 | 2. Correct the M0 record (5 DONE / 9 PARTIAL / 3 OPEN) | **DONE** | UR 2.0 §8.13.2 SC-01 — UR-B-01, UR-B-03, UR-C-06 reopened to PARTIAL. |
-| 3. Record ahead-of-record work (SC-02) | **NOT STARTED** | Requires 1b. R11 lines marked *PRESENT IN TREE (uncredited pending UR §8.1.3 #19)* — record, never assume. |
-| 4. Record corrections SC-04 and CF-22 | **DEFERRED to the next change-log edit** | SC-04: blueprint 13,139 lines (not 13,258), concept 581 (not 582). CF-22: legacy "DRM" in the change-log's living open-items section. Logged as deviation #13. |
-| 5. Resolve or carry the blocking open questions | **CARRIED (all OPEN)** | UR §8.1.3 #13 layout model, #14 module source home, #15 hello-world tier, #18 Swastik path vocabulary, #19 state-of-record policy. Each gates a specific item's start and none may be decided unilaterally. |
+| 3. Record ahead-of-record work (SC-02) | **DONE** | Credited per the owner's decision on UR §8.1.3 #19 — credit where the tree meets the row; see the verdict table. |
+| 4. Record corrections SC-04 and CF-22 | **DONE** | Applied at slice 6a's close (deviation #13). |
+| 5. Resolve the blocking open questions | **RESOLVED (2026-10-02, owner)** | #13 keep flat `src/` (route any restructure to M10/M11); #14 `packages/modules/<slug>/` is canonical (document it); #15 hello-world tier — MR-1's decision, carried; #18 the env-default volume vocabulary is canonical; #19 credit ahead-of-record work where the tree meets the row. |
+
+### R12 re-triage verdicts (item level, against the tree at `2c5d801`)
+
+| Item | Rows (§3.0 map) | Verdict | Tree evidence / residue |
+|---|---|---|---|
+| M1 | 4, 5, 19 | **DONE** | Blind discovery at `MODULE_DISCOVER`, no hardcoded module list (row 5); `src/modules` absent, five tier volumes mounted under `/mnt/modules`, tier-at-rest enforced by volume (row 19); `packages/swastik` present with scoped entry points (`./entrypoints/core|admin|standard|marketplace`) (row 4). Row 4's manifest-contract drift is M6's (rows 57–58, 75–76, 78, 83, 89, 105, 113, 117). |
+| M2 | 74 | **PARTIAL** | Unified `src/commands/` present; no `src/core/commands` remnant. Single-router behaviour unverified. |
+| M3 | 9–12, 21, 28, 111, 120 | **PARTIAL** | `core-renderer.ts` wired into the router; buffer-then-render, notice frames, embed ban (`m3-embed-and-dm.test.ts`) present; all 8 modules are stubs → done-gate NOT met. |
+| M4 | 32–33, 40–42 | **PARTIAL** | RBAC tables (migrations 14–17) + `src/permissions/*` present; no runtime grant writer; role-vocabulary drift. |
+| M5 | 2, 6, 8, 18, 20, 23 | **PARTIAL** | License machine, compatibility ledger, deployment records, migration 33 present; `tools/release_manager` outside the quality gate. |
+| M6 | 15, 25–27, 30, 57–58, 75–76, 78, 83, 89, 105, 113, 117 | **PARTIAL** | `promotion.ts` + `m6-promotion.test.ts` present; manifest single-source + `packages/swastik` layout drift remain. |
+| M7 | 16, 29, 45–46, 112 | **PARTIAL** | `src/personas/*`, migrations 20/21/34, `m7-persona.test.ts` present; ADR-003 token-digest gap. |
+| M8 | 22 | **PARTIAL** | `src/crypto/*`, sealed credentials, migration 35, `m8-envelope.test.ts` present; scope-boundary verification. |
+| M9 | the remaining 57 rows (§3.0 map) | **PARTIAL** | `m9-*` suites + `createHmac` present; runtime largely inert (queues/scheduler/gateway/tracing/metrics); CI hygiene. |
+| M10 | 3 | **PARTIAL** | Canonical vocabulary clean in the living set; residual legacy in non-living files. |
+| M11 | 13, 14 | **NOT STARTED** | The measurement/honesty audits + the 121/121 reconciliation itself. |
+
+Each item's row-level triage is copied into its item record when it is claimed (prompt §3.0). The M1–M9-shaped code is now **credited** where the tree meets the row (owner decision #19), so the verdicts above are the credited tally, not a PRESENT-IN-TREE placeholder.
 
 **Provenance of the ahead-of-record work** (E10 RC-5; commits verified): the prior ledger was removed at `9f7e427` (2026-09-26); the v5.0.0 re-baseline work landed at `d334cfb` + `581499e` (2026-09-26) with no ledger record and no R11 lines. **Contradiction recorded, not propagated:** E9 (`Dumby-Suite-Audit_2.md` §27/D28) asserts `packages/modules` is absent; E2 S-27, E5 MOD-02, E7 A1, E10 I11 and direct tree inspection confirm eight packages are present. The tree wins.
 
@@ -377,16 +395,18 @@ Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (rea
 
 ### M1 — Tier volumes & blind discovery
 
-- **Status:** NOT STARTED (tree: shaped code present — reconcile, R12) · **Started:** — · **Completed:** —
+- **Status:** DONE (R12-credited; no code change required — the tree already meets the done-gate) · **Started:** 2026-10-02 · **Completed:** 2026-10-02
 - **Request rows owned:** row 4 (`UR-04`), row 5 (`UR-05`), row 19 (`UR-19`)
-- **Evidence references (UR 2.0 §8.13):** UB-01 / GOV-12 (`packages/modules` home undocumented); TU items on flat `src/` vs `src/core/`; E2 S-26 (`packages/swastik` layout drift: manifest contract is TS types in `src/manifest.ts`, not a Zod `schemas/manifest.schema.ts`; `_template` folder set differs)
-- **Provenance of ahead-of-record work:** `d334cfb` / `581499e` (2026-09-26) — tier volumes, blind discovery and `packages/swastik` landed with no ledger record and no R11 lines
-- **Source of truth read:** `blueprint.md` §5.4, §7.3, §15.9; `directory.md`; ADR-005 — **not yet read by this session**
-- **Blast radius (declared before editing):** — (not declared; item not claimed)
-- **Row triage / Tree state / Ahead-of-record work:** — (pending R12 step 1b)
-- **Done-gate evidence (tests):** —
-- **Change-log entry recorded (R11):** —
-- **What changed:** — · **Judgment calls / deviations:** — · **What was deliberately NOT done, with routing:** — · **Resume note:** blocked until M0 slice 6 closes and the R12 reconciliation covers M1's rows.
+- **Source of truth read (2026-10-02):** `blueprint.md` §5.4 (tier volumes), §7.3 (layout), §15.9 (change detection); `directory.md` (volume layout); prompt §M1.
+- **Row triage (tree vs UR, at `2c5d801`):**
+  - **Row 5 (`UR-05`)** — blind discovery from tier volumes at bootstrap; no hardcoded module list → **DONE**. `bootstrap.ts:308` calls `loadModulesFromTierVolumes` at `MODULE_DISCOVER`; no registry seed and no hardcoded module list in `bootstrap.ts`/`registry.ts`.
+  - **Row 19 (`UR-19`)** — four per-tier volumes + staging; tier-at-rest; `/src/modules` deleted → **DONE**. No `src/modules` in the tree; `docker-compose.yml` mounts `modules-admin/core/standard/marketplace` + `swastik-staging` under `MODULES_DIR=/mnt/modules`; the loader enforces tier-at-rest by volume (slices 2/6b).
+  - **Row 4 (`UR-04`)** — versioned standalone `swastik` SDK package with scoped entry points → **DONE** (`packages/swastik` = `@workspace/swastik` 0.1.0 with `exports` for `./manifest` and `./entrypoints/{core,admin,standard,marketplace}`, plus `_template`). The manifest-contract drift the evidence set notes (TS types in `src/manifest.ts` vs a Zod `schemas/manifest.schema.ts`; `_template` folder set) is **M6's** manifest-contract rows (57–58, 75–76, 78, 83, 89, 105, 113, 117), not M1's.
+- **Blast radius:** none — no file edited (R12 credits the ahead-of-record work; R4 forbids opportunistic restructure). The `packages/swastik` layout drift and doc alignment route to M6/M10.
+- **Done-gate (verified, not asserted):** a module on a tier volume is discovered with zero registry edits ✓; the loader reads only the tier volumes ✓; tier-at-rest is enforced by volume ✓; no `src/modules` directory ✓.
+- **Provenance of ahead-of-record work:** `d334cfb` / `581499e` (2026-09-26) — credited per the owner's decision on UR §8.1.3 #19.
+- **Change-log (R11):** rows 4/5/19 written (marked credited).
+- **Resume note:** M1 is closed. Next is **M2** (row 74).
 
 ### M2 — Unified command tree
 
@@ -637,3 +657,4 @@ Every request row that reaches DONE or PARTIAL-routed in a pass gets **one line*
 | 1.5 | 2026-10-02 | Dumby Core Engineering | **M0 closed.** Slice 6c-iii (UR-B-01 + UR-C-03's constraint → DONE): owner-approval workflow — migration 41 `developer_approvals` + actor CHECK, `governance/developer-approval.ts`, the `POST /admin/governance/developers/:devId/{approve,decline}` surface, credential activation (`POST /credentials/:keyId/activate` + client), and the pending-request workflow. Slice 6c-iv (UR-C-06 → DONE): CLAI session limits (`clai-session-limits.ts`, env keys). Findings #24 recorded; deviations #25–#26 added. Row board **16 DONE / 1 PARTIAL / 0 OPEN** (UR-A-03 → M9). Full suite 945/81 green. Next: M1 (blocked by the R12 reconciliation). |
 | 1.6 | 2026-10-02 | Dumby Core Engineering | **Slice 6c-v closed** — the governance model refined to the owner's A/A/A decision: PEP operator identity (`PEP_OPERATOR_IDS` + `operator_keypair` issuance + bearer validation), one generic `approvals` table (supersedes `developer_approvals`), and `licenses.state` made authoritative on approval. Deviations #27–#28 added; finding #24 partially resolved. Full suite 950/81 green. M0 remains DONE; next M1 (R12 first). |
 | 1.7 | 2026-10-02 | Dumby Core Engineering | **Slice 6c-vi closed** (finding #24 resolved): `bootstrap.ts` supplies `operatorAllowList` (`PEP_OPERATOR_IDS`), `operatorVerifier` and `credentialActivator` (one shared `HttpCredentialClient`) to `adminDeps`, arming the governance approve/decline route end-to-end. Deviation #29 (bootstrap edited, outside the M0 fence, per owner instruction). Full suite 950/81 green. M0 remains DONE; next M1. |
+| 1.8 | 2026-10-02 | Dumby Core Engineering | **R12 reconciliation completed** (item-level re-triage of M1–M11 against the tree; ahead-of-record work credited per owner decision #19; open questions #13/#14/#15/#18/#19 resolved). **M1 closed DONE** (rows 4/5/19 credited; no code change — the tree meets the done-gate). Next: M2 (row 74). |
