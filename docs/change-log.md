@@ -645,7 +645,7 @@ of record is this section plus the dated snapshot in `docs/migration-ledger-temp
 
 **M0 — P0 security flaws (rows 34–37, 64–69, 92–98; IN-PROGRESS; slices 1–5 landed on `feature/dev`
 in commit `0c625c1`, 2026-09-29 (75 files / 876 tests green at slice-5 close); slice 6a landed in this
-session (76 files / 901 tests green); slice 6b landed in this session — 77 files / 916 tests green):**
+session (76 files / 901 tests green); slices 6b and 6c-i landed in this session — 78 files / 925 tests green):**
 
 | Request | Row | M0 slice | Record | Status |
 |---|---|---|---|---|
@@ -655,7 +655,7 @@ session (76 files / 901 tests green); slice 6b landed in this session — 77 fil
 | UR-A-04 | 37 | 3 | All no-op PEP/admin/CLAI actions answer 501 without dispatch, state writes, or false `allowed` audit rows; a rejected PEP dispatch answers 403, not 200 | DONE |
 | UR-B-01 | 64 | — | Auto-approver removed; 403 for unknown/pending developers — **reopened to PARTIAL by UR 2.0 (SC-01): the owner-approval workflow clause is absent** | PARTIAL |
 | UR-B-02 | 65 | 2 | Zod slug/version validation + `assertPathInside` containment on the Swastik filesystem joins; loader entry-name parse and realpath containment | PARTIAL |
-| UR-B-03 | 66 | 1 | Constant-time preHandler on the API server's `/admin/*` plus PEP/CLAI/Twixter/credentials; three bind hosts loopback-default; compose ports loopback-pinned — **reopened to PARTIAL by UR 2.0 (SC-01): bind-host coverage is 4/8 surfaces** | PARTIAL |
+| UR-B-03 | 66 | 1, 6c-i | Constant-time preHandler on the API server's `/admin/*` plus PEP/CLAI/Twixter/credentials; compose ports loopback-pinned. Slice 6c-i completes bind-host configurability — `pep.ts`, `ssh-clai.ts`, `swastik.ts` and `twixter.ts` now source their listen host from `PEP_BIND_HOST`/`CLAI_BIND_HOST`/`SWASTIK_BIND_HOST`/`TWIXTER_BIND_HOST` (each default `127.0.0.1`), so all five entry-point services are env-configurable. Proof: `tests/unit/m0-bind-hosts.test.ts` (9 structural tests; revert → 9 failed); 925/925 unit suite | DONE |
 | UR-B-04 | 67 | 6b | `builds` provenance columns added (migration 39: `sourceArchiveHash`, `artifactHash`, `lockfileHash`, `gateResultsHash`, `sbom`, `signature`, `signatureKeyId`, `signedDescriptor`); Ed25519 signer/verifier in `build-signing.ts` with the private key held **in-process** and never persisted (finding #21 — `signing_keys` stays public-key-only); the loader verifies the on-disk artifact against the `builds` row before every import and refuses + quarantines on any mismatch. Proof: `tests/unit/m0-build-provenance.test.ts` — tampered artifact refused and moved to `quarantine/{buildId}/` with **both** hashes logged; 916/916 unit suite; revert experiment: forcing the loader guard off fails 5 enforcement tests | DONE |
 | UR-B-05 | 68 | 6a | `credentials` table (migrations 37–38, closed `purpose`/`status` enums, Argon2id-only storage); `Authorization: Bearer <keyId>.<secret>` on all three developer routes; `devId` remains the PK/FK **identifier** but no longer authenticates anyone. Proof: `tests/unit/m0-developer-credentials.test.ts` 25 tests (bare-devId bearer refused; issue stores only `$argon2id$` hashes; one refusal message across every cause); 901/901 unit suite; both migrations `up()`/`down()` exercised on live Postgres 16 | DONE |
 | UR-B-06 | 69 | 1 | Server-derived `source` on all three surfaces; the false `allowed` audit rows the no-op handlers produced are removed | DONE |
@@ -669,9 +669,9 @@ session (76 files / 901 tests green); slice 6b landed in this session — 77 fil
 
 Slice ledger: 1 (admin surface auth) DONE · 2 (loader path containment) DONE · 3 (honest 501) DONE ·
 4 (fail-closed unknown tier) DONE · 5 (Swastik internal auth) DONE · **6a (developer credentials) DONE**
-(UR-B-05, UR-C-04, UR-C-05) · **6b (build provenance — UR-B-04, UR-C-07) DONE** · 6c (ownership,
-approval workflow, bind hosts — UR-B-01, UR-B-03, UR-C-03, UR-C-06) still to come. Slice 6 is the
-last M0 slice.
+(UR-B-05, UR-C-04, UR-C-05) · **6b (build provenance — UR-B-04, UR-C-07) DONE** · **6c-i (bind hosts —
+UR-B-03) DONE** · 6c-ii (ownership, approval workflow — UR-C-03, UR-B-01) and 6c-iii (CLAI limits —
+UR-C-06) still to come. Slice 6 is the last M0 slice.
 
 **M0 slice 6a — supporting records (2026-10-01).** The `credentials` compose service did not exist, so
 delegation had no reachable endpoint; added it plus `CREDENTIALS_SERVICE_URL` and

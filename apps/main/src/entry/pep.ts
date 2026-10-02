@@ -91,7 +91,7 @@ app.post<{ Params: { functionName: string }; Body: unknown }>(
 );
 
 app
-  .listen({ port: env.PEP_PORT, host: '127.0.0.1' })
+  .listen({ port: env.PEP_PORT, host: env.PEP_BIND_HOST })
   .then(() => {
     logger.info('pep-started', { port: env.PEP_PORT });
   })

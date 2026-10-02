@@ -71,7 +71,7 @@ app.delete<{
 });
 
 app
-  .listen({ port: env.TWIXTER_PORT, host: '127.0.0.1' })
+  .listen({ port: env.TWIXTER_PORT, host: env.TWIXTER_BIND_HOST })
   .then(() => {
     logger.info('twixter-stub-started', { port: env.TWIXTER_PORT });
   })

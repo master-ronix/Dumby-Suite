@@ -22,8 +22,11 @@ const baseEnvSchema = z
     HEALTH_PORT: z.coerce.number().int().positive().default(8081),
     METRICS_BIND_HOST: z.string().default('127.0.0.1'),
     METRICS_PORT: z.coerce.number().int().positive().default(8082),
+    PEP_BIND_HOST: z.string().default('127.0.0.1'),
     PEP_PORT: z.coerce.number().int().positive().default(8083),
+    CLAI_BIND_HOST: z.string().default('127.0.0.1'),
     CLAI_PORT: z.coerce.number().int().positive().default(8084),
+    SWASTIK_BIND_HOST: z.string().default('127.0.0.1'),
     SWASTIK_PORT: z.coerce.number().int().positive().default(8085),
     CREDENTIALS_SERVICE_BIND_HOST: z.string().default('127.0.0.1'),
     CREDENTIALS_SERVICE_PORT: z.coerce.number().int().positive().default(8086),
@@ -31,6 +34,7 @@ const baseEnvSchema = z
     // issuance are delegated there alone). Hostname of the container/host running it.
     CREDENTIALS_SERVICE_URL: z.string().url().default('http://127.0.0.1:8086'),
     CREDENTIALS_SERVICE_TIMEOUT_MS: z.coerce.number().int().positive().default(2000),
+    TWIXTER_BIND_HOST: z.string().default('127.0.0.1'),
     TWIXTER_PORT: z.coerce.number().int().positive().default(8090),
 
     BOT_TOKEN: z.string().default(''),

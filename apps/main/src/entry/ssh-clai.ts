@@ -180,8 +180,8 @@ export function startClaiSshServer(): Server {
     });
   });
 
-  server.listen(env.CLAI_PORT, '127.0.0.1', () => {
-    logger.info('clai-ssh-started', { port: env.CLAI_PORT, host: '127.0.0.1' });
+  server.listen(env.CLAI_PORT, env.CLAI_BIND_HOST, () => {
+    logger.info('clai-ssh-started', { port: env.CLAI_PORT, host: env.CLAI_BIND_HOST });
   });
   return server;
 }

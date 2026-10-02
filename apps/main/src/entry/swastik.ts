@@ -851,7 +851,7 @@ export async function startSwastik(): Promise<void> {
       return writeAudit('INTERNAL_AUTH_DENIED', 'rejected', { ...detail });
     },
   });
-  await app.listen({ port: env.SWASTIK_PORT, host: '127.0.0.1' });
+  await app.listen({ port: env.SWASTIK_PORT, host: env.SWASTIK_BIND_HOST });
   logger.info('swastik-started', {
     port: env.SWASTIK_PORT,
     modulesDir,
