@@ -14,6 +14,7 @@ import {
   freeCharterStatus,
   PersonaOccupiedError,
   resolveBindingOwner,
+  sealPersonaBotToken,
   SingleServerBoundViolationError,
   type FreeCharterCostSignals,
   type PersonaBinding,
@@ -25,8 +26,10 @@ import { InMemoryPersonaStores } from '../../src/personas/persona.repository.js'
 import { CommandRegistry } from '../../src/commands/command-registry.js';
 import { CommandRouter, type CommandRouterOptions } from '../../src/commands/command-router.js';
 import { createLogger } from '../../src/logging/logger.js';
+import { randomRootKey } from '../../src/crypto/envelope.js';
 
 const logger = createLogger('error');
+const PERSONA_ROOT_KEY = randomRootKey('persona-root');
 
 const quietSignals: FreeCharterCostSignals = {
   dedicatedInfrastructureRequired: false,
@@ -39,6 +42,7 @@ function registration(overrides: Partial<PersonaRegistrationInput> = {}): Person
     discordApplicationId: 'app-100',
     boundGuildId: 'guild-1',
     botTokenDigest: 'argon2id$digest-of-the-supplied-token',
+    botTokenSealed: sealPersonaBotToken('the-supplied-token-has-no-plaintext', PERSONA_ROOT_KEY),
     registrarAuthority: 'oob-proof-of-app-ownership',
     ...overrides,
   };
@@ -61,7 +65,7 @@ describe('M7 persona model — bring-your-own-identity, single-server-bound', ()
     expect(p.grandfathered).toBe(false);
   });
 
-  test('the supplied token is stored only as a digest, never plaintext', () => {
+  test('the supplied token is never stored as plaintext (digest + sealed envelope)', () => {
     expect(persona().botTokenDigest).toContain('argon2id');
     const built = buildPersonaIdentity(registration());
     expect(built.botTokenDigest).not.toContain('the-supplied-token-has-no-plaintext');

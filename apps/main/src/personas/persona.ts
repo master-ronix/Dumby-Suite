@@ -1,3 +1,6 @@
+import { createHash } from 'node:crypto';
+import { open, seal, type EnvelopeRootKey, type SealedEnvelope } from '../crypto/envelope.js';
+
 export const DM_BEHAVIORS = ['prohibited', 'allowed'] as const;
 export type PersonaDmBehavior = (typeof DM_BEHAVIORS)[number];
 
@@ -25,6 +28,12 @@ export interface PersonaIdentity {
   readonly grandfathered: boolean;
   readonly status: PersonaStatus;
   readonly botTokenDigest: string;
+  /**
+   * ADR-003 / §35: the persona's bot token is a credential Twixter must *use*, so it is stored
+   * envelope-encrypted (in-process-readable) — not under a one-way hash. `botTokenDigest` is kept
+   * only as a non-reversible equality/lookup aid alongside it.
+   */
+  readonly botTokenSealed: SealedEnvelope;
 }
 
 export interface PersonaRegistrationInput {
@@ -32,6 +41,7 @@ export interface PersonaRegistrationInput {
   readonly discordApplicationId: string;
   readonly boundGuildId: string;
   readonly botTokenDigest: string;
+  readonly botTokenSealed: SealedEnvelope;
   readonly registrarAuthority: string;
   readonly dmBehavior?: PersonaDmBehavior;
   readonly shardAllocation?: number;
@@ -145,6 +155,11 @@ export function buildPersonaIdentity(input: PersonaRegistrationInput): PersonaId
   if (input.botTokenDigest.trim().length === 0) {
     throw new Error('botTokenDigest is required — the token is never stored in plaintext');
   }
+  if (input.botTokenSealed.ciphertext.trim().length === 0) {
+    throw new Error(
+      'botTokenSealed is required — ADR-003: a credential Twixter must use cannot be stored under a one-way hash',
+    );
+  }
   if (input.registrarAuthority.trim().length === 0) {
     throw new Error(
       'registrarAuthority is required — the registrar must prove authority over the application they own',
@@ -166,6 +181,7 @@ export function buildPersonaIdentity(input: PersonaRegistrationInput): PersonaId
     grandfathered: input.grandfathered ?? false,
     status: 'active',
     botTokenDigest: input.botTokenDigest,
+    botTokenSealed: input.botTokenSealed,
   };
 }
 
@@ -215,6 +231,20 @@ export function boundModulesForPersona(
   return bindings
     .filter((binding) => binding.personaId === personaId)
     .map((binding) => binding.moduleSlug);
+}
+
+export function derivePersonaBotTokenDigest(botToken: string): string {
+  return createHash('sha256').update(botToken, 'utf8').digest('hex');
+}
+
+/** ADR-003 — seal a persona's bot token for at-rest storage (in-process-readable). */
+export function sealPersonaBotToken(botToken: string, rootKey: EnvelopeRootKey): SealedEnvelope {
+  return seal(Buffer.from(botToken, 'utf8'), rootKey);
+}
+
+/** ADR-003 — read a persona's bot token back in process (Twixter presents it to Discord). */
+export function openPersonaBotToken(persona: PersonaIdentity, rootKey: EnvelopeRootKey): string {
+  return Buffer.from(open(persona.botTokenSealed, rootKey)).toString('utf8');
 }
 
 let personIdCounter = 0;

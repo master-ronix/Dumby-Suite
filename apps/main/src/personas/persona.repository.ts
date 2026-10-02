@@ -1,4 +1,5 @@
 import type { Knex } from 'knex';
+import type { SealedEnvelope } from '../crypto/envelope.js';
 import { type PersonaBinding, type PersonaIdentity } from './persona.js';
 
 export interface PersonaIdentityStore {
@@ -28,6 +29,7 @@ interface PersonaIdentityRow {
   grandfathered: boolean;
   status: 'active' | 'retired';
   botTokenDigest: string;
+  botTokenSealed: SealedEnvelope;
 }
 
 interface PersonaBindingRow {
@@ -49,6 +51,7 @@ function toIdentity(row: PersonaIdentityRow): PersonaIdentity {
     grandfathered: row.grandfathered,
     status: row.status,
     botTokenDigest: row.botTokenDigest,
+    botTokenSealed: row.botTokenSealed,
   };
 }
 
@@ -103,6 +106,7 @@ function toRow(persona: PersonaIdentity): PersonaIdentityRow {
     grandfathered: persona.grandfathered,
     status: persona.status,
     botTokenDigest: persona.botTokenDigest,
+    botTokenSealed: persona.botTokenSealed,
   };
 }
 

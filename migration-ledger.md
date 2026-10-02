@@ -3,7 +3,7 @@
 > This file is the single source of truth for migration progress. The agent reads it at the start of every session and updates it at the end of every item and slice. An item without a record here did not happen; an IN-PROGRESS item with a resume note is continued, never restarted. A closed request row without its change-log line (rule R11) did not happen either.
 
 - **Created:** 2026-10-01
-- **Last updated:** 2026-10-02 (v1.14) · **Current item:** **M6 PARTIAL** · **Next item:** M7 (Twixter persona model)
+- **Last updated:** 2026-10-02 (v1.15) · **Current item:** **M7 DONE** · **Next item:** M8 (envelope encryption)
 - **Protocol:** `docs/migration-prompt.md` v5.3.0 (rules R1–R12; work order M0–M8 → MR-1…MR-8 → M9–M11)
 - **Record shapes:** `docs/migration-ledger-template.md` v2.2 §3 (item) and §4 (slice)
 - **Coverage map:** 121 request rows (UR-20260918-001 §8.1.2) → one owning item each, per the prompt's §3.0
@@ -23,7 +23,7 @@
 | M4 | RBAC Layer 6/7 redesign | **DONE** — R12: ranks/grant surface/blacklist/persistence/resolver present; runtime grant writer implemented (`rbac-grant.repository.ts`); writer wiring routed (finding #25) |
 | M5 | License machine, Compatibility Ledger, Deployment Records | **DONE** — R12: rows 2/6/18/20 already landed (M0); row 8 deployment-records writer implemented + wired; E4 `tools/release_manager` now under the typecheck gate; row 23 routed to M6 |
 | M6 | Swastik promotion pipeline | **PARTIAL** — R12: pipeline + provenance present; finding #23 fixed (loader guard armed in `bootstrap.ts`); **manifest single-source (E9 D3) + `packages/swastik` layout drift (E2 S-26) outstanding** |
-| M7 | Twixter persona model | Record: NOT STARTED — **tree: shaped code present** (`src/personas/*`, migrations 20/21/34) — reconcile, R12 |
+| M7 | Twixter persona model | **DONE** — R12: persona model/bindings/migrations present; ADR-003 gap fixed (persona bot token now stored sealed, not only as a digest) |
 | M8 | Envelope encryption | Record: NOT STARTED — **tree: shaped code present** (`src/crypto/*`, sealed credentials, migration 35) — reconcile, R12 |
 | MR-1 | hello-world module rewrite (Standard-tier) | NOT STARTED — module sources live in `packages/modules/` (lifecycle-only stubs today) |
 | MR-2 | health module rewrite (Core-tier) | NOT STARTED |
@@ -469,13 +469,15 @@ Each item's row-level triage is copied into its item record when it is claimed (
 
 ### M7 — Twixter persona model
 
-- **Status:** NOT STARTED (tree: shaped code present — reconcile, R12) · **Started:** — · **Completed:** —
+- **Status:** DONE (R12-credited; ADR-003 sealed-token fix implemented) · **Started:** 2026-10-02 · **Completed:** 2026-10-02
 - **Request rows owned:** rows 16 (`UR-16`), 29 (`UR-29`), 45–46 (`UR-A-12`, `UR-A-13`), 112 (`UR-C-21`)
-- **Evidence references:** E6 GOV-13; E9 §21 (ADR-003 gap — `persona.botTokenDigest` hashes a value Twixter must *use*)
-- **Provenance of ahead-of-record work:** `d334cfb` (2026-09-26)
-- **Source of truth read:** `blueprint.md` §35; ADR-008, ADR-011; `interface.md` persona division — **not yet read**
-- **Blast radius (declare before editing):** —
-- **Row triage / Tree state / Ahead-of-record work:** — **Done-gate evidence:** — **Change-log entry (R11):** — **What changed:** — **Judgment calls / deviations:** — **Deliberately NOT done, with routing:** — **Resume note:** blocked.
+- **Source of truth read (2026-10-02):** `blueprint.md` §35; ADR-003, ADR-008, ADR-011; `interface.md` persona division; prompt §M7.
+- **Row triage (tree vs UR, at `9dc79ff`):** `src/personas/*` (persona model, bindings, command-binding service), migrations 20/21/34 and `m7-persona.test.ts` are present — bring-your-own-identity, single-server-bound, the free-charter sunset (ADR-008), the occupied-by-another-persona gate, `PERSONA_ID`. **ADR-003 gap DONE** — `persona.botTokenDigest` hashed a value Twixter must *use*; `PersonaIdentity`/`PersonaRegistrationInput` now carry `botTokenSealed: SealedEnvelope` (envelope encryption, M8's `crypto/envelope.ts`), with `sealPersonaBotToken`/`openPersonaBotToken`/`derivePersonaBotTokenDigest` and a `persona_identities.botTokenSealed` column (migration 42).
+- **What changed:** `src/personas/persona.ts`; `src/personas/persona.repository.ts`; `src/db/migrations/20260101000042_add_persona_sealed_token.ts` (new); `tests/unit/m7-persona-sealed-token.test.ts` (new); `tests/unit/m7-persona.test.ts` (fixture gains the sealed token).
+- **Done-gate evidence (tests):** `m7-persona-sealed-token.test.ts` (5 tests) — seal→open round-trip, the digest is one-way, a missing sealed token is refused, the store round-trip, a wrong key cannot open. **Revert experiment:** dropping the sealed token from the built identity → 2 tests fail. Full unit suite **971 passed / 85 files**; `tsc --noEmit` clean.
+- **Blast radius:** `src/personas/**`, migration 42, the two tests.
+- **Change-log (R11):** rows 16/29/45/46/112 written.
+- **Resume note:** M7 is DONE. Next is **M8**.
 
 ### M8 — Envelope encryption
 
@@ -674,3 +676,4 @@ Every request row that reaches DONE or PARTIAL-routed in a pass gets **one line*
 | 1.12 | 2026-10-02 | Dumby Core Engineering | **M4 closed DONE** — implemented the runtime grant writer (`src/db/repositories/rbac-grant.repository.ts`: `PostgresGrantWriter`/`InMemoryGrantWriter`, `rbac_grants` persistence, rate-limit↔quota alias). `tests/unit/m4-grant-writer.test.ts` (7 tests; revert → cannot load). Full suite 957/82 green. Finding #25 recorded (writer not yet wired into bootstrap). Next: M5. |
 | 1.13 | 2026-10-02 | Dumby Core Engineering | **M5 closed DONE** — implemented the deployment-records writer (`src/db/repositories/deployment-record.repository.ts`) and wired it into `/internal/deploy`; brought `tools/release_manager` under the typecheck gate as a workspace package (`@workspace/release-manager`). `tests/unit/m5-deployment-records.test.ts` (6 tests; revert → cannot load). Full suite 963/83 green; both tsc projects clean. Row 23 routed to M6. Next: M6. |
 | 1.14 | 2026-10-02 | Dumby Core Engineering | **M6 triaged → PARTIAL, finding #23 fixed.** `bootstrap.ts` now arms the loader's §15.8/§15.9 provenance guard (`PostgresBuildStore` + `BuildSignatureVerifier`, key from `BUILD_SIGNING_*`). `tests/unit/m6-loader-guard-wiring.test.ts` (3 tests; drop the guard argument → fails). Full suite 966/84 green. Outstanding: manifest single-source (E9 D3) + `packages/swastik` layout drift (E2 S-26). Next: M7. |
+| 1.15 | 2026-10-02 | Dumby Core Engineering | **M7 closed DONE** — implemented the ADR-003 fix: the persona bot token is now stored sealed (`botTokenSealed: SealedEnvelope` via `crypto/envelope.ts`; `sealPersonaBotToken`/`openPersonaBotToken`/`derivePersonaBotTokenDigest`; `persona_identities.botTokenSealed`, migration 42), not only as a digest. `tests/unit/m7-persona-sealed-token.test.ts` (5 tests; revert → 2 fail). Full suite 971/85 green; tsc clean. Next: M8. |

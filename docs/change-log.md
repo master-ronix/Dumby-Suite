@@ -742,6 +742,17 @@ and the five slice deviations are in `migration-ledger.md` §M0 slice 6a.
 | E9 D3 | — | M6 | Manifest single-source (three definitions: `packages/swastik`, `manifest.schema.ts`, `tier-rules.ts`) | PARTIAL (outstanding) |
 | E2 S-26 | — | M6 | `packages/swastik` layout drift | PARTIAL (outstanding) |
 
+**M7 — Twixter persona model (rows 16, 29, 45–46, 112; 2026-10-02):**
+
+| Request | Row | item | Record | Status |
+|---|---|---|---|---|
+| UR-16 | 16 | M7 | Twixter persona model (bring-your-own-identity, single-server-bound) | DONE (credited) |
+| UR-29 | 29 | M7 | Persona bindings / dispatch gate (`moduleSlug` in the key, `PERSONA_ID`, occupied-by-another-persona gate) | DONE (credited) |
+| UR-A-12 | 45 | M7 | Persona surface (ADR-011) | DONE (credited) |
+| UR-A-13 | 46 | M7 | Free-charter sunset (ADR-008) | DONE (credited) |
+| UR-C-21 | 112 | M7 | Persona model wiring | DONE (credited) |
+| E9 §21 | — | M7 | ADR-003 gap — `persona.botTokenDigest` hashed a value Twixter must *use*. Now stored sealed (`botTokenSealed: SealedEnvelope`, `crypto/envelope.ts`; `persona_identities.botTokenSealed`, migration 42). Proof: `m7-persona-sealed-token.test.ts` (5 tests; revert → 2 fail) | DONE |
+
 ### UR 2.0 — Post-Re-Baseline Conformance & Audit Evidence (recorded 2026-10-01)
 
 _Basis: UR-20260918-001 revision 2.0 (01/10/2026), which registers the ten-document Conformance &
