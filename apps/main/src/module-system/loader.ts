@@ -5,6 +5,8 @@ import { validateTierRules } from './tier-rules.js';
 import type { ModuleRegistry } from './registry.js';
 import { CORE_TOKENS } from '../di/tokens.js';
 import type { CommandRegistry } from '../commands/command-registry.js';
+import { toCommandDefinition } from '../commands/module-command.js';
+import type { CoreRenderer } from '../rendering/core-renderer.js';
 
 export interface ModuleLoadReport {
   order: readonly string[];
@@ -76,9 +78,32 @@ export class ModuleLoader {
       const mod = this.registry.get(name);
       if (!mod) continue;
       try {
-        this.container
-          .tryResolve<CommandRegistry>(CORE_TOKENS.CommandRegistry)
-          ?.registerModule(mod.manifest.name, mod.manifest.tier);
+        const commandRegistry = this.container.tryResolve<CommandRegistry>(
+          CORE_TOKENS.CommandRegistry,
+        );
+        commandRegistry?.registerModule(mod.manifest.name, mod.manifest.tier);
+        // §1.7 (UR-11) — register the module's schema-declared commands against the Renderer.
+        if (commandRegistry !== undefined && mod.commands !== undefined) {
+          const renderer = this.container.tryResolve<CoreRenderer>(CORE_TOKENS.Renderer);
+          if (renderer !== undefined) {
+            for (const declaration of mod.commands) {
+              commandRegistry.register(
+                toCommandDefinition(declaration, {
+                  moduleId: mod.manifest.name,
+                  identity: {
+                    surface: `Dumby | ${mod.manifest.name}`,
+                    ...(mod.manifest.devId !== undefined
+                      ? { developer: mod.manifest.devId }
+                      : {}),
+                    version: mod.manifest.version,
+                  },
+                  renderer,
+                  config: mod.manifest.config,
+                }),
+              );
+            }
+          }
+        }
         await mod.onLoad?.(this.container);
       } catch (err) {
         this.logger.error('module-load-failed', { module: name, error: String(err) });

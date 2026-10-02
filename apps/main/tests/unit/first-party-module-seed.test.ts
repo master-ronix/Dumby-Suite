@@ -91,6 +91,10 @@ afterAll(() => {
 });
 
 describe('first-party module packages', () => {
+  // MR-1…MR-8 rewrite the stubs into real modules; a rewritten module declares its developer
+  // (`devId`), which the re-seeded stubs do not.
+  const MR_REWRITTEN_SLUGS = new Set(['hello-world']);
+
   test('every removed first-party module is re-seeded as a manifest-valid package', () => {
     const packages = discoverFirstPartyModulePackages();
     expect(packages.map((pkg) => pkg.slug).sort()).toStrictEqual([...SEEDED_SLUGS].sort());
@@ -101,7 +105,9 @@ describe('first-party module packages', () => {
       expect(validateTierRules(pkg.manifest)).toStrictEqual([]);
       expect(pkg.manifest.hardcoded).toBe(false);
       expect(pkg.manifest.hardcodeGuildId).toBeUndefined();
-      expect(pkg.manifest.devId).toBeUndefined();
+      if (!MR_REWRITTEN_SLUGS.has(pkg.slug)) {
+        expect(pkg.manifest.devId).toBeUndefined();
+      }
       expect(pkg.manifest.buildId).toBeUndefined();
     }
   });

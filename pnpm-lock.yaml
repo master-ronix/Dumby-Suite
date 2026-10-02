@@ -475,6 +475,12 @@ importers:
         specifier: ^0.31.10
         version: 0.31.10
 
+  packages/modules/hello-world:
+    dependencies:
+      '@workspace/swastik':
+        specifier: workspace:*
+        version: link:../../swastik
+
   packages/swastik: {}
 
   scripts:

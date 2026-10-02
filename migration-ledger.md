@@ -3,7 +3,7 @@
 > This file is the single source of truth for migration progress. The agent reads it at the start of every session and updates it at the end of every item and slice. An item without a record here did not happen; an IN-PROGRESS item with a resume note is continued, never restarted. A closed request row without its change-log line (rule R11) did not happen either.
 
 - **Created:** 2026-10-01
-- **Last updated:** 2026-10-02 (v1.19) · **Current item:** **M3 row 11 DONE (schema-declared authoring mechanism)** · **Next item:** MR-1 (hello-world module rewrite)
+- **Last updated:** 2026-10-02 (v1.20) · **Current item:** **MR-1 DONE (hello-world)** · **Next item:** MR-2 (health module rewrite)
 - **Protocol:** `docs/migration-prompt.md` v5.3.0 (rules R1–R12; work order M0–M8 → MR-1…MR-8 → M9–M11)
 - **Record shapes:** `docs/migration-ledger-template.md` v2.2 §3 (item) and §4 (slice)
 - **Coverage map:** 121 request rows (UR-20260918-001 §8.1.2) → one owning item each, per the prompt's §3.0
@@ -25,7 +25,7 @@
 | M6 | Swastik promotion pipeline | **PARTIAL** — R12: pipeline + provenance present; finding #23 fixed (loader guard armed in `bootstrap.ts`); **manifest single-source (E9 D3) + `packages/swastik` layout drift (E2 S-26) outstanding** |
 | M7 | Twixter persona model | **DONE** — R12: persona model/bindings/migrations present; ADR-003 gap fixed (persona bot token now stored sealed, not only as a digest) |
 | M8 | Envelope encryption | **DONE** — R12: envelope + sealed credentials present; scope-boundary verification implemented (`CREDENTIAL_STORE_INVENTORY` + `verifyEnvelopeScope` + audit test) |
-| MR-1 | hello-world module rewrite (Standard-tier) | NOT STARTED — module sources live in `packages/modules/` (lifecycle-only stubs today) |
+| MR-1 | hello-world module rewrite (Standard-tier) | **DONE** — full manifest + `/hello` (schema-declared) + locale + the mechanism wired (loader registers module commands); §10.10 live items routed |
 | MR-2 | health module rewrite (Core-tier) | NOT STARTED |
 | MR-3 | browse module rewrite (Core-tier) | NOT STARTED |
 | MR-4 | queue module rewrite (Core-tier) | NOT STARTED |
@@ -495,11 +495,16 @@ Each item's row-level triage is copied into its item record when it is claimed (
 
 ### MR-1 — hello-world module rewrite (Standard-tier)
 
-- **Status:** NOT STARTED · **Started:** — · **Completed:** —
+- **Status:** DONE (in-sandbox verified; §10.10 live items routed to a deployment run) · **Started:** 2026-10-02 · **Completed:** 2026-10-02
 - **Request rows owned:** none of its own (§3.0: the MR block implements UR-11's reference set against M1–M8 interfaces)
-- **Tree state:** `packages/modules/hello-world` is a lifecycle-only stub; built by `apps/main/scripts/build-first-party-modules.ts` (esbuild → `dist-modules/`)
-- **Source of truth read:** `interface.md` hello-world division + **§10.10** testing checklist (UR 2.0 CF-17: "Division 8.10" was a miscite); `blueprint.md` §11, §12.21 — **not yet read**
-- **Blast radius (declare before editing):** — **Row triage / Tree state / Done-gate evidence / Change-log entry (R11) / What changed / Judgment calls / Deliberately NOT done, with routing:** — **Resume note:** prerequisite — every item M0–M8 DONE, or stop and report; never rewrite a module against an interface that does not exist.
+- **Source of truth read (2026-10-02):** `interface.md` §10 (hello-world division — §10.3 manifest, §10.5 the `/hello` schema, §10.7 locale, §10.10 checklist); `blueprint.md` §11, §12.21; prompt §MR.
+- **Precondition (owner decision, v1.19):** the MR block's "every M0–M8 DONE" gate is unsatisfiable as written (M3's done-gate needs the command surface MR delivers); read as "every interface the modules need exists" and proceed. The one missing interface (the schema-declared authoring mechanism) was built as M3's row 11 first.
+- **What changed:** `packages/modules/hello-world/` — `manifest.json` (tier `standard`, `marketplaceCategory: utility`, `devId: qm-dev-001`, `commands: [/hello]`, `config.greeting`, `locales: [en-US]`); `commands/hello.command.ts` (`defineCommand` — the `/hello` schema + a page-data handler); `src/index.ts` (exports `commands` + the lifecycle hooks); `locales/en-US.json`; the `_template` folder layout; `package.json` (`@workspace/swastik`). Mechanism wiring: `LoadedModule.commands` (`registry.ts`), the volume loader reads `pkg.commands`, and `ModuleLoader.loadAll` registers each via `toCommandDefinition` against the container's Renderer.
+- **Done-gate evidence (tests):** `mr1-hello-world.test.ts` (3 tests — the manifest parses and declares `/hello`; the module exports its command; the command renders through the Renderer). The build (`pnpm build:modules`) emits `dist-modules/hello-world/index.js` (1544 bytes, carrying the command). **Revert experiment:** un-exporting `commands` → 2 tests fail. Full unit suite **995 passed / 91 files**; `tsc --noEmit` clean.
+- **Judgment calls / deviations:** the source manifest carries `devId` (spec §10.3) but not `buildId` (a per-build value assigned at upload); the seed test's "no devId" assertion is scoped to the un-rewritten stubs.
+- **Deliberately NOT done, with routing:** the §10.10 items that require a running bot + Discord (the slash list, the dashboard dropdown, the disable/enable round-trip) → a deployment verification run.
+- **Change-log (R11):** MR-1 (no source rows).
+- **Resume note:** MR-1 is DONE. Next is **MR-2** (health).
 
 ### MR-2 — health module rewrite (Core-tier)
 
@@ -685,3 +690,4 @@ Every request row that reaches DONE or PARTIAL-routed in a pass gets **one line*
 | 1.17 | 2026-10-02 | Dumby Core Engineering | **M3 residuals closed (rows 28/120).** Row 120: `HttpClient` now consumes `withRetry`, retrying 429/5xx and honouring `Retry-After` (`retry.ts` gained `retryAfterMs`). Row 28: the four prefix-ban layers recorded + gated. `tests/unit/m3-http-client-retry.test.ts` (4) + `m3-prefix-ban-layers.test.ts` (4). Full suite 985/88 green; tsc clean. M3 remains PARTIAL only for its done-gate (→ MR-1…MR-8). Next: M4 finding #25. |
 | 1.18 | 2026-10-02 | Dumby Core Engineering | **M4 finding #25 RESOLVED** — `bootstrap.ts` constructs `new PostgresGrantWriter(db.knex)` and passes it as the router's `grantStore`; `command-router.ts` now loads a guild's Layer-7 grants at dispatch time (falls back to the static list). `tests/unit/m4-grant-writer-wiring.test.ts` (2 tests; drop the wiring → fails). Full suite 987/89 green; tsc clean. All M-series residuals are now closed. Next: **MR-1**. |
 | 1.19 | 2026-10-02 | Dumby Core Engineering | **MR precondition + M3 row 11.** Owner decisions: (1) the MR block's precondition ("every M0–M8 DONE") is unsatisfiable as written because M3's done-gate needs the command surface MR delivers — read it as "every interface the modules need exists" and proceed; (2) the schema-declared authoring mechanism (`defineCommand` + the Renderer page model), which MR-1 needs and the MR fence forbids MR items from adding, is M3's row 11 — build it as M3 framework work. Built: `packages/swastik/src/commands.ts`, the Renderer page-data model (`core-renderer.ts`), `src/commands/module-command.ts`. `m3-schema-authoring.test.ts` (5 tests; un-export → fails). Full suite 992/90 green; tsc clean. Row 11 now DONE. Next: MR-1. |
+| 1.20 | 2026-10-02 | Dumby Core Engineering | **MR-1 closed DONE (hello-world).** Rewrote `packages/modules/hello-world` into the template layout with the full manifest + a schema-declared `/hello` (`defineCommand`) + locale; completed the mechanism wiring (`LoadedModule.commands` → the volume loader → `ModuleLoader.loadAll` registers via `toCommandDefinition`). `mr1-hello-world.test.ts` (3 tests; un-export → 2 fail). Build emits a 1544-byte bundle. Full suite 995/91 green; tsc clean. §10.10 live items routed to a deployment run. Next: MR-2. |

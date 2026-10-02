@@ -365,6 +365,7 @@ export async function loadModulesFromTierVolumes(
         const pkg = (await import(/* @vite-ignore */ cacheBustedImportUrl(indexPath, buildId))) as
           Partial<LoadedModule>;
         const loadedModule: LoadedModule = { manifest };
+        if (pkg.commands) loadedModule.commands = pkg.commands;
         if (pkg.onLoad) loadedModule.onLoad = pkg.onLoad;
         if (pkg.onReady) loadedModule.onReady = pkg.onReady;
         if (pkg.onUnload) loadedModule.onUnload = pkg.onUnload;

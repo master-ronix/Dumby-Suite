@@ -1,8 +1,11 @@
+import type { CommandDeclaration } from '@workspace/swastik';
 import type { Container } from '../di/container.js';
 import type { ModuleManifest } from './manifest.schema.js';
 
 export interface LoadedModule {
   manifest: ModuleManifest;
+  /** §1.7 (UR-11) — the module's schema-declared commands; the loader registers them. */
+  commands?: readonly CommandDeclaration[];
   onLoad?: (container: Container) => Promise<void> | void;
   onReady?: (container: Container) => Promise<void> | void;
   onUnload?: () => Promise<void> | void;

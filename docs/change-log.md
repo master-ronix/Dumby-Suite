@@ -761,6 +761,12 @@ and the five slice deviations are in `migration-ledger.md` §M0 slice 6a.
 | UR-22 | 22 | M8 | Envelope encryption scoped to in-process-readable credentials — `crypto/{envelope,envelope-scope}.ts`, `credentials/sealed-credential.service.ts`, migration 35 | DONE (credited) |
 | E6 GOV-13 | — | M8 | Scope-boundary verification — `CREDENTIAL_STORE_INVENTORY` + `verifyEnvelopeScope` (`crypto/envelope-scope.ts`) + migration audits. Proof: `m8-scope-verification.test.ts` (6 tests; un-export → 3 fail) | DONE |
 
+**MR-1 — hello-world module rewrite (Standard-tier; 2026-10-02):**
+
+| Request | Row | item | Record | Status |
+|---|---|---|---|---|
+| — | — | MR-1 | Rewrote `packages/modules/hello-world` into the template layout: the full v5.0.0 manifest, a schema-declared `/hello` (`defineCommand`), the en-US locale, and the mechanism wiring (the loader registers a module's declared commands via `toCommandDefinition`). Proof: `mr1-hello-world.test.ts` (3 tests; un-export → 2 fail); `pnpm build:modules` emits a 1544-byte bundle | DONE (§10.10 live items routed) |
+
 ### UR 2.0 — Post-Re-Baseline Conformance & Audit Evidence (recorded 2026-10-01)
 
 _Basis: UR-20260918-001 revision 2.0 (01/10/2026), which registers the ten-document Conformance &
