@@ -722,6 +722,18 @@ and the five slice deviations are in `migration-ledger.md` §M0 slice 6a.
 | UR-A-08 | 41 | M4 | RBAC persistence — `rbac.ts` + migrations 14–17 | DONE (credited) |
 | UR-A-09 | 42 | M4 | Layer order — `resolver.ts` | DONE (credited) |
 
+**M5 — License machine, Compatibility Ledger & Deployment Records (rows 2, 6, 8, 18, 20, 23; 2026-10-02):**
+
+| Request | Row | item | Record | Status |
+|---|---|---|---|---|
+| UR-02 | 2 | M5 | Swastik Fastify error handler | DONE (M0 slice 2) |
+| UR-06 | 6 | M5 | `POST /swastik/developers/register` keyed | DONE (M0 slice 5) |
+| UR-08 | 8 | M5 | `deployment_records` never written — added `deployment-record.repository.ts` (`Postgres`/`InMemory` stores) + wired into `/internal/deploy`. Proof: `m5-deployment-records.test.ts` (6 tests; revert → cannot load) | DONE |
+| UR-18 | 18 | M5 | Layer 7 `permissionDeclared` mask | DONE (M0 slice 4 — recorded) |
+| UR-20 | 20 | M5 | deploy CLI `x-internal-api-key` | DONE (M0 slice 5) |
+| UR-23 | 23 | M5 | Loader verification guard not armed in production | ROUTED → M6 |
+| E4 | — | M5 | `tools/release_manager` outside every quality gate — now `@workspace/release-manager` with a `typecheck` script in the root gate | DONE |
+
 ### UR 2.0 — Post-Re-Baseline Conformance & Audit Evidence (recorded 2026-10-01)
 
 _Basis: UR-20260918-001 revision 2.0 (01/10/2026), which registers the ten-document Conformance &

@@ -3,7 +3,7 @@
 > This file is the single source of truth for migration progress. The agent reads it at the start of every session and updates it at the end of every item and slice. An item without a record here did not happen; an IN-PROGRESS item with a resume note is continued, never restarted. A closed request row without its change-log line (rule R11) did not happen either.
 
 - **Created:** 2026-10-01
-- **Last updated:** 2026-10-02 (v1.12) · **Current item:** **M4 DONE** · **Next item:** M5 (license machine / Compatibility Ledger / Deployment Records)
+- **Last updated:** 2026-10-02 (v1.13) · **Current item:** **M5 DONE** · **Next item:** M6 (Swastik promotion pipeline)
 - **Protocol:** `docs/migration-prompt.md` v5.3.0 (rules R1–R12; work order M0–M8 → MR-1…MR-8 → M9–M11)
 - **Record shapes:** `docs/migration-ledger-template.md` v2.2 §3 (item) and §4 (slice)
 - **Coverage map:** 121 request rows (UR-20260918-001 §8.1.2) → one owning item each, per the prompt's §3.0
@@ -21,7 +21,7 @@
 | M2 | Unified command tree | **PARTIAL** — R12: merge DONE (unified `src/commands`, no `src/core`); the deployer still does boot-time delete-then-reregister, whose remedy (change queue/BCCM) is M9's row 44 |
 | M3 | Core Renderer, buffer-then-render, embed ban | **PARTIAL** — R12: renderer + embed ban + DM prohibition + interaction registry present; done-gate gated on MR-1…MR-8 (command surface is stubs); row 120 (HttpClient/retry) routed to M9 |
 | M4 | RBAC Layer 6/7 redesign | **DONE** — R12: ranks/grant surface/blacklist/persistence/resolver present; runtime grant writer implemented (`rbac-grant.repository.ts`); writer wiring routed (finding #25) |
-| M5 | License machine, Compatibility Ledger, Deployment Records | Record: NOT STARTED — **tree: shaped code present** (`src/licensing/*`, migration 33) — reconcile, R12 |
+| M5 | License machine, Compatibility Ledger, Deployment Records | **DONE** — R12: rows 2/6/18/20 already landed (M0); row 8 deployment-records writer implemented + wired; E4 `tools/release_manager` now under the typecheck gate; row 23 routed to M6 |
 | M6 | Swastik promotion pipeline | Record: NOT STARTED — **tree: shaped code present** (`src/module-system/promotion.ts`) — reconcile, R12 |
 | M7 | Twixter persona model | Record: NOT STARTED — **tree: shaped code present** (`src/personas/*`, migrations 20/21/34) — reconcile, R12 |
 | M8 | Envelope encryption | Record: NOT STARTED — **tree: shaped code present** (`src/crypto/*`, sealed credentials, migration 35) — reconcile, R12 |
@@ -445,13 +445,15 @@ Each item's row-level triage is copied into its item record when it is claimed (
 
 ### M5 — License machine, Compatibility Ledger & Deployment Records
 
-- **Status:** NOT STARTED (tree: shaped code present — reconcile, R12) · **Started:** — · **Completed:** —
+- **Status:** DONE (R12-credited; deployment-records writer + release_manager gate implemented) · **Started:** 2026-10-02 · **Completed:** 2026-10-02
 - **Request rows owned:** rows 2 (`UR-02`), 6 (`UR-06`), 8 (`UR-08`), 18 (`UR-18`), 20 (`UR-20`), 23 (`UR-23`)
-- **Evidence references:** E5 §71; E7 E4 (`tools/release_manager` sits outside every quality gate); finding #8 (`AppendOnlyDeploymentRecords` referenced only by itself and its test — `deployment_records` never written)
-- **Provenance of ahead-of-record work:** `d334cfb` (2026-09-26)
-- **Source of truth read:** `blueprint.md` §15.7, §14.4, §15.12, §44.8; `directive.md` D-8.10 — **not yet read**
-- **Blast radius (declare before editing):** —
-- **Row triage / Tree state / Ahead-of-record work:** — **Done-gate evidence:** — **Change-log entry (R11):** — **What changed:** — **Judgment calls / deviations:** — **Deliberately NOT done, with routing:** — **Resume note:** blocked.
+- **Source of truth read (2026-10-02):** `blueprint.md` §15.7, §14.4, §15.12, §44.8; `directive.md` D-8.10; prompt §M5.
+- **Row triage (tree vs UR, at `88b17f2`):** Row 2 (`UR-02`) **DONE** (M0 slice 2 — the Swastik error handler). Row 6 (`UR-06`) **DONE** (M0 slice 5 — the register route is keyed). Row 8 (`UR-08`) **DONE** — `AppendOnlyDeploymentRecords` was referenced only by itself and its test; added `src/db/repositories/deployment-record.repository.ts` (`PostgresDeploymentRecordStore`/`InMemoryDeploymentRecordStore`) and wired it into `entry/swastik.ts`'s `/internal/deploy` path (a record on promote; rolled-back/not-attempted on failure). Row 18 (`UR-18`) **DONE** (M0 slice 4 — recorded). Row 20 (`UR-20`) **DONE** (M0 slice 5). Row 23 (`UR-23`) **ROUTED → M6** (the loader verification guard's production wiring — `bootstrap.ts` is M6's). E4 (`tools/release_manager` outside every gate) **DONE** — it is now a workspace package (`@workspace/release-manager`) with a `typecheck` script, added to `pnpm-workspace.yaml` and the root `typecheck` filter.
+- **What changed:** `src/db/repositories/deployment-record.repository.ts` (new); `entry/swastik.ts` (`recordDeployment` helper + two call sites); `tools/release_manager/{package.json,tsconfig.json}` (new); `pnpm-workspace.yaml`, `package.json`, `pnpm-lock.yaml`.
+- **Done-gate evidence (tests):** `tests/unit/m5-deployment-records.test.ts` (new, 6 tests) — the row mapping round-trip, the in-memory store + the append-only invariant, the Postgres adapter. **Revert experiment:** moving the repository aside → the file cannot load. Full unit suite **963 passed / 83 files**. `apps/main` + `tools/release_manager` `tsc --noEmit` clean.
+- **Blast radius:** as above.
+- **Change-log (R11):** rows 2/6/8/18/20 written; row 23 routed.
+- **Resume note:** M5 is DONE (row 23 routed to M6). Next is **M6**.
 
 ### M6 — Swastik promotion pipeline
 
@@ -668,3 +670,4 @@ Every request row that reaches DONE or PARTIAL-routed in a pass gets **one line*
 | 1.10 | 2026-10-02 | Dumby Core Engineering | **M3 triaged → PARTIAL.** Rows 9/10/12/21/111 present (renderer, buffer-then-render, embed ban, DM prohibition, interaction registry); row 11 unexercised (→ MR-1…MR-8); row 28 (prefix-ban audit) and row 120 (HttpClient/retry → M9) partial. Done-gate gated on MR-1…MR-8. Next: M4. |
 | 1.11 | 2026-10-02 | Dumby Core Engineering | **M4 triaged → PARTIAL.** Rows 32/40/41/42 present (canonical ranks, grant surface, blacklist, RBAC persistence, resolver); row 33 PARTIAL — **no runtime grant writer** (no Postgres surface writing `rbac_grants`). Next: M5. |
 | 1.12 | 2026-10-02 | Dumby Core Engineering | **M4 closed DONE** — implemented the runtime grant writer (`src/db/repositories/rbac-grant.repository.ts`: `PostgresGrantWriter`/`InMemoryGrantWriter`, `rbac_grants` persistence, rate-limit↔quota alias). `tests/unit/m4-grant-writer.test.ts` (7 tests; revert → cannot load). Full suite 957/82 green. Finding #25 recorded (writer not yet wired into bootstrap). Next: M5. |
+| 1.13 | 2026-10-02 | Dumby Core Engineering | **M5 closed DONE** — implemented the deployment-records writer (`src/db/repositories/deployment-record.repository.ts`) and wired it into `/internal/deploy`; brought `tools/release_manager` under the typecheck gate as a workspace package (`@workspace/release-manager`). `tests/unit/m5-deployment-records.test.ts` (6 tests; revert → cannot load). Full suite 963/83 green; both tsc projects clean. Row 23 routed to M6. Next: M6. |

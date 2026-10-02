@@ -1,5 +1,5 @@
 import Fastify, { type FastifyReply } from 'fastify';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Redis } from 'ioredis';
@@ -38,6 +38,11 @@ import {
   verifyStagedBuild,
   type PromotionOutcome,
 } from '../module-system/promotion.js';
+import {
+  buildDeploymentRecord,
+  type PromotionResult,
+} from '../licensing/deployment-records.js';
+import { PostgresDeploymentRecordStore } from '../db/repositories/deployment-record.repository.js';
 import { HttpCredentialClient, type CredentialClient } from '../credentials/credential-client.js';
 import {
   decideModuleOwnership,
@@ -111,10 +116,43 @@ async function writeAudit(
   });
 }
 
+/**
+ * §44.8 / finding #8 — every deployment leaves a `deployment_records` row, so a deployment that
+ * leaves no record did not happen. Failures here are logged, never fatal to the deploy itself.
+ */
+async function recordDeployment(input: {
+  buildId: string;
+  module: string;
+  version: string;
+  devId: string;
+  promotionResult: PromotionResult;
+}): Promise<void> {
+  try {
+    const store = new PostgresDeploymentRecordStore(db.knex);
+    await store.append(
+      buildDeploymentRecord({
+        recordId: randomUUID(),
+        triggeredBy: { type: 'operator', initiatedBy: input.devId },
+        devId: input.devId,
+        buildId: input.buildId,
+        module: input.module,
+        version: input.version,
+        validationOutcome: 'passed',
+        gateOutcomes: { promotion: 'passed' },
+        promotionResult: input.promotionResult,
+      }),
+    );
+  } catch (err) {
+    logger.warn('swastik-deployment-record-failed', {
+      buildId: input.buildId,
+      error: String(err),
+    });
+  }
+}
+
 function redact(value: string): string {
   return value.length > 8 ? `${value.slice(0, 4)}...${value.slice(-4)}` : '***';
 }
-
 function safeModulePathSegment(moduleSlug: string, version: string): string {
   return `${assertSafeSlug(moduleSlug)}__${assertSafeVersion(version)}`;
 }
@@ -832,6 +870,13 @@ app.post('/internal/deploy', async (request, reply) => {
       gate: gate.gate,
       tier: manifest.tier,
     });
+    await recordDeployment({
+      buildId,
+      module: safeModuleSlug,
+      version: safeModuleVersion,
+      devId: providedDevId,
+      promotionResult: 'promoted',
+    });
     return reply.code(201).send({
       buildId,
       status: 'promoted',
@@ -862,6 +907,13 @@ app.post('/internal/deploy', async (request, reply) => {
           .update({ validationStatus: 'rejected', promotedAt: null, updatedAt: new Date() });
       } catch {}
     }
+    await recordDeployment({
+      buildId,
+      module: safeModuleSlug,
+      version: safeModuleVersion,
+      devId: providedDevId,
+      promotionResult: promotion !== null ? 'rolled-back' : 'not-attempted',
+    });
     return reply.code(500).send({ error: `deploy failed: ${(err as Error).message}` });
   }
 });
