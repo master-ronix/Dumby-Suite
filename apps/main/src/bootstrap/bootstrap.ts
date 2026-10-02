@@ -3,6 +3,7 @@ import { Container } from '../di/container.js';
 import { CORE_TOKENS } from '../di/tokens.js';
 import { parseEnv, pickEnvKeys, ConfigValidationError } from '../config/env.schema.js';
 import { ConfigService } from '../config/config.service.js';
+import { HttpCredentialClient } from '../credentials/credential-client.js';
 import { createLogger, type Logger } from '../logging/logger.js';
 import { MetricsRegistry } from '../metrics/registry.js';
 import { DbClient } from '../db/client.js';
@@ -487,6 +488,11 @@ export async function bootstrap(): Promise<void> {
   await eventBus.emit('dumby.system.ready', { degradedModules: loadReport.degraded });
 
   const inFlightTracker = new InFlightTracker();
+  const credentialsClient = new HttpCredentialClient({
+    baseUrl: config.get('CREDENTIALS_SERVICE_URL'),
+    internalApiKey: config.get('INTERNAL_API_KEY'),
+    timeoutMs: config.get('CREDENTIALS_SERVICE_TIMEOUT_MS'),
+  });
   const apiServer = buildApiServer({
     logger,
     progress,
@@ -525,6 +531,12 @@ export async function bootstrap(): Promise<void> {
           });
         },
       },
+      // §22.5/§15.8: arm the governance surface — the PEP operator allow-list (identities that may
+      // decide approvals) and the Credentials Service client, used both to verify a presented
+      // operator credential and to activate a developer credential on approval (finding #24).
+      operatorAllowList: config.get('PEP_OPERATOR_IDS'),
+      operatorVerifier: credentialsClient,
+      credentialActivator: credentialsClient,
     },
   });
   apiServer.addHook('onRequest', async () => inFlightTracker.increment());
