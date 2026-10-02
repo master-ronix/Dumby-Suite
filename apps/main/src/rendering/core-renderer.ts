@@ -35,6 +35,43 @@ export interface RenderDescriptor extends RenderIdentity {
   summary?: string;
 }
 
+/**
+ * §1.7 (UR-11) — the schema-declared authoring model. A module command returns page data; the
+ * Renderer derives the entire presentation from it, so module code never builds components.
+ */
+export interface PageDataResult {
+  page: string;
+  data: Readonly<Record<string, unknown>>;
+}
+
+export interface PageRenderDescriptor extends RenderIdentity {
+  page: string;
+  data: Readonly<Record<string, unknown>>;
+  mode?: RenderMode;
+}
+
+/** Maps page data to render sections: the primary value is the content line, the rest a meta line. */
+export function derivePageSections(
+  page: string,
+  data: Readonly<Record<string, unknown>>,
+): readonly string[] {
+  const entries = Object.entries(data);
+  const [first, ...rest] = entries;
+  const primary = first === undefined ? page : String(first[1]);
+  const meta = rest.map(([key, value]) => `-# ${key}: ${String(value)}`).join(' | ');
+  return meta.length > 0 ? [primary, meta] : [primary];
+}
+
+function isPageDataResult(value: unknown): value is PageDataResult {
+  if (typeof value !== 'object' || value === null) return false;
+  const candidate = value as { page?: unknown; data?: unknown };
+  return (
+    typeof candidate.page === 'string' &&
+    typeof candidate.data === 'object' &&
+    candidate.data !== null
+  );
+}
+
 export interface FormalNoticeDescriptor extends RenderIdentity {
   reason: NoticeReasonCode;
   traceId: string;
@@ -118,6 +155,16 @@ export class CoreRenderer {
     ]);
   }
 
+  renderPage(input: PageRenderDescriptor): ComponentsV2Message {
+    return this.render({
+      surface: input.surface,
+      ...(input.developer !== undefined ? { developer: input.developer } : {}),
+      ...(input.version !== undefined ? { version: input.version } : {}),
+      ...(input.mode !== undefined ? { mode: input.mode } : {}),
+      sections: derivePageSections(input.page, input.data),
+    });
+  }
+
   render(input: RenderDescriptor): ComponentsV2Message {
     const mode = input.mode ?? 'D';
     const sections = input.sections ?? (input.summary ? [input.summary] : []);
@@ -170,6 +217,10 @@ export class CoreRenderer {
 
     if (typeof result === 'string') {
       return { ...fallback, summary: result };
+    }
+
+    if (isPageDataResult(result)) {
+      return { ...fallback, sections: derivePageSections(result.page, result.data) };
     }
 
     if (this.isRenderDescriptor(result)) {
