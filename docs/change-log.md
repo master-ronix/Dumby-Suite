@@ -712,6 +712,16 @@ and the five slice deviations are in `migration-ledger.md` §M0 slice 6a.
 | UR-C-20 | 111 | M3 | Component/autocomplete dispatch — `interaction-registry.ts` (minted customIds, invoker re-check, idempotency, `AUTOCOMPLETE_BUDGET_MS = 800`) | DONE (credited) |
 | UR-C-29 | 120 | M3 | RetryPolicy consumer — `withRetry` has no consumer; the §44.4 HttpClient honouring 429 is absent | PARTIAL (routed → M9) |
 
+**M4 — RBAC Layer 6/7 redesign (rows 32–33, 40–42; 2026-10-02):**
+
+| Request | Row | item | Record | Status |
+|---|---|---|---|---|
+| R1 | 32 | M4 | Layer 6 canonical ranks (OWNER/ADMINISTRATOR/MODERATOR/HELPER/MEMBER/RESTRICTED) + `CANONICAL_RANK_NAMES` (D21 drift handled); `resolver.ts` layer sequence | DONE (credited) |
+| R2 | 33 | M4 | Layer 7 grant surface (`OVERRIDE_BOUNDARY`, `applyGrant`/`removeGrant`, `InMemoryGrantSurface`) + `rbac.ts` resolution; **no runtime grant writer** (no Postgres `rbac_grants` surface) | PARTIAL |
+| UR-A-07 | 40 | M4 | Layer 2 blacklist — `db-blacklist.ts` `DbBlacklistLookup` | DONE (credited) |
+| UR-A-08 | 41 | M4 | RBAC persistence — `rbac.ts` + migrations 14–17 | DONE (credited) |
+| UR-A-09 | 42 | M4 | Layer order — `resolver.ts` | DONE (credited) |
+
 ### UR 2.0 — Post-Re-Baseline Conformance & Audit Evidence (recorded 2026-10-01)
 
 _Basis: UR-20260918-001 revision 2.0 (01/10/2026), which registers the ten-document Conformance &

@@ -3,7 +3,7 @@
 > This file is the single source of truth for migration progress. The agent reads it at the start of every session and updates it at the end of every item and slice. An item without a record here did not happen; an IN-PROGRESS item with a resume note is continued, never restarted. A closed request row without its change-log line (rule R11) did not happen either.
 
 - **Created:** 2026-10-01
-- **Last updated:** 2026-10-02 (v1.10) · **Current item:** **M3 PARTIAL** · **Next item:** M4 (RBAC Layer 6/7)
+- **Last updated:** 2026-10-02 (v1.11) · **Current item:** **M4 PARTIAL** · **Next item:** M5 (license machine / Compatibility Ledger / Deployment Records)
 - **Protocol:** `docs/migration-prompt.md` v5.3.0 (rules R1–R12; work order M0–M8 → MR-1…MR-8 → M9–M11)
 - **Record shapes:** `docs/migration-ledger-template.md` v2.2 §3 (item) and §4 (slice)
 - **Coverage map:** 121 request rows (UR-20260918-001 §8.1.2) → one owning item each, per the prompt's §3.0
@@ -20,7 +20,7 @@
 | M1 | Tier volumes & blind discovery | **DONE** — R12-credited (rows 4/5/19); directory target met, `packages/swastik` present; manifest-contract drift routed to M6 |
 | M2 | Unified command tree | **PARTIAL** — R12: merge DONE (unified `src/commands`, no `src/core`); the deployer still does boot-time delete-then-reregister, whose remedy (change queue/BCCM) is M9's row 44 |
 | M3 | Core Renderer, buffer-then-render, embed ban | **PARTIAL** — R12: renderer + embed ban + DM prohibition + interaction registry present; done-gate gated on MR-1…MR-8 (command surface is stubs); row 120 (HttpClient/retry) routed to M9 |
-| M4 | RBAC Layer 6/7 redesign | Record: NOT STARTED — **tree: shaped code present** (migrations 14–17, `src/permissions/*`) — reconcile, R12 |
+| M4 | RBAC Layer 6/7 redesign | **PARTIAL** — R12: ranks/grant surface/blacklist/persistence/resolver present; **no runtime grant writer** (row 33 residue) |
 | M5 | License machine, Compatibility Ledger, Deployment Records | Record: NOT STARTED — **tree: shaped code present** (`src/licensing/*`, migration 33) — reconcile, R12 |
 | M6 | Swastik promotion pipeline | Record: NOT STARTED — **tree: shaped code present** (`src/module-system/promotion.ts`) — reconcile, R12 |
 | M7 | Twixter persona model | Record: NOT STARTED — **tree: shaped code present** (`src/personas/*`, migrations 20/21/34) — reconcile, R12 |
@@ -432,13 +432,14 @@ Each item's row-level triage is copied into its item record when it is claimed (
 
 ### M4 — RBAC Layer 6/7 redesign
 
-- **Status:** NOT STARTED (tree: shaped code present — reconcile, R12) · **Started:** — · **Completed:** —
+- **Status:** PARTIAL (R12-credited; runtime grant writer pending) · **Started:** 2026-10-02 · **Completed:** —
 - **Request rows owned:** rows 32–33 (`R1`, `R2`), 40–42 (`UR-A-07`…`UR-A-09`)
-- **Evidence references:** E5 DATA-06; E9 D21 (role vocabulary drift across four files); finding #3 (4 of 12 built-in middlewares inert, `getHighestRole` is Layer 6 — M4's own row)
-- **Provenance of ahead-of-record work:** `d334cfb` (2026-09-26)
-- **Source of truth read:** `blueprint.md` §21 (Table 21-A), `concept.md` §16.1, `interface.md` (`/permit`) — **not yet read**
-- **Blast radius (declare before editing):** —
-- **Row triage / Tree state / Ahead-of-record work:** — **Done-gate evidence:** — **Change-log entry (R11):** — **What changed:** — **Judgment calls / deviations:** — **Deliberately NOT done, with routing:** — **Resume note:** blocked.
+- **Source of truth read (2026-10-02):** `blueprint.md` §21 (Table 21-A), §13.6, §16.4; `concept.md` §16.1; `interface.md` (`/permit`); prompt §M4.
+- **Row triage (tree vs UR, at `e5ba5b5`):** Row 32 (`R1`, Layer 6) **PRESENT** — `rank.ts` canonical ranks OWNER/ADMINISTRATOR/MODERATOR/HELPER/MEMBER/RESTRICTED + `CANONICAL_RANK_NAMES` (ADMIN→ADMINISTRATOR, MOD→MODERATOR — the D21 drift handled); `resolver.ts` layer sequence. Row 33 (`R2`, Layer 7) **PARTIAL** — `grant-surface.ts` (`OVERRIDE_BOUNDARY`, `applyGrant`/`removeGrant`, `InMemoryGrantSurface`) + `rbac.ts` (role>group>set resolution, `resolveAccessDecision`) present; **no runtime grant writer** (no Postgres surface writing `rbac_grants`). Row 40 (`UR-A-07`, Layer 2 blacklist) **PRESENT** — `db-blacklist.ts` `DbBlacklistLookup`. Row 41 (`UR-A-08`, RBAC persistence) **PRESENT** — `rbac.ts` + migrations 14–17. Row 42 (`UR-A-09`, layer order) **PRESENT** — `resolver.ts`.
+- **Blast radius:** `src/permissions/**` + a new `rbac_grants` repository (for the grant writer) — to be declared before editing.
+- **Done-gate:** the Layer 6/7 logic is present; the runtime grant writer is not, so Layer 7 grants cannot be written at runtime.
+- **Change-log (R11):** rows 32/40/41/42 written (credited); row 33 PARTIAL.
+- **Resume note:** M4 is PARTIAL; the runtime grant writer is the pending work. Next is **M5**.
 
 ### M5 — License machine, Compatibility Ledger & Deployment Records
 
@@ -662,3 +663,4 @@ Every request row that reaches DONE or PARTIAL-routed in a pass gets **one line*
 | 1.8 | 2026-10-02 | Dumby Core Engineering | **R12 reconciliation completed** (item-level re-triage of M1–M11 against the tree; ahead-of-record work credited per owner decision #19; open questions #13/#14/#15/#18/#19 resolved). **M1 closed DONE** (rows 4/5/19 credited; no code change — the tree meets the done-gate). Next: M2 (row 74). |
 | 1.9 | 2026-10-02 | Dumby Core Engineering | **M2 triaged → PARTIAL.** Row 74 (`UR-B-11`): merge clause DONE (unified `src/commands`, no `src/core`); enqueue-guild-changes clause NOT done — `command-deployer.ts` still does boot-time delete-then-reregister — routed to M9's row 44 (change queue/BCCM). Next: M3. |
 | 1.10 | 2026-10-02 | Dumby Core Engineering | **M3 triaged → PARTIAL.** Rows 9/10/12/21/111 present (renderer, buffer-then-render, embed ban, DM prohibition, interaction registry); row 11 unexercised (→ MR-1…MR-8); row 28 (prefix-ban audit) and row 120 (HttpClient/retry → M9) partial. Done-gate gated on MR-1…MR-8. Next: M4. |
+| 1.11 | 2026-10-02 | Dumby Core Engineering | **M4 triaged → PARTIAL.** Rows 32/40/41/42 present (canonical ranks, grant surface, blacklist, RBAC persistence, resolver); row 33 PARTIAL — **no runtime grant writer** (no Postgres surface writing `rbac_grants`). Next: M5. |
