@@ -1,6 +1,11 @@
+import { permitCommand } from './commands/permit.command.js';
+
 export const MODULE_SLUG = 'permit';
 
-export const MODULE_DESCRIPTION = 'Manage RBAC grants, whitelists, blacklists, quotas, and cooldowns.';
+export const MODULE_DESCRIPTION = 'Manage guild-side grants — permits, whitelists, blacklists, cooldowns, and rate limits.';
+
+/** §1.7 (UR-11) — the module's schema-declared commands; the loader registers them. */
+export const commands = [permitCommand];
 
 export type ModuleState = 'loading' | 'ready';
 
@@ -13,12 +18,6 @@ export function loadCount(): number {
 
 export function currentState(): ModuleState {
   return state;
-}
-
-export function describe(): string {
-  return state === 'ready'
-    ? MODULE_DESCRIPTION
-    : MODULE_DESCRIPTION + ' (loading)';
 }
 
 export async function onLoad(): Promise<void> {

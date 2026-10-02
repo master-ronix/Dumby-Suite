@@ -1,6 +1,11 @@
+import { browseCommand } from './commands/browse.command.js';
+
 export const MODULE_SLUG = 'browse';
 
 export const MODULE_DESCRIPTION = 'Browse the marketplace, discover modules, and install them.';
+
+/** §1.7 (UR-11) — the module's schema-declared commands; the loader registers them. */
+export const commands = [browseCommand];
 
 export type ModuleState = 'loading' | 'ready';
 
@@ -13,12 +18,6 @@ export function loadCount(): number {
 
 export function currentState(): ModuleState {
   return state;
-}
-
-export function describe(): string {
-  return state === 'ready'
-    ? MODULE_DESCRIPTION
-    : MODULE_DESCRIPTION + ' (loading)';
 }
 
 export async function onLoad(): Promise<void> {

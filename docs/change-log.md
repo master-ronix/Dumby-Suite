@@ -767,6 +767,12 @@ and the five slice deviations are in `migration-ledger.md` §M0 slice 6a.
 |---|---|---|---|---|
 | — | — | MR-1 | Rewrote `packages/modules/hello-world` into the template layout: the full v5.0.0 manifest, a schema-declared `/hello` (`defineCommand`), the en-US locale, and the mechanism wiring (the loader registers a module's declared commands via `toCommandDefinition`). Proof: `mr1-hello-world.test.ts` (3 tests; un-export → 2 fail); `pnpm build:modules` emits a 1544-byte bundle | DONE (§10.10 live items routed) |
 
+**MR-2…MR-8 — Core-tier module rewrites (health, browse, queue, persona, permit, modules, dashboard; 2026-10-02):**
+
+| Request | Row | item | Record | Status |
+|---|---|---|---|---|
+| — | — | MR-2…MR-8 | All seven Core-tier modules rewritten one-shot into the template layout: a full Core manifest, a schema-declared command (`defineCommand`; `queue`/`permit` carry slash-command options), the en-US locale, `package.json`, and the `_template` folders. Proof: `mr2-8-core-modules.test.ts` (14 tests); all 8 modules build | DONE (live items routed) |
+
 ### UR 2.0 — Post-Re-Baseline Conformance & Audit Evidence (recorded 2026-10-01)
 
 _Basis: UR-20260918-001 revision 2.0 (01/10/2026), which registers the ten-document Conformance &

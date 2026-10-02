@@ -5,12 +5,18 @@
   "tier": "core",
   "hardcoded": false,
   "releaseStatus": "stable",
+  "marketplaceCategory": "utility",
   "required": false,
   "depends": [],
   "provides": [],
   "intents": [],
   "partials": [],
-  "commands": [],
+  "commands": [
+    {
+      "name": "browse",
+      "description": "Browse the marketplace, discover modules, and install them."
+    }
+  ],
   "events": [],
   "services": [],
   "repositories": [],
@@ -19,7 +25,9 @@
   "routes": [],
   "middleware": [],
   "migrations": [],
-  "locales": ["en-US"],
+  "locales": [
+    "en-US"
+  ],
   "config": {},
   "eventsCatalog": [],
   "crossModuleReads": []

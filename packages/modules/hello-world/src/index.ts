@@ -1,4 +1,4 @@
-import { helloCommand } from '../commands/hello.command.js';
+import { helloCommand } from './commands/hello.command.js';
 
 export const MODULE_SLUG = 'hello-world';
 

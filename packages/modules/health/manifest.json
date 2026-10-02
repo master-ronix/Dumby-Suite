@@ -1,16 +1,22 @@
 {
   "name": "health",
   "version": "1.0.0",
-  "description": "Ping latency and system health information.",
+  "description": "Displays comprehensive system health and diagnostic information.",
   "tier": "core",
   "hardcoded": false,
   "releaseStatus": "stable",
+  "marketplaceCategory": "utility",
   "required": false,
   "depends": [],
   "provides": [],
   "intents": [],
   "partials": [],
-  "commands": [],
+  "commands": [
+    {
+      "name": "health",
+      "description": "Displays comprehensive system health and diagnostic information."
+    }
+  ],
   "events": [],
   "services": [],
   "repositories": [],
@@ -19,7 +25,9 @@
   "routes": [],
   "middleware": [],
   "migrations": [],
-  "locales": ["en-US"],
+  "locales": [
+    "en-US"
+  ],
   "config": {},
   "eventsCatalog": [],
   "crossModuleReads": []

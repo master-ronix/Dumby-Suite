@@ -475,7 +475,49 @@ importers:
         specifier: ^0.31.10
         version: 0.31.10
 
+  packages/modules/browse:
+    dependencies:
+      '@workspace/swastik':
+        specifier: workspace:*
+        version: link:../../swastik
+
+  packages/modules/dashboard:
+    dependencies:
+      '@workspace/swastik':
+        specifier: workspace:*
+        version: link:../../swastik
+
+  packages/modules/health:
+    dependencies:
+      '@workspace/swastik':
+        specifier: workspace:*
+        version: link:../../swastik
+
   packages/modules/hello-world:
+    dependencies:
+      '@workspace/swastik':
+        specifier: workspace:*
+        version: link:../../swastik
+
+  packages/modules/modules:
+    dependencies:
+      '@workspace/swastik':
+        specifier: workspace:*
+        version: link:../../swastik
+
+  packages/modules/permit:
+    dependencies:
+      '@workspace/swastik':
+        specifier: workspace:*
+        version: link:../../swastik
+
+  packages/modules/persona:
+    dependencies:
+      '@workspace/swastik':
+        specifier: workspace:*
+        version: link:../../swastik
+
+  packages/modules/queue:
     dependencies:
       '@workspace/swastik':
         specifier: workspace:*

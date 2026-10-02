@@ -1,6 +1,11 @@
+import { queueCommand } from './commands/queue.command.js';
+
 export const MODULE_SLUG = 'queue';
 
-export const MODULE_DESCRIPTION = 'Manage BCCM command queue actions: submit, view, edit, and cancel.';
+export const MODULE_DESCRIPTION = 'Manage BCCM command queue actions — submit, view, edit, and cancel pending command changes.';
+
+/** §1.7 (UR-11) — the module's schema-declared commands; the loader registers them. */
+export const commands = [queueCommand];
 
 export type ModuleState = 'loading' | 'ready';
 
@@ -13,12 +18,6 @@ export function loadCount(): number {
 
 export function currentState(): ModuleState {
   return state;
-}
-
-export function describe(): string {
-  return state === 'ready'
-    ? MODULE_DESCRIPTION
-    : MODULE_DESCRIPTION + ' (loading)';
 }
 
 export async function onLoad(): Promise<void> {

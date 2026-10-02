@@ -1,0 +1,9 @@
+{
+  "name": "@workspace/module-browse",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@workspace/swastik": "workspace:*"
+  }
+}

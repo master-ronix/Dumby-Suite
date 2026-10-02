@@ -1,6 +1,11 @@
+import { dashboardCommand } from './commands/dashboard.command.js';
+
 export const MODULE_SLUG = 'dashboard';
 
-export const MODULE_DESCRIPTION = 'Central navigation hub for core commands and module pages.';
+export const MODULE_DESCRIPTION = 'Opens the Dumby dashboard — the central navigation hub for all core commands and module pages.';
+
+/** §1.7 (UR-11) — the module's schema-declared commands; the loader registers them. */
+export const commands = [dashboardCommand];
 
 export type ModuleState = 'loading' | 'ready';
 
@@ -13,12 +18,6 @@ export function loadCount(): number {
 
 export function currentState(): ModuleState {
   return state;
-}
-
-export function describe(): string {
-  return state === 'ready'
-    ? MODULE_DESCRIPTION
-    : MODULE_DESCRIPTION + ' (loading)';
 }
 
 export async function onLoad(): Promise<void> {

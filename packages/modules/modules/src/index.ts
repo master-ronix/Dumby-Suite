@@ -1,6 +1,11 @@
+import { modulesCommand } from './commands/modules.command.js';
+
 export const MODULE_SLUG = 'modules';
 
-export const MODULE_DESCRIPTION = 'View activated and installed modules and manage them.';
+export const MODULE_DESCRIPTION = 'View activated/installed/standard-tier modules and manage them.';
+
+/** §1.7 (UR-11) — the module's schema-declared commands; the loader registers them. */
+export const commands = [modulesCommand];
 
 export type ModuleState = 'loading' | 'ready';
 
@@ -13,12 +18,6 @@ export function loadCount(): number {
 
 export function currentState(): ModuleState {
   return state;
-}
-
-export function describe(): string {
-  return state === 'ready'
-    ? MODULE_DESCRIPTION
-    : MODULE_DESCRIPTION + ' (loading)';
 }
 
 export async function onLoad(): Promise<void> {

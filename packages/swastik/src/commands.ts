@@ -32,12 +32,22 @@ export interface CommandPermissionsDeclaration {
   readonly nsfw?: boolean;
 }
 
+/** A slash-command option (Discord `ApplicationCommandOptionType` number in `type`). */
+export interface CommandOptionDeclaration {
+  readonly name: string;
+  readonly description: string;
+  readonly type: number;
+  readonly required?: boolean;
+  readonly autocomplete?: boolean;
+}
+
 export interface CommandDeclaration {
   readonly name: string;
   readonly description: string;
   readonly pages: readonly string[];
   readonly execute: CommandHandler;
   readonly guildOnly?: boolean;
+  readonly options?: readonly CommandOptionDeclaration[];
   readonly permissions?: CommandPermissionsDeclaration;
 }
 

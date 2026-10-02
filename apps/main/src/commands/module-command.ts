@@ -33,6 +33,17 @@ export function toCommandDefinition(
   const data: RESTPostAPIChatInputApplicationCommandsJSONBody = {
     name: declaration.name,
     description: declaration.description,
+    ...(declaration.options !== undefined
+      ? {
+          options: declaration.options.map((option) => ({
+            name: option.name,
+            description: option.description,
+            type: option.type,
+            ...(option.required !== undefined ? { required: option.required } : {}),
+            ...(option.autocomplete !== undefined ? { autocomplete: option.autocomplete } : {}),
+          })),
+        }
+      : {}),
   };
   const context = { config: options.config ?? {} };
   const declared = declaration.permissions;

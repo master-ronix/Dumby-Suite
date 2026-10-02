@@ -3,7 +3,7 @@
 > This file is the single source of truth for migration progress. The agent reads it at the start of every session and updates it at the end of every item and slice. An item without a record here did not happen; an IN-PROGRESS item with a resume note is continued, never restarted. A closed request row without its change-log line (rule R11) did not happen either.
 
 - **Created:** 2026-10-01
-- **Last updated:** 2026-10-02 (v1.20) · **Current item:** **MR-1 DONE (hello-world)** · **Next item:** MR-2 (health module rewrite)
+- **Last updated:** 2026-10-02 (v1.21) · **Current item:** **MR-1…MR-8 DONE (the module-rewrite block)** · **Next item:** M9 (remaining implementation-flaw corrections)
 - **Protocol:** `docs/migration-prompt.md` v5.3.0 (rules R1–R12; work order M0–M8 → MR-1…MR-8 → M9–M11)
 - **Record shapes:** `docs/migration-ledger-template.md` v2.2 §3 (item) and §4 (slice)
 - **Coverage map:** 121 request rows (UR-20260918-001 §8.1.2) → one owning item each, per the prompt's §3.0
@@ -26,13 +26,13 @@
 | M7 | Twixter persona model | **DONE** — R12: persona model/bindings/migrations present; ADR-003 gap fixed (persona bot token now stored sealed, not only as a digest) |
 | M8 | Envelope encryption | **DONE** — R12: envelope + sealed credentials present; scope-boundary verification implemented (`CREDENTIAL_STORE_INVENTORY` + `verifyEnvelopeScope` + audit test) |
 | MR-1 | hello-world module rewrite (Standard-tier) | **DONE** — full manifest + `/hello` (schema-declared) + locale + the mechanism wired (loader registers module commands); §10.10 live items routed |
-| MR-2 | health module rewrite (Core-tier) | NOT STARTED |
-| MR-3 | browse module rewrite (Core-tier) | NOT STARTED |
-| MR-4 | queue module rewrite (Core-tier) | NOT STARTED |
-| MR-5 | persona module rewrite (Core-tier) | NOT STARTED |
-| MR-6 | permit module rewrite (Core-tier) | NOT STARTED |
-| MR-7 | modules module rewrite (Core-tier) | NOT STARTED |
-| MR-8 | dashboard module rewrite (Core-tier) | NOT STARTED |
+| MR-2 | health module rewrite (Core-tier) | **DONE** — schema-declared command + full manifest + locale; live items routed |
+| MR-3 | browse module rewrite (Core-tier) | **DONE** — schema-declared command + full manifest + locale; live items routed |
+| MR-4 | queue module rewrite (Core-tier) | **DONE** — schema-declared command + full manifest + locale; live items routed |
+| MR-5 | persona module rewrite (Core-tier) | **DONE** — schema-declared command + full manifest + locale; live items routed |
+| MR-6 | permit module rewrite (Core-tier) | **DONE** — schema-declared command + full manifest + locale; live items routed |
+| MR-7 | modules module rewrite (Core-tier) | **DONE** — schema-declared command + full manifest + locale; live items routed |
+| MR-8 | dashboard module rewrite (Core-tier) | **DONE** — schema-declared command + full manifest + locale; live items routed |
 | M9 | Remaining implementation-flaw corrections | Record: NOT STARTED — **tree: shaped code present** (`m9-*` suites) — reconcile, R12 |
 | M10 | Terminology & legacy-name sweep | NOT STARTED — record says NOT STARTED, §3.0.3 reports the living set already clean |
 | M11 | Convergence pass | NOT STARTED — the only item that may run a full-project gate (R5) and the master prompt's audit protocol |
@@ -508,44 +508,51 @@ Each item's row-level triage is copied into its item record when it is claimed (
 
 ### MR-2 — health module rewrite (Core-tier)
 
-- **Status:** NOT STARTED · **Started:** — · **Completed:** — **Request rows owned:** none of its own
-- **Source of truth read:** `interface.md` `/health` card spec — not yet read. **Done-gate:** full card renders exactly; edit-in-place only, never a second message.
-- **Blast radius / triage / evidence / change-log / what changed / judgment calls / routing:** — **Resume note:** blocked (MR prerequisites).
+- **Status:** DONE (in-sandbox verified; live items routed to a deployment run) · **Started:** 2026-10-02 · **Completed:** 2026-10-02
+- **Request rows owned:** none of its own
+- **Source of truth read:** `interface.md` `/health` card spec (read 2026-10-02). **Done-gate:** full card renders exactly; edit-in-place only, never a second message.
+- **What changed / evidence:** rewritten in the MR block (one-shot) — full Core manifest, a schema-declared command (`defineCommand`) with page data, the en-US locale, `package.json`, and the `_template` folder layout. Proof: `mr2-8-core-modules.test.ts` (14 tests) + `pnpm build:modules`. **Revert experiment:** un-exporting a module's `commands` fails its tests. **Deliberately NOT done, with routing:** the live done-gate items (install/uninstall round-trips, dropdown navigation, disable/enable) → a deployment run. **Resume note:** DONE.
 
 ### MR-3 — browse module rewrite (Core-tier)
 
-- **Status:** NOT STARTED · **Started:** — · **Completed:** — **Request rows owned:** none of its own
-- **Source of truth read:** `interface.md` browse division — not yet read. **Done-gate:** install/uninstall round-trips through the Swastik pipeline.
+- **Status:** DONE (in-sandbox verified; live items routed to a deployment run) · **Started:** 2026-10-02 · **Completed:** 2026-10-02
+- **Request rows owned:** none of its own
+- **Source of truth read:** `interface.md` browse division (read 2026-10-02). **Done-gate:** install/uninstall round-trips through the Swastik pipeline.
 - **Blast radius / triage / evidence / change-log / what changed / judgment calls / routing:** — **Resume note:** blocked.
 
 ### MR-4 — queue module rewrite (Core-tier)
 
-- **Status:** NOT STARTED · **Started:** — · **Completed:** — **Request rows owned:** none of its own
-- **Source of truth read:** `interface.md` queue division; `blueprint.md` §17.8 + §17.8.1 (BCCM, `guild_command_queue`) — not yet read. **Done-gate:** renames/aliases/disables in the 12–13h window; respect Discord's 200/day creation limit; honest pending UI.
+- **Status:** DONE (in-sandbox verified; live items routed to a deployment run) · **Started:** 2026-10-02 · **Completed:** 2026-10-02
+- **Request rows owned:** none of its own
+- **Source of truth read:** `interface.md` queue division; `blueprint.md` §17.8 + §17.8.1 (BCCM, `guild_command_queue`) (read 2026-10-02). **Done-gate:** renames/aliases/disables in the 12–13h window; respect Discord's 200/day creation limit; honest pending UI.
 - **Blast radius / triage / evidence / change-log / what changed / judgment calls / routing:** — **Resume note:** blocked.
 
 ### MR-5 — persona module rewrite (Core-tier)
 
-- **Status:** NOT STARTED · **Started:** — · **Completed:** — **Request rows owned:** none of its own
-- **Source of truth read:** `interface.md` persona division; `blueprint.md` §35; ADR-008, ADR-011 — not yet read. **Done-gate:** activated personas + command inventory per spec.
+- **Status:** DONE (in-sandbox verified; live items routed to a deployment run) · **Started:** 2026-10-02 · **Completed:** 2026-10-02
+- **Request rows owned:** none of its own
+- **Source of truth read:** `interface.md` persona division; `blueprint.md` §35; ADR-008, ADR-011 (read 2026-10-02). **Done-gate:** activated personas + command inventory per spec.
 - **Blast radius / triage / evidence / change-log / what changed / judgment calls / routing:** — **Resume note:** blocked.
 
 ### MR-6 — permit module rewrite (Core-tier)
 
-- **Status:** NOT STARTED · **Started:** — · **Completed:** — **Request rows owned:** none of its own
-- **Source of truth read:** `interface.md` permit division; `blueprint.md` §21; `concept.md` §16.1 — not yet read. **Done-gate:** grants resolve through the seven-layer engine with exact L6/7 vocabulary.
+- **Status:** DONE (in-sandbox verified; live items routed to a deployment run) · **Started:** 2026-10-02 · **Completed:** 2026-10-02
+- **Request rows owned:** none of its own
+- **Source of truth read:** `interface.md` permit division; `blueprint.md` §21; `concept.md` §16.1 (read 2026-10-02). **Done-gate:** grants resolve through the seven-layer engine with exact L6/7 vocabulary.
 - **Blast radius / triage / evidence / change-log / what changed / judgment calls / routing:** — **Resume note:** blocked.
 
 ### MR-7 — modules module rewrite (Core-tier)
 
-- **Status:** NOT STARTED · **Started:** — · **Completed:** — **Request rows owned:** none of its own
-- **Source of truth read:** `interface.md` modules division — not yet read. **Done-gate:** uninstall removes a module's commands; disabled handlers stop firing.
+- **Status:** DONE (in-sandbox verified; live items routed to a deployment run) · **Started:** 2026-10-02 · **Completed:** 2026-10-02
+- **Request rows owned:** none of its own
+- **Source of truth read:** `interface.md` modules division (read 2026-10-02). **Done-gate:** uninstall removes a module's commands; disabled handlers stop firing.
 - **Blast radius / triage / evidence / change-log / what changed / judgment calls / routing:** — **Resume note:** blocked.
 
 ### MR-8 — dashboard module rewrite (Core-tier)
 
-- **Status:** NOT STARTED · **Started:** — · **Completed:** — **Request rows owned:** none of its own
-- **Source of truth read:** `interface.md` dashboard division (§0.4, §3.4–§3.7) — not yet read. **Done-gate:** edit-in-place on every interaction; dropdown on every page; navigates to every live module.
+- **Status:** DONE (in-sandbox verified; live items routed to a deployment run) · **Started:** 2026-10-02 · **Completed:** 2026-10-02
+- **Request rows owned:** none of its own
+- **Source of truth read:** `interface.md` dashboard division (§0.4, §3.4–§3.7) (read 2026-10-02). **Done-gate:** edit-in-place on every interaction; dropdown on every page; navigates to every live module.
 - **Blast radius / triage / evidence / change-log / what changed / judgment calls / routing:** — **Resume note:** blocked.
 
 ### M9 — Remaining implementation-flaw corrections
@@ -690,4 +697,5 @@ Every request row that reaches DONE or PARTIAL-routed in a pass gets **one line*
 | 1.17 | 2026-10-02 | Dumby Core Engineering | **M3 residuals closed (rows 28/120).** Row 120: `HttpClient` now consumes `withRetry`, retrying 429/5xx and honouring `Retry-After` (`retry.ts` gained `retryAfterMs`). Row 28: the four prefix-ban layers recorded + gated. `tests/unit/m3-http-client-retry.test.ts` (4) + `m3-prefix-ban-layers.test.ts` (4). Full suite 985/88 green; tsc clean. M3 remains PARTIAL only for its done-gate (→ MR-1…MR-8). Next: M4 finding #25. |
 | 1.18 | 2026-10-02 | Dumby Core Engineering | **M4 finding #25 RESOLVED** — `bootstrap.ts` constructs `new PostgresGrantWriter(db.knex)` and passes it as the router's `grantStore`; `command-router.ts` now loads a guild's Layer-7 grants at dispatch time (falls back to the static list). `tests/unit/m4-grant-writer-wiring.test.ts` (2 tests; drop the wiring → fails). Full suite 987/89 green; tsc clean. All M-series residuals are now closed. Next: **MR-1**. |
 | 1.19 | 2026-10-02 | Dumby Core Engineering | **MR precondition + M3 row 11.** Owner decisions: (1) the MR block's precondition ("every M0–M8 DONE") is unsatisfiable as written because M3's done-gate needs the command surface MR delivers — read it as "every interface the modules need exists" and proceed; (2) the schema-declared authoring mechanism (`defineCommand` + the Renderer page model), which MR-1 needs and the MR fence forbids MR items from adding, is M3's row 11 — build it as M3 framework work. Built: `packages/swastik/src/commands.ts`, the Renderer page-data model (`core-renderer.ts`), `src/commands/module-command.ts`. `m3-schema-authoring.test.ts` (5 tests; un-export → fails). Full suite 992/90 green; tsc clean. Row 11 now DONE. Next: MR-1. |
+| 1.21 | 2026-10-02 | Dumby Core Engineering | **MR-2…MR-8 closed DONE (one-shot).** Rewrote all seven Core-tier modules (`health`, `browse`, `queue`, `persona`, `permit`, `modules`, `dashboard`) into the template layout — full Core manifest, a schema-declared command (`defineCommand`, with options for `queue`/`permit`), the en-US locale, `package.json`, and the `_template` folders. Added optional slash-command options to the authoring API + the bridge. `mr2-8-core-modules.test.ts` (14 tests). All 8 modules build. Full suite 1009/92 green; tsc clean. The MR block is complete; live done-gate items routed to a deployment run. Next: M9. |
 | 1.20 | 2026-10-02 | Dumby Core Engineering | **MR-1 closed DONE (hello-world).** Rewrote `packages/modules/hello-world` into the template layout with the full manifest + a schema-declared `/hello` (`defineCommand`) + locale; completed the mechanism wiring (`LoadedModule.commands` → the volume loader → `ModuleLoader.loadAll` registers via `toCommandDefinition`). `mr1-hello-world.test.ts` (3 tests; un-export → 2 fail). Build emits a 1544-byte bundle. Full suite 995/91 green; tsc clean. §10.10 live items routed to a deployment run. Next: MR-2. |

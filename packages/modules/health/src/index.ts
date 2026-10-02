@@ -1,6 +1,11 @@
+import { healthCommand } from './commands/health.command.js';
+
 export const MODULE_SLUG = 'health';
 
-export const MODULE_DESCRIPTION = 'Ping latency and system health information.';
+export const MODULE_DESCRIPTION = 'Displays comprehensive system health and diagnostic information.';
+
+/** §1.7 (UR-11) — the module's schema-declared commands; the loader registers them. */
+export const commands = [healthCommand];
 
 export type ModuleState = 'loading' | 'ready';
 
@@ -13,12 +18,6 @@ export function loadCount(): number {
 
 export function currentState(): ModuleState {
   return state;
-}
-
-export function describe(): string {
-  return state === 'ready'
-    ? MODULE_DESCRIPTION
-    : MODULE_DESCRIPTION + ' (loading)';
 }
 
 export async function onLoad(): Promise<void> {

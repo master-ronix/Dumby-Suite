@@ -1,16 +1,22 @@
 {
   "name": "queue",
   "version": "1.0.0",
-  "description": "Manage BCCM command queue actions: submit, view, edit, and cancel.",
+  "description": "Manage BCCM command queue actions \u2014 submit, view, edit, and cancel pending command changes.",
   "tier": "core",
   "hardcoded": false,
   "releaseStatus": "stable",
+  "marketplaceCategory": "utility",
   "required": false,
   "depends": [],
   "provides": [],
   "intents": [],
   "partials": [],
-  "commands": [],
+  "commands": [
+    {
+      "name": "queue",
+      "description": "Manage BCCM command queue actions \u2014 submit, view, edit, and cancel pending command changes."
+    }
+  ],
   "events": [],
   "services": [],
   "repositories": [],
@@ -19,7 +25,9 @@
   "routes": [],
   "middleware": [],
   "migrations": [],
-  "locales": ["en-US"],
+  "locales": [
+    "en-US"
+  ],
   "config": {},
   "eventsCatalog": [],
   "crossModuleReads": []

@@ -1,6 +1,11 @@
+import { personaCommand } from './commands/persona.command.js';
+
 export const MODULE_SLUG = 'persona';
 
 export const MODULE_DESCRIPTION = 'View activated personas and their command inventory.';
+
+/** §1.7 (UR-11) — the module's schema-declared commands; the loader registers them. */
+export const commands = [personaCommand];
 
 export type ModuleState = 'loading' | 'ready';
 
@@ -13,12 +18,6 @@ export function loadCount(): number {
 
 export function currentState(): ModuleState {
   return state;
-}
-
-export function describe(): string {
-  return state === 'ready'
-    ? MODULE_DESCRIPTION
-    : MODULE_DESCRIPTION + ' (loading)';
 }
 
 export async function onLoad(): Promise<void> {
