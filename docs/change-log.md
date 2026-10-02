@@ -645,7 +645,7 @@ of record is this section plus the dated snapshot in `docs/migration-ledger-temp
 
 **M0 — P0 security flaws (rows 34–37, 64–69, 92–98; IN-PROGRESS; slices 1–5 landed on `feature/dev`
 in commit `0c625c1`, 2026-09-29 (75 files / 876 tests green at slice-5 close); slice 6a landed in this
-session — 76 files / 901 tests green):**
+session (76 files / 901 tests green); slice 6b landed in this session — 77 files / 916 tests green):**
 
 | Request | Row | M0 slice | Record | Status |
 |---|---|---|---|---|
@@ -656,7 +656,7 @@ session — 76 files / 901 tests green):**
 | UR-B-01 | 64 | — | Auto-approver removed; 403 for unknown/pending developers — **reopened to PARTIAL by UR 2.0 (SC-01): the owner-approval workflow clause is absent** | PARTIAL |
 | UR-B-02 | 65 | 2 | Zod slug/version validation + `assertPathInside` containment on the Swastik filesystem joins; loader entry-name parse and realpath containment | PARTIAL |
 | UR-B-03 | 66 | 1 | Constant-time preHandler on the API server's `/admin/*` plus PEP/CLAI/Twixter/credentials; three bind hosts loopback-default; compose ports loopback-pinned — **reopened to PARTIAL by UR 2.0 (SC-01): bind-host coverage is 4/8 surfaces** | PARTIAL |
-| UR-B-04 | 67 | — | No hash/Ed25519 verification, quarantine, or provenance columns on `builds` yet | OPEN (slice 6) |
+| UR-B-04 | 67 | 6b | `builds` provenance columns added (migration 39: `sourceArchiveHash`, `artifactHash`, `lockfileHash`, `gateResultsHash`, `sbom`, `signature`, `signatureKeyId`, `signedDescriptor`); Ed25519 signer/verifier in `build-signing.ts` with the private key held **in-process** and never persisted (finding #21 — `signing_keys` stays public-key-only); the loader verifies the on-disk artifact against the `builds` row before every import and refuses + quarantines on any mismatch. Proof: `tests/unit/m0-build-provenance.test.ts` — tampered artifact refused and moved to `quarantine/{buildId}/` with **both** hashes logged; 916/916 unit suite; revert experiment: forcing the loader guard off fails 5 enforcement tests | DONE |
 | UR-B-05 | 68 | 6a | `credentials` table (migrations 37–38, closed `purpose`/`status` enums, Argon2id-only storage); `Authorization: Bearer <keyId>.<secret>` on all three developer routes; `devId` remains the PK/FK **identifier** but no longer authenticates anyone. Proof: `tests/unit/m0-developer-credentials.test.ts` 25 tests (bare-devId bearer refused; issue stores only `$argon2id$` hashes; one refusal message across every cause); 901/901 unit suite; both migrations `up()`/`down()` exercised on live Postgres 16 | DONE |
 | UR-B-06 | 69 | 1 | Server-derived `source` on all three surfaces; the false `allowed` audit rows the no-op handlers produced are removed | DONE |
 | UR-C-01 | 92 | 2 | `safeJoin` / `assertPathInside` / `assertSafeSlug` / `assertSafeVersion` applied in the loader | PARTIAL |
@@ -665,11 +665,11 @@ session — 76 files / 901 tests green):**
 | UR-C-04 | 95 | 6a | Argon2 branch retargeted from `api_sessions` (which could never accept it) to the new `credentials` table; added `POST /credentials/verify` + `POST /credentials/issue-devid`, `bodyLimit: 4096`, `@fastify/rate-limit` (300/min app-wide, 60/min on verify), and `source: 'CREDENTIALS'` audit rows | DONE |
 | UR-C-05 | 96 | 6a | `devIdHash` persisted per §22.8 and **load-bearing** — verification re-checks it, so repointing `developers.credentialKeyId` at another developer fails; every refusal (missing/unknown/wrong/revoked/pending/unbound/transport-failure/unapproved) returns one frozen `{}` at 401 from a shared constant, replacing three 401-vs-404 pairs and a 403 that named `approvalStatus`; `REDACT_PATHS` covers `credentialHash`, `devIdHash` and nested `credential.secret`, verified against a real pino stream | DONE |
 | UR-C-06 | 97 | — | ssh2 public-key-only server (same fix as UR-A-02) — **reopened to PARTIAL by UR 2.0 (SC-01): the connection/byte limits clause is absent** | PARTIAL |
-| UR-C-07 | 98 | 2 | Manifest/directory match and symlink containment added in the loader; hash verification, quarantine, and cache-busted import URLs remain | PARTIAL |
+| UR-C-07 | 98 | 2, 6b | Manifest/directory match and symlink containment added in the loader (slice 2); slice 6b completes the row — the loader hashes the on-disk artifact against the `builds` row, moves a refused directory to `quarantine/{buildId}/`, and imports through a buildId-cache-busted URL (`index.js?b={buildId}`) so the ESM cache cannot serve stale bytes across a hot swap; the directory→`builds`-row link is the `build-provenance.json` sidecar promotion writes (finding #22). Proof: same test file — the cache-bust test loads fresh bytes after a simulated hot swap | DONE |
 
 Slice ledger: 1 (admin surface auth) DONE · 2 (loader path containment) DONE · 3 (honest 501) DONE ·
 4 (fail-closed unknown tier) DONE · 5 (Swastik internal auth) DONE · **6a (developer credentials) DONE**
-(UR-B-05, UR-C-04, UR-C-05) · **6b (build provenance — UR-B-04, UR-C-07) NEXT** · 6c (ownership,
+(UR-B-05, UR-C-04, UR-C-05) · **6b (build provenance — UR-B-04, UR-C-07) DONE** · 6c (ownership,
 approval workflow, bind hosts — UR-B-01, UR-B-03, UR-C-03, UR-C-06) still to come. Slice 6 is the
 last M0 slice.
 

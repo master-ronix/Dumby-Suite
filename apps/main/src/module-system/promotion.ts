@@ -20,6 +20,11 @@ import {
   assertSafeVersion,
   safeJoin,
 } from '../shared/utils/path-guard.js';
+import {
+  BUILD_PROVENANCE_SIDECAR,
+  writeBuildProvenanceSidecar,
+  type BuildProvenanceSidecar,
+} from './build-signing.js';
 
 export const PROMOTION_LOCK_KEY_PREFIX = 'swastik:promote:';
 export const PROMOTION_LOCK_TTL_MS = 15_000;
@@ -143,6 +148,12 @@ export function promoteAtomically(input: {
   readonly stagingVolume: string;
   readonly moduleSlug: string;
   readonly stagingDir: string;
+  /**
+   * §15.8 provenance sidecar. When supplied it is written into the staged directory immediately
+   * before the pointer flip, so the promoted directory carries the buildId and signature the
+   * loader's load-time verification reads (finding #22). The atomic-swap mechanics are unchanged.
+   */
+  readonly provenance?: BuildProvenanceSidecar;
 }): PromotionOutcome {
   const slug = assertSafeSlug(input.moduleSlug);
   assertPathInside(input.stagingVolume, input.stagingDir);
@@ -171,6 +182,12 @@ export function promoteAtomically(input: {
     );
   }
 
+  let sidecarWritten = false;
+  if (input.provenance !== undefined) {
+    writeBuildProvenanceSidecar(input.stagingDir, input.provenance);
+    sidecarWritten = true;
+  }
+
   try {
     if (lstatIsLink(incomingLink)) unlinkSync(incomingLink);
     symlinkSync(input.stagingDir, incomingLink);
@@ -184,6 +201,11 @@ export function promoteAtomically(input: {
     try {
       if (lstatIsLink(incomingLink)) unlinkSync(incomingLink);
     } catch {}
+    if (sidecarWritten) {
+      try {
+        unlinkSync(join(input.stagingDir, BUILD_PROVENANCE_SIDECAR));
+      } catch {}
+    }
     throw err;
   }
 
@@ -213,6 +235,7 @@ export async function promoteUnderLock(input: {
   readonly moduleSlug: string;
   readonly stagingDir: string;
   readonly lockTtlMs?: number;
+  readonly provenance?: BuildProvenanceSidecar;
 }): Promise<PromotionOutcome> {
   const slug = assertSafeSlug(input.moduleSlug);
   const lockKey = `${PROMOTION_LOCK_KEY_PREFIX}${slug}`;
@@ -226,6 +249,7 @@ export async function promoteUnderLock(input: {
       stagingVolume: input.stagingVolume,
       moduleSlug: slug,
       stagingDir: input.stagingDir,
+      ...(input.provenance !== undefined ? { provenance: input.provenance } : {}),
     });
   } finally {
     await input.lockStore.release(lockKey, lockOwner);

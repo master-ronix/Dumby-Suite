@@ -1,4 +1,12 @@
-import { readdirSync, readFileSync, existsSync, realpathSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  renameSync,
+  rmSync,
+} from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { Logger } from '../logging/logger.js';
@@ -9,6 +17,13 @@ import { ModuleValidationFailedError } from './loader.js';
 import type { LoadedModule } from './registry.js';
 import type { ModuleTier } from './tier-rules.js';
 import { assertPathInside, assertSafeSlug, assertSafeVersion } from '../shared/utils/path-guard.js';
+import {
+  hashFile,
+  readBuildProvenanceSidecar,
+  tupleFromSidecar,
+  type BuildSignatureVerifier,
+} from './build-signing.js';
+import type { BuildProvenanceRecord, BuildStore } from '../db/repositories/build.repository.js';
 
 export interface SwastikVolumeLoadResult {
   loaded: readonly string[];
@@ -19,6 +34,17 @@ export interface SwastikVolumeLoaderOptions {
   modulesDir: string;
   registry: ModuleRegistry;
   logger: Logger;
+  /**
+   * §15.9 load-time verification (§15.8 provenance). When `buildStore` and `verifier` are both
+   * supplied the loader verifies the on-disk artifact against its `builds` row before every import
+   * and refuses (quarantining the directory) on any mismatch. When they are absent the loader
+   * behaves as before and warns once that provenance was not verified — the production wiring of
+   * this guard lives with the bootstrap stage sequence, outside this slice's blast radius.
+   */
+  buildStore?: BuildStore;
+  verifier?: BuildSignatureVerifier;
+  /** Root for refused modules (§15.9 `quarantine/{buildId}/`). Defaults to `<modulesDir>/quarantine`. */
+  quarantineDir?: string;
 }
 
 export const TIER_VOLUME_NAMES = {
@@ -71,6 +97,143 @@ function parseDiscoveredModuleName(entry: string): DiscoveredModuleName | null {
   }
 }
 
+/**
+ * §15.9 cache-busting: the import specifier carries the buildId so the ESM loader cache cannot
+ * serve a previous version's bytes across a hot swap. A stale-cache import becomes structurally
+ * impossible rather than merely unlikely.
+ */
+export function cacheBustedImportUrl(indexPath: string, buildId: string | null): string {
+  const href = pathToFileURL(indexPath).href;
+  return buildId === null ? href : `${href}?b=${encodeURIComponent(buildId)}`;
+}
+
+export class ModuleProvenanceRefusedError extends Error {
+  readonly module: string;
+  readonly reason: string;
+
+  constructor(module: string, reason: string) {
+    super(`Refusing to import module "${module}": ${reason}`);
+    this.name = 'ModuleProvenanceRefusedError';
+    this.module = module;
+    this.reason = reason;
+  }
+}
+
+type ProvenanceVerdict =
+  | { readonly ok: true; readonly buildId: string }
+  | {
+      readonly ok: false;
+      readonly reason: string;
+      readonly buildId: string | null;
+      readonly expectedArtifactHash: string | null;
+      readonly actualArtifactHash: string | null;
+    };
+
+function missingProvenanceColumn(record: BuildProvenanceRecord): string | null {
+  const required: readonly (keyof BuildProvenanceRecord)[] = [
+    'sourceArchiveHash',
+    'artifactHash',
+    'lockfileHash',
+    'gateResultsHash',
+    'signature',
+    'signatureKeyId',
+    'signedDescriptor',
+  ];
+  for (const column of required) {
+    if (record[column] === null) return String(column);
+  }
+  return null;
+}
+
+function verifyBuildProvenance(input: {
+  readonly moduleDir: string;
+  readonly indexPath: string;
+  readonly buildStore: BuildStore;
+  readonly verifier: BuildSignatureVerifier;
+}): Promise<ProvenanceVerdict> {
+  const sidecar = readBuildProvenanceSidecar(input.moduleDir);
+  if (sidecar === null) {
+    return Promise.resolve({
+      ok: false,
+      reason: 'no build-provenance sidecar ties this directory to a builds row',
+      buildId: null,
+      expectedArtifactHash: null,
+      actualArtifactHash: null,
+    });
+  }
+  return input.buildStore.findByBuildId(sidecar.buildId).then((record) => {
+    if (record === undefined) {
+      return {
+        ok: false as const,
+        reason: `no builds row for buildId "${sidecar.buildId}"`,
+        buildId: sidecar.buildId,
+        expectedArtifactHash: null,
+        actualArtifactHash: null,
+      };
+    }
+    const missing = missingProvenanceColumn(record);
+    if (missing !== null) {
+      return {
+        ok: false as const,
+        reason: `builds row "${sidecar.buildId}" is missing provenance column "${missing}"`,
+        buildId: sidecar.buildId,
+        expectedArtifactHash: record.artifactHash,
+        actualArtifactHash: null,
+      };
+    }
+    const actualArtifactHash = hashFile(input.indexPath);
+    if (actualArtifactHash !== record.artifactHash) {
+      return {
+        ok: false as const,
+        reason: 'on-disk artifact hash does not match the builds row',
+        buildId: sidecar.buildId,
+        expectedArtifactHash: record.artifactHash,
+        actualArtifactHash,
+      };
+    }
+    const signedOk = input.verifier.verifyTuple(tupleFromSidecar(sidecar), {
+      signature: record.signature ?? '',
+      signatureKeyId: record.signatureKeyId ?? '',
+      signedDescriptor: record.signedDescriptor ?? '',
+    });
+    if (!signedOk) {
+      return {
+        ok: false as const,
+        reason: 'Ed25519 signature does not cover the deployed artifact bytes',
+        buildId: sidecar.buildId,
+        expectedArtifactHash: record.artifactHash,
+        actualArtifactHash,
+      };
+    }
+    return { ok: true as const, buildId: sidecar.buildId };
+  });
+}
+
+function quarantineModuleDir(input: {
+  readonly moduleDir: string;
+  readonly quarantineDir: string;
+  readonly buildId: string | null;
+  readonly entry: string;
+  readonly logger: Logger;
+}): string | null {
+  const key = input.buildId ?? input.entry;
+  const dest = join(input.quarantineDir, key);
+  try {
+    mkdirSync(input.quarantineDir, { recursive: true });
+    if (existsSync(dest)) rmSync(dest, { recursive: true, force: true });
+    renameSync(input.moduleDir, dest);
+    return dest;
+  } catch (err) {
+    input.logger.error('module-quarantine-failed', {
+      module: input.entry,
+      path: input.moduleDir,
+      quarantineDir: input.quarantineDir,
+      error: String(err),
+    });
+    return null;
+  }
+}
+
 export async function loadModulesFromTierVolumes(
   options: SwastikVolumeLoaderOptions,
 ): Promise<SwastikVolumeLoadResult> {
@@ -84,6 +247,17 @@ export async function loadModulesFromTierVolumes(
   const modulesRoot = realpathSync(modulesDir);
   const loaded: string[] = [];
   const failed: string[] = [];
+
+  const { buildStore, verifier } = options;
+  const guardActive = buildStore !== undefined && verifier !== undefined;
+  const quarantineDir = options.quarantineDir ?? join(modulesDir, 'quarantine');
+  if (!guardActive) {
+    logger.warn('module-provenance-unverified', {
+      modulesDir,
+      reason:
+        'no buildStore/verifier supplied — modules are imported without §15.8/§15.9 load-time provenance verification',
+    });
+  }
 
   for (const volumeName of MODULE_VOLUME_NAMES) {
     const volumePath = join(modulesDir, volumeName);
@@ -157,7 +331,39 @@ export async function loadModulesFromTierVolumes(
           throw new Error(`index.js is missing from live module "${entry}"`);
         }
 
-        const pkg = (await import(pathToFileURL(indexPath).href)) as Partial<LoadedModule>;
+        let buildId: string | null = null;
+        if (guardActive) {
+          const verdict = await verifyBuildProvenance({
+            moduleDir,
+            indexPath,
+            buildStore,
+            verifier,
+          });
+          if (!verdict.ok) {
+            const quarantinedTo = quarantineModuleDir({
+              moduleDir,
+              quarantineDir,
+              buildId: verdict.buildId,
+              entry,
+              logger,
+            });
+            logger.error('module-provenance-refused', {
+              module: entry,
+              volumeName,
+              path: moduleDir,
+              reason: verdict.reason,
+              buildId: verdict.buildId,
+              expectedArtifactHash: verdict.expectedArtifactHash,
+              actualArtifactHash: verdict.actualArtifactHash,
+              quarantinedTo,
+            });
+            throw new ModuleProvenanceRefusedError(entry, verdict.reason);
+          }
+          buildId = verdict.buildId;
+        }
+
+        const pkg = (await import(/* @vite-ignore */ cacheBustedImportUrl(indexPath, buildId))) as
+          Partial<LoadedModule>;
         const loadedModule: LoadedModule = { manifest };
         if (pkg.onLoad) loadedModule.onLoad = pkg.onLoad;
         if (pkg.onReady) loadedModule.onReady = pkg.onReady;
@@ -171,6 +377,7 @@ export async function loadModulesFromTierVolumes(
           tier: manifest.tier,
           volumeName,
           source: moduleDir,
+          buildId,
         });
       } catch (err) {
         failed.push(`${volumeName}/${entry}`);

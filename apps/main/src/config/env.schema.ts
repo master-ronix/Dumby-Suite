@@ -99,6 +99,12 @@ const baseEnvSchema = z
     MODULES_DIR: z.string().default('/mnt/modules'),
     SWASTIK_STAGING_VOLUME_PATH: z.string().default('/mnt/modules/swastik-staging'),
     SWASTIK_LIVE_VOLUME_PATH: z.string().default('/mnt/modules/modules-core'),
+    // §15.8 build provenance: the in-process Ed25519 signer's key id and PKCS#8 private key. The
+    // private key is never persisted; `signing_keys` holds only public keys (finding #21).
+    BUILD_SIGNING_KEY_ID: z.string().default(''),
+    BUILD_SIGNING_PRIVATE_KEY: z.string().default(''),
+    // §15.9 quarantine root for refused modules. Empty => `<MODULES_DIR>/quarantine`.
+    SWASTIK_QUARANTINE_PATH: z.string().default(''),
 
     MTP_BANDWIDTH_TOKEN_THRESHOLD_BYTES: z.coerce.number().int().positive().default(1_048_576),
     MTP_MEMORY_TOKEN_THRESHOLD_BYTES: z.coerce.number().int().positive().default(52_428_800),
