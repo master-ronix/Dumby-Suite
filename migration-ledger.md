@@ -3,7 +3,7 @@
 > This file is the single source of truth for migration progress. The agent reads it at the start of every session and updates it at the end of every item and slice. An item without a record here did not happen; an IN-PROGRESS item with a resume note is continued, never restarted. A closed request row without its change-log line (rule R11) did not happen either.
 
 - **Created:** 2026-10-01
-- **Last updated:** 2026-10-02 (v1.13) · **Current item:** **M5 DONE** · **Next item:** M6 (Swastik promotion pipeline)
+- **Last updated:** 2026-10-02 (v1.14) · **Current item:** **M6 PARTIAL** · **Next item:** M7 (Twixter persona model)
 - **Protocol:** `docs/migration-prompt.md` v5.3.0 (rules R1–R12; work order M0–M8 → MR-1…MR-8 → M9–M11)
 - **Record shapes:** `docs/migration-ledger-template.md` v2.2 §3 (item) and §4 (slice)
 - **Coverage map:** 121 request rows (UR-20260918-001 §8.1.2) → one owning item each, per the prompt's §3.0
@@ -22,7 +22,7 @@
 | M3 | Core Renderer, buffer-then-render, embed ban | **PARTIAL** — R12: renderer + embed ban + DM prohibition + interaction registry present; done-gate gated on MR-1…MR-8 (command surface is stubs); row 120 (HttpClient/retry) routed to M9 |
 | M4 | RBAC Layer 6/7 redesign | **DONE** — R12: ranks/grant surface/blacklist/persistence/resolver present; runtime grant writer implemented (`rbac-grant.repository.ts`); writer wiring routed (finding #25) |
 | M5 | License machine, Compatibility Ledger, Deployment Records | **DONE** — R12: rows 2/6/18/20 already landed (M0); row 8 deployment-records writer implemented + wired; E4 `tools/release_manager` now under the typecheck gate; row 23 routed to M6 |
-| M6 | Swastik promotion pipeline | Record: NOT STARTED — **tree: shaped code present** (`src/module-system/promotion.ts`) — reconcile, R12 |
+| M6 | Swastik promotion pipeline | **PARTIAL** — R12: pipeline + provenance present; finding #23 fixed (loader guard armed in `bootstrap.ts`); **manifest single-source (E9 D3) + `packages/swastik` layout drift (E2 S-26) outstanding** |
 | M7 | Twixter persona model | Record: NOT STARTED — **tree: shaped code present** (`src/personas/*`, migrations 20/21/34) — reconcile, R12 |
 | M8 | Envelope encryption | Record: NOT STARTED — **tree: shaped code present** (`src/crypto/*`, sealed credentials, migration 35) — reconcile, R12 |
 | MR-1 | hello-world module rewrite (Standard-tier) | NOT STARTED — module sources live in `packages/modules/` (lifecycle-only stubs today) |
@@ -457,13 +457,15 @@ Each item's row-level triage is copied into its item record when it is claimed (
 
 ### M6 — Swastik promotion pipeline
 
-- **Status:** NOT STARTED (tree: shaped code present — reconcile, R12) · **Started:** — · **Completed:** —
-- **Request rows owned:** rows 15 (`UR-15`), 25–27 (`UR-25`…`UR-27`), 30 (`UR-30`), 57–58 (`UR-A-24`, `UR-A-25`), 75–76 (`UR-B-12`, `UR-B-13`), 78 (`UR-B-15`), 83 (`UR-B-20`), 89 (`UR-B-26`), 105 (`UR-C-14`), 113 (`UR-C-22`), 117 (`UR-C-26`)
-- **Evidence references:** E6 GOV-13; E9 D3 (manifest single-source — three definitions); E2 S-26; finding #12 (`SWASTIK_STAGING_VOLUME_PATH` must nest inside `MODULES_DIR` — now a load-bearing constraint of slice 2)
-- **Provenance of ahead-of-record work:** `d334cfb` (2026-09-26)
-- **Source of truth read:** `blueprint.md` §12.21, §15, §11.2; ADR-006; `manifest.schema.ts` contract — **not yet read**
-- **Blast radius (declare before editing):** —
-- **Row triage / Tree state / Ahead-of-record work:** — **Done-gate evidence:** — **Change-log entry (R11):** — **What changed:** — **Judgment calls / deviations:** — **Deliberately NOT done, with routing:** — **Resume note:** blocked. Slice 6b touches the promotion path's descriptor write — read this item's record before starting 6b.
+- **Status:** PARTIAL (R12-credited; finding #23 fixed; manifest single-source outstanding) · **Started:** 2026-10-02 · **Completed:** —
+- **Request rows owned:** rows 15, 25–27, 30, 57–58, 75–76, 78, 83, 89, 105, 113, 117
+- **Source of truth read (2026-10-02):** `blueprint.md` §12.21, §15, §11.2; ADR-006; prompt §M6.
+- **Row triage (tree vs UR, at `f40a772`):** the promotion pipeline (`promotion.ts`, `m6-promotion.test.ts`) and build provenance (`build-signing.ts`, `build.repository.ts`, the `build-provenance.json` sidecar) are present. **Finding #23 DONE** — `bootstrap.ts` now constructs `PostgresBuildStore(db.knex)` + a `BuildSignatureVerifier` (public key derived from `BUILD_SIGNING_KEY_ID`/`BUILD_SIGNING_PRIVATE_KEY`) and arms the loader guard via `loadModulesFromTierVolumes`; without a key it keeps the pre-6b warn-and-import behaviour (judgment call: arming with no key would quarantine every module). **Outstanding:** the manifest single-source (E9 D3 — three definitions: `packages/swastik/src/manifest.ts`, `apps/main/src/module-system/manifest.schema.ts`, `apps/main/src/module-system/tier-rules.ts`) and `packages/swastik` layout drift (E2 S-26).
+- **What changed:** `bootstrap.ts` (guard wiring); `tests/unit/m6-loader-guard-wiring.test.ts` (new).
+- **Done-gate evidence (tests):** `m6-loader-guard-wiring.test.ts` (3 tests; dropping the guard argument → the wiring test fails). Full unit suite **966 passed / 84 files**; `tsc --noEmit` clean.
+- **Blast radius:** `bootstrap.ts`, the new test.
+- **Change-log (R11):** finding #23 written; the manifest-single-source rows pending.
+- **Resume note:** M6 is PARTIAL — the manifest single-source + `packages/swastik` layout remain (a cross-package refactor). Next is **M7**.
 
 ### M7 — Twixter persona model
 
@@ -671,3 +673,4 @@ Every request row that reaches DONE or PARTIAL-routed in a pass gets **one line*
 | 1.11 | 2026-10-02 | Dumby Core Engineering | **M4 triaged → PARTIAL.** Rows 32/40/41/42 present (canonical ranks, grant surface, blacklist, RBAC persistence, resolver); row 33 PARTIAL — **no runtime grant writer** (no Postgres surface writing `rbac_grants`). Next: M5. |
 | 1.12 | 2026-10-02 | Dumby Core Engineering | **M4 closed DONE** — implemented the runtime grant writer (`src/db/repositories/rbac-grant.repository.ts`: `PostgresGrantWriter`/`InMemoryGrantWriter`, `rbac_grants` persistence, rate-limit↔quota alias). `tests/unit/m4-grant-writer.test.ts` (7 tests; revert → cannot load). Full suite 957/82 green. Finding #25 recorded (writer not yet wired into bootstrap). Next: M5. |
 | 1.13 | 2026-10-02 | Dumby Core Engineering | **M5 closed DONE** — implemented the deployment-records writer (`src/db/repositories/deployment-record.repository.ts`) and wired it into `/internal/deploy`; brought `tools/release_manager` under the typecheck gate as a workspace package (`@workspace/release-manager`). `tests/unit/m5-deployment-records.test.ts` (6 tests; revert → cannot load). Full suite 963/83 green; both tsc projects clean. Row 23 routed to M6. Next: M6. |
+| 1.14 | 2026-10-02 | Dumby Core Engineering | **M6 triaged → PARTIAL, finding #23 fixed.** `bootstrap.ts` now arms the loader's §15.8/§15.9 provenance guard (`PostgresBuildStore` + `BuildSignatureVerifier`, key from `BUILD_SIGNING_*`). `tests/unit/m6-loader-guard-wiring.test.ts` (3 tests; drop the guard argument → fails). Full suite 966/84 green. Outstanding: manifest single-source (E9 D3) + `packages/swastik` layout drift (E2 S-26). Next: M7. |

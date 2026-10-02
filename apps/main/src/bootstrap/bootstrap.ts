@@ -19,6 +19,9 @@ import { BootstrapProgress } from './stages.js';
 import { buildApiServer, buildHealthServer, buildMetricsServer } from '../http/server.js';
 import { PowerEngineDispatcher } from '../http/power-engine-dispatcher.js';
 import { loadModulesFromTierVolumes } from '../module-system/swastik-loader.js';
+import { PostgresBuildStore } from '../db/repositories/build.repository.js';
+import { BuildSignatureVerifier } from '../module-system/build-signing.js';
+import { createPublicKey } from 'node:crypto';
 import { InFlightTracker } from '../shutdown/in-flight-tracker.js';
 import {
   registerShutdownSignalHandlers,
@@ -305,10 +308,27 @@ export async function bootstrap(): Promise<void> {
   const moduleContainer = container.createChild();
 
   progress.advanceTo('MODULE_DISCOVER');
+  // §15.8/§15.9 (finding #23): arm the loader's load-time provenance guard. It verifies against a
+  // signing key, so it is armed exactly when one is configured; without a key the loader keeps its
+  // pre-6b behaviour (warn once, import unverified) rather than quarantining every module.
+  const buildStore = new PostgresBuildStore(db.knex);
+  const verifier = new BuildSignatureVerifier();
+  const buildSigningKeyId = config.get('BUILD_SIGNING_KEY_ID');
+  const buildSigningPrivateKey = config.get('BUILD_SIGNING_PRIVATE_KEY');
+  let provenanceGuardArmed = buildSigningKeyId !== '' && buildSigningPrivateKey !== '';
+  if (provenanceGuardArmed) {
+    try {
+      verifier.registerKey(buildSigningKeyId, createPublicKey(buildSigningPrivateKey));
+    } catch (err) {
+      provenanceGuardArmed = false;
+      logger.warn('build-signing-key-invalid', { error: String(err) });
+    }
+  }
   const discoveredModules = await loadModulesFromTierVolumes({
     modulesDir: config.get('MODULES_DIR'),
     registry: moduleRegistry,
     logger,
+    ...(provenanceGuardArmed ? { buildStore, verifier } : {}),
   });
   logger.info('module-discovery-complete', {
     source: 'tier-volumes',

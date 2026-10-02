@@ -734,6 +734,14 @@ and the five slice deviations are in `migration-ledger.md` §M0 slice 6a.
 | UR-23 | 23 | M5 | Loader verification guard not armed in production | ROUTED → M6 |
 | E4 | — | M5 | `tools/release_manager` outside every quality gate — now `@workspace/release-manager` with a `typecheck` script in the root gate | DONE |
 
+**M6 — Swastik promotion pipeline (2026-10-02):**
+
+| Request | Row | item | Record | Status |
+|---|---|---|---|---|
+| UR-C-07 | 23 | M6 | Loader §15.8/§15.9 verification guard not armed in production — `bootstrap.ts` now constructs `PostgresBuildStore(db.knex)` + `BuildSignatureVerifier` (key from `BUILD_SIGNING_*`) and arms `loadModulesFromTierVolumes`. Proof: `m6-loader-guard-wiring.test.ts` (3 tests; drop the guard argument → fails) | DONE |
+| E9 D3 | — | M6 | Manifest single-source (three definitions: `packages/swastik`, `manifest.schema.ts`, `tier-rules.ts`) | PARTIAL (outstanding) |
+| E2 S-26 | — | M6 | `packages/swastik` layout drift | PARTIAL (outstanding) |
+
 ### UR 2.0 — Post-Re-Baseline Conformance & Audit Evidence (recorded 2026-10-01)
 
 _Basis: UR-20260918-001 revision 2.0 (01/10/2026), which registers the ten-document Conformance &
