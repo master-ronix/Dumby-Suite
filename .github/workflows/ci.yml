@@ -63,6 +63,9 @@ jobs:
       - name: Gate 2 — lint (architecture rules, zero warnings)
         run: pnpm --filter @workspace/dumby lint
 
+      - name: Gate 2b — lint (module architecture rules, zero warnings)
+        run: pnpm run lint:modules
+
       - name: Gate 3 — format gate
         run: pnpm --filter @workspace/dumby format
 
