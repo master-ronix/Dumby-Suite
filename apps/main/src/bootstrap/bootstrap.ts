@@ -9,6 +9,7 @@ import { MetricsRegistry } from '../metrics/registry.js';
 import { DbClient } from '../db/client.js';
 import { InternalEventBus } from '../events/event-bus.js';
 import { EventRouter } from '../events/event-router.js';
+import { Scheduler } from '../queue/scheduler.js';
 import { CacheManager } from '../cache/cache-manager.js';
 import { RedisLockStore } from '../cache/redis-lock-store.js';
 import { QueueManager } from '../queue/queue-manager.js';
@@ -143,6 +144,8 @@ export async function bootstrap(): Promise<void> {
   progress.advanceTo('CACHE_CONNECT');
   const redis = new Redis(config.get('REDIS_URL'));
   const lockStore = new RedisLockStore(redis);
+  // §29.6 — the cron scheduler: module-declared tasks, lock-guarded so one shard runs each tick.
+  const scheduler = new Scheduler({ logger, lockStore });
   const cache = new CacheManager({
     redis,
     lockStore,
@@ -333,6 +336,7 @@ export async function bootstrap(): Promise<void> {
   });
   container.registerValue(CORE_TOKENS.EventBus, eventBus);
   container.registerValue(CORE_TOKENS.EventRouter, eventRouter);
+  container.registerValue(CORE_TOKENS.Scheduler, scheduler);
   container.registerValue(CORE_TOKENS.ModuleRegistry, moduleRegistry);
   container.registerValue(CORE_TOKENS.PermissionResolver, permissionResolver);
   container.registerValue(CORE_TOKENS.CommandRegistry, commandRegistry);
@@ -384,6 +388,8 @@ export async function bootstrap(): Promise<void> {
 
   progress.advanceTo('MODULE_LOAD');
   const loadReport = await moduleLoader.loadAll();
+  // §29.6 — start the scheduler now the modules have registered their tasks.
+  scheduler.start();
 
   progress.advanceTo('COMMAND_REGISTER');
   logger.info('command-registry-ready', { commandCount: commandRegistry.count() });

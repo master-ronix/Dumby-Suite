@@ -16,6 +16,7 @@ import type { CoreRenderer } from '../rendering/core-renderer.js';
 import type { InteractionRegistry } from '../interactions/interaction-registry.js';
 import type { PersonaCommandBindingService } from '../personas/persona-command-binding.service.js';
 import type { EventRouter } from '../events/event-router.js';
+import type { Scheduler } from '../queue/scheduler.js';
 
 export const CORE_TOKENS = {
   Logger: createToken<Logger>('core.Logger'),
@@ -37,6 +38,7 @@ export const CORE_TOKENS = {
   ),
   Personas: createToken<PersonaCommandBindingService>('core.Personas'),
   EventRouter: createToken<EventRouter>('core.EventRouter'),
+  Scheduler: createToken<Scheduler>('core.Scheduler'),
 } as const;
 
 export function moduleTokenNamespace(moduleId: string) {

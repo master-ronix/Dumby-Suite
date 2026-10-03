@@ -9,6 +9,7 @@ import { toCommandDefinition } from '../commands/module-command.js';
 import type { CoreRenderer } from '../rendering/core-renderer.js';
 import type { QueueManager } from '../queue/queue-manager.js';
 import type { EventRouter } from '../events/event-router.js';
+import type { Scheduler } from '../queue/scheduler.js';
 
 export interface ModuleLoadReport {
   order: readonly string[];
@@ -133,6 +134,21 @@ export class ModuleLoader {
                 },
                 mod.manifest.name,
               );
+            }
+          }
+        }
+        // §29.6 — register the module's cron tasks with the scheduler.
+        if (mod.tasks !== undefined) {
+          const scheduler = this.container.tryResolve<Scheduler>(CORE_TOKENS.Scheduler);
+          if (scheduler !== undefined) {
+            for (const task of mod.tasks) {
+              scheduler.register({
+                name: task.name,
+                cron: task.cron,
+                execute: async () => {
+                  await task.execute();
+                },
+              });
             }
           }
         }

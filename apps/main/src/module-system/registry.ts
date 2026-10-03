@@ -15,6 +15,13 @@ export interface ModuleEventHandlerDeclaration {
   readonly handle: (...args: unknown[]) => Promise<void> | void;
 }
 
+/** §29.6 — a module-declared cron task, registered with the `Scheduler`. */
+export interface ModuleTaskDeclaration {
+  readonly name: string;
+  readonly cron: string;
+  readonly execute: () => Promise<void> | void;
+}
+
 export interface LoadedModule {
   manifest: ModuleManifest;
   /** §1.7 (UR-11) — the module's schema-declared commands; the loader registers them. */
@@ -23,6 +30,8 @@ export interface LoadedModule {
   jobs?: readonly ModuleJobDeclaration[];
   /** §15.1 — the module's gateway event handlers; the loader registers them with the router. */
   events?: readonly ModuleEventHandlerDeclaration[];
+  /** §29.6 — the module's cron tasks; the loader registers them with the scheduler. */
+  tasks?: readonly ModuleTaskDeclaration[];
   onLoad?: (container: Container) => Promise<void> | void;
   onReady?: (container: Container) => Promise<void> | void;
   onUnload?: () => Promise<void> | void;
