@@ -47,7 +47,11 @@ test('a handler that throws never records an "allowed" row for that attempt', as
     ),
   ).rejects.toThrow('handler crashed');
 
-  expect(auditWriter.entries.length).toBe(0);
+  // §22.6 — the attempt IS recorded, but as `failed`: the audit never claims success for an
+  // invocation that crashed.
+  expect(auditWriter.entries.filter((e) => e.outcome === 'allowed')).toHaveLength(0);
+  expect(auditWriter.entries).toHaveLength(1);
+  expect(auditWriter.entries[0]?.outcome).toBe('failed');
 });
 
 const STUB_POWER_ENGINE_ACTIONS = [

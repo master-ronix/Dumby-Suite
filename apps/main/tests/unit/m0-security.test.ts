@@ -577,7 +577,7 @@ describe('M0 control plane reports no fake successes (UR-A-04, finding #7)', () 
     expect(source).toContain('throw new PowerEngineActionNotImplementedError(functionName)');
   });
 
-  test('a throwing Power Engine handler is what keeps the audit honest', async () => {
+  test('a throwing Power Engine handler still records its true outcome', async () => {
     const auditWriter = new InMemoryAuditWriter();
     const dispatcher = new PowerEngineDispatcher({ trustedSources: ['power-engine-internal'] }, auditWriter);
 
@@ -590,7 +590,12 @@ describe('M0 control plane reports no fake successes (UR-A-04, finding #7)', () 
         },
       ),
     ).rejects.toThrow('not implemented');
-    expect(auditWriter.entries).toStrictEqual([]);
+    // §22.6 — "Every invocation writes an unconditional audit_logs entry after its domain handler
+    // completes, recording the true outcome." A failure is recorded as `failed`, never dropped and
+    // never dressed up as `allowed`.
+    expect(auditWriter.entries).toHaveLength(1);
+    expect(auditWriter.entries[0]?.outcome).toBe('failed');
+    expect(auditWriter.entries[0]?.failureReason).toContain('not implemented');
   });
 });
 

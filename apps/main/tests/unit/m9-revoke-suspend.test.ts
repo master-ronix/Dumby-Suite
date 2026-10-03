@@ -165,8 +165,10 @@ test('migration 00036 makes guildId nullable and adds the partial unique index (
 
 test('bootstrap audit writer serializes entries into real audit_logs columns (UR-C-11)', () => {
   const src = readFileSync(new URL('../../src/bootstrap/bootstrap.ts', import.meta.url), 'utf8');
-  const auditWriterBlock = src.slice(src.indexOf('auditWriter:'), src.indexOf('},\n    },\n  })'));
+  const start = src.indexOf('const powerEngineAuditWriter');
+  const auditWriterBlock = src.slice(start, src.indexOf('const powerEngineDispatcher', start));
   expect(auditWriterBlock).toContain('createdAt: new Date(entry.at)');
-  expect(auditWriterBlock).toContain('metadata: entry.metadata ?? {}');
+  expect(auditWriterBlock).toContain("knex('audit_logs').insert");
+  expect(auditWriterBlock).toContain('metadata: JSON.stringify(');
   expect(auditWriterBlock).not.toContain(".knex('audit_logs').insert(entry)");
 });

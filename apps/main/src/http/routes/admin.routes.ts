@@ -1,5 +1,9 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { PowerEngineDispatcher, AuditWriter } from '../power-engine-dispatcher.js';
+import {
+  PowerEngineParamError,
+  type PowerEngineFunction,
+} from '../power-engine-catalog.js';
 import type { ConfigService } from '../../config/config.service.js';
 import type { DbClient } from '../../db/client.js';
 import type { CommandCeilingService } from '../../commands/command-ceiling.js';
@@ -68,6 +72,8 @@ export interface AdminRoutesDeps {
     pause(queueName: string): Promise<void>;
     resume(queueName: string): Promise<void>;
   };
+  /** §22.6 — the function catalog. Present when the control plane is wired; absent otherwise. */
+  powerEngineCatalog?: ReadonlyMap<string, PowerEngineFunction>;
 }
 
 export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps): void {
@@ -377,6 +383,35 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
       });
       return sendDispatchResult(reply, outcome);
     },
+  );
+
+  // §22.2 / Table 22-A — the flagship control action. It had no endpoint at all before this; the
+  // catalog supplies the handler, the dispatcher supplies the gate + the audit row.
+  const runCatalogFunction = async (
+    name: string,
+    req: FastifyRequest,
+    reply: FastifyReply,
+  ): Promise<FastifyReply> => {
+    if (deps.powerEngineCatalog === undefined) return sendNotImplemented(reply, name);
+    const body = extractRequest(req);
+    const args = (req.body ?? {}) as Record<string, unknown>;
+    try {
+      const outcome = await deps.dispatcher.dispatchFunction(name, args, body, deps.powerEngineCatalog);
+      return sendDispatchResult(reply, outcome);
+    } catch (err) {
+      if (err instanceof PowerEngineParamError) {
+        return reply.code(400).send({ error: { code: 'INVALID_ARGUMENTS', message: err.message } });
+      }
+      throw err;
+    }
+  };
+
+  app.post('/admin/power-engine/suspendGuild', (req: FastifyRequest, reply: FastifyReply) =>
+    runCatalogFunction('suspendGuild', req, reply),
+  );
+
+  app.post('/admin/power-engine/unsuspendGuild', (req: FastifyRequest, reply: FastifyReply) =>
+    runCatalogFunction('unsuspendGuild', req, reply),
   );
 
   app.post('/admin/power-engine/pauseQueue', async (req: FastifyRequest, reply: FastifyReply) => {

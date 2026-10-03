@@ -22,6 +22,8 @@ import { ModuleLoader } from '../module-system/loader.js';
 import { defaultEnabledForTier } from '../module-system/tier-rules.js';
 import { PermissionResolver } from '../permissions/resolver.js';
 import { AdminEvalGate } from '../permissions/admin-eval-gate.js';
+import { PostgresGuildSuspensionStore } from '../governance/guild-suspension.js';
+import { createPowerEngineCatalog } from '../http/power-engine-catalog.js';
 import { DiscordOAuth2Client } from '../http/oauth/oauth2-client.js';
 import { MtpTokenCalculator } from '../analytics/mtp-token-calculator.js';
 import { BootstrapProgress } from './stages.js';
@@ -346,6 +348,9 @@ export async function bootstrap(): Promise<void> {
 
     return row.enabled === true && row.state === 'active';
   };
+  // §22.2 / Table 22-A — one store, shared by the dispatch path (enforcement) and the Power
+  // Engine catalog (the control action that writes it).
+  const guildSuspensions = new PostgresGuildSuspensionStore(db.knex);
   const commandRouter = new CommandRouter(commandRegistry, logger, {
     devGuildId: config.get('DEV_GUILD_ID'),
     isModuleEnabledInGuild,
@@ -354,6 +359,8 @@ export async function bootstrap(): Promise<void> {
     middlewarePipeline: commandMiddleware,
     renderer,
     grantStore: new PostgresGrantWriter(db.knex),
+    // §22.2 / Table 22-A — the Power Engine `suspendGuild` state the dispatch path must consult.
+    guildSuspensions,
     resolveCommandOwner: (guildId, moduleSlug) =>
       personaBindingService.resolveCommandOwner(guildId, moduleSlug),
     ...(config.get('PERSONA_ID') !== '' ? { residentPersonaId: config.get('PERSONA_ID') } : {}),
@@ -640,6 +647,43 @@ export async function bootstrap(): Promise<void> {
     internalApiKey: config.get('INTERNAL_API_KEY'),
     timeoutMs: config.get('CREDENTIALS_SERVICE_TIMEOUT_MS'),
   });
+  // §22.6 — the control plane's audit trail. One writer, carrying the correlation id and the true
+  // failure reason (the two rows this used to have silently dropped them).
+  const powerEngineAuditWriter = {
+    write: async (entry: {
+      actorId: string;
+      source: string;
+      action: string;
+      reason: string;
+      outcome: 'allowed' | 'rejected' | 'failed';
+      rejectionReason?: string;
+      failureReason?: string;
+      correlationId?: string;
+      metadata?: Record<string, string | number | boolean | null>;
+      at: number;
+    }): Promise<void> => {
+      await db.knex('audit_logs').insert({
+        actorId: entry.actorId,
+        source: entry.source,
+        action: entry.action,
+        reason: entry.reason,
+        outcome: entry.outcome,
+        rejectionReason: entry.rejectionReason ?? null,
+        metadata: JSON.stringify({
+          ...(entry.metadata ?? {}),
+          ...(entry.correlationId !== undefined ? { correlationId: entry.correlationId } : {}),
+          ...(entry.failureReason !== undefined ? { failureReason: entry.failureReason } : {}),
+        }),
+        createdAt: new Date(entry.at),
+      });
+    },
+  };
+  const powerEngineDispatcher = new PowerEngineDispatcher(
+    { trustedSources: config.get('POWER_ENGINE_TRUSTED_SOURCES') },
+    powerEngineAuditWriter,
+  );
+  const powerEngineCatalog = createPowerEngineCatalog({ guildSuspensions, logger });
+
   const apiServer = buildApiServer({
     logger,
     progress,
@@ -647,38 +691,11 @@ export async function bootstrap(): Promise<void> {
     config,
     oauth2Client: oauth2Client.isConfigured() ? oauth2Client : undefined,
     adminDeps: {
-      dispatcher: new PowerEngineDispatcher(
-        { trustedSources: config.get('POWER_ENGINE_TRUSTED_SOURCES') },
-        {
-          write: async (entry) => {
-            await db.knex('audit_logs').insert({
-              actorId: entry.actorId,
-              source: entry.source,
-              reason: entry.reason,
-              action: entry.action,
-              outcome: entry.outcome,
-              rejectionReason: entry.rejectionReason ?? null,
-              metadata: JSON.stringify({}),
-            });
-          },
-        },
-      ),
+      dispatcher: powerEngineDispatcher,
       db,
       config,
-      auditWriter: {
-        write: async (entry) => {
-          await db.knex('audit_logs').insert({
-            actorId: entry.actorId,
-            source: entry.source,
-            action: entry.action,
-            reason: entry.reason,
-            outcome: entry.outcome,
-            rejectionReason: entry.rejectionReason ?? null,
-            metadata: entry.metadata ?? {},
-            createdAt: new Date(entry.at),
-          });
-        },
-      },
+      auditWriter: powerEngineAuditWriter,
+      powerEngineCatalog,
       // §22.5/§15.8: arm the governance surface — the Power Engine operator allow-list (identities that may
       // decide approvals) and the Credentials Service client, used both to verify a presented
       // operator credential and to activate a developer credential on approval (finding #24).

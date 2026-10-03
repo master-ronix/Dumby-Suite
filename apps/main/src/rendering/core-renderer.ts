@@ -243,6 +243,9 @@ export class CoreRenderer {
     if (name === 'CommandNotFoundError') return 'UNKNOWN_COMMAND';
     if (name === 'CommandScopeDeniedError') return 'FORBIDDEN';
     if (name === 'PersonaOccupiedError') return 'FORBIDDEN';
+    // blueprint.md §22.2 / Table 22-A — a Power Engine `suspendGuild` blocks dispatch in that guild,
+    // so the user sees the GUILD_UNAVAILABLE formal notice rather than a partial render.
+    if (name === 'GuildSuspendedError') return 'GUILD_UNAVAILABLE';
     return 'MODULE_ERROR';
   }
 

@@ -6,6 +6,7 @@ import { MiddlewarePipeline, type PipelineResult } from '../middleware/middlewar
 import type { MiddlewareContext } from '../middleware/base-middleware.js';
 import type { PermissionResolver } from '../permissions/resolver.js';
 import type { RbacGrant } from '../permissions/rbac.js';
+import { type GuildSuspensionStore } from '../governance/guild-suspension.js';
 import {
   CoreRenderer,
   FOLLOWUP_ALARM_MS,
@@ -64,6 +65,12 @@ export interface CommandRouterOptions {
   renderer?: CoreRenderer;
   resolveCommandOwner?: (guildId: string, moduleSlug: string) => Promise<string | undefined>;
   residentPersonaId?: string;
+  /**
+   * blueprint.md §22.2 / Table 22-A — the Power Engine `suspendGuild` state. When present, dispatch
+   * consults it before anything else in the guild: a suspension overrides the guild's own
+   * configuration rather than editing it.
+   */
+  guildSuspensions?: GuildSuspensionStore;
 }
 
 export class CommandRouter {
@@ -94,6 +101,27 @@ export class CommandRouter {
 
     const traceId = this.renderer.createTraceId();
     await this.renderer.sendBuffer(interaction, identity);
+
+    // §22.2 / Table 22-A: a suspended guild blocks dispatch fleet-wide, ahead of the guild's own
+    // configuration and ahead of the middleware pipeline — the broadest of the four primitives.
+    // Rendered inline like the not-found case, so the user sees the formal notice rather than a
+    // buffer that never resolves.
+    if (this.options.guildSuspensions !== undefined) {
+      const guildId = interaction.guildId;
+      if (await this.options.guildSuspensions.isSuspended(guildId)) {
+        this.logger.warn('guild-suspended-dispatch-blocked', {
+          command: name,
+          guildId,
+          userId: interaction.user.id,
+        });
+        await this.renderer.editNotice(interaction, {
+          ...identity,
+          reason: 'GUILD_UNAVAILABLE',
+          traceId,
+        });
+        return;
+      }
+    }
 
     const def = this.registry.get(name);
     if (!def) {
