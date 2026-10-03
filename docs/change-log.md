@@ -784,6 +784,7 @@ and the five slice deviations are in `migration-ledger.md` §M0 slice 6a.
 | #15 | — | M9 | `QueueManager.pause()`/`resume()` unrouted — the power-engine `pauseQueue`/`resumeQueue` admin routes now call them (optional `queueManager` dep + `QueueManager.list()` + the bootstrap wiring; the 501 fallback stays). Proof: `m9-queue-pause-routing.test.ts` (3 tests). No queues are registered yet — that is the inert-runtime block | DONE |
 | #17 | — | M9 | `createMiddlewareContext` returned `meta: {}`, so `DeferMiddleware` (which reads `ctx.meta['interaction']`) was dead by construction. The context now carries the interaction; `m9-defer-stage.test.ts` proves a `requiresDefer` command is deferred through the pipeline | DONE |
 | #3 | — | M9 | Four of twelve built-in middlewares neutered by hardcoded stubs — `CommandDefinition` gained `requiresDefer`/`ephemeral`/`cooldownMs` and all four now read live sources (registry metadata + the member's Discord state via the gateway client). Proof: `m9-middleware-wiring.test.ts` (4 tests). Judgment call: `getHighestRole` derives the rank from Discord state (owner/Administrator/ManageGuild) pending a per-guild role mapping | DONE |
+| UR-C-07 | — | M9 | Loader verify/quarantine/cache-bust was present; the residual was `SWASTIK_QUARANTINE_PATH` being declared but unread — `bootstrap.ts` now passes the configured quarantine directory. Proof: `m9-quarantine-path.test.ts` (1 test) | DONE |
 
 ### UR 2.0 — Post-Re-Baseline Conformance & Audit Evidence (recorded 2026-10-01)
 

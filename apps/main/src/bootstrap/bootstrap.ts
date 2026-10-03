@@ -362,6 +362,11 @@ export async function bootstrap(): Promise<void> {
     registry: moduleRegistry,
     logger,
     ...(provenanceGuardArmed ? { buildStore, verifier } : {}),
+    // UR-C-07: the operator-configured quarantine directory for a module that fails verification
+    // (the loader falls back to `<modulesDir>/quarantine` when it is unset).
+    ...(config.get('SWASTIK_QUARANTINE_PATH') !== ''
+      ? { quarantineDir: config.get('SWASTIK_QUARANTINE_PATH') }
+      : {}),
   });
   logger.info('module-discovery-complete', {
     source: 'tier-volumes',
