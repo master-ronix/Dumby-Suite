@@ -8,6 +8,7 @@ import { createLogger, type Logger } from '../logging/logger.js';
 import { MetricsRegistry } from '../metrics/registry.js';
 import { DbClient } from '../db/client.js';
 import { InternalEventBus } from '../events/event-bus.js';
+import { EventRouter } from '../events/event-router.js';
 import { CacheManager } from '../cache/cache-manager.js';
 import { RedisLockStore } from '../cache/redis-lock-store.js';
 import { QueueManager } from '../queue/queue-manager.js';
@@ -162,6 +163,8 @@ export async function bootstrap(): Promise<void> {
 
   progress.advanceTo('DI_BOOTSTRAP');
   const eventBus = new InternalEventBus({ maxEmitDepth: config.get('EVENT_BUS_MAX_EMIT_DEPTH') });
+  // §15.1 — the gateway event router: module-declared handlers, dispatched from the client.
+  const eventRouter = new EventRouter({ logger, cache });
   fatalHooks.notify = (correlationId, error) => {
     try {
       void eventBus.emit('dumby.system.fatal', {
@@ -329,6 +332,7 @@ export async function bootstrap(): Promise<void> {
     ...(config.get('PERSONA_ID') !== '' ? { residentPersonaId: config.get('PERSONA_ID') } : {}),
   });
   container.registerValue(CORE_TOKENS.EventBus, eventBus);
+  container.registerValue(CORE_TOKENS.EventRouter, eventRouter);
   container.registerValue(CORE_TOKENS.ModuleRegistry, moduleRegistry);
   container.registerValue(CORE_TOKENS.PermissionResolver, permissionResolver);
   container.registerValue(CORE_TOKENS.CommandRegistry, commandRegistry);
@@ -393,6 +397,14 @@ export async function bootstrap(): Promise<void> {
     const intents = computeIntentsBitfield(modules.map((m) => m.manifest.intents));
     const partials = computePartials(modules.map((m) => m.manifest.partials));
     discordClient = buildDiscordClient({ intents, partials, logger });
+    // §15.1 — subscribe the gateway client to every event a module declared a handler for.
+    const subscribedEvents = eventRouter.getRegisteredEvents();
+    for (const event of subscribedEvents) {
+      discordClient.on(event as never, (...args: unknown[]) => {
+        void eventRouter.dispatch(event, ...args);
+      });
+    }
+    logger.info('gateway-events-subscribed', { events: subscribedEvents });
 
     discordClient.on(Events.InteractionCreate, async (interaction) => {
       if (!isAcceptingGatewayEvents()) return;

@@ -8,6 +8,7 @@ import type { CommandRegistry } from '../commands/command-registry.js';
 import { toCommandDefinition } from '../commands/module-command.js';
 import type { CoreRenderer } from '../rendering/core-renderer.js';
 import type { QueueManager } from '../queue/queue-manager.js';
+import type { EventRouter } from '../events/event-router.js';
 
 export interface ModuleLoadReport {
   order: readonly string[];
@@ -114,6 +115,24 @@ export class ModuleLoader {
                 name: job.queueName,
                 processor: (jb) => Promise.resolve(job.process({ data: jb.data })),
               });
+            }
+          }
+        }
+        // §15.1 — register the module's gateway event handlers with the event router.
+        if (mod.events !== undefined) {
+          const eventRouter = this.container.tryResolve<EventRouter>(CORE_TOKENS.EventRouter);
+          if (eventRouter !== undefined) {
+            for (const handler of mod.events) {
+              eventRouter.register(
+                {
+                  event: handler.event as never,
+                  ...(handler.once !== undefined ? { once: handler.once } : {}),
+                  handle: async (...args: unknown[]) => {
+                    await handler.handle(...args);
+                  },
+                },
+                mod.manifest.name,
+              );
             }
           }
         }

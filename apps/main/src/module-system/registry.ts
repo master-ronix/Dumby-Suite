@@ -8,12 +8,21 @@ export interface ModuleJobDeclaration {
   readonly process: (job: { data: unknown }) => Promise<void> | void;
 }
 
+/** §15.1 — a module-declared gateway event handler, registered with the `EventRouter`. */
+export interface ModuleEventHandlerDeclaration {
+  readonly event: string;
+  readonly once?: boolean;
+  readonly handle: (...args: unknown[]) => Promise<void> | void;
+}
+
 export interface LoadedModule {
   manifest: ModuleManifest;
   /** §1.7 (UR-11) — the module's schema-declared commands; the loader registers them. */
   commands?: readonly CommandDeclaration[];
   /** §5.9 — the module's job processors; the loader registers their queues. */
   jobs?: readonly ModuleJobDeclaration[];
+  /** §15.1 — the module's gateway event handlers; the loader registers them with the router. */
+  events?: readonly ModuleEventHandlerDeclaration[];
   onLoad?: (container: Container) => Promise<void> | void;
   onReady?: (container: Container) => Promise<void> | void;
   onUnload?: () => Promise<void> | void;

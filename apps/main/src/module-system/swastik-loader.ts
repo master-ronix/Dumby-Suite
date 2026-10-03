@@ -367,6 +367,7 @@ export async function loadModulesFromTierVolumes(
         const loadedModule: LoadedModule = { manifest };
         if (pkg.commands) loadedModule.commands = pkg.commands;
         if (pkg.jobs) loadedModule.jobs = pkg.jobs;
+        if (pkg.events) loadedModule.events = pkg.events;
         if (pkg.onLoad) loadedModule.onLoad = pkg.onLoad;
         if (pkg.onReady) loadedModule.onReady = pkg.onReady;
         if (pkg.onUnload) loadedModule.onUnload = pkg.onUnload;
