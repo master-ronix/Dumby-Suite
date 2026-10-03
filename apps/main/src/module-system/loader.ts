@@ -7,6 +7,7 @@ import { CORE_TOKENS } from '../di/tokens.js';
 import type { CommandRegistry } from '../commands/command-registry.js';
 import { toCommandDefinition } from '../commands/module-command.js';
 import type { CoreRenderer } from '../rendering/core-renderer.js';
+import type { QueueManager } from '../queue/queue-manager.js';
 
 export interface ModuleLoadReport {
   order: readonly string[];
@@ -101,6 +102,18 @@ export class ModuleLoader {
                   config: mod.manifest.config,
                 }),
               );
+            }
+          }
+        }
+        // §5.9 — register the module's declared job queues against the queue manager.
+        if (mod.jobs !== undefined) {
+          const queueManager = this.container.tryResolve<QueueManager>(CORE_TOKENS.Queue);
+          if (queueManager !== undefined) {
+            for (const job of mod.jobs) {
+              queueManager.registerQueue({
+                name: job.queueName,
+                processor: (jb) => Promise.resolve(job.process({ data: jb.data })),
+              });
             }
           }
         }

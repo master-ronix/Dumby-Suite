@@ -2,10 +2,18 @@ import type { CommandDeclaration } from '@workspace/swastik';
 import type { Container } from '../di/container.js';
 import type { ModuleManifest } from './manifest.schema.js';
 
+/** §5.9 — a module-declared BullMQ job processor (registered against its named queue). */
+export interface ModuleJobDeclaration {
+  readonly queueName: string;
+  readonly process: (job: { data: unknown }) => Promise<void> | void;
+}
+
 export interface LoadedModule {
   manifest: ModuleManifest;
   /** §1.7 (UR-11) — the module's schema-declared commands; the loader registers them. */
   commands?: readonly CommandDeclaration[];
+  /** §5.9 — the module's job processors; the loader registers their queues. */
+  jobs?: readonly ModuleJobDeclaration[];
   onLoad?: (container: Container) => Promise<void> | void;
   onReady?: (container: Container) => Promise<void> | void;
   onUnload?: () => Promise<void> | void;
