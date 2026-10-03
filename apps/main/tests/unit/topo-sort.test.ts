@@ -14,8 +14,8 @@ test('dependencies are ordered before their dependents', () => {
     { name: 'leveling', depends: ['guild-settings', 'economy'], required: false },
   ];
   const order = topologicalLoadOrder(modules);
-  expect(order.indexOf('guild-settings') < order.indexOf('economy')).toBeTruthy();
-  expect(order.indexOf('economy') < order.indexOf('leveling')).toBeTruthy();
+  expect(order.indexOf('guild-settings')).toBeLessThan(order.indexOf('economy'));
+  expect(order.indexOf('economy')).toBeLessThan(order.indexOf('leveling'));
   expect(order.length).toBe(3);
 });
 
@@ -50,7 +50,7 @@ test('an indirect three-module cycle reports the full chain', () => {
     topologicalLoadOrder(modules);
     expect.fail('expected a cycle error');
   } catch (err) {
-    expect(err instanceof ModuleDependencyCycleError).toBeTruthy();
+    expect(err).toBeInstanceOf(ModuleDependencyCycleError);
     expect(err.chain).toStrictEqual(['a', 'b', 'c', 'a']);
   }
 });

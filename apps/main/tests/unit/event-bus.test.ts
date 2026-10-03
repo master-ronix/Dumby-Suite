@@ -134,7 +134,7 @@ test('default maxEmitDepth is 20, matching EVENT_BUS_MAX_EMIT_DEPTH', async () =
     }
   });
   await expect(() => bus.emit('loop.step.tick', {})).rejects.toThrow(EventCycleError);
-  expect(depth <= 22).toBeTruthy();
+  expect(depth).toBeLessThanOrEqual(22);
 });
 
 test('isProtectedEventDomain guards moderation/automod/verification/cache regardless of caller intent', () => {

@@ -266,7 +266,7 @@ test('ModuleLoader.readyAll never throws and reports optional ready failures sep
   expect(report.requiredFailed).toStrictEqual([]);
   expect(
     logger.calls.some((c) => c.level === 'error' && c.msg === 'module-ready-failed-non-fatal'),
-  ).toBeTruthy();
+  ).toBe(true);
 });
 
 test('ModuleLoader.readyAll reports required ready failures for readiness gating', async () => {

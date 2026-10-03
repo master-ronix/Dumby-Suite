@@ -207,7 +207,7 @@ describe('M7 PersonaCommandBindingService', () => {
   test('registerPersona records a persona bound to its commissioning guild', async () => {
     const { stores, service } = makeService();
     const p = await service.registerPersona(registration(), quietSignals);
-    expect(p.id).toBeTruthy();
+    expect(p.id).toMatch(/^\S+$/);
     expect((await stores.list()).length).toBe(1);
     expect((await stores.findByBoundGuildId('guild-1'))?.id).toBe(p.id);
   });

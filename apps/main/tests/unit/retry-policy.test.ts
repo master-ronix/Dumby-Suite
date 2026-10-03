@@ -79,7 +79,7 @@ test('RetryExhaustedError exposes the attempt count and last error', async () =>
     );
     expect.fail('expected RetryExhaustedError');
   } catch (err) {
-    expect(err instanceof RetryExhaustedError).toBeTruthy();
+    expect(err).toBeInstanceOf(RetryExhaustedError);
     expect(err.attempts).toBe(2);
     expect((err.lastError as Error).message).toBe('root cause');
   }
