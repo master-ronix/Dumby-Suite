@@ -7,7 +7,7 @@
 **Stack:** TypeScript (strict mode) · Node.js LTS ≥ 22 · discord.js v14 · PostgreSQL · Redis · BullMQ · Fastify · Pino/Prometheus/OpenTelemetry
 **Scope:** Architecture · Design · Lifecycle · Infrastructure · Security · Operations · Module Catalog (Illustrative Examples) · Power Engine Panel · Administrative Interfaces
 **Classification:** Engineering Reference — implementation status is stated per section by the status badges and the Audit Register
-**Edition note:** 5.0.0 is a consolidated re-baseline of the entire reference: the core Renderer and buffer-embed presentation model (§20.8–§20.9), the RBAC Layer 6/7 redesign (§21), tier volumes replacing the in-tree module layout (§7.3), the six-state license machine (§15.7), the Compatibility Ledger (§14.4), Global Data Emit as the fifth cross-module pattern (§14.1), the Twixter persona model (§35), and envelope encryption (§32.7). The eleven cross-cutting decisions behind these changes are recorded as ADR-001…ADR-011 (docs/adr/); the three source request records are registered frozen under docs/ur/.
+**Edition note:** 5.0.0 is a consolidated re-baseline of the entire reference: the core Renderer and buffer-embed presentation model (§20.8–§20.9), the RBAC Layer 6/7 redesign (§21), tier volumes replacing the in-tree module layout (§7.3), the six-state license machine (§15.7), the Compatibility Ledger (§14.4), Global Data Emit as the fifth cross-module pattern (§14.1), the Twill persona model (§35), and envelope encryption (§32.7). The eleven cross-cutting decisions behind these changes are recorded as ADR-001…ADR-011 (docs/adr/); the three source request records are registered frozen under docs/ur/.
 **Sections:** 48 (numbered) + Appendices A–C + the Implementation Status & Audit Register · **Parts:** 0–IX (Part 0 is orientation; Parts I–IX carry the numbered sections) · **Cataloged Module Examples:** 22 (illustrative — none shipped)
 
 ---
@@ -62,7 +62,7 @@
 - [32. Security Architecture & Threat Model](#32-security-architecture--threat-model)
 - [33. Performance & Scalability Engineering](#33-performance--scalability-engineering)
 - [34. Privacy & GDPR Compliance](#34-privacy--gdpr-compliance)
-- [35. Multi-Identity Operation — Twixter & Personas](#35-multi-identity-operation--twixter--personas)
+- [35. Multi-Identity Operation — Twill & Personas](#35-multi-identity-operation--twill--personas)
 ### PART VII — MODULE CATALOG (ILLUSTRATIVE EXAMPLES)
 
 - [36. Catalog Conventions & Illustrative Module Index](#36-catalog-conventions--illustrative-module-index)
@@ -188,7 +188,7 @@ Design philosophy / first principles ....... §1–§3 (Foundations)
 Role-based access control (RBAC) .......... §21.3–§21.7 (RBAC, Groups, Grants)
 Global administrative override ............. §22 (Power Engine Panel)
 Operator terminal / break-glass access ..... §22.6–§22.8 (CLAI)
-Multiple bot identities / voice capacity ... §35 (Twixter & Personas)
+Multiple bot identities / voice capacity ... §35 (Twill & Personas)
 Hot reload / zero-downtime deploy .......... §15 (Swastik)
 ```
 
@@ -1172,16 +1172,16 @@ never assumes it runs unsharded; `context.shardId` is always populated, and any 
 module needs across shard boundaries lives in PostgreSQL or Redis (§26), never in a
 process-local variable.
 
-### 6.6 Twixter — The Persona System for Multiple Bot Identities on Shared Infrastructure
+### 6.6 Twill — The Persona System for Multiple Bot Identities on Shared Infrastructure
 
 Two hard Discord-platform ceilings shape when a single bot identity stops being
 enough for a guild: at most 100 commands may be registered per guild per application,
 and a single bot connection holds at most one active voice connection per guild.
-**Twixter** is the subsystem responsible for creating, branding, and governing the
+**Twill** is the subsystem responsible for creating, branding, and governing the
 lifecycle of a **Persona** — a complete additional Discord Application whose token and
 application are supplied by the guild administrator themselves (bring-your-own-identity),
 while Dumby hosts and operates the instance. One Persona is bound to exactly one
-server (single-server-bound): a Twixter instance serves the single guild that
+server (single-server-bound): a Twill instance serves the single guild that
 commissioned it and is never shared across guilds. The instance is bootstrapped from
 the identical codebase and shares the identical PostgreSQL primary, Redis instance,
 and job queues as the main bot and every other Persona a deployment runs. Personas
@@ -5545,7 +5545,7 @@ exception used to serve is fully covered by the control plane instead: PEP's
 authenticated REST surface and CLAI's SSH terminal (§22) are both reachable when the
 gateway is down, and §28.6's maintenance-mode allow-list keeps the operators of that
 mechanism from being locked out of it — the lockout-avoidance path is re-verified
-against this complete prohibition. Twixter instances (§35) decide their own DM
+against this complete prohibition. Twill instances (§35) decide their own DM
 behavior: a Persona is a separate Discord Application commissioned by its guild, and
 its DM posture is the guild administrator's choice, not the framework's.
 
@@ -5782,7 +5782,7 @@ The personas subsystem (`PersonaCommandBindingService` and its supporting tables
 `persona_identities`, `guild_persona_bindings`) is wired end to end: the service is
 registered in `src/bootstrap/bootstrap.ts`, persona identities load during startup
 (the bound Persona's process boots against `PERSONA_ID`), and command-key bindings
-resolve through the single command system. Persona creation runs through the Twixter
+resolve through the single command system. Persona creation runs through the Twill
 registration API (§35.5) — the MDIS-only wording is superseded (ADR-011, docs/adr/) —
 and dispatch enforces the "occupied by another persona" gate: a command key already
 registered by one Persona is rejected ephemerally for a different Persona rather than
@@ -9512,7 +9512,7 @@ regulatory obligations beyond Discord's own platform terms is responsible for
 whatever additional controls that context requires; this architecture's uniform
 privacy posture is a floor, not a substitute for jurisdiction-specific legal review.
 
-## 35. Multi-Identity Operation — Twixter & Personas
+## 35. Multi-Identity Operation — Twill & Personas
 
 **Status:** [SPEC]
 
@@ -9555,9 +9555,9 @@ server invite into any guild that wants to use it. The guild administrator
 commissioning the Persona supplies that application and token themselves
 (bring-your-own-identity): the guild owns the Discord identity, and Dumby hosts and
 operates the instance. One Persona serves exactly one server (single-server-bound) —
-a Twixter instance is commissioned by a guild, bound to that guild, and never shared
-across guilds. **Twixter** is the subsystem responsible for a Persona's entire
-lifecycle — registration through the Twixter registration API (ADR-011, docs/adr/),
+a Twill instance is commissioned by a guild, bound to that guild, and never shared
+across guilds. **Twill** is the subsystem responsible for a Persona's entire
+lifecycle — registration through the Twill registration API (ADR-011, docs/adr/),
 branding configuration, deployment, and eventual retirement — but a running Persona
 is simply another instance of `src/entry/main.ts` (§7.5), started against the
 commissioning guild's token, sharing the same PostgreSQL primary, the same Redis
@@ -9654,7 +9654,7 @@ to two different identities is precisely how a guild gets both running concurren
 
 ### 35.5 Governance
 
-Persona registration runs through the **Twixter registration API**: the guild
+Persona registration runs through the **Twill registration API**: the guild
 administrator registers the Discord application they already own, the API validates
 the application's existence and the registrar's authority over it, and the resulting
 Persona is bound to that one guild (ADR-011, docs/adr/). Because the identity is the
@@ -9669,11 +9669,11 @@ P14's global-authority capability (§3) and a guild's own local, per-guild
 configuration (§23.3): hosting capacity is a fleet-wide, deliberate act; the use of
 an identity a guild already owns for that guild's own convenience is not.
 
-### 35.6 The Twixter Charter — Free Default, Explicit Sunset
+### 35.6 The Twill Charter — Free Default, Explicit Sunset
 
 Personas run under a **free charter**: a guild commissions a Persona, supplies its own
 application and token, and pays nothing to the host for the instance — the free default
-is the only charter v5.0 specifies, and no monetization wiring exists for Twixter (the
+is the only charter v5.0 specifies, and no monetization wiring exists for Twill (the
 reserved monetization scaffold, §7.6, stays empty and out of scope). The charter
 carries an **explicit sunset condition** (ADR-008, docs/adr/): the free default ends
 when the hosting cost of Persona capacity stops being incidental — concretely, when
@@ -11259,7 +11259,7 @@ TABLE 44-B — API Families
 │ │ suspension/revocation (§15.7, §16.4) │
 │ installs │ Per-guild installed-module state and configuration │
 │ │ — the MDIS backend (§16.5, §44.3) │
-│ Twixter │ Persona registration API, bindings, branding, │
+│ Twill │ Persona registration API, bindings, branding, │
 │ │ charter status (§35) │
 │ webhooks │ Inbound verification contract (§32.3) and │
 │ │ outbound signed delivery (§44.5) │
@@ -11384,7 +11384,7 @@ TABLE 45-A — Compliance Matrix
 │ │ pub/sub change events │ │
 │ 59 │ Envelope encryption for recoverable in-process- │ §32.7 │
 │ │ readable credentials; Argon2id for everything else │ │
-│ 60 │ Twixter personas: bring-your-own-identity, │ §35 │
+│ 60 │ Twill personas: bring-your-own-identity, │ §35 │
 │ │ single-server-bound, free charter with explicit │ │
 │ │ sunset condition │ │
 └────┴──────────────────────────────────────────────────────────┴──────────────┘
@@ -11418,7 +11418,7 @@ TABLE 46-A — Capability Comparison
 │ │ regressing unrelated features │ any existing module (§11.6) │
 │ Third-party extensibility │ Rare; usually requires forking │ First-class Marketplace tier │
 │ │ the whole bot │ and review pipeline (§16) │
-│ Multiple bot identities │ Not supported, or a completely │ Twixter/Personas, sharing the │
+│ Multiple bot identities │ Not supported, or a completely │ Twill/Personas, sharing the │
 │ (command/voice capacity) │ separate bot to manage manually │ same codebase and data (§35) │
 │ Zero-downtime deploys │ Uncommon; a deploy usually means │ Structural requirement, │
 │ │ a brief outage │ enforced by state │
@@ -11560,7 +11560,7 @@ TABLE 47-A — Term Reference
 │ Tier │ A module's governance classification — Admin, Core, │
 │ │ Standard, or Marketplace (§13.2) │
 │ Token (DI) │ A Symbol-based, unforgeable service identifier (§10.2) │
-│ Twixter │ The subsystem governing Persona creation, branding, and │
+│ Twill │ The subsystem governing Persona creation, branding, and │
 │ │ lifecycle (§35.2) │
 └────────────────────────┴──────────────────────────────────────────────────┘
 ```
@@ -11591,7 +11591,7 @@ TABLE 47-B — Section Index by Part
 │ VI — Reliability, Security & Operations │ §27 Observability · §28 Errors · §29 │
 │ │ Jobs · §30 i18n · §31 Analytics/MTP · │
 │ │ §32 Security · §33 Performance · §34 │
-│ │ Privacy · §35 Twixter & Personas │
+│ │ Privacy · §35 Twill & Personas │
 │ VII — Module Catalog │ §36 Catalog & Extension Patterns │
 │ VIII — Engineering Lifecycle │ §37 Testing · §38 DX & Tooling · §39 │
 │ │ Workflow · §40 CI/CD · §41 │
@@ -12045,7 +12045,7 @@ The support program provides community-based support through Discord (a support 
 >
 > **v5.0 re-baseline restatements.** Statuses restated against the 5.0.0 Consolidated Re-Baseline: CLAI's SSH transport (§22.6, §22.10) is [SPECIFIED — Phase 4]: a real ssh2 public-key server at `src/entry/ssh-clai.ts`, with no plaintext REPL remaining in the specification; Components V2 (§20.8) is [SPECIFIED — Phase 2]: the core Renderer with the static grammar, dynamic slots, and Modes D/M/C supersedes the earlier ~20%-implemented static-only Components V2 scaffold; Swastik (§15) is [SPECIFIED — Phases 1–3]: the tier-volume model, six-state license machine, trusted-build intake, and verified reload loop supersede the earlier ~30% hot-swap scaffold; the remaining v5.0 subsystems and their phases are recorded below.
 >
-> **v5.0 subsystem status (Phase 0–4 rollout).** Phase 0 — groundwork: the eleven ADRs (docs/adr/), the Compatibility Ledger skeleton (§14.4), `swastik` package repository, accent + title-grammar decisions. Phase 1 — module contract: raw TypeScript-only upload (§15.8), tier volumes (§5.4, §7.3), blind discovery (§8.2), `swastik` authoring package (§12.21), promotion loop (§15.4), deployment rate limits (§13.6) — all [SPECIFIED]. Phase 2 — the Renderer: core Renderer (§20.8), buffer embed and formal notices (§20.9), schema-declared authoring (§17.2), embed ban (§4) — all [SPECIFIED]. Phase 3 — governance & identity: license machine (§15.7), devId binding (§11.2), license classes and paper certificates (§22.8), credentials domain (§22.4), repository-triggered deployment (§15.11–§15.12), visibility enum (§11.2), hardcode toggle (§13.3) — all [SPECIFIED]. Phase 4 — platform surfaces: CLAI console (§22.6–§22.10), REST API families (§44.8), MDIS pub/sub sync (§16.5), Twixter (§35) — all [SPECIFIED]. The 52 deferred greenfield items remain out of scope and must not be described as features; the shipped user-facing surface remains /health and /hello until the phased rollout records otherwise below.
+> **v5.0 subsystem status (Phase 0–4 rollout).** Phase 0 — groundwork: the eleven ADRs (docs/adr/), the Compatibility Ledger skeleton (§14.4), `swastik` package repository, accent + title-grammar decisions. Phase 1 — module contract: raw TypeScript-only upload (§15.8), tier volumes (§5.4, §7.3), blind discovery (§8.2), `swastik` authoring package (§12.21), promotion loop (§15.4), deployment rate limits (§13.6) — all [SPECIFIED]. Phase 2 — the Renderer: core Renderer (§20.8), buffer embed and formal notices (§20.9), schema-declared authoring (§17.2), embed ban (§4) — all [SPECIFIED]. Phase 3 — governance & identity: license machine (§15.7), devId binding (§11.2), license classes and paper certificates (§22.8), credentials domain (§22.4), repository-triggered deployment (§15.11–§15.12), visibility enum (§11.2), hardcode toggle (§13.3) — all [SPECIFIED]. Phase 4 — platform surfaces: CLAI console (§22.6–§22.10), REST API families (§44.8), MDIS pub/sub sync (§16.5), Twill (§35) — all [SPECIFIED]. The 52 deferred greenfield items remain out of scope and must not be described as features; the shipped user-facing surface remains /health and /hello until the phased rollout records otherwise below.
 
 ### Extracted audit entries
 

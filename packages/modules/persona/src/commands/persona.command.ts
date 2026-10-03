@@ -13,7 +13,7 @@ export const personaCommand = defineCommand({
     page: 'persona',
     data: {
       report: 'Active personas',
-      active: 0, note: 'persona creation is handled through the Twixter registration API',
+      active: 0, note: 'persona creation is handled through the Twill registration API',
     },
   }),
 });

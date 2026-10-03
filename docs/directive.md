@@ -344,7 +344,7 @@ send unsolicited direct messages — the prohibition is complete, and there is
 no tier exception. Operator communication travels the out-of-band
 control-plane surfaces (CLAI, PEP), and the DM prohibition MUST NOT weaken
 the guarantee that maintenance and intervention remain reachable without
-locking out the operators themselves (D-5.1, D-6.3). Twixter persona
+locking out the operators themselves (D-5.1, D-6.3). Twill persona
 instances decide their own DM behavior; this ban binds the main bot.
 
 **Verification.** Adversarial tests at each layer — prefix simulation,
@@ -1126,19 +1126,19 @@ defer while a release holds the lease; on Release Manager crash the lease
 expires and
 Swastik resumes within the bounded TTL.
 
-### D-6.6 — Personas (Twixter): Opt-In, Additive, Shared Infrastructure
+### D-6.6 — Personas (Twill): Opt-In, Additive, Shared Infrastructure
 
 **Rule (MUST).** Multiple bot identities run as separate processes on the
 same PostgreSQL, Redis, and job queues — each with its own token, shard
 allocation, and module enablement profile, bound per-guild. The mechanism is
 reached for only when a hard Discord ceiling (100 commands per guild per
 application, or one active voice connection per bot per guild) is actually
-hit — never preemptively. A persona instance is a Twixter instance: the
+hit — never preemptively. A persona instance is a Twill instance: the
 guild administrator supplies its bot token and application, Dumby hosts the
-process, and one persona is bound to one server. Twixter's free charter
+process, and one persona is bound to one server. Twill's free charter
 carries the explicit sunset condition recorded in ADR-008, and instances
-are registered through the Twixter registration API (ADR-011). Each
-Twixter instance decides its own DM behavior within the main bot's
+are registered through the Twill registration API (ADR-011). Each
+Twill instance decides its own DM behavior within the main bot's
 prohibition (D-1.7).
 
 ---
@@ -1537,7 +1537,7 @@ Part 5           §18–§25, §29–§30 (backend)       Middleware, permission
                                                    config, data, cache, jobs
 Part 6           §15 (control-plane), §22, §35,   PEP, CLAI, Credentials,
                  ADR-008/ADR-011                   Release Manager,
-                                                   Swastik, Twixter personas
+                                                   Swastik, Twill personas
 Part 7           §26–§28, §32–§34                 State, observability,
                                                    errors, security, perf,
                                                    privacy

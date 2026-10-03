@@ -396,8 +396,8 @@ describe('M7 structural gates', () => {
     join(import.meta.dirname, '..', '..', 'src', 'commands', 'command-router.ts'),
     'utf8',
   );
-  const twixterSource = readFileSync(
-    join(import.meta.dirname, '..', '..', 'src', 'entry', 'twixter.ts'),
+  const twillSource = readFileSync(
+    join(import.meta.dirname, '..', '..', 'src', 'entry', 'twill.ts'),
     'utf8',
   );
   const schemaSource = readFileSync(
@@ -416,13 +416,13 @@ describe('M7 structural gates', () => {
     expect(routerSource).toContain('assertPersonaOwnsCommand');
   });
 
-  test('the Twixter registration API stub is the honest creation surface (501, no provisioning)', () => {
-    expect(twixterSource).toContain("'/twixter/personas/register'");
-    expect(twixterSource).toContain('501');
-    expect(twixterSource).not.toContain('PersonaCommandBindingService');
-    expect(twixterSource).not.toContain('persona_identities');
-    expect(twixterSource).toContain('ADR-011');
-    expect(twixterSource).toContain('ADR-008');
+  test('the Twill registration API stub is the honest creation surface (501, no provisioning)', () => {
+    expect(twillSource).toContain("'/twill/personas/register'");
+    expect(twillSource).toContain('501');
+    expect(twillSource).not.toContain('PersonaCommandBindingService');
+    expect(twillSource).not.toContain('persona_identities');
+    expect(twillSource).toContain('ADR-011');
+    expect(twillSource).toContain('ADR-008');
   });
 
   test('the persona binding service is wired at bootstrap, never zero-caller (§18.5.1)', () => {
@@ -435,6 +435,6 @@ describe('M7 structural gates', () => {
 
   test('the persona process identity is a declared env key', () => {
     expect(schemaSource).toContain("PERSONA_ID: z.string().default('')");
-    expect(schemaSource).toContain('TWIXTER_PORT');
+    expect(schemaSource).toContain('TWILL_PORT');
   });
 });

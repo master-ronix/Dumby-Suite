@@ -67,7 +67,7 @@ The 48-row matrix from §45. Status: ✅ fully implemented, ⚠️ partially imp
 | CLAI — SSH/REPL operator terminal | Control-plane | ✅ `src/entry/clai.ts`, TCP REPL, SSH key auth |
 | Swastik — Deploy / hot-reload / hot-swap | Control-plane | ⚠️ Scaffold only (Tier 3 per ADR 004) |
 | Credentials Service — Argon2id credential issuance | Control-plane | ✅ `src/entry/credentials.ts`, local-bind, revocable |
-| Personas / Twixter | Control-plane | ❌ Data model in schema; no entry point (ADR 004) |
+| Personas / Twill | Control-plane | ❌ Data model in schema; no entry point (ADR 004) |
 | MDIS — Module Dashboard Interface System | Control-plane | 🔲 Out of scope for the current release |
 
 ## Compliance Matrix: directive.md §46

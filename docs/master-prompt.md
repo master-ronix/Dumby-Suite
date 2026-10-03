@@ -58,7 +58,7 @@ The canonical document-precedence order is stated once, in `directive.md` §0.2;
 
 - Read the named source sections *before* implementing or remediating a subsystem. Never work from assumption — work from the specification.
 - Where an ADR in `docs/adr/` governs a build choice, read it before implementing that choice. A deviation from a recorded decision is a defect to fix or a judgment to record in `change-log.md` — never a silent override.
-- Use the canonical vocabulary everywhere — code, tests, commit messages, and docs alike. The persona system is **Twixter** (bring-your-own-identity, single-server-bound). The release-management service is the **Release Manager**. The rank names are **MODERATOR** and **ADMINISTRATOR**. No legacy names, no shorthand variants.
+- Use the canonical vocabulary everywhere — code, tests, commit messages, and docs alike. The persona system is **Twill** (bring-your-own-identity, single-server-bound). The release-management service is the **Release Manager**. The rank names are **MODERATOR** and **ADMINISTRATOR**. No legacy names, no shorthand variants.
 - Each phase or remediation item must be verifiable before moving on.
 - Write tests alongside implementation. For remediation, update or write tests that prove the fault is fixed.
 - Never skip the middleware pipeline or permission resolver "to get it working." A bypass is a defect to fix, not a shortcut to take.
@@ -81,7 +81,7 @@ The application is built as a pnpm monorepo workspace member at `workspace/apps/
 |------|---------------|------------|
 | **Core Framework** | Bootstrap, DI, module system, middleware, permissions, data layer, cache, queue, observability, shutdown, the core Renderer | YES — full implementation |
 | **Shipped Modules** | The modules that constitute the user-facing surface on delivery | YES — the Core Command Surface specified in `interface.md` |
-| **Control-Plane Services** | PEP, CLAI, Swastik, Credentials Service, Personas (Twixter) | SCAFFOLD ONLY — typed interfaces and entry points; no operational implementation |
+| **Control-Plane Services** | PEP, CLAI, Swastik, Credentials Service, Personas (Twill) | SCAFFOLD ONLY — typed interfaces and entry points; no operational implementation |
 
 ### 1.3 Non-Goals
 
@@ -143,7 +143,7 @@ When implementing, auditing, or remediating a specific subsystem, read the sourc
 | Security | §32 | §29 | D-7.5 |
 | Performance | §33 | §30 | D-7.6 |
 | Privacy / GDPR | §34 | §31 | D-7.7 |
-| Personas (Twixter) | §35 | — | D-6.6 |
+| Personas (Twill) | §35 | — | D-6.6 |
 | Testing | §37 | §40 | D-8.1 to D-8.3 |
 | CI/CD | §40 | §43 | D-8.4 to D-8.5 |
 | Infrastructure | §41 | §44 | D-8.6 to D-8.7 |
@@ -470,7 +470,7 @@ Each phase specifies: its goal, source-document sections to read, deliverables, 
 - `src/entry/ssh-clai.ts` — CLAI SSH server entrypoint stub. The console speaks SSH with public-key authentication (ssh2) — no plaintext TCP REPL exists anywhere in the codebase
 - `src/entry/swastik.ts` — Swastik stub (manifest reading must NOT use `import()` — read D-4.9)
 - `src/entry/credentials.ts` — Credentials Service stub
-- Persona (Twixter) typed interface — bring-your-own-identity, single-server-bound
+- Persona (Twill) typed interface — bring-your-own-identity, single-server-bound
 - `src/monetization/` — Empty reserved scaffold
 
 **Verify (structural):** Entry points compile; typed interfaces importable.

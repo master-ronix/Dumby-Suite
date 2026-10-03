@@ -29,7 +29,7 @@ export interface PersonaIdentity {
   readonly status: PersonaStatus;
   readonly botTokenDigest: string;
   /**
-   * ADR-003 / §35: the persona's bot token is a credential Twixter must *use*, so it is stored
+   * ADR-003 / §35: the persona's bot token is a credential Twill must *use*, so it is stored
    * envelope-encrypted (in-process-readable) — not under a one-way hash. `botTokenDigest` is kept
    * only as a non-reversible equality/lookup aid alongside it.
    */
@@ -106,7 +106,7 @@ export class ApplicationAlreadyRegisteredError extends Error {
 export class FreeCharterEndedError extends Error {
   constructor() {
     super(
-      `The Twixter free charter has reached its recorded sunset (ADR-008): no new ` +
+      `The Twill free charter has reached its recorded sunset (ADR-008): no new ` +
         `free-charter personas can be registered. New monetization is a separate program, ` +
         `not wired here; existing single-server-bound personas are grandfathered.`,
     );
@@ -157,7 +157,7 @@ export function buildPersonaIdentity(input: PersonaRegistrationInput): PersonaId
   }
   if (input.botTokenSealed.ciphertext.trim().length === 0) {
     throw new Error(
-      'botTokenSealed is required — ADR-003: a credential Twixter must use cannot be stored under a one-way hash',
+      'botTokenSealed is required — ADR-003: a credential Twill must use cannot be stored under a one-way hash',
     );
   }
   if (input.registrarAuthority.trim().length === 0) {
@@ -242,7 +242,7 @@ export function sealPersonaBotToken(botToken: string, rootKey: EnvelopeRootKey):
   return seal(Buffer.from(botToken, 'utf8'), rootKey);
 }
 
-/** ADR-003 — read a persona's bot token back in process (Twixter presents it to Discord). */
+/** ADR-003 — read a persona's bot token back in process (Twill presents it to Discord). */
 export function openPersonaBotToken(persona: PersonaIdentity, rootKey: EnvelopeRootKey): string {
   return Buffer.from(open(persona.botTokenSealed, rootKey)).toString('utf8');
 }

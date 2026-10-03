@@ -16,7 +16,7 @@
 
 **Core principle of this document:** Every surface defined below is issued by the core Renderer. Module authors declare command schemas; the Renderer derives the presentation, the components, and the flows. The Core Command Surface — `/dashboard`, `/health`, `/browse`, `/queue`, `/persona`, `/permit`, `/modules`, and `/hello` — is the reference implementation set for the grammar this document specifies.
 
-**Relationship to engineering authority:** Where this reference defers to the engineering specification, it cross-references blueprint.md (principally §4 Directives & Bans, §11.2 Module Manifest, §12 Authoring Package, §13 Tiers, §16.5 Renderer Service, §17 Command Framework, §20 Interaction & Component Handling, §21 Permission Engine, §22.6 Operator Terminal, §27 Audit & Telemetry, §28 Resilience, §35 Personas — Twixter, §44 API Families) and the ADR series under docs/adr/. Implementation status for every capability specified here is tracked in blueprint.md's audit register, not in this document.
+**Relationship to engineering authority:** Where this reference defers to the engineering specification, it cross-references blueprint.md (principally §4 Directives & Bans, §11.2 Module Manifest, §12 Authoring Package, §13 Tiers, §16.5 Renderer Service, §17 Command Framework, §20 Interaction & Component Handling, §21 Permission Engine, §22.6 Operator Terminal, §27 Audit & Telemetry, §28 Resilience, §35 Personas — Twill, §44 API Families) and the ADR series under docs/adr/. Implementation status for every capability specified here is tracked in blueprint.md's audit register, not in this document.
 
 ---
 
@@ -31,7 +31,7 @@
 - Division 4 — /health Command (Health Module)
 - Division 5 — /browse Command (Marketplace Module)
 - Division 6 — /queue Command (BCCM Queue Module)
-- Division 7 — /persona Command (Persona Module — Twixter)
+- Division 7 — /persona Command (Persona Module — Twill)
 - Division 8 — /permit Command (RBAC Permission Module)
 - Division 9 — /modules Command (Module Management Module)
 - Division 10 — Hello World Standard-Tier Module
@@ -63,11 +63,11 @@ Key structural elements from the blueprint relevant to the end-user interface:
 
 - **BCCM (§15.8):** Bot Command Cosmetics for Marketplace — guild-level command renaming and aliasing, queued and batched through `guild_command_queue` within a 12–13 hour window rather than instant, constrained by Discord's 200-per-day guild-command-creation limit.
 
-- **Persona System — Twixter (§35):** A bring-your-own-identity feature: guild administrators supply their own bot token and application, Dumby hosts the instance, and each persona is bound to exactly one server. Persona creation is handled through the Twixter registration API (§44), not through any Discord-facing command. The main bot operates under a complete DM prohibition; Twixter instances decide their own DM behavior.
+- **Persona System — Twill (§35):** A bring-your-own-identity feature: guild administrators supply their own bot token and application, Dumby hosts the instance, and each persona is bound to exactly one server. Persona creation is handled through the Twill registration API (§44), not through any Discord-facing command. The main bot operates under a complete DM prohibition; Twill instances decide their own DM behavior.
 
 ### 0.3 The Documentation Set
 
-The documentation set is anchored by blueprint.md 5.0.0, the engineering authority this reference defers to throughout. Supporting documents: concept.md carries the framework glossary (including the Renderer, buffer embed, formal notice frame, density Modes D/M/C, Core Command Surface, Twixter, and Release Manager entries); directive.md carries the ban registry (prefix-command ban, classic-embed ban, DM prohibition) with their enforcement layers; documentation.md is the frozen legacy architecture record, retained for historical decisions that the blueprint supersedes; and docs/adr/ records the cross-cutting tension decisions. Version 5.0.0 is a consolidated re-baseline: every document in the set carries the same version and the same vocabulary.
+The documentation set is anchored by blueprint.md 5.0.0, the engineering authority this reference defers to throughout. Supporting documents: concept.md carries the framework glossary (including the Renderer, buffer embed, formal notice frame, density Modes D/M/C, Core Command Surface, Twill, and Release Manager entries); directive.md carries the ban registry (prefix-command ban, classic-embed ban, DM prohibition) with their enforcement layers; documentation.md is the frozen legacy architecture record, retained for historical decisions that the blueprint supersedes; and docs/adr/ records the cross-cutting tension decisions. Version 5.0.0 is a consolidated re-baseline: every document in the set carries the same version and the same vocabulary.
 
 ### 0.4 The Core Command Surface
 
@@ -84,7 +84,7 @@ The Core Command Surface is the Renderer's reference implementation set — the 
 | `/modules` | `modules` | Core | View, manage & uninstall installed modules |
 | `/hello` | `hello-world` | Standard | Hello-world test module (Division 10) |
 
-The Core Command Surface is the shipping user-facing surface. Every other capability specified in this reference — marketplace installation flows, Twixter persona listings, Layer 7 grant management — is specified here as the target interface; its implementation status is tracked in blueprint.md's audit register, not in this document.
+The Core Command Surface is the shipping user-facing surface. Every other capability specified in this reference — marketplace installation flows, Twill persona listings, Layer 7 grant management — is specified here as the target interface; its implementation status is tracked in blueprint.md's audit register, not in this document.
 
 ### 0.5 Scope of This Document
 
@@ -105,7 +105,7 @@ Surfaces explicitly excluded because they are not end-user Discord-facing interf
 - Interactive Terminal UI (TUI)
 - REST API / webhooks (§44)
 - Power Engine Panel web interface (§22)
-- Twixter registration API (persona creation; §35, §44)
+- Twill registration API (persona creation; §35, §44)
 
 ---
 
@@ -959,13 +959,13 @@ Dumby | Queue
 
 ---
 
-## DIVISION 7 — /persona COMMAND (PERSONA MODULE — TWIXTER)
+## DIVISION 7 — /persona COMMAND (PERSONA MODULE — TWILL)
 
 ---
 
 ### 7.1 Overview
 
-The `/persona` command lists all activated personas with their command inventory and other information. Personas are Dumby's **Twixter** capability: a bring-your-own-identity model in which a guild administrator supplies their own bot token and application, Dumby hosts the instance, and each persona is bound to exactly one server — one persona, one server. Persona creation and configuration happen exclusively through the **Twixter registration API** (blueprint.md §35, §44); no Discord-facing command creates or reconfigures a persona. The `/persona` command is the read-only listing surface.
+The `/persona` command lists all activated personas with their command inventory and other information. Personas are Dumby's **Twill** capability: a bring-your-own-identity model in which a guild administrator supplies their own bot token and application, Dumby hosts the instance, and each persona is bound to exactly one server — one persona, one server. Persona creation and configuration happen exclusively through the **Twill registration API** (blueprint.md §35, §44); no Discord-facing command creates or reconfigures a persona. The `/persona` command is the read-only listing surface.
 
 ### 7.2 Command Specification
 
@@ -973,7 +973,7 @@ The `/persona` command lists all activated personas with their command inventory
 **Module:** `persona` (Core-tier, single-command module)
 **Description:** View activated personas and their command inventory.
 **Arguments:** None.
-**Permissions:** Available to all users for viewing. Persona creation, token binding, and configuration are handled through the Twixter registration API by the guild administrator who owns the application.
+**Permissions:** Available to all users for viewing. Persona creation, token binding, and configuration are handled through the Twill registration API by the guild administrator who owns the application.
 **Response:** Buffer embed, then the persona page render in place of the navigation message.
 
 ### 7.3 Persona Page Layout — Mode D
@@ -1005,13 +1005,13 @@ The `/persona` command lists all activated personas with their command inventory
 │                                                           │
 │  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━               │
 │                                                           │
-│  Community Bot (Twixter)                                  │
+│  Community Bot (Twill)                                  │
 │  Application ID: 9876543210987654321                       │
 │  Display Name: Community Bot                              │
 │  Bound Server: this guild (one persona = one server)      │
 │  Shards: 1                                                 │
 │  Bound Modules: 3 (leveling, moderation, economy)        │
-│  DM Behavior: decided by the Twixter instance             │
+│  DM Behavior: decided by the Twill instance             │
 │  Status: ● Online                                         │
 │                                                           │
 │  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━               │
@@ -1021,7 +1021,7 @@ The `/persona` command lists all activated personas with their command inventory
 │  /persona   /permit  /modules  /hello                   │
 │                                                           │
 │  ℹ️ Persona creation and configuration are handled        │
-│     through the Twixter registration API.                 │
+│     through the Twill registration API.                 │
 │                                                           │
 ├─────────────────────────────────────────────────────────┤
 │                                                           │
@@ -1038,24 +1038,24 @@ The `/persona` command lists all activated personas with their command inventory
 
 For each activated persona, the listing shows:
 
-- **Persona name** (display name) and whether it is the primary bot or a Twixter persona.
-- **Application ID** (the Discord application ID for this persona — supplied by the guild administrator for Twixter personas).
+- **Persona name** (display name) and whether it is the primary bot or a Twill persona.
+- **Application ID** (the Discord application ID for this persona — supplied by the guild administrator for Twill personas).
 - **Bound server** (each persona is bound to exactly one server; the main bot is the primary deployment).
 - **Shard allocation** (number of shards assigned to this persona).
 - **Bound modules** (list of modules bound to this persona via `guild_persona_bindings`).
-- **DM behavior** (the main bot shows "Prohibited"; a Twixter instance shows the DM behavior its instance has decided).
+- **DM behavior** (the main bot shows "Prohibited"; a Twill instance shows the DM behavior its instance has decided).
 - **Status** (Online/Offline/Connecting — based on gateway connection state).
 - **Command inventory** (list of all slash commands available under this persona's 100-command budget).
 
-If no Twixter personas are active (only the main bot exists), the listing shows only the main bot entry.
+If no Twill personas are active (only the main bot exists), the listing shows only the main bot entry.
 
-### 7.5 Persona Creation & Configuration — Twixter Registration API
+### 7.5 Persona Creation & Configuration — Twill Registration API
 
-Persona creation, token binding, shard allocation, and module enablement profiles are handled exclusively through the **Twixter registration API** — the administrative API surface for bring-your-own-identity hosting (blueprint.md §35; the API family is specified in §44). Under the Twixter model the guild administrator supplies their own bot token and application; Dumby hosts the running instance; and the registration binds the persona to exactly one server. None of these operations are performed through `/persona` or any other Discord-facing command. The listing includes an informational note stating where persona management is handled.
+Persona creation, token binding, shard allocation, and module enablement profiles are handled exclusively through the **Twill registration API** — the administrative API surface for bring-your-own-identity hosting (blueprint.md §35; the API family is specified in §44). Under the Twill model the guild administrator supplies their own bot token and application; Dumby hosts the running instance; and the registration binds the persona to exactly one server. None of these operations are performed through `/persona` or any other Discord-facing command. The listing includes an informational note stating where persona management is handled.
 
 ### 7.6 DM Behavior
 
-The main bot operates under a complete DM prohibition — it never initiates or answers direct messages. Twixter instances decide their own DM behavior: each instance's configuration, set at registration, determines whether that persona accepts DMs. The persona listing displays each instance's DM behavior.
+The main bot operates under a complete DM prohibition — it never initiates or answers direct messages. Twill instances decide their own DM behavior: each instance's configuration, set at registration, determines whether that persona accepts DMs. The persona listing displays each instance's DM behavior.
 
 ### 7.7 Density Modes — Persona
 
@@ -1867,7 +1867,7 @@ The following surfaces are not part of this end-user reference and are not Disco
 - **Interactive Terminal UI (TUI)** — no terminal user interface.
 - **REST API / webhooks** — the API families (blueprint.md §44) are machine surfaces, not end-user interfaces.
 - **Power Engine Panel web interface** — the PEP web interface is an administrative surface.
-- **Twixter registration API** — persona creation and configuration (blueprint.md §35, §44). `/persona` only lists.
+- **Twill registration API** — persona creation and configuration (blueprint.md §35, §44). `/persona` only lists.
 
 The end-user interface of Dumby is the Discord-facing Components V2 dashboard system specified in this reference: the Core Command Surface, its navigation, and the renderer grammar that issues every one of them.
 

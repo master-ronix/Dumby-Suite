@@ -5,7 +5,7 @@ import { ENV_KEYS } from '../../src/config/env.schema.js';
 
 /**
  * UR-B-03's residue: bind-host configurability covered only the Credentials Service; the PEP,
- * CLAI, Swastik and Twixter entry points hardcoded the loopback literal. Those entry points run
+ * CLAI, Swastik and Twill entry points hardcoded the loopback literal. Those entry points run
  * side effects at module scope and are not behind `isMainEntry` (findings #11/#16 → M9), so they
  * cannot be imported in a unit test — coverage is structural, as slices 2 and 5 established.
  */
@@ -16,7 +16,7 @@ const BINDINGS: ReadonlyArray<{ file: string; key: string }> = [
   { file: 'entry/pep.ts', key: 'PEP_BIND_HOST' },
   { file: 'entry/ssh-clai.ts', key: 'CLAI_BIND_HOST' },
   { file: 'entry/swastik.ts', key: 'SWASTIK_BIND_HOST' },
-  { file: 'entry/twixter.ts', key: 'TWIXTER_BIND_HOST' },
+  { file: 'entry/twill.ts', key: 'TWILL_BIND_HOST' },
 ];
 
 function readSource(rel: string): string {

@@ -46,7 +46,7 @@ This is the actual state of the migration. The 5.0.2-era template showed every i
 | M4 | RBAC Layer 6/7 redesign | Record: NOT STARTED — reconcile against the tree, R12 (`src/permissions/` present) |
 | M5 | License machine, Compatibility Ledger, Deployment Records | Record: NOT STARTED — **tree: shaped code present** (`src/licensing/`) — reconcile, R12 |
 | M6 | Swastik promotion pipeline | Record: NOT STARTED — **tree: shaped code present** (`src/module-system/promotion.ts`) — reconcile, R12 |
-| M7 | Twixter persona model | Record: NOT STARTED — **tree: shaped code present** (`src/personas/`) — reconcile, R12 |
+| M7 | Twill persona model | Record: NOT STARTED — **tree: shaped code present** (`src/personas/`) — reconcile, R12 |
 | M8 | Envelope encryption | Record: NOT STARTED — **tree: shaped code present** (`src/crypto/envelope.ts`) — reconcile, R12 |
 | MR-1 | hello-world module rewrite (Standard-tier) | Record: NOT STARTED — reconcile, R12; module sources live in `packages/modules/` (stubs today) |
 | MR-2 | health module rewrite (Core-tier) | Record: NOT STARTED — reconcile, R12 |

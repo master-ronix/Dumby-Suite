@@ -93,7 +93,7 @@ workspace/
 |---|---|
 | Tier 1 (full) | Bootstrap · Shutdown · DI · Config · DB+migrations · Cache (L1+L2+StampedeGuard) · Commands · Events · Middleware (12 stages) · Permissions (7 layers) · RBAC · Module system · Errors · Observability · `/health` + `/hello` · Health endpoints · HTTP server |
 | Tier 2 (functional) | Job queue (BullMQ) · Rate limiting · Webhook infra · PEP (all 17 domains) · Credentials Service |
-| Tier 3 (scaffolded) | CLAI (SSH REPL) · Swastik (filesystem staging) · Persona/Twixter data model · MDIS backend contract |
+| Tier 3 (scaffolded) | CLAI (SSH REPL) · Swastik (filesystem staging) · Persona/Twill data model · MDIS backend contract |
 
 ## User Preferences
 

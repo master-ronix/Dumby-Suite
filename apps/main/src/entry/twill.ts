@@ -16,8 +16,8 @@ registerInternalAuth(app, {
 const NOT_IMPLEMENTED = (surface: string) => ({
   error: 'Not Implemented',
   reason:
-    `Twixter "${surface}" is stubbed in v5.0: no operational personas are hosted. ` +
-    `Specified at blueprint.md §35.5 / §44 (Twixter family); scope and gates at ` +
+    `Twill "${surface}" is stubbed in v5.0: no operational personas are hosted. ` +
+    `Specified at blueprint.md §35.5 / §44 (Twill family); scope and gates at ` +
     `ADR-008 (free charter / sunset) and ADR-011 (registration API is the only ` +
     `persona-creation surface). Infrastructure provisioning is reserved to ` +
     `process owners and is not stubbed in.`,
@@ -31,27 +31,27 @@ app.post<{
     registrarAuthority?: string;
     dmBehavior?: 'prohibited' | 'allowed';
   };
-}>('/twixter/personas/register', async (_request, reply) => {
-  logger.warn('twixter-register-stubbed');
+}>('/twill/personas/register', async (_request, reply) => {
+  logger.warn('twill-register-stubbed');
   return reply.code(501).send(NOT_IMPLEMENTED('persona registration'));
 });
 
 app.get<{ Params: { personaId: string } }>(
-  '/twixter/personas/:personaId',
+  '/twill/personas/:personaId',
   async (_request, reply) => {
     return reply.code(501).send(NOT_IMPLEMENTED('persona detail'));
   },
 );
 
 app.get<{ Params: { personaId: string } }>(
-  '/twixter/personas/:personaId/status',
+  '/twill/personas/:personaId/status',
   async (_request, reply) => {
     return reply.code(501).send(NOT_IMPLEMENTED('persona status'));
   },
 );
 
 app.get<{ Params: { personaId: string } }>(
-  '/twixter/personas/:personaId/charter',
+  '/twill/personas/:personaId/charter',
   async (_request, reply) => {
     return reply.code(501).send(NOT_IMPLEMENTED('charter status (ADR-008 sunset readout)'));
   },
@@ -60,25 +60,25 @@ app.get<{ Params: { personaId: string } }>(
 app.post<{
   Params: { personaId: string };
   Body: { guildId?: string; moduleSlug?: string };
-}>('/twixter/personas/:personaId/bindings', async (_request, reply) => {
-  logger.warn('twixter-bind-stubbed');
+}>('/twill/personas/:personaId/bindings', async (_request, reply) => {
+  logger.warn('twill-bind-stubbed');
   return reply.code(501).send(NOT_IMPLEMENTED('persona binding'));
 });
 
 app.delete<{
   Params: { personaId: string; moduleSlug: string };
-}>('/twixter/personas/:personaId/bindings/:moduleSlug', async (_request, reply) => {
+}>('/twill/personas/:personaId/bindings/:moduleSlug', async (_request, reply) => {
   return reply.code(501).send(NOT_IMPLEMENTED('persona unbinding'));
 });
 
 if (isMainEntry(import.meta.url, process.argv[1])) {
   app
-    .listen({ port: env.TWIXTER_PORT, host: env.TWIXTER_BIND_HOST })
+    .listen({ port: env.TWILL_PORT, host: env.TWILL_BIND_HOST })
     .then(() => {
-      logger.info('twixter-stub-started', { port: env.TWIXTER_PORT });
+      logger.info('twill-stub-started', { port: env.TWILL_PORT });
     })
     .catch((err: unknown) => {
-      logger.fatal('twixter-stub-start-failed', { error: String(err) });
+      logger.fatal('twill-stub-start-failed', { error: String(err) });
       process.exit(1);
     });
 }

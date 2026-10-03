@@ -548,7 +548,7 @@ Dumby's narrative vocabulary is deliberately plain — guild, module, contract, 
 
 **Global Data Emit** — The fifth sanctioned cross-module pattern: durable, schema'd public datasets exposed through a read and aggregate API. A module publishes information once; authorised consumers read it without the publisher owning or knowing the reader. It is how the ecosystem shares knowledge without sharing codebases.
 
-**Twixter** — The persona system (formerly Twill): Dumby's answer to bring-your-own-identity. A guild administrator supplies their own bot token and application; Dumby hosts the instance; one persona serves exactly one server. Twixter runs on a free charter with an explicit sunset condition, and each Twixter instance decides its own DM behavior — identity belongs to the guild, operation belongs to the platform.
+**Twill** — The persona system (formerly Twixter): Dumby's answer to bring-your-own-identity. A guild administrator supplies their own bot token and application; Dumby hosts the instance; one persona serves exactly one server. Twill runs on a free charter with an explicit sunset condition, and each Twill instance decides its own DM behavior — identity belongs to the guild, operation belongs to the platform.
 
 **Release Manager** — The release-management subsystem. Deployments are triggered from the repository, captured as Deployment Records, and the reverse GitHub sync commits system changes back to the Git system-of-record. Deployment in Dumby is not a ritual performed over SSH in the dark; it is an event with a provenance trail that begins and ends in version control.
 

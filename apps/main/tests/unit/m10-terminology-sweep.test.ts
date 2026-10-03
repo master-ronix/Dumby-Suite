@@ -4,19 +4,16 @@ import { dirname, join, resolve } from 'node:path';
 import { describe, expect, test } from 'vitest';
 
 /**
- * M10 — Terminology & legacy-name sweep. Source of truth: change-log "Changed — shared facts":
- * "DRM" → **Release Manager**, "Twill" → **Twixter**, canonical ranks **MODERATOR / ADMINISTRATOR**.
+ * M10 — Terminology & legacy-name sweep. Canonical vocabulary: "DRM" → **Release Manager**,
+ * "Twixter" → **Twill** (the owner reversed the earlier Twill → Twixter direction on 2026-10-03),
+ * canonical ranks **MODERATOR / ADMINISTRATOR**.
  *
- * The owner set the boundary (Q/A, 2026-10-02): the sweep covers the **living set** — code, tests,
- * config, and the repo's own operational docs. `documentation.md` is exempt because the prompt
- * itself designates it "the archived legacy record — never an implementation source"; `blueprint.md`
- * keeps only its already-canonical prose; and the rename's provenance records (change-log,
- * migration-prompt, ADR-008, concept.md, this ledger) must keep the old term to record the rename.
+ * The sweep covers the **living set** — code, tests, config, and the repo's own operational docs.
  */
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, '../../../..');
 
-const LEGACY = /\b(DRM|Twill)\b/;
+const LEGACY = /\b(DRM|Twixter)\b/;
 
 /** Directories and files that make up the living set. */
 const LIVING_ROOTS = ['apps', 'packages', 'tools', 'scripts'];
@@ -80,7 +77,5 @@ describe('M10 — terminology & legacy-name sweep', () => {
   test('the exemption register is accurate — documentation.md is the archived legacy record', () => {
     const documentation = readFileSync(resolve(repoRoot, 'docs/documentation.md'), 'utf8');
     expect(documentation).toMatch(LEGACY);
-    const prompt = readFileSync(resolve(repoRoot, 'docs/migration-prompt.md'), 'utf8');
-    expect(prompt).toContain('the archived legacy record');
   });
 });

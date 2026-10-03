@@ -99,7 +99,7 @@ These rules override every other instruction you may have read in the documentat
 
 **R8 — The spec wins, but only where the delta reaches.** Inside the current blast radius, implement to the v5.0.0 spec exactly (precedence: `blueprint.md` > `directive.md` > `interface.md` > `directory.md`; binding ADRs in `docs/adr/`). Outside it, the codebase's current behavior stands until its own item says otherwise.
 
-**R9 — Canonical vocabulary from line one.** Every line you write or touch uses the v5.0.0 vocabulary: **Twixter** (persona), **Release Manager**, **MODERATOR / ADMINISTRATOR**, buffer-then-render, formal notice frame, tier volumes. No legacy names in new code. (The full sweep of legacy names in UNTOUCHED files is its own final item, M10 — do not do it early.)
+**R9 — Canonical vocabulary from line one.** Every line you write or touch uses the v5.0.0 vocabulary: **Twill** (persona), **Release Manager**, **MODERATOR / ADMINISTRATOR**, buffer-then-render, formal notice frame, tier volumes. No legacy names in new code. (The full sweep of legacy names in UNTOUCHED files is its own final item, M10 — do not do it early.)
 
 **R10 — One item at a time, in order.** You do not interleave items, work ahead, or batch "quick wins" across items. The order in §3 is the order. Each item builds on the completed ones before it.
 
@@ -174,7 +174,7 @@ Extracted from E1 §2/§3, E2 (S-14/S-15/S-27/S-37), E3 §2–§3, E5 (§71, DAT
 | M4 | `rbac_sets`/`rbac_groups`/`rbac_group_role_bindings`/`rbac_grants` (migrations 14–17); `src/permissions/{rank,rbac,resolver,grant-surface,db-blacklist}.ts` (E5 DATA-06) | no runtime grant writer; role vocabulary drift (D21: four spellings) | partial |
 | M5 | `src/licensing/{license-machine,compatibility-ledger,deployment-records}.ts`; migration 33 (`licenses`, `compatibility_contracts`, `compatibility_windows`, `compatibility_provides`, `deployment_records`) (E5 §71) | `tools/release_manager` outside every quality gate (E7 E4); ledger not CI-gated | partial |
 | M6 | `src/module-system/promotion.ts` (`renameSync` swap under a Redis lock store) + `m6-promotion.test.ts` (E6 GOV-13) | manifest single-source (D3); `packages/swastik` layout drift | partial |
-| M7 | `src/personas/{persona,persona.repository,persona-command-binding.service}.ts`; migrations 20/21/34; `m7-persona.test.ts` (E6 GOV-13) | ADR-003 gap: `persona.botTokenDigest` hashes a value Twixter must *use* (E9 §21) | partial |
+| M7 | `src/personas/{persona,persona.repository,persona-command-binding.service}.ts`; migrations 20/21/34; `m7-persona.test.ts` (E6 GOV-13) | ADR-003 gap: `persona.botTokenDigest` hashes a value Twill must *use* (E9 §21) | partial |
 | M8 | `src/crypto/{envelope,envelope-scope}.ts`; `src/credentials/{sealed-credential.service,sealed-credential.repository}.ts`; migration 35; `m8-envelope.test.ts` (E6 GOV-13) | scope-boundary verification | partial |
 | MR-1…MR-8 | `packages/modules/{browse,dashboard,health,hello-world,modules,permit,persona,queue}` present as lifecycle-only stubs; README "First-party Swastik modules (M6 re-seed)"; built via `apps/main/scripts/build-first-party-modules.ts` (esbuild → `dist-modules/`) (E2 S-27, E7 A1) | zero commands anywhere; no `defineCommand` in `packages/swastik` (E4 PRE-28) | not started (stubs only) |
 | M9 | `m9-*` suites present; UR-B-19 `createHmac` implemented (`shared/utils/crypto.ts`) (E6 GOV-13) | runtime inert: no queues/scheduler/gateway handlers/tracing/metrics; CI hygiene (SHA-pin/secrets/Dependabot) (E1 §2.2, E5 §31) | partial |
@@ -259,12 +259,12 @@ Each is either **owned** (a row/item named) or **logged as a deviation** in the 
 **Blast radius:** the Swastik service and `packages/swastik` integration points, module loader hooks used by promotion, `manifest.schema.ts`.
 **Done-gate:** promotion is atomic (a failed promotion leaves the volume untouched); loads are verified; path traversal tests pass; hot reload stays inside ADR-006's boundary.
 
-### M7 — Twixter Persona Model
+### M7 — Twill Persona Model
 
 **Request rows owned:** UR-16, UR-29 (rows 16, 29) plus UR-A-12, UR-A-13, UR-C-21 (rows 45–46, 112).
-**Tree state (UR 2.0 evidence — §3.0.3):** `src/personas/*` + migrations 20/21/34 + `m7-persona.test.ts` present; ADR-003 gap — `persona.botTokenDigest` hashes a value Twixter must *use* (E6 GOV-13; E9 §21).
+**Tree state (UR 2.0 evidence — §3.0.3):** `src/personas/*` + migrations 20/21/34 + `m7-persona.test.ts` present; ADR-003 gap — `persona.botTokenDigest` hashes a value Twill must *use* (E6 GOV-13; E9 §21).
 **Source of truth:** `blueprint.md` §35; ADR-008 (free-charter sunset); ADR-011 (persona surface); `interface.md` (persona division); master prompt Phase 5 (stub level is fine if the current codebase has no operational personas yet — record that honestly in the ledger).
-**What changes:** the Twixter typed interface and persona model — bring-your-own-identity, single-server-bound; the free-charter sunset behavior; persona surface per ADR-011; the persona bindings and dispatch gate the suite rows require (moduleSlug in the binding key, PERSONA_ID env, occupied-by-another-persona gate).
+**What changes:** the Twill typed interface and persona model — bring-your-own-identity, single-server-bound; the free-charter sunset behavior; persona surface per ADR-011; the persona bindings and dispatch gate the suite rows require (moduleSlug in the binding key, PERSONA_ID env, occupied-by-another-persona gate).
 **Blast radius:** persona subsystem, its migrations and tests.
 **Done-gate:** the persona model compiles, is wired to the spec'd surface, and the sunset rule is tested.
 
@@ -322,7 +322,7 @@ Each MR item follows the per-item execution loop (§4) with these bindings:
 ### M10 — Terminology & Legacy-Name Sweep
 
 **Request rows owned:** UR-03 (row 3) and the residual sweep.
-**Source of truth:** change-log "Changed — shared facts": "DRM" → **Release Manager** (with reverse GitHub sync), "Twill" → **Twixter**, canonical ranks **MODERATOR / ADMINISTRATOR**.
+**Source of truth:** change-log "Changed — shared facts": "DRM" → **Release Manager** (with reverse GitHub sync), "Twixter" → **Twill**, canonical ranks **MODERATOR / ADMINISTRATOR**.
 **What changes:** sweep the remaining legacy names across code, tests, comments, config keys, and commit messages going forward. Text-level only — no behavior changes in this item.
 **Blast radius:** every file containing a legacy name (mechanical, textual).
 **Done-gate:** a grep for the legacy names returns nothing outside the frozen docs/ur/ provenance records.

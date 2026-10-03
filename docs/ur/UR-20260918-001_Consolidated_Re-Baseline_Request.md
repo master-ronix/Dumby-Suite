@@ -85,7 +85,7 @@ Re-baseline the twelve-document Dumby corpus to v5.0 so the documentation descri
 
 | Dimension | Statement |
 |---|---|
-| **What is changing** | Full content-and-structure re-baseline: the Renderer and buffer embed grammar, RBAC Layer 6/7 redesign, `swastik` authoring package, tier volumes replacing `/src/modules`, the license state machine, the Compatibility Ledger, Global Data Emit, the Twixter rename, envelope encryption, 88 flaw-fix corrections to architecture descriptions, 11 ADRs for cross-cutting tensions, and honesty invariants on all superlative claims |
+| **What is changing** | Full content-and-structure re-baseline: the Renderer and buffer embed grammar, RBAC Layer 6/7 redesign, `swastik` authoring package, tier volumes replacing `/src/modules`, the license state machine, the Compatibility Ledger, Global Data Emit, the Twill rename, envelope encryption, 88 flaw-fix corrections to architecture descriptions, 11 ADRs for cross-cutting tensions, and honesty invariants on all superlative claims |
 | **Why it is changing** | The current docs (blueprint v4.6.0, documentation v4.5.1, interface.md 24 July 2026 window) describe a system the audited codebase (`be39a52`) demonstrably does not match: unauthenticated control planes, dead-wired middleware, three mutually inconsistent RBAC orderings, no-op admin handlers, and 52 greenfield gaps presented as features |
 | **Where it is changing** | All 12 documents (§3.1); heaviest: blueprint.md (~45 sections, Parts II–IX), interface.md, directory.md |
 | **Who is affected** | Module authors, platform/SRE operators, framework maintainers, guild administrators, marketplace developers |
@@ -96,7 +96,7 @@ Re-baseline the twelve-document Dumby corpus to v5.0 so the documentation descri
 
 | Trigger Type | Description |
 |---|---|
-| `<new requirement / defect found / audit finding / standard update / structural drift / external change / other>` | **Audit finding** — three-pass evidence chain: (1) specification extraction against the two spec documents, (2) full codebase flaw audit, (3) independent re-verification that eliminated false positives (0 of 235 withdrawn) and surfaced 35 false negatives; consolidated universe of 270 verified findings, of which the flaw-fixable subset became 88 formal requests. **New requirement** — 31 raw upgradation requirements normalized into UR-01…UR-31. **Structural drift** — naming drift (MOD vs MODERATOR, Twill vs Twixter, DRM vs Release Manager), CI directory misplaced under `apps/main/`, three inconsistent RBAC layer orderings. **External change** — Discord Components v2 platform evolution and the interface reference window drift. |
+| `<new requirement / defect found / audit finding / standard update / structural drift / external change / other>` | **Audit finding** — three-pass evidence chain: (1) specification extraction against the two spec documents, (2) full codebase flaw audit, (3) independent re-verification that eliminated false positives (0 of 235 withdrawn) and surfaced 35 false negatives; consolidated universe of 270 verified findings, of which the flaw-fixable subset became 88 formal requests. **New requirement** — 31 raw upgradation requirements normalized into UR-01…UR-31. **Structural drift** — naming drift (MOD vs MODERATOR, Twill vs Twill, DRM vs Release Manager), CI directory misplaced under `apps/main/`, three inconsistent RBAC layer orderings. **External change** — Discord Components v2 platform evolution and the interface reference window drift. |
 
 ---
 
@@ -166,7 +166,7 @@ Select all that apply:
 | 2 | Standalone grants table never created (only `rbac_grants`); PEP "RBAC role-assign" is a no-op stub that appears to succeed | blueprint §21, §22.3 | RBAC flaws #2–#3 |
 | 3 | OAuth2-to-RBAC bridge declared but not implemented; dashboard enforces its own rough rules | blueprint §16.4, §21 | RBAC flaws #4 |
 | 4 | Three mutually inconsistent orderings of the seven RBAC layers across the two source specifications | documentation.md ↔ blueprint.md | RBAC flaws #6 |
-| 5 | Naming drift: code canonical `MODERATOR`/`ADMINISTRATOR` vs spec text `MOD`/`ADMIN`; "Twill" vs "Twixter"; "DRM" vs "Release Manager" | blueprint §21, §35, §15.9 | RBAC flaws #9; UR-03; UR-29 |
+| 5 | Naming drift: code canonical `MODERATOR`/`ADMINISTRATOR` vs spec text `MOD`/`ADMIN`; "Twill" vs "Twill"; "DRM" vs "Release Manager" | blueprint §21, §35, §15.9 | RBAC flaws #9; UR-03; UR-29 |
 | 6 | Unauthenticated control planes: PEP/admin trust a self-declared `source`; `/internal/deploy` auto-approves; `INTERNAL_API_KEY` required by schema but never verified | blueprint §22, §15.8, §32 | Suite — five most important #3 |
 | 7 | Path traversal in Swastik upload/deploy — executed PoC writes attacker-controlled `index.js` into a live module, bypassing promotion and audit | blueprint §15.8 | Suite UR-B-02 / UR-C-01 |
 | 8 | Loader imports any file on the live volume — no hash/signature verification before `import()` | blueprint §15.9 | Suite UR-B-04 |
@@ -183,7 +183,7 @@ Select all that apply:
 
 ### 4.1 Target Outcome
 
-A v5.0.0 corpus that describes the shipping system: the core Renderer with static Components v2 grammar and dynamic slots in Modes D/M/C; the buffer embed merged with maintenance-mode notices; RBAC rewritten as Layer 6 (pure backend rank function) over Layer 7 (guild-side grants with a hard, non-configurable override boundary); the `swastik` versioned authoring package; four tier volumes replacing `/src/modules`; the six-state license machine with paper-verifiable certificates; the machine-readable Compatibility Ledger; Global Data Emit as the fifth sanctioned cross-module pattern; Twixter as the formal persona name; envelope encryption distinct from Argon2id hashing; all 88 flaw corrections reflected in the sections that specify the corrected behavior; every "exhaustive" list explicitly amended; 11 ADRs recording the tensions; the glossary extended by 18 terms; and every superlative claim restated in measured form.
+A v5.0.0 corpus that describes the shipping system: the core Renderer with static Components v2 grammar and dynamic slots in Modes D/M/C; the buffer embed merged with maintenance-mode notices; RBAC rewritten as Layer 6 (pure backend rank function) over Layer 7 (guild-side grants with a hard, non-configurable override boundary); the `swastik` versioned authoring package; four tier volumes replacing `/src/modules`; the six-state license machine with paper-verifiable certificates; the machine-readable Compatibility Ledger; Global Data Emit as the fifth sanctioned cross-module pattern; Twill as the formal persona name; envelope encryption distinct from Argon2id hashing; all 88 flaw corrections reflected in the sections that specify the corrected behavior; every "exhaustive" list explicitly amended; 11 ADRs recording the tensions; the glossary extended by 18 terms; and every superlative claim restated in measured form.
 
 ### 4.2 Per-Document Target Versions
 
@@ -211,7 +211,7 @@ A v5.0.0 corpus that describes the shipping system: the core Renderer with stati
 | Module storage | `/src/modules` static tree (ADR 002) | Four per-tier volumes + staging; blind discovery at bootstrap | UR-19, UR-05 |
 | Authoring contract | Deep framework-path imports | Versioned standalone `swastik` package with scoped entry points | UR-04 |
 | Licensing | Binary approval column | Six-state license machine; devId binding; tier-differentiated paper certificates | UR-06/23/08 |
-| Personas | "Twill", unwired bindings | "Twixter": bring-your-own-identity, single-server-bound | UR-16/29 |
+| Personas | "Twill", unwired bindings | "Twill": bring-your-own-identity, single-server-bound | UR-16/29 |
 | Control plane | Unauthenticated/self-declared trust; no-op handlers; fake audits | Credentialed surfaces; 501-not-implemented honesty; truthful outcome-based audit rows | UR-A-01/04, UR-B-06, UR-C-25 |
 | CI | Inert (workflows under `apps/main/`) | Root `.github/`, SHA-pinned actions, secrets off command lines, Dependabot | UR-C-13/28, UR-B-21 |
 | Superlative claims | "Zero FP/FN", "strongest possible security" as absolutes | Measured, CI-tracked detection rates; honesty invariants | UR-14/13 |
@@ -271,7 +271,7 @@ Every new engineer onboarded onto the current docs inherits the three-RBAC-syste
 | # | Item | Reason for Exclusion |
 |---|---|---|
 | 1 | The 52 deferred greenfield items (trusted-builder Phase-1 build subsystem, Ed25519 signing subsystem, heap-diff memory watcher, Core UI Compiler/static embed system, Dodo Payments integration buildout, full independent-persona system, marketplace multi-state licensing, GitHub release integration buildout, DRM release-manager 12-phase service, `defineManifest` package, event-bus advanced semantics, break-glass script, `worker_threads` isolation) | No code exists to document; suite scope rule (a)–(d) excludes new-capability work; tracked in each group's exclusions appendix and must not be smuggled into this UR |
-| 2 | v5.0 UR-16 monetization wiring for Twixter | Program keeps personas free-chartered; only the sunset condition is documented |
+| 2 | v5.0 UR-16 monetization wiring for Twill | Program keeps personas free-chartered; only the sunset condition is documented |
 | 3 | Implementation of any request itself (code, migrations, CI) | This UR governs the documentation corpus only; requests are executed under their own programs |
 | 4 | Rewriting documentation.md as a living reference | It remains the frozen legacy record with superseded-decision markers |
 
@@ -353,12 +353,12 @@ Every new engineer onboarded onto the current docs inherits the three-RBAC-syste
 | 13 | UR-13 → §10.2, §19, §28.2, §28.5, §29, §33.5, §37, new subsystems | UPDATE | Five-vector leak model specified, partially implemented | Extend containment to new surfaces; leak-regression CI suites; verify continuously | Measured "strongest possible" security | Continuous track |
 | 14 | UR-14 → §13.8, §13.9, §16.4, §21, §37, §43 | CONVENTION | "Zero false positives/negatives" absolute claims | Measured, tunable, ground-truthed detection surfaces; CI-tracked rates driven to floor | Tension 7: literal zero is non-verifiable | — |
 | 15 | UR-15 → §13.8, §13.9, §15.8, §12.3.1, §16.4, §32.5, CI tooling | NEW | Pre-compiled JS upload accepted | Raw TypeScript only; isolated trusted builder (ephemeral, network-restricted) compiles, lints, SBOM, build attestations | Gate 1 of module trust | Breaking upload contract |
-| 16 | UR-16 → §35, §6.6, §18.5.1, §7.5, §22.3, §32, §44, §7.6.1 | UPDATE | Twill personas, unwired bindings | Twixter: guild admins supply their own bot token/application; Dumby hosts the instance; one persona = one server; free charter with explicit sunset condition | Tension 8 | — |
+| 16 | UR-16 → §35, §6.6, §18.5.1, §7.5, §22.3, §32, §44, §7.6.1 | UPDATE | Twill personas, unwired bindings | Twill: guild admins supply their own bot token/application; Dumby hosts the instance; one persona = one server; free charter with explicit sunset condition | Tension 8 | — |
 | 17 | UR-17 → §22.3, §22.8, §22.6, §22.10, §44 | NEW | No credential-creation control domain | PE domain `credentials.issue/rotate/revoke` for licenses, CLAI keypairs, developer tokens | WS-C governance | — |
 | 18 | UR-18 → §14.3, §45, §15.9, §33.2, §40, §24.4 | NEW | No compatibility registry | Machine-readable Compatibility Ledger of every cross-boundary contract version window; gates core releases and module deployments; §45 regenerated from it | Cross-boundary contract enforcement | Phase 0 skeleton |
 | 19 | UR-19 → §5.4, §7.3, §15.8, §15.9, §41, §13.3, CI/CD | STRUCTURE | `/src/modules` + ADR 002 layout | Four per-tier volumes (admin/core/standard/marketplace) + staging; tier-at-rest enforced; first-party modules seeded through promotion; `/src/modules` deleted | Tension 5; supersedes §7.3 | Breaking infra migration |
-| 20 | UR-20 → §44, §15.11, §16.2, §16.3, §32.3, UR-18 ledger | NEW | Ad-hoc REST surface | Versioned, OpenAPI-documented API families: catalog, developer self-service, governance, installs, Twixter, webhooks | Future dev portal / web3 site | — |
-| 21 | UR-21 → §17.10, §13.6, §21.2, §22, §35, §16 | DEPRECATE | Admin-tier DM exception (§17.10) | Complete DM prohibition for the main bot; Twixter instances decide their own DM behavior; §28.6 operator lockout-avoidance re-verified | Tension 2 | — |
+| 20 | UR-20 → §44, §15.11, §16.2, §16.3, §32.3, UR-18 ledger | NEW | Ad-hoc REST surface | Versioned, OpenAPI-documented API families: catalog, developer self-service, governance, installs, Twill, webhooks | Future dev portal / web3 site | — |
+| 21 | UR-21 → §17.10, §13.6, §21.2, §22, §35, §16 | DEPRECATE | Admin-tier DM exception (§17.10) | Complete DM prohibition for the main bot; Twill instances decide their own DM behavior; §28.6 operator lockout-avoidance re-verified | Tension 2 | — |
 | 22 | UR-22 → §32.7, §32.1, §22.8, §35, §16, §23, §27, §41 | UPDATE | Argon2id one-way hashing only | Add envelope encryption (root key → DEKs → per-record AES-256-GCM) for recoverable sensitive values; keep Argon2id rule | Tension 3: justified only for in-process-readable credentials | — |
 | 23 | UR-23 → §11.2, §15.7, §15.8, §22.3, §44 | NEW | No devId-license association | Structural binding: manifest `devId` must equal license subject; suspension of either blocks promotions; queryable end-to-end | Governance integrity | — |
 | 24 | UR-24 → §22.2–§22.5, §27.5, §44 | UPDATE | PEP act-only catalog | Observe/read functions, policy-tuning controls, SSE streaming, frontend-quality API bar | WS-G | — |
@@ -366,7 +366,7 @@ Every new engineer onboarded onto the current docs inherits the three-RBAC-syste
 | 26 | UR-26 → §13.6, §15.8, §15.9, §21.5, §27.3 | NEW | No deployment rate limits | Token-bucket + cooldown per developer/repository/module/global; queueing; anomaly coupling; PEP-tunable windows | Deployment abuse control | — |
 | 27 | UR-27 → §15.4, §15.8–§15.10, §13.7, §33.2, §29 | UPDATE | Promotion without verified reload | Promotion → reload signal → verified health-check → auto-rollback loop; no gate bypass | Tension 6: automation boundary restated | — |
 | 28 | UR-28 → §4, §17.10, §13.8, §16.4, UR-14 corpora | CONVENTION | Prefix-command ban, partial enforcement | Audit and record all four enforcement layers' coverage; extend to new ingestion surfaces (GitHub triggers, TS compilation, renderer) | Ban completeness | — |
-| 29 | UR-29 → §6.6, §35, §22.3, §27, runbooks | CONVENTION | "Twill" naming | Formal rename to "Twixter" across code, docs, control domains, telemetry | Naming debt | Ships with UR-16 |
+| 29 | UR-29 → §6.6, §35, §22.3, §27, runbooks | CONVENTION | "Twill" naming | Formal rename to "Twill" across code, docs, control domains, telemetry | Naming debt | Ships with UR-16 |
 | 30 | UR-30 → §11.2, §11.17, §13.3, §15.3, §17.4 | NEW | No hardcode toggle | `hardcoded: true` + `hardcodeGuildId` permanently pins a module to its guild; requires private visibility; guild-scoped command registration | Guild-scoped modules | — |
 | 31 | UR-31 → §16.5, §23.3, §23.5, §25.3, §26.3, §44, §37 | NEW | Poll-based sync windows | Per-guild Redis pub/sub change events; bidirectional instant MDIS ↔ backend sync | WS-G | — |
 | 32 | R1 (RBAC) → §21 Layer 6, §11.15, §17.2 | UPDATE | Three inconsistent orderings; MOD/ADMIN drift; OWNER double-defined; fixed six-rank ladder with writable ranks | Layer 6 as a pure backend function: six ranks OWNER > ADMIN > MOD > HELPER > MEMBER > RESTRICTED, evaluated (never written) from live Discord state; ADMIN/MOD/HELPER are fixed permission-bit bundles; RESTRICTED is the automatic floor; default requirement MEMBER; Layer 5+6 declarations combine conjunctively (AND) | RBAC flaws #6–#9, #16 | — |
@@ -473,8 +473,8 @@ Every new engineer onboarded onto the current docs inherits the three-RBAC-syste
 | 7 | `/src/modules` deletion supersedes §7.3/ADR 002 — migration runbook as numbered release gate | v5.0 program §12 (tension 5) | OPEN — ADR |
 | 8 | Automatic-reload boundary — diff-based auto-approval for updates vs human gate for first promotion | v5.0 program §12 (tension 6) | OPEN — ADR |
 | 9 | Zero FP/FN literalism — asymptote reframed as measured-and-driven-to-floor | v5.0 program §12 (tension 7) | OPEN — ADR |
-| 10 | Twixter free-charter sunset — explicit end condition for the free default | v5.0 program §12 (tension 8) | OPEN — ADR |
-| 11 | Persona creation surface — MDIS-only wording superseded by the Twixter registration API | v5.0 program §12 (tension 11) | OPEN — ADR |
+| 10 | Twill free-charter sunset — explicit end condition for the free default | v5.0 program §12 (tension 8) | OPEN — ADR |
+| 11 | Persona creation surface — MDIS-only wording superseded by the Twill registration API | v5.0 program §12 (tension 11) | OPEN — ADR |
 | 12 | RBAC sovereignty question — guild vs module-author sovereignty over a command's Discord-bit gate | RBAC flaws #20 | OPEN — unresolved by sources; carried as a documented open question |
 
 ### 8.2 — Document: documentation.md (docs/documentation.md)
@@ -579,7 +579,7 @@ Every new engineer onboarded onto the current docs inherits the three-RBAC-syste
 | # | Section Ref | Change Type | Current Text (excerpt) | Proposed Text (excerpt or directive) | Rationale | Backward Compatibility |
 |---|---|---|---|---|---|---|
 | 1 | UR-12 → bans | CONVENTION | Standard embeds permitted | Ban classic EmbedBuilder/MessageEmbed via four enforcement layers; ADR superseding the 4.5.1 SDUI compromise; migration window | Tension 1 | — |
-| 2 | UR-21 → bans | DEPRECATE | DM exception allowed for Admin tier | Total DM prohibition for the main bot; Twixter instances self-govern | Tension 2 | — |
+| 2 | UR-21 → bans | DEPRECATE | DM exception allowed for Admin tier | Total DM prohibition for the main bot; Twill instances self-govern | Tension 2 | — |
 | 3 | UR-28 → bans | CONVENTION | Prefix ban partially enforced | Record all four enforcement layers with coverage audit; extend to new ingestion surfaces | Ban completeness | — |
 | 4 | UR-C-18 → coding rules | CONVENTION | Pino is the sole logger (unenforced) | ESLint `no-console` with logger exemption, mirroring `no-direct-process-env` | Suite UR-C-18 | — |
 | 5 | UR-C-28 → CI policy | CONVENTION | No pinning policy | SHA-pin every action (40-hex); no `${{ secrets.* }}` inside `run:` blocks; Dependabot (github-actions + npm, weekly) | Suite UR-C-28 | — |
@@ -601,13 +601,13 @@ Every new engineer onboarded onto the current docs inherits the three-RBAC-syste
 | # | Aspect | Current | Proposed | Reason |
 |---|---|---|---|---|
 | 1 | Version | unversioned | 5.0.0 | Identity refresh |
-| 2 | System identity references | "Twill", "DRM" | "Twixter", "Release Manager" | UR-29, UR-03 |
+| 2 | System identity references | "Twill", "DRM" | "Twill", "Release Manager" | UR-29, UR-03 |
 
 #### 8.6.2 Section-Level Changes
 
 | # | Section Ref | Change Type | Current Text (excerpt) | Proposed Text (excerpt or directive) | Rationale | Backward Compatibility |
 |---|---|---|---|---|---|---|
-| 1 | UR-29 → persona references | CONVENTION | "Twill" | "Twixter" (bring-your-own-identity, single-server) | Naming debt | — |
+| 1 | UR-29 → persona references | CONVENTION | "Twill" | "Twill" (bring-your-own-identity, single-server) | Naming debt | — |
 | 2 | UR-03 → service references | CONVENTION | "DRM" | "Release Manager" (with reverse GitHub sync) | Naming debt | — |
 | 3 | UR-10 → responsiveness | UPDATE | No buffer behavior | Instant buffer-then-render behavior; formal notices with reason codes as the personality's failure voice | UR-10 | — |
 | 4 | UR-09 → title & attribution grammar | CONVENTION | Unspecified | A4 grammar once confirmed (Phase 0) | Tension 9 | — |
@@ -632,10 +632,10 @@ Every new engineer onboarded onto the current docs inherits the three-RBAC-syste
 
 | # | Section Ref | Change Type | Current Text (excerpt) | Proposed Text (excerpt or directive) | Rationale | Backward Compatibility |
 |---|---|---|---|---|---|---|
-| 1 | §16 glossary program terms | NEW | — | Add 18 terms: Renderer · Buffer (buffer embed) · Formal notice frame · Mode D/M/C · Edit-in-place navigation · Core Command Surface · `swastik` package · Global Data Emit · Twixter · Release Manager · License state machine · Tier volumes · Compatibility Ledger · Trusted builder (Gate 1 runner) · Visibility · Hardcoded module · Deployment Record · Envelope encryption | v5.0 program §16 | — |
+| 1 | §16 glossary program terms | NEW | — | Add 18 terms: Renderer · Buffer (buffer embed) · Formal notice frame · Mode D/M/C · Edit-in-place navigation · Core Command Surface · `swastik` package · Global Data Emit · Twill · Release Manager · License state machine · Tier volumes · Compatibility Ledger · Trusted builder (Gate 1 runner) · Visibility · Hardcoded module · Deployment Record · Envelope encryption | v5.0 program §16 | — |
 | 2 | RBAC vocabulary | NEW | — | Add: Layer 6 (pure backend rank function, evaluated never written) · Layer 7 (guild-side grants) · grant scopes (role > group > set, most-specific wins) · RESTRICTED floor · six-rank ladder OWNER > ADMIN > MOD > HELPER > MEMBER > RESTRICTED · override boundary | R1/R2 | — |
 | 3 | Conflicting definitions | ERRATA | "Set" defined two ways; "OWNER" defined two ways | "Set" = a set of groups (Layer 7 scope); "OWNER" = the guild's ownership account, distinct from the Layer 1 bot-owner override (`BOT_OWNER_IDS`), which is not a rank | RBAC flaws #7–#8 | — |
-| 4 | Naming entries | CONVENTION | `MOD`/`ADMIN` variants | Canonical names `MODERATOR`/`ADMINISTRATOR`; "Twill" entry marked superseded by "Twixter" | RBAC flaw #9; UR-29 | — |
+| 4 | Naming entries | CONVENTION | `MOD`/`ADMIN` variants | Canonical names `MODERATOR`/`ADMINISTRATOR`; "Twill" entry marked superseded by "Twill" | RBAC flaw #9; UR-29 | — |
 
 #### 8.7.3 Open Questions for This Document
 
@@ -684,10 +684,10 @@ Every new engineer onboarded onto the current docs inherits the three-RBAC-syste
 | 5 | ADR — tier volumes | NEW | — | Supersede §7.3/ADR 002; `/src/modules` deletion; migration runbook as release gate | Tension 5 | — |
 | 6 | ADR — reload automation | NEW | — | Diff-based auto-approval for updates; human gate for first promotion | Tension 6 | — |
 | 7 | ADR — detection honesty | NEW | — | Zero FP/FN as measured, CI-tracked rates, not absolutes | Tension 7 | — |
-| 8 | ADR — Twixter charter | NEW | — | Free-charter default with explicit sunset condition | Tension 8 | — |
+| 8 | ADR — Twill charter | NEW | — | Free-charter default with explicit sunset condition | Tension 8 | — |
 | 9 | ADR — title & attribution grammar | NEW | — | Adopt A4 grammar | Tension 9 | — |
 | 10 | ADR — accent colour | NEW | — | One official value (yellow vs blurple `#5865F2`) | Tension 10 | — |
-| 11 | ADR — persona surface | NEW | — | MDIS-only wording superseded by the Twixter registration API | Tension 11 | — |
+| 11 | ADR — persona surface | NEW | — | MDIS-only wording superseded by the Twill registration API | Tension 11 | — |
 
 #### 8.9.3 Open Questions for This Document
 
@@ -773,7 +773,7 @@ Every new engineer onboarded onto the current docs inherits the three-RBAC-syste
 | 6 | Version headers & document metadata blocks updated | `[x]` | all (→5.0.0) | PENDING |
 | 7 | Change-log entries recorded per document | `[x]` | change-log.md | PENDING |
 | 8 | Audit / compliance matrices updated | `[x]` | blueprint.md §45 (regenerated from the Compatibility Ledger) | PENDING |
-| 9 | Naming, numbering & formatting standards applied | `[x]` | all (MODERATOR/ADMINISTRATOR, Twixter, Release Manager; visible render of §21 layer order) | PENDING |
+| 9 | Naming, numbering & formatting standards applied | `[x]` | all (MODERATOR/ADMINISTRATOR, Twill, Release Manager; visible render of §21 layer order) | PENDING |
 | 10 | Superseded-decision markers applied to the legacy reference | `[x]` | documentation.md | PENDING |
 
 ### 9.2 Cross-Reference Update Register
@@ -836,10 +836,10 @@ Every new engineer onboarded onto the current docs inherits the three-RBAC-syste
 | 5 | `/src/modules` deletion (UR-19) breaks documented layouts and author muscle memory | M | H | H | Numbered migration runbook as a release gate; directory.md rewritten in the same phase | Dumby Core Engineering | OPEN |
 | 6 | Auto-reload (UR-27) blurs the human review boundary | M | M | M | Restate the automation boundary unambiguously (diff-based auto-approval for updates; human gate for first promotion) | Dumby Core Engineering | OPEN |
 | 7 | "Zero FP/FN" claims remain unverifiable and dishonest if merely renamed | M | M | M | Reframe as measured, CI-tracked rates; QA check greps for unmeasured superlatives (§12.2) | Dumby Core Engineering | OPEN |
-| 8 | Twixter free charter (UR-16) accrues unbounded free usage | M | M | M | ADR with explicit sunset condition | Dumby Core Engineering | OPEN |
+| 8 | Twill free charter (UR-16) accrues unbounded free usage | M | M | M | ADR with explicit sunset condition | Dumby Core Engineering | OPEN |
 | 9 | Title/attribution grammar and accent colour shipped inconsistently across docs | M | L | L | Phase 0 decision before Phase 2; single ADR of record | Dumby Core Engineering | OPEN |
 | 10 | RBAC layer order documented one way and implemented another (the exact drift this program fixes) | M | H | H | R1/R2 as the single normative text; Table 21-A alignment (UR-A-09); consistency check in §12.2 | Dumby Core Engineering | OPEN |
-| 11 | Persona surface documented as MDIS-only while the Twixter registration API is the real surface | M | L | L | ADR superseding the A4 wording; interface.md cross-links both | Dumby Core Engineering | OPEN |
+| 11 | Persona surface documented as MDIS-only while the Twill registration API is the real surface | M | L | L | ADR superseding the A4 wording; interface.md cross-links both | Dumby Core Engineering | OPEN |
 | 12 | Scope explosion: 121 requests across 12 documents overwhelm the review capacity | H | M | H | Phase-by-phase landing (§10.2), per-request change-log discipline, master table as the single traceability index | Dumby Core Engineering | OPEN |
 | 13 | Cited line numbers/files drift between audit commit `be39a52` and implementation HEAD | H | M | M | Standing constraint: re-verify before treating any cited location as current (§6.3 #1) | Dumby Core Engineering | OPEN |
 | 14 | Partial implementation leaves status badges claiming behavior that does not exist yet | M | H | H | Badge re-audit only at phase exits; audit register regenerated at closure | Dumby Core Engineering | OPEN |
@@ -945,7 +945,7 @@ Every new engineer onboarded onto the current docs inherits the three-RBAC-syste
 | Module authors | docs repo + change-log | Breaking contract changes: `swastik` package, TS-only upload, renderer-only authoring, embed ban migration window | Phase 1–2 exits |
 | Platform / SRE operators | docs repo + runbooks | Control-plane authentication, CLAI ssh2, tier volumes, CI hygiene | Tier 1–3 landings |
 | Framework maintainers | docs repo | ADR series; §45 ledger regeneration; audit-register vocabulary | Phase 0 + closure |
-| Guild administrators / marketplace developers | change-log + interface.md | License state machine, visibility fields, Twixter, MDIS sync | Phase 3–4 exits |
+| Guild administrators / marketplace developers | change-log + interface.md | License state machine, visibility fields, Twill, MDIS sync | Phase 3–4 exits |
 
 ---
 
