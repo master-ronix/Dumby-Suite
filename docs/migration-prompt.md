@@ -322,7 +322,7 @@ Each MR item follows the per-item execution loop (§4) with these bindings:
 ### M10 — Terminology & Legacy-Name Sweep
 
 **Request rows owned:** UR-03 (row 3) and the residual sweep.
-**Source of truth:** change-log "Changed — shared facts": "Release Manager" → **Release Manager** (with reverse GitHub sync), "Twixter" → **Twill**, canonical ranks **MODERATOR / ADMINISTRATOR**.
+**Source of truth:** change-log "Changed — shared facts": "DRM" → **Release Manager** (with reverse GitHub sync), "Twixter" → **Twill**, canonical ranks **MODERATOR / ADMINISTRATOR**.
 **What changes:** sweep the remaining legacy names across code, tests, comments, config keys, and commit messages going forward. Text-level only — no behavior changes in this item.
 **Blast radius:** every file containing a legacy name (mechanical, textual).
 **Done-gate:** a grep for the legacy names returns nothing outside the frozen docs/ur/ provenance records.
