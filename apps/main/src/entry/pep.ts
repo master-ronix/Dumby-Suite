@@ -1,4 +1,5 @@
 import Fastify from 'fastify';
+import { isMainEntry } from './is-main-entry.js';
 import { parseEnv, pickEnvKeys } from '../config/env.schema.js';
 import { createLogger } from '../logging/logger.js';
 import { DbClient } from '../db/client.js';
@@ -90,14 +91,16 @@ app.post<{ Params: { functionName: string }; Body: unknown }>(
   },
 );
 
-app
-  .listen({ port: env.PEP_PORT, host: env.PEP_BIND_HOST })
-  .then(() => {
-    logger.info('pep-started', { port: env.PEP_PORT });
-  })
-  .catch((err: unknown) => {
-    logger.fatal('pep-start-failed', { error: String(err) });
-    void redis.quit();
-    void db.destroy();
-    process.exit(1);
-  });
+if (isMainEntry(import.meta.url, process.argv[1])) {
+  app
+    .listen({ port: env.PEP_PORT, host: env.PEP_BIND_HOST })
+    .then(() => {
+      logger.info('pep-started', { port: env.PEP_PORT });
+    })
+    .catch((err: unknown) => {
+      logger.fatal('pep-start-failed', { error: String(err) });
+      void redis.quit();
+      void db.destroy();
+      process.exit(1);
+    });
+}

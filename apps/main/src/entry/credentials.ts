@@ -1,4 +1,5 @@
 import Fastify from 'fastify';
+import { isMainEntry } from './is-main-entry.js';
 import rateLimit from '@fastify/rate-limit';
 import { parseEnv, pickEnvKeys } from '../config/env.schema.js';
 import { createLogger } from '../logging/logger.js';
@@ -250,16 +251,18 @@ app.delete<{ Params: { id: string } }>('/credentials/:id', async (request, reply
   return reply.code(204).send();
 });
 
-app
-  .listen({ port: env.CREDENTIALS_SERVICE_PORT, host: env.CREDENTIALS_SERVICE_BIND_HOST })
-  .then(() => {
-    logger.info('credentials-service-started', {
-      host: env.CREDENTIALS_SERVICE_BIND_HOST,
-      port: env.CREDENTIALS_SERVICE_PORT,
+if (isMainEntry(import.meta.url, process.argv[1])) {
+  app
+    .listen({ port: env.CREDENTIALS_SERVICE_PORT, host: env.CREDENTIALS_SERVICE_BIND_HOST })
+    .then(() => {
+      logger.info('credentials-service-started', {
+        host: env.CREDENTIALS_SERVICE_BIND_HOST,
+        port: env.CREDENTIALS_SERVICE_PORT,
+      });
+    })
+    .catch((err: unknown) => {
+      logger.fatal('credentials-service-start-failed', { error: String(err) });
+      void db.destroy();
+      process.exit(1);
     });
-  })
-  .catch((err: unknown) => {
-    logger.fatal('credentials-service-start-failed', { error: String(err) });
-    void db.destroy();
-    process.exit(1);
-  });
+}

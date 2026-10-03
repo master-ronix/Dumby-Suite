@@ -785,6 +785,8 @@ and the five slice deviations are in `migration-ledger.md` §M0 slice 6a.
 | #17 | — | M9 | `createMiddlewareContext` returned `meta: {}`, so `DeferMiddleware` (which reads `ctx.meta['interaction']`) was dead by construction. The context now carries the interaction; `m9-defer-stage.test.ts` proves a `requiresDefer` command is deferred through the pipeline | DONE |
 | #3 | — | M9 | Four of twelve built-in middlewares neutered by hardcoded stubs — `CommandDefinition` gained `requiresDefer`/`ephemeral`/`cooldownMs` and all four now read live sources (registry metadata + the member's Discord state via the gateway client). Proof: `m9-middleware-wiring.test.ts` (4 tests). Judgment call: `getHighestRole` derives the rank from Discord state (owner/Administrator/ManageGuild) pending a per-guild role mapping | DONE |
 | UR-C-07 | — | M9 | Loader verify/quarantine/cache-bust was present; the residual was `SWASTIK_QUARANTINE_PATH` being declared but unread — `bootstrap.ts` now passes the configured quarantine directory. Proof: `m9-quarantine-path.test.ts` (1 test) | DONE |
+| UR-C-23 | — | M9 | `pep.ts`, `ssh-clai.ts`, `credentials.ts`, `swastik.ts`, `twixter.ts` ran their start at module scope behind no guard — all five now guard with `isMainEntry(import.meta.url, process.argv[1])`. Proof: `m9-main-entry-guards.test.ts` (7 tests) | DONE |
+| UR-B-02 / UR-C-01 / UR-C-03 / UR-C-04 | — | M9 | Verified already closed (the M0 row board): all 8 bind hosts read; the CLAI session limits wired; module ownership (6c-ii/6c-iii); the Credentials Service (6a). The M9 stub listed them as residuals; the tree shows them done | DONE (verified) |
 
 ### UR 2.0 — Post-Re-Baseline Conformance & Audit Evidence (recorded 2026-10-01)
 

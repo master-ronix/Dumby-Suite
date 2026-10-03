@@ -1,4 +1,5 @@
 import Fastify from 'fastify';
+import { isMainEntry } from './is-main-entry.js';
 import { parseEnv, pickEnvKeys } from '../config/env.schema.js';
 import { createLogger } from '../logging/logger.js';
 import { registerInternalAuth } from '../http/internal-auth.js';
@@ -70,12 +71,14 @@ app.delete<{
   return reply.code(501).send(NOT_IMPLEMENTED('persona unbinding'));
 });
 
-app
-  .listen({ port: env.TWIXTER_PORT, host: env.TWIXTER_BIND_HOST })
-  .then(() => {
-    logger.info('twixter-stub-started', { port: env.TWIXTER_PORT });
-  })
-  .catch((err: unknown) => {
-    logger.fatal('twixter-stub-start-failed', { error: String(err) });
-    process.exit(1);
-  });
+if (isMainEntry(import.meta.url, process.argv[1])) {
+  app
+    .listen({ port: env.TWIXTER_PORT, host: env.TWIXTER_BIND_HOST })
+    .then(() => {
+      logger.info('twixter-stub-started', { port: env.TWIXTER_PORT });
+    })
+    .catch((err: unknown) => {
+      logger.fatal('twixter-stub-start-failed', { error: String(err) });
+      process.exit(1);
+    });
+}

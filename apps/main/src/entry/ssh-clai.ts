@@ -1,4 +1,5 @@
 import { createHash, generateKeyPairSync } from 'node:crypto';
+import { isMainEntry } from './is-main-entry.js';
 import { Server } from 'ssh2';
 import type { ServerChannel, AuthContext } from 'ssh2';
 import { parseEnv, pickEnvKeys } from '../config/env.schema.js';
@@ -207,4 +208,6 @@ export function startClaiSshServer(): Server {
   return server;
 }
 
-startClaiSshServer();
+if (isMainEntry(import.meta.url, process.argv[1])) {
+  startClaiSshServer();
+}

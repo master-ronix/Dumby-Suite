@@ -1,4 +1,5 @@
 import Fastify, { type FastifyReply } from 'fastify';
+import { isMainEntry } from './is-main-entry.js';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -971,17 +972,19 @@ export async function startSwastik(): Promise<void> {
   });
 }
 
-startSwastik().catch((err: unknown) => {
-  try {
-    if (logger) {
-      logger.fatal('swastik-start-failed', { error: String(err) });
-    } else {
-      process.stderr.write(`FATAL swastik-start-failed: ${String(err)}\n`);
+if (isMainEntry(import.meta.url, process.argv[1])) {
+  startSwastik().catch((err: unknown) => {
+    try {
+      if (logger) {
+        logger.fatal('swastik-start-failed', { error: String(err) });
+      } else {
+        process.stderr.write(`FATAL swastik-start-failed: ${String(err)}\n`);
+      }
+      if (lockRedis) void lockRedis.quit();
+      if (db) void db.destroy();
+    } catch {
+      process.stderr.write(`FATAL swastik-start-failed (dry): ${String(err)}\n`);
     }
-    if (lockRedis) void lockRedis.quit();
-    if (db) void db.destroy();
-  } catch {
-    process.stderr.write(`FATAL swastik-start-failed (dry): ${String(err)}\n`);
-  }
-  process.exit(1);
-});
+    process.exit(1);
+  });
+}
