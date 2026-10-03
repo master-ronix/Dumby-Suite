@@ -12,7 +12,6 @@ import {
   generateBuildSigningKeyPair,
   hashBytes,
   readBuildProvenanceSidecar,
-  tupleFromSidecar,
   writeBuildProvenanceSidecar,
   type BuildProvenanceSidecar,
   type BuildProvenanceTuple,

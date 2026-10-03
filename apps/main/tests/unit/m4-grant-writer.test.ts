@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest';
+import type { Knex } from 'knex';
 import {
   grantFromRow,
   grantToRow,
@@ -106,7 +107,7 @@ function fakeKnex() {
       resolve(mode === 'select' ? rows : undefined);
     },
   };
-  const knex = (() => chain) as unknown as import('knex').Knex;
+  const knex = (() => chain) as unknown as Knex;
   return {
     knex,
     inserted,

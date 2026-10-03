@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest';
+import type { Knex } from 'knex';
 import {
   buildDeploymentRecord,
   DuplicateDeploymentRecordError,
@@ -83,7 +84,7 @@ function fakeKnex() {
       resolve(mode === 'select' ? rows : mode === 'first' ? rows[0] : undefined);
     },
   };
-  const knex = (() => chain) as unknown as import('knex').Knex;
+  const knex = (() => chain) as unknown as Knex;
   return {
     knex,
     inserted,

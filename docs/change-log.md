@@ -800,6 +800,82 @@ and the five slice deviations are in `migration-ledger.md` §M0 slice 6a.
 | finding #1 residual (module-boundary lint) | — | M9 | The module-boundary architecture rules were scoped to the removed `src/modules/*`, so they matched nothing while CI's lint gate passed. Added `packages/modules/eslint.config.mjs` (embed ban, `process.env` ban, three-layer rule, repos-no-events, per-module cross-module ban) + a `lint:modules` root script + CI **Gate 2b**. Fixed two port bugs: flat-config globs resolve against cwd, and the groups missed the `.js` specifier. Proof: `m9-module-lint-gate.test.ts` (4 tests) | DONE |
 | UR-03 | — | M10 | Terminology & legacy-name sweep: the living set carried two legacy "Twill" mentions (`replit.md`, `apps/main/docs/compliance/README.md`), both renamed to **Twixter**; the code tree was already clean and the rank vocabulary already canonical (MODERATOR/ADMINISTRATOR, with MOD/ADMIN as declared aliases). Owner-set boundary: the sweep covers the living set — `documentation.md` is the archived legacy record, `blueprint.md` the frozen authority, and the rename's provenance records must keep the old term. **Deviation:** the Release Manager identifiers were renamed as instructed (`drm_deploy_total` → `release_manager_deploy_total`, `service:'drm'` → `service:'release-manager'`, the `drm:` lease-key prefix, the monorepo path) — a behaviour change against the item's text-level brief. Proof: `m10-terminology-sweep.test.ts` (4 tests) | DONE |
 
+**R11 backfill (M11 reconciliation, 2026-10-02).** Rows closed by M6, M9 and M11 carried no change-log line; backfilled at discovery per R11. Each line cites the row's own subject from the UR §8.1.2 master table and the owning item's evidence — M6's and M9's triage is item-level, so the record points at the item record rather than a per-row test. Logged as deviation #31.
+| UR-01 | 1 | M9 | Closed under M9 — Specify the functional console: ssh2 public-key transport, session model, PEP-parity command set; landing via UR-A-02/B-… See the M9 item record. | DONE |
+| UR-07 | 7 | M9 | Closed under M9 — Fifth pattern: Global Data Emit — durable, schema'd public datasets with read/aggregate API See the M9 item record. | DONE |
+| UR-13 | 13 | M11 | M11 convergence pass — Extend containment to new surfaces; leak-regression CI suites; verify continuously See the M11 item record. | DONE |
+| UR-14 | 14 | M11 | M11 convergence pass — Measured, tunable, ground-truthed detection surfaces; CI-tracked rates driven to floor See the M11 item record. | DONE |
+| UR-15 | 15 | M6 | Met in the tree at the R12 re-triage (credited per owner #19): Raw TypeScript only; isolated trusted builder (ephemeral, network-restricted) compiles, lints, SBOM, build attestations See the M6 item record. | DONE |
+| UR-17 | 17 | M9 | Closed under M9 — PE domain `credentials.issue/rotate/revoke` for licenses, CLAI keypairs, developer tokens See the M9 item record. | DONE |
+| UR-24 | 24 | M9 | Closed under M9 — Observe/read functions, policy-tuning controls, SSE streaming, frontend-quality API bar See the M9 item record. | DONE |
+| UR-25 | 25 | M6 | Met in the tree at the R12 re-triage (credited per owner #19): First-class manifest `visibility` enum (public/unlisted/private) validated at all three manifest validation points; co-c… See the M6 item record. | DONE |
+| UR-26 | 26 | M6 | Met in the tree at the R12 re-triage (credited per owner #19): Token-bucket + cooldown per developer/repository/module/global; queueing; anomaly coupling; PEP-tunable windows See the M6 item record. | DONE |
+| UR-27 | 27 | M6 | Met in the tree at the R12 re-triage (credited per owner #19): Promotion → reload signal → verified health-check → auto-rollback loop; no gate bypass See the M6 item record. | DONE |
+| UR-30 | 30 | M6 | Met in the tree at the R12 re-triage (credited per owner #19): `hardcoded: true` + `hardcodeGuildId` permanently pins a module to its guild; requires private visibility; guild-scoped … See the M6 item record. | DONE |
+| UR-31 | 31 | M9 | Closed under M9 — Per-guild Redis pub/sub change events; bidirectional instant MDIS ↔ backend sync See the M9 item record. | DONE |
+| R1 (RBAC) | 32 | M4 | Closed under M9 — Layer 6 as a pure backend function: six ranks OWNER > ADMIN > MOD > HELPER > MEMBER > RESTRICTED, evaluated (never writt… See the M9 item record. | DONE |
+| R2 (RBAC) | 33 | M4 | Closed under M9 — Layer 7 guild-side grants: types permit/blacklist/whitelist/cooldown/rate-limit; scopes role > group > set, most-specifi… See the M9 item record. | DONE |
+| UR-A-05 | 38 | M9 | Closed under M9 — Truthful audit schema: outcomes written after handler completion; corrected query columns See the M9 item record. | DONE |
+| UR-A-06 | 39 | M9 | Closed under M9 — Bootstrap token (timing-safe) on issue/revoke; rate limit; audit all issuances See the M9 item record. | DONE |
+| UR-A-10 | 43 | M9 | Closed under M9 — Working fleet-wide kill switch: nullable `guildId`, partial unique index, disabled overrides enforced on dispatch See the M9 item record. | DONE |
+| UR-A-11 | 44 | M9 | Closed under M9 — Knex change-queue repository; BCCM services constructed; collision/ceiling hooks and reserved commands fixed See the M9 item record. | DONE |
+| UR-A-14 | 47 | M9 | Closed under M9 — Call `initTracing` at Stage 04; TraceMiddleware opens real spans See the M9 item record. | DONE |
+| UR-A-15 | 48 | M9 | Closed under M9 — Lua-script dual-window limiter (10/user, 100/guild), atomic check-and-increment See the M9 item record. | DONE |
+| UR-A-16 | 49 | M9 | Closed under M9 — Redis mirror + poller; exit recovery re-runs module readiness See the M9 item record. | DONE |
+| UR-A-17 | 50 | M9 | Closed under M9 — Every key paired with a consumer or the domain removed; keys centralized See the M9 item record. | DONE |
+| UR-A-18 | 51 | M9 | Closed under M9 — Zod validation (400/404); optional force-disable of live modules See the M9 item record. | DONE |
+| UR-A-19 | 52 | M9 | Closed under M9 — Idle timeout, typed confirmation, per-IP lockout, optional TOTP, operator issuance endpoint See the M9 item record. | DONE |
+| UR-A-20 | 53 | M9 | Closed under M9 — Scheduler with Redis locks at Stage 08; cron consumers registered See the M9 item record. | DONE |
+| UR-A-21 | 54 | M9 | Closed under M9 — Buffered, pseudonymized collection flushed off the command path; HMAC pseudonyms with monthly salt rotation See the M9 item record. | DONE |
+| UR-A-22 | 55 | M9 | Closed under M9 — Deep-wildcard Pino redact paths (nested tokens, webhookUrl, signingKey, apiKey) See the M9 item record. | DONE |
+| UR-A-23 | 56 | M9 | Closed under M9 — Payload schemas; runtime membership/payload checks; upload-time consistency report; prefix-prohibition lint See the M9 item record. | DONE |
+| UR-A-24 | 57 | M6 | Met in the tree at the R12 re-triage (credited per owner #19): Enum `private See the M6 item record. | DONE |
+| UR-A-25 | 58 | M6 | Met in the tree at the R12 re-triage (credited per owner #19): Branded snowflake type; hardcoded-guild scoping; public/private listing filters See the M6 item record. | DONE |
+| UR-A-26 | 59 | M9 | Closed under M9 — `CREDENTIALS_PORT` env key, used by the entrypoint See the M9 item record. | DONE |
+| UR-A-27 | 60 | M9 | Closed under M9 — Whitelist; reject `MessageContent`/`GuildMembers`/`GuildPresences` with ConfigurationError See the M9 item record. | DONE |
+| UR-A-28 | 61 | M9 | Closed under M9 — Parse `SHARD_RANGE`; pass `shards`/`shardCount` when `SHARD_COUNT > 1`; fail fast on bad range See the M9 item record. | DONE |
+| UR-A-29 | 62 | M9 | Closed under M9 — Correct statement-timeout key; verify-env in CI; rolling-update strategy verified; kubeconform See the M9 item record. | DONE |
+| UR-A-30 | 63 | M9 | Closed under M9 — Remove `cron-parser`; keep ssh2/jose only if consuming URs land; knip CI check See the M9 item record. | DONE |
+| UR-B-07 | 70 | M9 | Closed under M9 — Fix `suspendCommand` insert, `signing_keys` revoke, `queryAuditLog` columns, audit writer; contract test See the M9 item record. | DONE |
+| UR-B-08 | 71 | M9 | Closed under M9 — Implement adapters over existing subsystems; remove routeless backends; honest 501; boot-time catalog assertion See the M9 item record. | DONE |
+| UR-B-09 | 72 | M9 | Closed under M9 — Token-verified or ssh2 public-key auth; production disables fingerprint REPL; real `pep` dispatch See the M9 item record. | DONE |
+| UR-B-10 | 73 | M9 | Closed under M9 — Pipeline built in bootstrap with canonical order; Redis rate-limiter/cooldown stores; owner BotDM exception See the M9 item record. | DONE |
+| UR-B-12 | 75 | M6 | Met in the tree at the R12 re-triage (credited per owner #19): `renameSync` swap under Redis lock; selftest gate; reload-failure rollback; unified status vocabulary; retention pruning See the M6 item record. | DONE |
+| UR-B-13 | 76 | M6 | Met in the tree at the R12 re-triage (credited per owner #19): Bot-side `/internal/reload`; HotSwapService runs queue pause → drain → respawn per module See the M6 item record. | DONE |
+| UR-B-14 | 77 | M9 | Closed under M9 — Immediately write Discord permission overrides denying `@everyone`, then enqueue batched deregistration See the M9 item record. | DONE |
+| UR-B-15 | 78 | M6 | Met in the tree at the R12 re-triage (credited per owner #19): Discriminated union on `hardcoded`; required `private See the M6 item record. | DONE |
+| UR-B-16 | 79 | M9 | Closed under M9 — Split `bootstrapWorker()` skipping Discord login and API/health servers; runtime role assert See the M9 item record. | DONE |
+| UR-B-17 | 80 | M9 | Closed under M9 — Required regex-validated snowflake; fail fast at Stage 02 See the M9 item record. | DONE |
+| UR-B-18 | 81 | M9 | Closed under M9 — Provider-specific HMAC verification; 5-minute replay window; Redis idempotency; Stage-14 refusal of unverified webhooks See the M9 item record. | DONE |
+| UR-B-19 | 82 | M9 | Closed under M9 — Replace suffix-MAC with `createHmac`; RFC 4231 test vectors as regression proof See the M9 item record. | DONE |
+| UR-B-20 | 83 | M6 | Met in the tree at the R12 re-triage (credited per owner #19): Schema `{token, version}` pins; range satisfaction evaluator; fatal Stage-11 startup error; frameworkCompat check at loa… See the M6 item record. | DONE |
+| UR-B-21 | 84 | M9 | Closed under M9 — Workflows at repo root; real publish step; integration test as definition of done See the M9 item record. | DONE |
+| UR-B-22 | 85 | M9 | Closed under M9 — `@fastify/rate-limit` (30/min; tighter register bucket) See the M9 item record. | DONE |
+| UR-B-23 | 86 | M9 | Closed under M9 — Probe checks live-volume access/contents/required modules; 503 without restart See the M9 item record. | DONE |
+| UR-B-24 | 87 | M9 | Closed under M9 — Sync configmap with env schema; CI check diffing configmap keys against `ENV_KEYS` See the M9 item record. | DONE |
+| UR-B-25 | 88 | M9 | Closed under M9 — Version generated from package.json at build; module counts, shard range, guild count, runtime versions See the M9 item record. | DONE |
+| UR-B-26 | 89 | M6 | Met in the tree at the R12 re-triage (credited per owner #19): Tarball via multipart (64 MiB limit); zip-slip-safe extraction via `assertPathInside` See the M6 item record. | DONE |
+| UR-B-27 | 90 | M9 | Closed under M9 — `developerId` aligned with devId string; `PATCH /swastik/modules/:slug/visibility` writes listing rows See the M9 item record. | DONE |
+| UR-B-28 | 91 | M9 | Closed under M9 — `DATABASE_SSL`/`REDIS_TLS`; wire or drop `ENCRYPTION_KEY_*`/`JWT_SIGNING_KEY` See the M9 item record. | DONE |
+| UR-C-08 | 99 | M9 | Closed under M9 — Service-to-service credentials; `source` demoted to metadata; loopback-default admin bind See the M9 item record. | DONE |
+| UR-C-09 | 100 | M9 | Closed under M9 — Pipeline constructed at Stage 09 with all built-ins in priority order; DumbyError-aware root catch; structural wiring te… See the M9 item record. | DONE |
+| UR-C-10 | 101 | M9 | Closed under M9 — State split (`suspendedAt/By/Reason`); pending builds rejected; live modules unloaded; force-disable propagates See the M9 item record. | DONE |
+| UR-C-11 | 102 | M9 | Closed under M9 — Fix keying; 404 on zero rows; audit `allowed` only after handler success; real metadata serialized See the M9 item record. | DONE |
+| UR-C-12 | 103 | M9 | Closed under M9 — Real route invocation with `service_to_service` credential; correlation IDs joinable across CLAI and PEP audit rows; hon… See the M9 item record. | DONE |
+| UR-C-13 | 104 | M9 | Closed under M9 — `git mv` to repo root; five workflows live; templates and CODEOWNERS applied See the M9 item record. | DONE |
+| UR-C-14 | 105 | M6 | Met in the tree at the R12 re-triage (credited per owner #19): Temp-symlink + `renameSync` under Redis lock; post-flip containment assertion; `lstatSync` for dangling rollback links See the M6 item record. | DONE |
+| UR-C-15 | 106 | M9 | Closed under M9 — Per-developer and per-slug build/byte quotas (429/413); content-hash dedupe; total volume bound See the M9 item record. | DONE |
+| UR-C-16 | 107 | M9 | Closed under M9 — Default subscriber isolation + fire-and-forget emit; `emitSync` for ordering-critical flows; guard test See the M9 item record. | DONE |
+| UR-C-17 | 108 | M9 | Closed under M9 — Rolling window (20, ≥50%, 30 s half-open); `CircuitOpenError` mapped to the typed taxonomy See the M9 item record. | DONE |
+| UR-C-18 | 109 | M9 | Closed under M9 — Re-registered fatal handler: fatal log with correlation ID → `system.fatalError` → graceful shutdown (≤15 s) → exit 1; E… See the M9 item record. | DONE |
+| UR-C-22 | 113 | M6 | Met in the tree at the R12 re-triage (credited per owner #19): Bot-side `/internal/reload` consumer; unload → re-import → ready → frozen-registry replace → deployAll; auto-revert on f… See the M6 item record. | DONE |
+| UR-C-24 | 115 | M9 | Closed under M9 — Cache namespace flush + per-module queue workers on unload; teardown failures never abort the loop See the M9 item record. | DONE |
+| UR-C-25 | 116 | M9 | Closed under M9 — Real implementation where the primitive exists, else honest `501 NOT_IMPLEMENTED`; no-stub test walks every route See the M9 item record. | DONE |
+| UR-C-26 | 117 | M6 | Met in the tree at the R12 re-triage (credited per owner #19): Required devId/buildId at upload; 18-case co-constraint truth table; five-value category enum; events[] ⊆ eventsCatalog … See the M6 item record. | DONE |
+| UR-C-27 | 118 | M9 | Closed under M9 — `CREDENTIALS_SERVICE_PORT` (default 8086); every key read by code or documented operator-only; `INTERNAL_API_KEY` ≥ 32 c… See the M9 item record. | DONE |
+| UR-C-28 | 119 | M9 | Closed under M9 — Step-level `env:`/stdin secrets; mktemp kubeconfig with trap; SHA-pinned actions; root `dependabot.yml`; `check-workflow… See the M9 item record. | DONE |
+| UR-C-30 | 121 | M9 | Closed under M9 — TOTP after publickey for destructive domains; `POST /admin/operators` + seed for register/rotate/revoke; 10-minute idle … See the M9 item record. | DONE |
+
 ### UR 2.0 — Post-Re-Baseline Conformance & Audit Evidence (recorded 2026-10-01)
 
 _Basis: UR-20260918-001 revision 2.0 (01/10/2026), which registers the ten-document Conformance &
