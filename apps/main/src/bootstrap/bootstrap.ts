@@ -19,6 +19,7 @@ import { ModuleRegistry } from '../module-system/registry.js';
 import { ModuleLoader } from '../module-system/loader.js';
 import { defaultEnabledForTier } from '../module-system/tier-rules.js';
 import { PermissionResolver } from '../permissions/resolver.js';
+import { AdminEvalGate } from '../permissions/admin-eval-gate.js';
 import { BootstrapProgress } from './stages.js';
 import { buildApiServer, buildHealthServer, buildMetricsServer } from '../http/server.js';
 import { PowerEngineDispatcher } from '../http/power-engine-dispatcher.js';
@@ -354,6 +355,19 @@ export async function bootstrap(): Promise<void> {
   container.registerValue(CORE_TOKENS.Scheduler, scheduler);
   container.registerValue(CORE_TOKENS.ModuleRegistry, moduleRegistry);
   container.registerValue(CORE_TOKENS.PermissionResolver, permissionResolver);
+  // §11 Layer 4 — the framework-provided gate for a deployment's most consequential Admin-tier
+  // capability (arbitrary code evaluation being the illustrative worst case). It needs the enable
+  // flag *and* a non-production environment; the framework ships the gate, not the capability.
+  const adminEvalGate = new AdminEvalGate(
+    config.get('CORE_ADMIN_EVAL_ENABLED'),
+    config.get('NODE_ENV'),
+  );
+  container.registerValue(CORE_TOKENS.AdminEvalGate, adminEvalGate);
+  const adminEvalGateState = adminEvalGate.check();
+  logger.info('admin-eval-gate-state', {
+    allowed: adminEvalGateState.allowed,
+    reason: adminEvalGateState.reason,
+  });
   container.registerValue(CORE_TOKENS.CommandRegistry, commandRegistry);
   container.registerValue(CORE_TOKENS.CommandRouter, commandRouter);
   container.registerValue(CORE_TOKENS.Renderer, renderer);

@@ -17,6 +17,7 @@ import type { InteractionRegistry } from '../interactions/interaction-registry.j
 import type { PersonaCommandBindingService } from '../personas/persona-command-binding.service.js';
 import type { EventRouter } from '../events/event-router.js';
 import type { Scheduler } from '../queue/scheduler.js';
+import type { AdminEvalGate } from '../permissions/admin-eval-gate.js';
 
 export const CORE_TOKENS = {
   Logger: createToken<Logger>('core.Logger'),
@@ -39,6 +40,7 @@ export const CORE_TOKENS = {
   Personas: createToken<PersonaCommandBindingService>('core.Personas'),
   EventRouter: createToken<EventRouter>('core.EventRouter'),
   Scheduler: createToken<Scheduler>('core.Scheduler'),
+  AdminEvalGate: createToken<AdminEvalGate>('core.AdminEvalGate'),
 } as const;
 
 export function moduleTokenNamespace(moduleId: string) {
