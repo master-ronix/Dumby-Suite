@@ -23,6 +23,7 @@ import { defaultEnabledForTier } from '../module-system/tier-rules.js';
 import { PermissionResolver } from '../permissions/resolver.js';
 import { AdminEvalGate } from '../permissions/admin-eval-gate.js';
 import { DiscordOAuth2Client } from '../http/oauth/oauth2-client.js';
+import { MtpTokenCalculator } from '../analytics/mtp-token-calculator.js';
 import { BootstrapProgress } from './stages.js';
 import { buildApiServer, buildHealthServer, buildMetricsServer } from '../http/server.js';
 import { PowerEngineDispatcher } from '../http/power-engine-dispatcher.js';
@@ -387,6 +388,13 @@ export async function bootstrap(): Promise<void> {
   });
   container.registerValue(CORE_TOKENS.OAuth2, oauth2Client);
   logger.info('oauth2-client-state', { configured: oauth2Client.isConfigured() });
+  // §28.5 — the MTP artificial-token cost model. Both MTP_*_TOKEN_THRESHOLD_BYTES keys were
+  // previously declared and read by no code; they are the memory/bandwidth charge thresholds.
+  const mtpTokens = new MtpTokenCalculator({
+    memoryThresholdBytes: config.get('MTP_MEMORY_TOKEN_THRESHOLD_BYTES'),
+    bandwidthThresholdBytes: config.get('MTP_BANDWIDTH_TOKEN_THRESHOLD_BYTES'),
+  });
+  container.registerValue(CORE_TOKENS.MtpTokens, mtpTokens);
   container.registerValue(CORE_TOKENS.CommandRegistry, commandRegistry);
   container.registerValue(CORE_TOKENS.CommandRouter, commandRouter);
   container.registerValue(CORE_TOKENS.Renderer, renderer);

@@ -19,6 +19,7 @@ import type { EventRouter } from '../events/event-router.js';
 import type { Scheduler } from '../queue/scheduler.js';
 import type { AdminEvalGate } from '../permissions/admin-eval-gate.js';
 import type { DiscordOAuth2Client } from '../http/oauth/oauth2-client.js';
+import type { MtpTokenCalculator } from '../analytics/mtp-token-calculator.js';
 
 export const CORE_TOKENS = {
   Logger: createToken<Logger>('core.Logger'),
@@ -43,6 +44,7 @@ export const CORE_TOKENS = {
   Scheduler: createToken<Scheduler>('core.Scheduler'),
   AdminEvalGate: createToken<AdminEvalGate>('core.AdminEvalGate'),
   OAuth2: createToken<DiscordOAuth2Client>('core.OAuth2'),
+  MtpTokens: createToken<MtpTokenCalculator>('core.MtpTokens'),
 } as const;
 
 export function moduleTokenNamespace(moduleId: string) {
