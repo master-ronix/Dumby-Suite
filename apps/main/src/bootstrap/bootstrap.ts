@@ -11,6 +11,8 @@ import { DbClient } from '../db/client.js';
 import { InternalEventBus } from '../events/event-bus.js';
 import { EventRouter } from '../events/event-router.js';
 import { EventLoopLagMonitor } from '../events/event-loop-lag.js';
+import { ShardOwnershipManager, parseShardRange } from '../discord/shard-ownership.js';
+import { hostname } from 'node:os';
 import { Scheduler } from '../queue/scheduler.js';
 import { CacheManager } from '../cache/cache-manager.js';
 import { RedisLockStore } from '../cache/redis-lock-store.js';
@@ -427,7 +429,22 @@ export async function bootstrap(): Promise<void> {
 
   progress.advanceTo('DISCORD_LOGIN');
   let discordClient: Client | undefined;
+  let shardOwnership: ShardOwnershipManager | undefined;
   if (config.get('DISCORD_ADAPTER') === 'live') {
+    // §23.2 — claim this pod's shard-ownership locks before the gateway identifies, so a rolling
+    // update's handover is safe: Discord invalidates a shard's prior session on a second identify.
+    shardOwnership = new ShardOwnershipManager({
+      lockStore,
+      logger,
+      ownerId: `${hostname()}:${process.pid}`,
+      heartbeatMs: config.get('SHARD_LOCK_HEARTBEAT_MS'),
+      retryMs: config.get('SHARD_LOCK_RETRY_MS'),
+    });
+    const configuredShards =
+      config.get('SHARD_COUNT') > 1 ? parseShardRange(config.get('SHARD_RANGE')) : [0];
+    const ownedShards = await shardOwnership.claim(configuredShards);
+    shardOwnership.startHeartbeat();
+    logger.info('shard-ownership-claimed', { shards: ownedShards, configured: configuredShards });
     const modules = moduleRegistry.all();
     const intents = computeIntentsBitfield(modules.map((m) => m.manifest.intents));
     const partials = computePartials(modules.map((m) => m.manifest.partials));
@@ -664,6 +681,7 @@ export async function bootstrap(): Promise<void> {
     db,
     discordClient,
     stopEventLoopMonitor: () => eventLoopLagMonitor.stop(),
+    releaseShardLocks: () => shardOwnership?.releaseAll() ?? Promise.resolve(),
     drainInFlightCommands: (timeoutMs) => inFlightTracker.waitForDrain(timeoutMs),
   });
   fatalHooks.shutdown = () =>
@@ -681,6 +699,7 @@ export async function bootstrap(): Promise<void> {
         db,
         discordClient,
         stopEventLoopMonitor: () => eventLoopLagMonitor.stop(),
+        releaseShardLocks: () => shardOwnership?.releaseAll() ?? Promise.resolve(),
         drainInFlightCommands: (timeoutMs) => inFlightTracker.waitForDrain(timeoutMs),
       },
       'FATAL',

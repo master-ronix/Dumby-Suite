@@ -21,6 +21,7 @@ export interface ShutdownDeps {
   db: DbClient;
   discordClient?: Client | undefined;
   stopEventLoopMonitor?: () => void;
+  releaseShardLocks?: () => Promise<void>;
   drainInFlightCommands: (timeoutMs: number) => Promise<void>;
   stepTimeoutsMs?: Partial<Record<(typeof SHUTDOWN_STEPS)[number], number>>;
 }
@@ -49,6 +50,8 @@ export async function gracefulShutdown(deps: ShutdownDeps, signal: string): Prom
     acceptingGatewayEvents = false;
     deps.stopEventLoopMonitor?.();
     await deps.discordClient?.destroy();
+    // §23.2 — release shard ownership so a replacement pod can claim it during the handover window.
+    await deps.releaseShardLocks?.();
   });
 
   await runStep(deps, 'DRAIN_IN_FLIGHT_COMMANDS', () =>
