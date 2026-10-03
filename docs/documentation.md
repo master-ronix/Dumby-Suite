@@ -585,21 +585,21 @@ A detailed security module specification covering heat-score computation, anti-n
 
 Documented threat model: uploads are hostile, manifest may execute code, artifacts may not match source, signatures may cover identity only.
 
-DRM must never live inside the Dumby application source tree. The separation is load-bearing — a DRM inside Dumby would create a circular bootstrap dependency, the self-deploying-system fragility (the same wisdom that keeps Terraform separate from the infrastructure it manages). Canonical path: `/dumby-release-manager/src/entry/drm.ts`; never `/dumby/src/entry/drm.ts` or `/dumby/dist/entry/drm.js`. This axiom is non-negotiable and supersedes all earlier drafts that placed DRM inside `dumby/src/entry/`.
+Release Manager must never live inside the Dumby application source tree. The separation is load-bearing — a Release Manager inside Dumby would create a circular bootstrap dependency, the self-deploying-system fragility (the same wisdom that keeps Terraform separate from the infrastructure it manages). Canonical path: `/dumby-release-manager/src/entry/drm.ts`; never `/dumby/src/entry/drm.ts` or `/dumby/dist/entry/release-manager.js`. This axiom is non-negotiable and supersedes all earlier drafts that placed Release Manager inside `dumby/src/entry/`.
 
 - Specified as non-negotiable.
 
-- Maintained exteriority; supersedes earlier drafts placing DRM inside dumby/src/entry/.
+- Maintained exteriority; supersedes earlier drafts placing Release Manager inside dumby/src/entry/.
 
-Authority boundary between Swastik and DRM: Swastik owns module delivery — developer registration/licensing, module upload validation, staging and symlink promotion, hot-swap signaling, module rollback, and the scheduled restart — while DRM owns core release. The boundary is explicit in the APIs (`POST /internal/swastik/core-release/lock`, `lock/renew`, `unlock`), the shared `audit_logs` table, and the Redis lease keys.
+Authority boundary between Swastik and Release Manager: Swastik owns module delivery — developer registration/licensing, module upload validation, staging and symlink promotion, hot-swap signaling, module rollback, and the scheduled restart — while Release Manager owns core release. The boundary is explicit in the APIs (`POST /internal/swastik/core-release/lock`, `lock/renew`, `unlock`), the shared `audit_logs` table, and the Redis lease keys.
 
-- Swastik owns: module delivery, developer registration/licensing, module upload validation, staging/symlink promotion, hot-swap signaling, module rollback, scheduled restart policy. DRM owns: core release intake, approval verification, build orchestration, image digest recording, config diffing, migration verification, Kubernetes rollout, shard-aware readiness validation, canary analysis, rollback execution, release finalization. Shared: PostgreSQL, Redis, internal authenticated API.
+- Swastik owns: module delivery, developer registration/licensing, module upload validation, staging/symlink promotion, hot-swap signaling, module rollback, scheduled restart policy. Release Manager owns: core release intake, approval verification, build orchestration, image digest recording, config diffing, migration verification, Kubernetes rollout, shard-aware readiness validation, canary analysis, rollback execution, release finalization. Shared: PostgreSQL, Redis, internal authenticated API.
 
 - Implemented with clear API boundaries between the two services.
 
-DRM determinism principle: given the same Git SHA, lockfile, build arguments, base image digest, deploy config, manifest set, and environment policy, DRM produces the same artifact and the same deployment decision. Determinism is foundational for reproducible releases and safe rollback.
+Release Manager determinism principle: given the same Git SHA, lockfile, build arguments, base image digest, deploy config, manifest set, and environment policy, Release Manager produces the same artifact and the same deployment decision. Determinism is foundational for reproducible releases and safe rollback.
 
-- Specified — "Given the same Git SHA, lockfile, build arguments, base image digest, deploy config, manifest set, and environment policy, DRM produces the same artifact and deployment decision.".
+- Specified — "Given the same Git SHA, lockfile, build arguments, base image digest, deploy config, manifest set, and environment policy, Release Manager produces the same artifact and deployment decision.".
 
 - Enforced determinism in build and deployment pipeline.
 
@@ -615,11 +615,11 @@ Hard constraints — where the freedom ends. Five constraints bind every module:
 
 - All five constraints remain mechanically enforced, not just documented.
 
-Structured liberty / control-plane exception: DRM is the narrow, sanctioned control-plane service exception within the framework's otherwise backend-first, no-GUI philosophy. The exception is listed in the compliance matrix (§9, "Control-plane exception ✓") and justifies DRM's existence without violating the framework's non-goals.
+Structured liberty / control-plane exception: Release Manager is the narrow, sanctioned control-plane service exception within the framework's otherwise backend-first, no-GUI philosophy. The exception is listed in the compliance matrix (§9, "Control-plane exception ✓") and justifies Release Manager's existence without violating the framework's non-goals.
 
 - Specified.
 
-- DRM is the narrow, external control-plane service.
+- Release Manager is the narrow, external control-plane service.
 
 Tooling-enforced boundaries — constitution vs policy: good architecture encodes invariants in tooling (ESLint rules, tsc gates, logger redaction) rather than in documentation that can be ignored. The constitution (mechanically enforced) is distinct from policy (review-enforced); the target extends the rule set with no-orphaned-closures and no-direct-interaction-reply.
 
@@ -649,9 +649,9 @@ Node.js LTS is chosen for its event-driven, non-blocking I/O model, which maps n
 
 ### 5.2 Language — TypeScript (Strict Mode)
 
-### 5.3 b DRM Implementation Language
+### 5.3 b Release Manager Implementation Language
 
-DRM (the Dumby Release Manager) is a separate control-plane service and is NOT
+Release Manager (the Dumby Release Manager) is a separate control-plane service and is NOT
 required to be TypeScript: it may be implemented in Go or Rust. Only the
 Application Core and modules are TypeScript-native. This is an approved
 alternative explicitly named here.
@@ -666,7 +666,7 @@ Dumby is a TypeScript-native framework. TypeScript strict mode (`"strict": true`
 
 ### 5.5 b Six-Pillar Production Platform
 
-The finalized production platform is six pillars: Dumby (Application Core), DRM
+The finalized production platform is six pillars: Dumby (Application Core), Release Manager
 (Dumby Release Manager), Webserver/MDIS, Swastik (module pipeline), PEP/permission
 engine, and CLAI. Each is a separately-deployed service with its own lifecycle.
 
@@ -2744,9 +2744,9 @@ Two distinct review tracks exist: the third-party Marketplace submission pipelin
 
 The developer journey is graduated: private modules are free; public distribution requires a developer license and the Marketplace submission pipeline. This is the core value proposition — keep the path documented end-to-end (module scaffolding CLI, private module mode, developer licensing, Marketplace submission).
 
-### DRM Compliance Matrix
+### Release Manager Compliance Matrix
 
-The DRM compliance matrix maps 18 Dumby requirements to DRM conformance — Swastik owns deployment and hot-swap, two-approver gating, and the remaining items across the DRM modules. Target: all 18 items verified in implementation.
+The Release Manager compliance matrix maps 18 Dumby requirements to Release Manager conformance — Swastik owns deployment and hot-swap, two-approver gating, and the remaining items across the Release Manager modules. Target: all 18 items verified in implementation.
 
 ### Closed-Source, Developer-Licensed Model
 
@@ -5275,7 +5275,7 @@ Invokes every registered module's purgeByUserId or purgeByGuildId hook and recor
 
 **Target State:** Implemented ErasureCoordinator with module hook invocation, per-module purge, and audit_logs recording.
 
-Enumerate all 20 explicit safety guarantees DRM provides.
+Enumerate all 20 explicit safety guarantees Release Manager provides.
 
 **Current State:** Specified — 20 guarantees: (1) immutable Git SHA, (2) image signed/recorded/verified, (3) production approval evidence, (4) expand-only migrations, (5) config validated before boot, (6) Swastik locked via fenced lease, (7) uploads queued not rejected, (8) rollout waits for readiness, (9) shard ownership transfers without dual ownership, (10) canary compares new vs old, (11) external dependency cor…
 
@@ -5910,9 +5910,9 @@ This four-tier pyramid is the complete set of PR- and merge-gated correctness te
 
 This four-tier pyramid is the complete set of PR- and merge-gated correctness testing;
 
-Specification only — next steps include: create `/dumby-release-manager/` repository, implement `src/entry/drm.ts` with state machine, implement Swastik integration endpoints, implement Kubernetes rollout controller, unit tests, integration tests, E2E tests, chaos tests, DRM Dockerfile, Kubernetes manifests, ServiceAccount, NetworkPolicy, developer onboarding, operator runbooks, API reference docs.
+Specification only — next steps include: create `/dumby-release-manager/` repository, implement `src/entry/release-manager.ts` with state machine, implement Swastik integration endpoints, implement Kubernetes rollout controller, unit tests, integration tests, E2E tests, chaos tests, Release Manager Dockerfile, Kubernetes manifests, ServiceAccount, NetworkPolicy, developer onboarding, operator runbooks, API reference docs.
 
-Fully implemented DRM with all phases, tests, infrastructure, and documentation.
+Fully implemented Release Manager with all phases, tests, infrastructure, and documentation.
 
 **Happy-Path Smoke Test "Journey" Definition**
 "The most common 10–15 user journeys per module" is a heuristic without defining what a journey is.
@@ -5930,9 +5930,9 @@ The `metering_usage_daily` table exists in the data model, and MTP (Metering Tok
 ### 40.2.6 Compliance Matrix — Not Row-by-Row Walked
 
 The compliance matrix exists as an overview document listing compliance requirements, but it has not been walked row-by-row to verify each requirement's implementation status. The current state is an overview only — requirements are listed without per-row evidence of implementation status (met, partially met, not met, N/A). The specification requires a complete row-by-row compliance walk: each compliance requirement documented with its current status, implementation evidence (code reference, test reference, or gap note), and any remediation needed.
-### 40.2.5 dumby-db-diff — DRM Preflight Integration (~50% Missing)
+### 40.2.5 dumby-db-diff — Release Manager Preflight Integration (~50% Missing)
 
-`dumby-db-diff` is a standalone CLI tool that can compare database schemas and produce a diff, but it is not integrated into the DRM (Dumby Release Manager) Phase 1 preflight. The DRM preflight currently generates a migration plan without a schema-diff risk assessment, meaning potentially destructive migrations (column drops, type changes) are not flagged before deployment. The specification requires the DRM preflight calling `dumby-db-diff` to produce a schema diff, parsing the output for risk-level assessment, and incorporating high-risk changes into the migration plan with explicit confirmation requirements.
+`dumby-db-diff` is a standalone CLI tool that can compare database schemas and produce a diff, but it is not integrated into the Release Manager (Dumby Release Manager) Phase 1 preflight. The Release Manager preflight currently generates a migration plan without a schema-diff risk assessment, meaning potentially destructive migrations (column drops, type changes) are not flagged before deployment. The specification requires the Release Manager preflight calling `dumby-db-diff` to produce a schema diff, parsing the output for risk-level assessment, and incorporating high-risk changes into the migration plan with explicit confirmation requirements.
 
 ### 40.2.4 Scheduled Database Backup — Compliance #7 (Incomplete)
 
@@ -6502,7 +6502,7 @@ Full specification of each gate: Gate 1 (static analysis rules and AST checks), 
 
 #### Design Consideration — Phased Platform Risk Mitigation
 
-DRM is a growth enabler, not a requirement. Phased adoption: Phase 1 (0–100 guilds) skip DRM entirely; Phase 2 (100–1000 guilds) run DRM in staging and test canary behavior; Phase 3 (1000+ guilds) DRM non-negotiable in full production. Operational guidance for single-operator growth rather than an architectural mandate.
+Release Manager is a growth enabler, not a requirement. Phased adoption: Phase 1 (0–100 guilds) skip Release Manager entirely; Phase 2 (100–1000 guilds) run Release Manager in staging and test canary behavior; Phase 3 (1000+ guilds) Release Manager non-negotiable in full production. Operational guidance for single-operator growth rather than an architectural mandate.
 
 #### Design Consideration — kubectl cp + REST API Workaround
 
@@ -6595,7 +6595,7 @@ spec:
 
 #### Design Consideration — Six-Pillar Team Allocation & API Contracts
 
-For execution at scale: allocate Backend, Frontend, SRE, and DevEx teams across the six pillars and define the inter-component API contracts (MDIS/Swastik, DRM↔Swastik, GitHub integration — §44.3/§44.7) before parallel work begins. Recommended starting point: the Website pillar. Impact: High; Feasibility: High.
+For execution at scale: allocate Backend, Frontend, SRE, and DevEx teams across the six pillars and define the inter-component API contracts (MDIS/Swastik, Release Manager↔Swastik, GitHub integration — §44.3/§44.7) before parallel work begins. Recommended starting point: the Website pillar. Impact: High; Feasibility: High.
 
 ### 44.4 Sharding Topology in Kubernetes
 
@@ -7425,7 +7425,7 @@ The entire shipped user surface per interface.md.
 
 Define Swastik's internal API endpoints for module upload and core-release coordination.
 
-**Current State:** Specified — `POST /swastik/modules/upload` (module upload), `POST /internal/reload?module=<name>` (hot-swap signal), `POST /internal/swastik/core-release/lock` (DRM lock), `POST /internal/swastik/core-release/lock/renew` (lease renewal), `POST /internal/swastik/core-release/unlock` (release with outcome).
+**Current State:** Specified — `POST /swastik/modules/upload` (module upload), `POST /internal/reload?module=<name>` (hot-swap signal), `POST /internal/swastik/core-release/lock` (Release Manager lock), `POST /internal/swastik/core-release/lock/renew` (lease renewal), `POST /internal/swastik/core-release/unlock` (release with outcome).
 
 **Target State:** All endpoints implemented with authentication.
 
@@ -8505,21 +8505,21 @@ documentation.md (v4.5.0, Comprehensive Unified Edition) is the read-start-to-fi
 
 ####
 
-> #### — DRM Crash Recovery & Reconciliation
+> #### — Release Manager Crash Recovery & Reconciliation
 
 ####
 
-> #### — DRM release intake & governance (deploy/abort/rollback/dry-run/idempotency)
+> #### — Release Manager release intake & governance (deploy/abort/rollback/dry-run/idempotency)
 
 ####
 
 > #### — Shard-Aware Readiness Validation
 
-#### [From §4 (Non-Goals & Explicit Boundaries)] DRM Exteriority (Axiom A1)
+#### [From §4 (Non-Goals & Explicit Boundaries)] Release Manager Exteriority (Axiom A1)
 
-#### [From §4 (Non-Goals & Explicit Boundaries)] Authority Boundary Between Swastik and DRM
+#### [From §4 (Non-Goals & Explicit Boundaries)] Authority Boundary Between Swastik and Release Manager
 
-#### [From §4 (Non-Goals & Explicit Boundaries)] DRM Determinism Principle
+#### [From §4 (Non-Goals & Explicit Boundaries)] Release Manager Determinism Principle
 
 #### [From §4 (Non-Goals & Explicit Boundaries)] Documentation Integrity as a Distinct Problem
 
@@ -8555,7 +8555,7 @@ documentation.md (v4.5.0, Comprehensive Unified Edition) is the read-start-to-fi
 
 > **Design consideration — the elasticity problem.** The 100-command ceiling is a hard Discord limit, and Personas are a clever but high-UX-burden answer: a guild administrator must understand applications, bindings, and per-persona command budgets to use them well. Either the Persona UX should be simplified, or Personas should be explicitly documented as a power-user-only escape hatch rather than a mainstream scaling path. Impact: Medium.
 
-#### [From §6 (System Architecture)] — DRM security & audit controls
+#### [From §6 (System Architecture)] — Release Manager security & audit controls
 
 - ** Full security control set + unified audit. The specification requires: ** All controls + audit_logs entries with actor_id,action,targetType,targetId,beforeState,afterState,reason,timestamp.
 
@@ -9018,14 +9018,14 @@ Maintained.
 #### [From §20 (Configuration Management)] Service topology:
 
 > **Service topology:** Dumby deploys five separately-deployed
-> control-plane services (PEP, CLAI, Swastik, DRM, Webserver/MDIS). This is a
+> control-plane services (PEP, CLAI, Swastik, Release Manager, Webserver/MDIS). This is a
 > control-plane service topology for deployment isolation — NOT a microservices
 > architecture goal. Inter-service calls are narrow and few; the non-goal is to
 > split the application along every domain boundary.
 
-#### [From §20 (Configuration Management)] DRM authority split:
+#### [From §20 (Configuration Management)] Release Manager authority split:
 
-> **DRM authority split:** DRM (the Dumby Release Manager) owns core
+> **Release Manager authority split:** Release Manager (the Dumby Release Manager) owns core
 > release/deploy authority; Swastik owns module upload/staging/promotion. The two
 > control-plane responsibilities are explicitly split so neither can act in the
 > other's domain — ambiguous boundaries are resolved by this ownership rule.
@@ -9180,7 +9180,7 @@ Maintain as-is; document the distributed locking mechanism that prevents duplica
 
 #### [From §29 (Security Architecture & Threat Model)] 29.7.UUR858 `ErasureCoordinator.eraseUser/eraseGuild` — `shared/erasure-coordinator.ts`
 
-#### [From §29 (Security Architecture & Threat Model)] 29.7.UUR849 DRM 20 Safety Guarantees
+#### [From §29 (Security Architecture & Threat Model)] 29.7.UUR849 Release Manager 20 Safety Guarantees
 
 #### [From §30 (Performance & Scalability Engineering)] Deployment status:
 
@@ -9302,7 +9302,7 @@ Maintain as-is; document the signature verification and idempotency mechanism.
 - Core has 500+ fast unit tests; modules may skip unit tests with no enforcement.
 - CI coverage gates per layer (command/service/repository) blocking merge below floors.
 
-**DRM Next Steps / Implementation Status**
+**Release Manager Next Steps / Implementation Status**
 
 #### [From §40 (Testing Architecture & Quality Assurance)] 40.3.UUR860 container.resolve(token) / DI Constructor Injection
 
@@ -9361,9 +9361,9 @@ Maintain as-is; extend to produce catalog.json (see ).
 
 > **Design consideration — honest trade-offs of the revised design.** "Zero cons" is not real, and the accepted costs should stay documented: per-module sandboxing costs raw performance versus in-process calls (IPC overhead); staged builds and rollback history cost extra storage; diff-based auto-approval is a heuristic that will occasionally wave through something a human should see; and the volume-mount approach presumes RWX volumes — the most operationally consequential requirement, worth platform-team review before adoption. Impact: Medium.
 
-#### [From §43 (CI/CD Pipeline & Automation)] Positioning note — DRM versus industry tooling.
+#### [From §43 (CI/CD Pipeline & Automation)] Positioning note — Release Manager versus industry tooling.
 
-> **Positioning note — DRM versus industry tooling.** DRM overlaps with, but is not replaceable by, Argo Rollouts (canary and rollback), Spinnaker (release orchestration), ArgoCD-style GitOps (declarative desired state), and GitHub Actions CI (the trigger mechanism), with Kubernetes executing the rollout and no service mesh in play. DRM's unique niche is release orchestration designed for a sharded, stateful Discord bot with module uploads and a Swastik coordination contract — that positioning should be documented wherever the deployment gates above are described. Impact: Low; feasibility: High.
+> **Positioning note — Release Manager versus industry tooling.** Release Manager overlaps with, but is not replaceable by, Argo Rollouts (canary and rollback), Spinnaker (release orchestration), ArgoCD-style GitOps (declarative desired state), and GitHub Actions CI (the trigger mechanism), with Kubernetes executing the rollout and no service mesh in play. Release Manager's unique niche is release orchestration designed for a sharded, stateful Discord bot with module uploads and a Swastik coordination contract — that positioning should be documented wherever the deployment gates above are described. Impact: Low; feasibility: High.
 
 #### [From §43 (CI/CD Pipeline & Automation)] `RestoreService` (controlled restore automation)
 
@@ -9377,7 +9377,7 @@ Maintain as-is; extend to produce catalog.json (see ).
 
 #### [From §43 (CI/CD Pipeline & Automation)] dumby-db-diff (migration preview & schema-diff CLI)
 
-- ABSENT — no schema-diff tool; DRM preflight (§6.2) could use one.
+- ABSENT — no schema-diff tool; Release Manager preflight (§6.2) could use one.
 - CLI: DB connect, parse migrations/, human-readable diff, risk assessment (e.g. NOT NULL backfill), --dry-run SQL output.
 
 #### [From §43 (CI/CD Pipeline & Automation)] dumby-developer-portal (module upload/tracking UI)
@@ -9473,7 +9473,7 @@ Maintain as-is; extend to produce catalog.json (see ).
 #### [From §43 (CI/CD Pipeline & Automation)] dumby-gitops-bridge (ArgoCD/Flux adapter)
 
 - ABSENT — CI/CD assumes GitHub Actions (§40.3-§40.4).
-- Adapter service consuming GitOps events and calling DRM /api/v1/deploy.
+- Adapter service consuming GitOps events and calling Release Manager /api/v1/deploy.
 
 #### [From §43 (CI/CD Pipeline & Automation)] dumby-load-generator (SLO validation harness)
 
@@ -9498,7 +9498,7 @@ Maintain as-is; extend to produce catalog.json (see ).
 
 #### [From §47 (REST API, Webhooks & MDIS)] 47.UUR893 POST /admin/modules/reload-all Endpoint (Implied, Not Yet Implemented)
 
-#### [From §47 (REST API, Webhooks & MDIS)] 47.UUR894 POST /api/v1/deploy (DRM deploy request)
+#### [From §47 (REST API, Webhooks & MDIS)] 47.UUR894 POST /api/v1/deploy (Release Manager deploy request)
 
 #### [From §47 (REST API, Webhooks & MDIS)] 47.UUR900 Webhook HMAC-SHA256 Verification
 

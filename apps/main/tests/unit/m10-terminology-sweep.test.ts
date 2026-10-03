@@ -9,6 +9,8 @@ import { describe, expect, test } from 'vitest';
  * canonical ranks **MODERATOR / ADMINISTRATOR**.
  *
  * The sweep covers the **living set** — code, tests, config, and the repo's own operational docs.
+ * The owner widened it on 2026-10-03: the docs are swept too, except the rename's own record
+ * (the change-log's mapping statement and this ledger's entries, which must keep the old term).
  */
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, '../../../..');
@@ -74,8 +76,12 @@ describe('M10 — terminology & legacy-name sweep', () => {
     expect(blueprint).toContain('release-manager:core-release:lease:{env}');
   });
 
-  test('the exemption register is accurate — documentation.md is the archived legacy record', () => {
+  test('the docs are swept too, outside the rename record itself', () => {
     const documentation = readFileSync(resolve(repoRoot, 'docs/documentation.md'), 'utf8');
-    expect(documentation).toMatch(LEGACY);
+    expect(documentation).not.toMatch(/\bDRM\b/);
+    expect(documentation).toContain('Release Manager');
+    // the mapping statement itself must survive, or the rename loses its record
+    const changeLog = readFileSync(resolve(repoRoot, 'docs/change-log.md'), 'utf8');
+    expect(changeLog).toContain('"DRM" → **Release Manager**');
   });
 });

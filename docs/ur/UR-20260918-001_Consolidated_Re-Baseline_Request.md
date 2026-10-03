@@ -96,7 +96,7 @@ Re-baseline the twelve-document Dumby corpus to v5.0 so the documentation descri
 
 | Trigger Type | Description |
 |---|---|
-| `<new requirement / defect found / audit finding / standard update / structural drift / external change / other>` | **Audit finding** — three-pass evidence chain: (1) specification extraction against the two spec documents, (2) full codebase flaw audit, (3) independent re-verification that eliminated false positives (0 of 235 withdrawn) and surfaced 35 false negatives; consolidated universe of 270 verified findings, of which the flaw-fixable subset became 88 formal requests. **New requirement** — 31 raw upgradation requirements normalized into UR-01…UR-31. **Structural drift** — naming drift (MOD vs MODERATOR, Twill vs Twill, DRM vs Release Manager), CI directory misplaced under `apps/main/`, three inconsistent RBAC layer orderings. **External change** — Discord Components v2 platform evolution and the interface reference window drift. |
+| `<new requirement / defect found / audit finding / standard update / structural drift / external change / other>` | **Audit finding** — three-pass evidence chain: (1) specification extraction against the two spec documents, (2) full codebase flaw audit, (3) independent re-verification that eliminated false positives (0 of 235 withdrawn) and surfaced 35 false negatives; consolidated universe of 270 verified findings, of which the flaw-fixable subset became 88 formal requests. **New requirement** — 31 raw upgradation requirements normalized into UR-01…UR-31. **Structural drift** — naming drift (MOD vs MODERATOR, Twill vs Twill, Release Manager vs Release Manager), CI directory misplaced under `apps/main/`, three inconsistent RBAC layer orderings. **External change** — Discord Components v2 platform evolution and the interface reference window drift. |
 
 ---
 
@@ -166,7 +166,7 @@ Select all that apply:
 | 2 | Standalone grants table never created (only `rbac_grants`); PEP "RBAC role-assign" is a no-op stub that appears to succeed | blueprint §21, §22.3 | RBAC flaws #2–#3 |
 | 3 | OAuth2-to-RBAC bridge declared but not implemented; dashboard enforces its own rough rules | blueprint §16.4, §21 | RBAC flaws #4 |
 | 4 | Three mutually inconsistent orderings of the seven RBAC layers across the two source specifications | documentation.md ↔ blueprint.md | RBAC flaws #6 |
-| 5 | Naming drift: code canonical `MODERATOR`/`ADMINISTRATOR` vs spec text `MOD`/`ADMIN`; "Twill" vs "Twill"; "DRM" vs "Release Manager" | blueprint §21, §35, §15.9 | RBAC flaws #9; UR-03; UR-29 |
+| 5 | Naming drift: code canonical `MODERATOR`/`ADMINISTRATOR` vs spec text `MOD`/`ADMIN`; "Twill" vs "Twill"; "Release Manager" vs "Release Manager" | blueprint §21, §35, §15.9 | RBAC flaws #9; UR-03; UR-29 |
 | 6 | Unauthenticated control planes: PEP/admin trust a self-declared `source`; `/internal/deploy` auto-approves; `INTERNAL_API_KEY` required by schema but never verified | blueprint §22, §15.8, §32 | Suite — five most important #3 |
 | 7 | Path traversal in Swastik upload/deploy — executed PoC writes attacker-controlled `index.js` into a live module, bypassing promotion and audit | blueprint §15.8 | Suite UR-B-02 / UR-C-01 |
 | 8 | Loader imports any file on the live volume — no hash/signature verification before `import()` | blueprint §15.9 | Suite UR-B-04 |
@@ -270,7 +270,7 @@ Every new engineer onboarded onto the current docs inherits the three-RBAC-syste
 
 | # | Item | Reason for Exclusion |
 |---|---|---|
-| 1 | The 52 deferred greenfield items (trusted-builder Phase-1 build subsystem, Ed25519 signing subsystem, heap-diff memory watcher, Core UI Compiler/static embed system, Dodo Payments integration buildout, full independent-persona system, marketplace multi-state licensing, GitHub release integration buildout, DRM release-manager 12-phase service, `defineManifest` package, event-bus advanced semantics, break-glass script, `worker_threads` isolation) | No code exists to document; suite scope rule (a)–(d) excludes new-capability work; tracked in each group's exclusions appendix and must not be smuggled into this UR |
+| 1 | The 52 deferred greenfield items (trusted-builder Phase-1 build subsystem, Ed25519 signing subsystem, heap-diff memory watcher, Core UI Compiler/static embed system, Dodo Payments integration buildout, full independent-persona system, marketplace multi-state licensing, GitHub release integration buildout, Release Manager release-manager 12-phase service, `defineManifest` package, event-bus advanced semantics, break-glass script, `worker_threads` isolation) | No code exists to document; suite scope rule (a)–(d) excludes new-capability work; tracked in each group's exclusions appendix and must not be smuggled into this UR |
 | 2 | v5.0 UR-16 monetization wiring for Twill | Program keeps personas free-chartered; only the sunset condition is documented |
 | 3 | Implementation of any request itself (code, migrations, CI) | This UR governs the documentation corpus only; requests are executed under their own programs |
 | 4 | Rewriting documentation.md as a living reference | It remains the frozen legacy record with superseded-decision markers |
@@ -340,7 +340,7 @@ Every new engineer onboarded onto the current docs inherits the three-RBAC-syste
 |---|---|---|---|---|---|---|
 | 1 | UR-01 → §22.6, §22.7, §22.10, §22.3, §27, §43 | UPDATE | CLAI specified but unimplemented (ssh2 declared, not imported; `entry/ssh-clai.ts` absent) | Specify the functional console: ssh2 public-key transport, session model, PEP-parity command set; landing via UR-A-02/B-09/C-06 | Operator terminal is a production-readiness gap | — |
 | 2 | UR-02 → §15.11, §15.8, §13.6, §41, §44 | NEW | No repository-triggered deployment | OIDC-validated portal repository binding; push → Swastik deployment with Deployment Records | WS-A: repo-to-running with no operator | — |
-| 3 | UR-03 → §5–§48 global, §15.9, §33.3, §40, §43, audit register | CONVENTION | "DRM" naming throughout | Global rename to "Release Manager" + reverse GitHub sync (system changes committed back to the Git system-of-record) | Naming debt; single vocabulary | Renames only; behavior unchanged |
+| 3 | UR-03 → §5–§48 global, §15.9, §33.3, §40, §43, audit register | CONVENTION | "Release Manager" naming throughout | Global rename to "Release Manager" + reverse GitHub sync (system changes committed back to the Git system-of-record) | Naming debt; single vocabulary | Renames only; behavior unchanged |
 | 4 | UR-04 → §12, §11.15, §15.8, §10, §38, §44 | NEW | Deep framework-path imports in authoring | Versioned standalone `swastik` SDK package with scoped entry points | Contract stability; authoring isolation | Breaking for modules importing internals |
 | 5 | UR-05 → §8.2, §15.9, §11.6, §17.4, §18.6, lint set, §2.3 | UPDATE | Registry seed + import allowlist | Blind discovery from tier volumes at bootstrap; no hardcoded module lists | Fully dynamic loading | Breaking; Phase 1 |
 | 6 | UR-06 → §15.7, §15.8, §22.3, §13.7, §13.6, §44 | UPDATE | Binary approval column | Six-state license machine (pending → under-review → approved → suspended ⇄ restored → revoked) + review/suspend/restore/revoke endpoints and automated triggers | Real licensing regime | — |
@@ -555,7 +555,7 @@ Every new engineer onboarded onto the current docs inherits the three-RBAC-syste
 | 6 | UR-B-24 → config scripts | NEW | No configmap check | Add CI check diffing configmap keys against `ENV_KEYS` | Config drift | — |
 | 7 | UR-B-16 / UR-C-23 → worker | UPDATE | `src/entry/worker.ts` full bootstrap | Truncated worker bootstrap (`bootstrapWorker()`); main-module guards on auto-start entrypoints | Suite UR-B-16/C-23 | — |
 | 8 | UR-04 → workspaces | NEW | No authoring package | `swastik` package workspace (types, schemas, scoped entry points) | Authoring contract | — |
-| 9 | UR-03 → tools | CONVENTION | `tools/release_manager/` (DRM placeholder) | Renamed Release Manager with reverse GitHub sync note | Naming debt | — |
+| 9 | UR-03 → tools | CONVENTION | `tools/release_manager/` (Release Manager placeholder) | Renamed Release Manager with reverse GitHub sync note | Naming debt | — |
 | 10 | UR-B-26 → upload path | UPDATE | Single-`indexSource` string | Tarball upload path (multipart, 64 MiB, zip-slip-safe) | Suite UR-B-26 | — |
 | 11 | UR-C-13 / UR-B-21 → `.github` | STRUCTURE | Workflows under `apps/main/` | Five workflows + CODEOWNERS + templates at root | CI liveness | — |
 | 12 | Reserved directories | ERRATA | Aspirational dirs labeled reserved | Reconcile against post-`be39a52` HEAD; reserved-only labels retained honestly | Drift | — |
@@ -601,14 +601,14 @@ Every new engineer onboarded onto the current docs inherits the three-RBAC-syste
 | # | Aspect | Current | Proposed | Reason |
 |---|---|---|---|---|
 | 1 | Version | unversioned | 5.0.0 | Identity refresh |
-| 2 | System identity references | "Twill", "DRM" | "Twill", "Release Manager" | UR-29, UR-03 |
+| 2 | System identity references | "Twill", "Release Manager" | "Twill", "Release Manager" | UR-29, UR-03 |
 
 #### 8.6.2 Section-Level Changes
 
 | # | Section Ref | Change Type | Current Text (excerpt) | Proposed Text (excerpt or directive) | Rationale | Backward Compatibility |
 |---|---|---|---|---|---|---|
 | 1 | UR-29 → persona references | CONVENTION | "Twill" | "Twill" (bring-your-own-identity, single-server) | Naming debt | — |
-| 2 | UR-03 → service references | CONVENTION | "DRM" | "Release Manager" (with reverse GitHub sync) | Naming debt | — |
+| 2 | UR-03 → service references | CONVENTION | "Release Manager" | "Release Manager" (with reverse GitHub sync) | Naming debt | — |
 | 3 | UR-10 → responsiveness | UPDATE | No buffer behavior | Instant buffer-then-render behavior; formal notices with reason codes as the personality's failure voice | UR-10 | — |
 | 4 | UR-09 → title & attribution grammar | CONVENTION | Unspecified | A4 grammar once confirmed (Phase 0) | Tension 9 | — |
 | 5 | UR-09 → accent | CONVENTION | Unspecified | Single official accent token once decided (Phase 0) | Tension 10 | — |

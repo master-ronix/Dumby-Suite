@@ -154,7 +154,7 @@ The evidence set found the record and the tree disagree (UR 2.0 finding 17). Bef
 1. **Rebuild the ledger from the tree.** Construct the fresh ledger (template shapes), then re-triage **all 121 rows** against working HEAD — for each row: `DONE / PARTIAL / PRESENT-IN-TREE / ABSENT`, with the file/test evidence that proves it. This supersedes the template's §2 snapshot, which is a starting orientation only.
 2. **Correct the M0 record.** Reopen UR-B-01, UR-B-03, UR-C-06 to PARTIAL (their clauses are in the UR §8.13.2 SC-01); record M0 as 5 DONE / 9 PARTIAL / 3 OPEN.
 3. **Record ahead-of-record work (SC-02).** For each M1–M9-shaped implementation the triage finds, write the R11 change-log line the protocol owed — marked **PRESENT IN TREE (uncredited pending UR §8.1.3 #19)**. Do not credit it as DONE; do not leave it invisible.
-4. **Record the corrections SC-04** (change-log master-table line counts: blueprint 13,139 not 13,258; concept 581 not 582) and CF-22 (legacy "DRM" in the change-log's living open-items section).
+4. **Record the corrections SC-04** (change-log master-table line counts: blueprint 13,139 not 13,258; concept 581 not 582) and CF-22 (legacy "Release Manager" in the change-log's living open-items section).
 5. **Resolve or carry the blocking open questions** (UR §8.1.3 #13 layout model, #14 module source home, #15 hello-world tier, #18 Swastik path vocabulary, #19 state-of-record policy) — each is OPEN and gates a specific item's start.
 
 The **provenance** for step 3 is now evidenced (E10 RC-5; commits verified): the prior ledger was removed at `9f7e427` (2026-09-26) and the work landed at `d334cfb` + `581499e` (2026-09-26) — so the triage's job is to *credit or route work that was done but never recorded*, not to discover where it came from. Start from the §3.0.3 evidence map.
@@ -322,7 +322,7 @@ Each MR item follows the per-item execution loop (§4) with these bindings:
 ### M10 — Terminology & Legacy-Name Sweep
 
 **Request rows owned:** UR-03 (row 3) and the residual sweep.
-**Source of truth:** change-log "Changed — shared facts": "DRM" → **Release Manager** (with reverse GitHub sync), "Twixter" → **Twill**, canonical ranks **MODERATOR / ADMINISTRATOR**.
+**Source of truth:** change-log "Changed — shared facts": "Release Manager" → **Release Manager** (with reverse GitHub sync), "Twixter" → **Twill**, canonical ranks **MODERATOR / ADMINISTRATOR**.
 **What changes:** sweep the remaining legacy names across code, tests, comments, config keys, and commit messages going forward. Text-level only — no behavior changes in this item.
 **Blast radius:** every file containing a legacy name (mechanical, textual).
 **Done-gate:** a grep for the legacy names returns nothing outside the frozen docs/ur/ provenance records.
