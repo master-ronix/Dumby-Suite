@@ -20,6 +20,7 @@ export interface ShutdownDeps {
   queueRedis: Redis;
   db: DbClient;
   discordClient?: Client | undefined;
+  stopEventLoopMonitor?: () => void;
   drainInFlightCommands: (timeoutMs: number) => Promise<void>;
   stepTimeoutsMs?: Partial<Record<(typeof SHUTDOWN_STEPS)[number], number>>;
 }
@@ -46,6 +47,7 @@ export async function gracefulShutdown(deps: ShutdownDeps, signal: string): Prom
 
   await runStep(deps, 'STOP_ACCEPTING_GATEWAY_EVENTS', async () => {
     acceptingGatewayEvents = false;
+    deps.stopEventLoopMonitor?.();
     await deps.discordClient?.destroy();
   });
 

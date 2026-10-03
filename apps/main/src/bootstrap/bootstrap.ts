@@ -10,6 +10,7 @@ import { initTracing } from '../tracing/tracing.js';
 import { DbClient } from '../db/client.js';
 import { InternalEventBus } from '../events/event-bus.js';
 import { EventRouter } from '../events/event-router.js';
+import { EventLoopLagMonitor } from '../events/event-loop-lag.js';
 import { Scheduler } from '../queue/scheduler.js';
 import { CacheManager } from '../cache/cache-manager.js';
 import { RedisLockStore } from '../cache/redis-lock-store.js';
@@ -176,7 +177,12 @@ export async function bootstrap(): Promise<void> {
   progress.advanceTo('DI_BOOTSTRAP');
   const eventBus = new InternalEventBus({ maxEmitDepth: config.get('EVENT_BUS_MAX_EMIT_DEPTH') });
   // §15.1 — the gateway event router: module-declared handlers, dispatched from the client.
-  const eventRouter = new EventRouter({ logger, cache });
+  // §16 (UR-C-19) — sample event-loop lag so the router can shed sheddable events under pressure.
+  const eventLoopLagMonitor = new EventLoopLagMonitor({
+    thresholdMs: config.get('EVENT_LOOP_LAG_SHED_THRESHOLD_MS'),
+  });
+  eventLoopLagMonitor.start();
+  const eventRouter = new EventRouter({ logger, cache, lagMonitor: eventLoopLagMonitor, metrics });
   fatalHooks.notify = (correlationId, error) => {
     try {
       void eventBus.emit('dumby.system.fatal', {
@@ -643,6 +649,7 @@ export async function bootstrap(): Promise<void> {
     queueRedis,
     db,
     discordClient,
+    stopEventLoopMonitor: () => eventLoopLagMonitor.stop(),
     drainInFlightCommands: (timeoutMs) => inFlightTracker.waitForDrain(timeoutMs),
   });
   fatalHooks.shutdown = () =>
@@ -659,6 +666,7 @@ export async function bootstrap(): Promise<void> {
         queueRedis,
         db,
         discordClient,
+        stopEventLoopMonitor: () => eventLoopLagMonitor.stop(),
         drainInFlightCommands: (timeoutMs) => inFlightTracker.waitForDrain(timeoutMs),
       },
       'FATAL',

@@ -12,6 +12,8 @@ export interface ModuleJobDeclaration {
 export interface ModuleEventHandlerDeclaration {
   readonly event: string;
   readonly once?: boolean;
+  /** §16 — mark a subscription whose dropped instances violate no correctness requirement. */
+  readonly sheddable?: boolean;
   readonly handle: (...args: unknown[]) => Promise<void> | void;
 }
 

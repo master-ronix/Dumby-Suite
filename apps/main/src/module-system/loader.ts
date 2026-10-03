@@ -128,6 +128,7 @@ export class ModuleLoader {
                 {
                   event: handler.event as never,
                   ...(handler.once !== undefined ? { once: handler.once } : {}),
+                  ...(handler.sheddable !== undefined ? { sheddable: handler.sheddable } : {}),
                   handle: async (...args: unknown[]) => {
                     await handler.handle(...args);
                   },
