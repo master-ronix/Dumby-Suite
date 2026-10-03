@@ -128,8 +128,8 @@ app.post<{
   });
 });
 
-// §22.5/§22.8: PEP operator credentials (`purpose: 'operator_keypair'`) are issued here, bound to
-// the named operator identity and started `active` — the independently-configured PEP operator
+// §22.5/§22.8: Power Engine operator credentials (`purpose: 'operator_keypair'`) are issued here, bound to
+// the named operator identity and started `active` — the independently-configured Power Engine operator
 // allow-list is the approval, so no further owner approval is required for an operator credential.
 app.post<{
   Body: { operatorId: string; registeredBy: string; label?: string };

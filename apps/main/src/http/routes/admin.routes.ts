@@ -41,7 +41,7 @@ function sendNotImplemented(reply: FastifyReply, action: string): FastifyReply {
   return reply.code(501).send({
     error: {
       code: 'NOT_IMPLEMENTED',
-      message: `PEP action "${action}" has no backing primitive implemented yet`,
+      message: `Power Engine action "${action}" has no backing primitive implemented yet`,
     },
   });
 }
@@ -54,9 +54,9 @@ export interface AdminRoutesDeps {
   ceilingService?: CommandCeilingService;
   collisionResolution?: CollisionResolutionService;
   getGuildCommandCount?: (guildId: string) => Promise<number> | number;
-  /** §22.5: the independently-configured PEP operator allow-list — identities that may decide. */
+  /** §22.5: the independently-configured Power Engine operator allow-list — identities that may decide. */
   operatorAllowList?: readonly string[];
-  /** §22.5: verifies a presented PEP operator credential (delegated to the Credentials Service). */
+  /** §22.5: verifies a presented Power Engine operator credential (delegated to the Credentials Service). */
   operatorVerifier?: {
     verify(input: { keyId: string; secret: string; devId?: string }): Promise<unknown>;
   };
@@ -253,7 +253,7 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
     },
   );
 
-  // §15.8 "Owner Approval, Never Auto-Approval" + §22.5: the caller must present a PEP operator
+  // §15.8 "Owner Approval, Never Auto-Approval" + §22.5: the caller must present a Power Engine operator
   // credential (validated by the Credentials Service) whose identity is in the independently-
   // configured operator allow-list. Approval drives the developer's license to `approved` (§15.7,
   // the authoritative state); `developers.approvalStatus` is derived from it.

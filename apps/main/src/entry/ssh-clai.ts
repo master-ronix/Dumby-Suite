@@ -77,14 +77,14 @@ function stripAnsi(input: string): string {
   return stripAnsiControl(input);
 }
 
-class PepActionNotImplementedError extends Error {
+class PowerEngineActionNotImplementedError extends Error {
   constructor(functionName: string) {
-    super(`PEP action "${functionName}" has no backing primitive implemented yet`);
-    this.name = 'PepActionNotImplementedError';
+    super(`Power Engine action "${functionName}" has no backing primitive implemented yet`);
+    this.name = 'PowerEngineActionNotImplementedError';
   }
 }
 
-async function handlePepCommand(
+async function handlePowerEngineCommand(
   functionName: string,
   argsStr: string,
   operatorId: string,
@@ -99,7 +99,7 @@ async function handlePepCommand(
         reason: (args['reason'] as string) ?? 'CLAI command',
       },
       async () => {
-        throw new PepActionNotImplementedError(functionName);
+        throw new PowerEngineActionNotImplementedError(functionName);
       },
     );
     if (!outcome.ok) {
@@ -107,7 +107,7 @@ async function handlePepCommand(
     }
     return `NOT IMPLEMENTED: ${functionName} has no backing primitive implemented yet`;
   } catch (err) {
-    if (err instanceof PepActionNotImplementedError) {
+    if (err instanceof PowerEngineActionNotImplementedError) {
       return `NOT IMPLEMENTED: ${functionName} has no backing primitive implemented yet`;
     }
     return `ERROR: ${String(err)}`;
@@ -144,7 +144,7 @@ async function handleLine(channel: ServerChannel, line: string, operator: Operat
   if (line === 'help') {
     channel.write('Available commands:\n');
     channel.write('  help                          Show this message\n');
-    channel.write('  pep <function> <args>         Invoke a PEP function\n');
+    channel.write('  power-engine <function> <args>         Invoke a Power Engine function\n');
     channel.write('  whoami                        Show your operator identity\n');
     channel.write('  quit / exit                   Disconnect\n\n$ ');
     return;
@@ -153,12 +153,12 @@ async function handleLine(channel: ServerChannel, line: string, operator: Operat
     channel.write(`Operator: ${operator.label} (${operator.operatorId})\n$ `);
     return;
   }
-  if (line.startsWith('pep ')) {
+  if (line.startsWith('power-engine ')) {
     const rest = line.slice(4).trim();
     const spaceIdx = rest.indexOf(' ');
     const functionName = spaceIdx > 0 ? rest.slice(0, spaceIdx) : rest;
     const argsStr = spaceIdx > 0 ? rest.slice(spaceIdx + 1) : '{}';
-    channel.write(`${await handlePepCommand(functionName, argsStr, operator.operatorId)}\n$ `);
+    channel.write(`${await handlePowerEngineCommand(functionName, argsStr, operator.operatorId)}\n$ `);
     return;
   }
   if (line.length > 0) channel.write(`Unknown command: ${line}\n`);

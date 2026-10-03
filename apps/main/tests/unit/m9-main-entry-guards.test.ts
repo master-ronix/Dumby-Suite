@@ -9,7 +9,7 @@ import { describe, expect, test } from 'vitest';
 const ENTRY_POINTS = [
   'main.ts',
   'worker.ts',
-  'pep.ts',
+  'power-engine.ts',
   'ssh-clai.ts',
   'credentials.ts',
   'swastik.ts',

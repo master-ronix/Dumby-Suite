@@ -38,7 +38,7 @@ This directory documents the security posture and controls for the Dumby Unified
 ### Audit Trail
 
 - `audit_logs` is **insert-only forever**. No `UPDATE` or `DELETE` is permitted against this table anywhere in the codebase (enforced by ESLint rule).
-- Every PEP action writes an audit row before returning — success or rejection, with `actorId`, `source`, `reason`, `action`, and `outcome`.
+- Every Power Engine action writes an audit row before returning — success or rejection, with `actorId`, `source`, `reason`, `action`, and `outcome`.
 
 ### Network Security
 

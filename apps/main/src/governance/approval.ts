@@ -1,6 +1,6 @@
 /**
  * §15.8 "Owner Approval, Never Auto-Approval" / §22.5. A pending approval is decided only by an
- * identity that resolves to a project owner — a PEP operator in the independently-configured
+ * identity that resolves to a project owner — a Power Engine operator in the independently-configured
  * operator allow-list — and never by the subject itself or by a service/automation. This is the
  * same three refusals the `approvals` table's CHECK constraint encodes at the database boundary.
  */
@@ -36,7 +36,7 @@ export function decideApproval(input: {
     return { kind: 'refused', reason: 'an automation or service may not decide an approval' };
   }
   if (!input.operatorAllowList.includes(actor)) {
-    return { kind: 'refused', reason: 'actor is not in the PEP operator allow-list' };
+    return { kind: 'refused', reason: 'actor is not in the Power Engine operator allow-list' };
   }
   return input.decision === 'approve' ? { kind: 'approved' } : { kind: 'declined' };
 }

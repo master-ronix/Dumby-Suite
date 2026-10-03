@@ -50,7 +50,7 @@ test('a handler that throws never records an "allowed" row for that attempt', as
   expect(auditWriter.entries.length).toBe(0);
 });
 
-const STUB_PEP_ACTIONS = [
+const STUB_POWER_ENGINE_ACTIONS = [
   { path: '/admin/power-engine/economy/balance-adjust', action: 'economy.balance-adjust' },
   { path: '/admin/power-engine/rbac/role-assign', action: 'rbac.role-assign' },
   { path: '/admin/power-engine/marketplace/review', action: 'marketplace.review' },
@@ -65,7 +65,7 @@ const STUB_PEP_ACTIONS = [
   { path: '/admin/power-engine/cache/invalidate', action: 'cache.invalidate' },
 ];
 
-test('every previously-stubbed PEP route answers honest 501 (no-stub walk)', async () => {
+test('every previously-stubbed Power Engine route answers honest 501 (no-stub walk)', async () => {
   const app = Fastify();
   const dispatcher = { dispatch: vi.fn() };
   registerAdminRoutes(app, {
@@ -75,7 +75,7 @@ test('every previously-stubbed PEP route answers honest 501 (no-stub walk)', asy
     auditWriter: { write: vi.fn() },
   } as never);
 
-  for (const { path, action } of STUB_PEP_ACTIONS) {
+  for (const { path, action } of STUB_POWER_ENGINE_ACTIONS) {
     const res = await app.inject({
       method: 'POST',
       url: path,
@@ -110,12 +110,12 @@ test('queryAuditLog orders by real createdAt column and filters real columns onl
 
   const res = await app.inject({
     method: 'GET',
-    url: '/admin/power-engine/queryAuditLog?source=pep-internal&actorId=owner-1&action=guild.suspend&limit=10',
+    url: '/admin/power-engine/queryAuditLog?source=power-engine-internal&actorId=owner-1&action=guild.suspend&limit=10',
   });
   expect(res.statusCode).toBe(200);
   expect(res.json()).toStrictEqual(rows);
   expect(builder.orderBy).toHaveBeenCalledWith('createdAt', 'desc');
-  expect(builder.where).toHaveBeenNthCalledWith(1, { source: 'pep-internal' });
+  expect(builder.where).toHaveBeenNthCalledWith(1, { source: 'power-engine-internal' });
   expect(builder.where).toHaveBeenNthCalledWith(2, { actorId: 'owner-1' });
   expect(builder.where).toHaveBeenNthCalledWith(3, { action: 'guild.suspend' });
   expect(builder.limit).toHaveBeenCalledWith(10);

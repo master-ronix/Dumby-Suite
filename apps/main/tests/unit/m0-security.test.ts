@@ -125,14 +125,14 @@ describe('M0 control-plane authentication', () => {
     expect(called).toBe(true);
   });
 
-  test('PEP and Credentials entrypoints install the shared internal-auth preHandler', () => {
-    expect(readSource('src/entry/pep.ts')).toContain('registerInternalAuth(app');
+  test('Power Engine and Credentials entrypoints install the shared internal-auth preHandler', () => {
+    expect(readSource('src/entry/power-engine.ts')).toContain('registerInternalAuth(app');
     expect(readSource('src/entry/credentials.ts')).toContain('registerInternalAuth(app');
   });
 
-  test('PEP derives its source server-side instead of trusting request body source', () => {
-    const source = readSource('src/entry/pep.ts');
-    expect(source).toContain("source: 'pep-internal'");
+  test('Power Engine derives its source server-side instead of trusting request body source', () => {
+    const source = readSource('src/entry/power-engine.ts');
+    expect(source).toContain("source: 'power-engine-internal'");
     expect(source).not.toContain("source: String(body['source']");
   });
 });
@@ -185,13 +185,13 @@ describe('M0 admin surface authentication (UR-A-01, UR-B-03, UR-B-06)', () => {
   });
 
   test('a body-supplied source no longer satisfies the trusted-source allow-list', async () => {
-    const app = buildHarness({ trustedSources: ['pep-internal'] });
+    const app = buildHarness({ trustedSources: ['power-engine-internal'] });
 
     const forged = await app.inject({
       method: 'POST',
       url: '/admin/system/maintenance-mode',
       headers: { [INTERNAL_API_HEADER]: INTERNAL_KEY },
-      body: { actorId: 'admin', source: 'pep-internal', reason: 'spoofed', enabled: true },
+      body: { actorId: 'admin', source: 'power-engine-internal', reason: 'spoofed', enabled: true },
     });
 
     expect(forged.statusCode).toBe(403);
@@ -559,10 +559,10 @@ describe('M0 control plane reports no fake successes (UR-A-04, finding #7)', () 
     }
   });
 
-  test('PEP no longer claims completion and no longer answers 200 on a rejection', () => {
-    const source = readSource('src/entry/pep.ts');
+  test('Power Engine no longer claims completion and no longer answers 200 on a rejection', () => {
+    const source = readSource('src/entry/power-engine.ts');
     expect(source).toContain("code: 'NOT_IMPLEMENTED'");
-    expect(source).toContain('throw new PepActionNotImplementedError(functionName)');
+    expect(source).toContain('throw new PowerEngineActionNotImplementedError(functionName)');
     expect(source).toContain('reply.code(403).send');
     expect(source).toContain("code: 'DUMBY_POWER_ENGINE_REJECTED'");
     expect(source).not.toContain('async () => body');
@@ -574,17 +574,17 @@ describe('M0 control plane reports no fake successes (UR-A-04, finding #7)', () 
     expect(source).toContain('NOT IMPLEMENTED');
     expect(source).not.toContain('OK: ${functionName} completed');
     expect(source).not.toContain('async () => args');
-    expect(source).toContain('throw new PepActionNotImplementedError(functionName)');
+    expect(source).toContain('throw new PowerEngineActionNotImplementedError(functionName)');
   });
 
-  test('a throwing PEP handler is what keeps the audit honest', async () => {
+  test('a throwing Power Engine handler is what keeps the audit honest', async () => {
     const auditWriter = new InMemoryAuditWriter();
-    const dispatcher = new PowerEngineDispatcher({ trustedSources: ['pep-internal'] }, auditWriter);
+    const dispatcher = new PowerEngineDispatcher({ trustedSources: ['power-engine-internal'] }, auditWriter);
 
     await expect(
       dispatcher.dispatch(
         'economy.balance-adjust',
-        { actorId: 'owner-1', source: 'pep-internal', reason: 'test' },
+        { actorId: 'owner-1', source: 'power-engine-internal', reason: 'test' },
         async () => {
           throw new Error('not implemented');
         },

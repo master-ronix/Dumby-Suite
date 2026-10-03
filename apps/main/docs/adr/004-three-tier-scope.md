@@ -17,7 +17,7 @@ Bootstrap, DI, config/env schema, DB + migrations, cache (L1+L2+stampede guard),
 
 ### Tier 2 — Functional single-node (wired but not fully tested)
 
-Job queue (BullMQ + autoscaler), i18n (manager + formatters), rate limiting (sliding-window + fallback), PEP dispatcher (already in archive), Credentials Service entry point, Terraform modules (scaffolded).
+Job queue (BullMQ + autoscaler), i18n (manager + formatters), rate limiting (sliding-window + fallback), Power Engine dispatcher (already in archive), Credentials Service entry point, Terraform modules (scaffolded).
 
 ### Tier 3 — Scaffolded / documented stub
 

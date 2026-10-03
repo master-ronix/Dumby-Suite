@@ -30,8 +30,8 @@ The 48-row matrix from §45. Status: ✅ fully implemented, ⚠️ partially imp
 | 20 | Schema-driven web configuration UI (MDIS) | 🔲 | Manifest declares optional `dashboardSchema` field; no MDIS backend (ADR 004) |
 | 21 | Fatal, build-time command-name collision detection | ✅ | `src/commands/command-registry.ts` — `CommandCollisionError` at registration |
 | 22 | Bounded, batched guild command change queue | ⚠️ | `guild_command_queue` table exists (M018); no processing logic |
-| 23 | Enforced 100-command-per-guild ceiling | ✅ | `src/commands/command-ceiling.ts` — `MAX_COMMANDS_PER_GUILD=100`, projection + guard; PEP endpoint `/admin/power-engine/command-ceiling/:guildId` |
-| 24 | Five-step guild-facing command collision resolution | ✅ | `src/commands/collision-resolution.ts` — detect+pause+resolve+finalize flow; integrated into module restore/suspend; PEP endpoints for listing and resolving collisions |
+| 23 | Enforced 100-command-per-guild ceiling | ✅ | `src/commands/command-ceiling.ts` — `MAX_COMMANDS_PER_GUILD=100`, projection + guard; Power Engine endpoint `/admin/power-engine/command-ceiling/:guildId` |
+| 24 | Five-step guild-facing command collision resolution | ✅ | `src/commands/collision-resolution.ts` — detect+pause+resolve+finalize flow; integrated into module restore/suspend; Power Engine endpoints for listing and resolving collisions |
 | 25 | No text-prefix commands, no simulated prefix parsing | ✅ | All commands are Discord slash commands; zero message-content parsing |
 | 26 | Per-handler isolation on gateway event dispatch | ⚠️ | `command-router.ts` — logical isolation (try/catch per handler); no process isolation (ADR 005) |
 | 27 | Bounded internal-event-bus cycle detection | ✅ | `src/events/event-bus.ts` — `maxEmitDepth: 20`, `EventCycleError`, protected domains |
@@ -41,12 +41,12 @@ The 48-row matrix from §45. Status: ✅ fully implemented, ⚠️ partially imp
 | 31 | Seven-layer permission resolution, fail-closed where it matters | ✅ | `src/permissions/resolver.ts` — 7 layers, fail-open/closed per spec |
 | 32 | Global bot-owner override bypassing every other layer | ✅ | `resolver.ts` Layer 1 — early ALLOW return, also `admin-tier-gate.ts` |
 | 33 | Explicit, targeted per-user/role grant overrides | ✅ | `src/permissions/rbac.ts` — 3 grant levels × 5 types, role > group > set priority |
-| 34 | One permission engine shared by bot and web dashboard | ⚠️ | `resolvePermission()` is pure/sharable; no web dashboard exists; PEP uses separate trusted-source auth |
-| 35 | Global administrative authority via PEP function catalog | ✅ | `src/entry/pep.ts` + `admin.routes.ts` — 14 PEP domains, pre-action audit |
-| 36 | Out-of-band operator access independent of gateway health (CLAI) | ✅ | `src/entry/clai.ts` — TCP REPL, SSH public-key auth, PEP function dispatch |
+| 34 | One permission engine shared by bot and web dashboard | ⚠️ | `resolvePermission()` is pure/sharable; no web dashboard exists; Power Engine uses separate trusted-source auth |
+| 35 | Global administrative authority via Power Engine function catalog | ✅ | `src/entry/power-engine.ts` + `admin.routes.ts` — 14 Power Engine domains, pre-action audit |
+| 36 | Out-of-band operator access independent of gateway health (CLAI) | ✅ | `src/entry/clai.ts` — TCP REPL, SSH public-key auth, Power Engine function dispatch |
 | 37 | Single, shared credential issuance path | ✅ | `src/entry/credentials.ts` — Argon2id, local-bind only, revocable |
 | 38 | Three-scope configuration model (core, module, guild) | ⚠️ | Process-core (`env.schema.ts`) + guild (`guild_configs` JSONB) exist; no formal process-module scope |
-| 39 | Full config-change audit trail | ✅ | Insert-only `audit_logs` with DB triggers; PEP + CLAI both write audit rows |
+| 39 | Full config-change audit trail | ✅ | Insert-only `audit_logs` with DB triggers; Power Engine + CLAI both write audit rows |
 | 40 | Repository pattern as sole database abstraction | ✅ | `src/db/repositories/base.repository.ts` + `InsertOnlyRepository`; no raw Knex outside |
 | 41 | Every migration reversible (working down()) | ✅ | All 31 migrations have working `down()`; migration runner supports both directions |
 | 42 | Two-tier cache with stampede protection & negative caching | ✅ | `src/cache/` — L1 (LRU) + L2 (Redis), StampedeGuard, NEGATIVE_SENTINEL, probabilistic early recompute |
@@ -63,7 +63,7 @@ The 48-row matrix from §45. Status: ✅ fully implemented, ⚠️ partially imp
 
 | Service | Scope | Status |
 |---------|-------|--------|
-| PEP — Power Engine Panel (17-domain REST admin) | Control-plane | ✅ 14 endpoints wired in `admin.routes.ts`, full dispatcher + audit |
+| Power Engine — Power Engine Panel (17-domain REST admin) | Control-plane | ✅ 14 endpoints wired in `admin.routes.ts`, full dispatcher + audit |
 | CLAI — SSH/REPL operator terminal | Control-plane | ✅ `src/entry/clai.ts`, TCP REPL, SSH key auth |
 | Swastik — Deploy / hot-reload / hot-swap | Control-plane | ⚠️ Scaffold only (Tier 3 per ADR 004) |
 | Credentials Service — Argon2id credential issuance | Control-plane | ✅ `src/entry/credentials.ts`, local-bind, revocable |
@@ -122,6 +122,6 @@ The 48-row matrix from §45. Status: ✅ fully implemented, ⚠️ partially imp
 
 | # | Capability | What was done |
 |---|-----------|---------------|
-| 23 | 100-command-per-guild ceiling | Created `CommandCeilingService` with `MAX_COMMANDS_PER_GUILD=100`, projection + guard methods, PEP endpoint at `/admin/power-engine/command-ceiling/:guildId`. Wired into module restore flow. |
-| 24 | Five-step collision resolution | Created `CollisionResolutionService` with detection, pause (sets `install_pending_resolution` state), resolution (writes `guild_command_overrides`), and finalization flow. Integrated into module restore/suspend PEP endpoints. PEP endpoints at `/admin/power-engine/collisions/:guildId` and `/admin/power-engine/collisions/:guildId/resolve`. |
+| 23 | 100-command-per-guild ceiling | Created `CommandCeilingService` with `MAX_COMMANDS_PER_GUILD=100`, projection + guard methods, Power Engine endpoint at `/admin/power-engine/command-ceiling/:guildId`. Wired into module restore flow. |
+| 24 | Five-step collision resolution | Created `CollisionResolutionService` with detection, pause (sets `install_pending_resolution` state), resolution (writes `guild_command_overrides`), and finalization flow. Integrated into module restore/suspend Power Engine endpoints. Power Engine endpoints at `/admin/power-engine/collisions/:guildId` and `/admin/power-engine/collisions/:guildId/resolve`. |
 | 30 | Re-authorization on component clicks | Low — No component interactions in current scope |

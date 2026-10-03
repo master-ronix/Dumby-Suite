@@ -1866,7 +1866,7 @@ The following surfaces are not part of this end-user reference and are not Disco
 - **HTML generator** — no HTML generation or static site building is part of the Discord interface.
 - **Interactive Terminal UI (TUI)** — no terminal user interface.
 - **REST API / webhooks** — the API families (blueprint.md §44) are machine surfaces, not end-user interfaces.
-- **Power Engine Panel web interface** — the PEP web interface is an administrative surface.
+- **Power Engine Panel web interface** — the Power Engine web interface is an administrative surface.
 - **Twill registration API** — persona creation and configuration (blueprint.md §35, §44). `/persona` only lists.
 
 The end-user interface of Dumby is the Discord-facing Components V2 dashboard system specified in this reference: the Core Command Surface, its navigation, and the renderer grammar that issues every one of them.

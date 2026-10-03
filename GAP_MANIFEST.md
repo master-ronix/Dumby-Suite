@@ -15,7 +15,7 @@
 | Bootstrap / DI / Infrastructure | COMPLETE | 18-stage bootstrap, DI container, DB, Cache, Queue, RateLimit, Resilience, HTTP servers, shutdown |
 | Module System Framework | COMPLETE | Registry, loader, manifest schema (strict), lifecycle hooks, tier rules, ESLint isolation, event bus, permissions, middleware pipeline |
 | Discord Integration & Command Router | COMPLETE | Live + mock gateway adapters, single canonical router, middleware pipeline wired with 12 stages, permission resolver invoked |
-| Control-Plane Service Stubs | COMPLETE | PEP, CLAI, Swastik, Credentials, Persona typed interfaces (no operational logic) |
+| Control-Plane Service Stubs | COMPLETE | Power Engine, CLAI, Swastik, Credentials, Persona typed interfaces (no operational logic) |
 | **Shipped Modules** | **PARTIAL** | **6 Core-tier modules implemented:** `dashboard`, `browse`, `queue`, `persona`, `permit`, `modules` + `health` (Core), `hello-world` (Standard). TypeScript errors remain (see below). |
 | Testing | COMPLETE | Unit tests cover core clusters; per-layer coverage floors met (74.2/72.0/73.6/74.9 vs 70/65/70/70) |
 | CI/CD | PARTIAL | `.github/workflows/ci.yml` added (D-8.4 chain) but **not yet proven** on GitHub |

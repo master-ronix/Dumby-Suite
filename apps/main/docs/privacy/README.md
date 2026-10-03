@@ -32,7 +32,7 @@ The two shipped modules (`health`, `hello`) register no eraser or exporter becau
 
 ### Audit Log Immutability
 
-The `audit_logs` table is **insert-only by design** (enforced by ESLint rule matching non-`.insert()` Knex calls against this table). This means audit records for PEP actions cannot be deleted, even in response to a GDPR erasure request. This is intentional: administrative audit records must be retained for security and accountability purposes.
+The `audit_logs` table is **insert-only by design** (enforced by ESLint rule matching non-`.insert()` Knex calls against this table). This means audit records for Power Engine actions cannot be deleted, even in response to a GDPR erasure request. This is intentional: administrative audit records must be retained for security and accountability purposes.
 
 ### Secrets Handling
 

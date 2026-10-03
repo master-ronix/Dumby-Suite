@@ -22,7 +22,7 @@ export interface CredentialIssuer {
     registeredBy: string;
     label?: string;
   }): Promise<{ keyId: string; secret: string; status: string }>;
-  /** §22.5/§22.8: issue a PEP operator credential (`operator_keypair`) bound to the operator id. */
+  /** §22.5/§22.8: issue a Power Engine operator credential (`operator_keypair`) bound to the operator id. */
   issueOperator(input: {
     operatorId: string;
     registeredBy: string;

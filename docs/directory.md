@@ -62,7 +62,7 @@ dumby-suite/                                        ← ROOT · pnpm-workspace m
 │       ├── docs/                                   ← app-level engineering documentation (the cross-cutting
 │       │   ├── adr/                                ← app-level decision records (APP-ADR-001 … APP-ADR-005),
 │       │   │                                          distinct from the workspace docs/adr/ series
-│       │   ├── api/                                ← REST / PEP / MDIS API surface
+│       │   ├── api/                                ← REST / Power Engine / MDIS API surface
 │       │   ├── architecture/                      ← layered view, request & event flow, shard topology
 │       │   ├── compliance/                        ← audit-column & governance compliance
 │       │   ├── privacy/                           ← data-privacy & user-data erasure
@@ -123,7 +123,7 @@ dumby-suite/                                        ← ROOT · pnpm-workspace m
 │       │   │   │                                      dual-window check-and-increment)
 │       │   │   ├── resilience/                     ← circuit breaker (rolling window) · retry policy
 │       │   │   │                                      (exponential backoff, 429 / Retry-After aware)
-│       │   │   ├── http/                           ← Fastify server · external API client · PEP function
+│       │   │   ├── http/                           ← Fastify server · external API client · Power Engine function
 │       │   │   │                                      dispatcher · error boundary
 │       │   │   │   ├── routes/                     ← health (liveness / readiness / startup) · metrics ·
 │       │   │   │   │                                  admin · info · inbound webhooks · module dashboard (MDIS)

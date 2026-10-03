@@ -226,7 +226,7 @@ P13 One source of truth per concern — exactly one place resolves permissions,
     exactly one resolves configuration, exactly one holds per-guild module
     state; duplicated authority is a design defect.
 P14 Freedom by default, authority by exception — total-control capacity
-    (PEP) exists as deliberate, logged intervention for cause, never as an
+    (Power Engine) exists as deliberate, logged intervention for cause, never as an
     ambient enforcement layer anyone must design around.
 ````
 
@@ -342,7 +342,7 @@ layers enforce without grandfathering.
 **Ban 3 — unsolicited direct messages (ADR-002).** The main bot MUST NOT
 send unsolicited direct messages — the prohibition is complete, and there is
 no tier exception. Operator communication travels the out-of-band
-control-plane surfaces (CLAI, PEP), and the DM prohibition MUST NOT weaken
+control-plane surfaces (CLAI, Power Engine), and the DM prohibition MUST NOT weaken
 the guarantee that maintenance and intervention remain reachable without
 locking out the operators themselves (D-5.1, D-6.3). Twill persona
 instances decide their own DM behavior; this ban binds the main bot.
@@ -1080,9 +1080,9 @@ its own repository, image, manifests, and CI — placing it under the bot's
 entry directory creates a circular bootstrap dependency (deploying the bot
 would require deploying the deployer) and is forbidden.
 
-### D-6.2 — Power Engine Panel (PEP)
+### D-6.2 — Power Engine Panel (Power Engine)
 
-**Rule (MUST).** PEP is the global administrative authority, implemented as
+**Rule (MUST).** Power Engine is the global administrative authority, implemented as
 a documented function-calling model over a fixed catalog of 17 control
 domains, with unconditional audit logging of every invocation regardless of
 outcome. Its capacity — suspend any guild, module, developer, or command
@@ -1535,7 +1535,7 @@ Part 4           §7, §11, §13–§18, ADR-004/005    Module system framework,
                                                    event-catalog enforcement
 Part 5           §18–§25, §29–§30 (backend)       Middleware, permissions,
                                                    config, data, cache, jobs
-Part 6           §15 (control-plane), §22, §35,   PEP, CLAI, Credentials,
+Part 6           §15 (control-plane), §22, §35,   Power Engine, CLAI, Credentials,
                  ADR-008/ADR-011                   Release Manager,
                                                    Swastik, Twill personas
 Part 7           §26–§28, §32–§34                 State, observability,
@@ -1598,7 +1598,7 @@ first (mirroring blueprint §45's mandatory feature matrix):
 [ ] 32  Global bot-owner override bypassing every other layer
 [ ] 33  Explicit per-user/role grant overrides (Layer 7)
 [ ] 34  One permission engine shared across every consuming surface
-[ ] 35  PEP global authority via the documented control-domain catalog
+[ ] 35  Power Engine global authority via the documented control-domain catalog
 [ ] 36  Out-of-band operator access independent of gateway health (CLAI)
 [ ] 37  Single shared credential issuance path
 [ ] 38  Three-scope configuration model

@@ -22,7 +22,7 @@ const db = new DbClient({
 const redis = new Redis(env.REDIS_URL);
 
 const dispatcher = new PowerEngineDispatcher(
-  { trustedSources: ['pep-internal'] },
+  { trustedSources: ['power-engine-internal'] },
   {
     write: async (entry) => {
       await db.knex('audit_logs').insert({
@@ -44,15 +44,15 @@ registerInternalAuth(app, {
   expectedKey: env.INTERNAL_API_KEY,
 });
 
-class PepActionNotImplementedError extends Error {
+class PowerEngineActionNotImplementedError extends Error {
   constructor(functionName: string) {
-    super(`PEP action "${functionName}" has no backing primitive implemented yet`);
-    this.name = 'PepActionNotImplementedError';
+    super(`Power Engine action "${functionName}" has no backing primitive implemented yet`);
+    this.name = 'PowerEngineActionNotImplementedError';
   }
 }
 
 app.post<{ Params: { functionName: string }; Body: unknown }>(
-  '/api/pep/:functionName',
+  '/api/power-engine/:functionName',
   async (request, reply) => {
     const { functionName } = request.params;
     const body = (request.body ?? {}) as Record<string, unknown>;
@@ -61,11 +61,11 @@ app.post<{ Params: { functionName: string }; Body: unknown }>(
         functionName,
         {
           actorId: String(body['actorId'] ?? ''),
-          source: 'pep-internal',
+          source: 'power-engine-internal',
           reason: String(body['reason'] ?? ''),
         },
         async () => {
-          throw new PepActionNotImplementedError(functionName);
+          throw new PowerEngineActionNotImplementedError(functionName);
         },
       );
       if (!outcome.ok) {
@@ -79,11 +79,11 @@ app.post<{ Params: { functionName: string }; Body: unknown }>(
       return reply.code(501).send({
         error: {
           code: 'NOT_IMPLEMENTED',
-          message: new PepActionNotImplementedError(functionName).message,
+          message: new PowerEngineActionNotImplementedError(functionName).message,
         },
       });
     } catch (err) {
-      if (err instanceof PepActionNotImplementedError) {
+      if (err instanceof PowerEngineActionNotImplementedError) {
         return reply.code(501).send({ error: { code: 'NOT_IMPLEMENTED', message: err.message } });
       }
       return reply.code(400).send({ error: String(err) });
@@ -93,12 +93,12 @@ app.post<{ Params: { functionName: string }; Body: unknown }>(
 
 if (isMainEntry(import.meta.url, process.argv[1])) {
   app
-    .listen({ port: env.PEP_PORT, host: env.PEP_BIND_HOST })
+    .listen({ port: env.POWER_ENGINE_PORT, host: env.POWER_ENGINE_BIND_HOST })
     .then(() => {
-      logger.info('pep-started', { port: env.PEP_PORT });
+      logger.info('power-engine-started', { port: env.POWER_ENGINE_PORT });
     })
     .catch((err: unknown) => {
-      logger.fatal('pep-start-failed', { error: String(err) });
+      logger.fatal('power-engine-start-failed', { error: String(err) });
       void redis.quit();
       void db.destroy();
       process.exit(1);

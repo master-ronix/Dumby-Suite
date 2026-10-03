@@ -19,7 +19,7 @@ describe('CLAI ANSI/control stripping (UR-C-06)', () => {
   });
 
   test('keeps ordinary text, tabs and newlines', () => {
-    expect(stripAnsi('pep ping\t{}\n')).toBe('pep ping\t{}\n');
+    expect(stripAnsi('power-engine ping\t{}\n')).toBe('power-engine ping\t{}\n');
   });
 });
 

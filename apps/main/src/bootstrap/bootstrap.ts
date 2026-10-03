@@ -648,7 +648,7 @@ export async function bootstrap(): Promise<void> {
     oauth2Client: oauth2Client.isConfigured() ? oauth2Client : undefined,
     adminDeps: {
       dispatcher: new PowerEngineDispatcher(
-        { trustedSources: config.get('PEP_TRUSTED_SOURCES') },
+        { trustedSources: config.get('POWER_ENGINE_TRUSTED_SOURCES') },
         {
           write: async (entry) => {
             await db.knex('audit_logs').insert({
@@ -679,10 +679,10 @@ export async function bootstrap(): Promise<void> {
           });
         },
       },
-      // §22.5/§15.8: arm the governance surface — the PEP operator allow-list (identities that may
+      // §22.5/§15.8: arm the governance surface — the Power Engine operator allow-list (identities that may
       // decide approvals) and the Credentials Service client, used both to verify a presented
       // operator credential and to activate a developer credential on approval (finding #24).
-      operatorAllowList: config.get('PEP_OPERATOR_IDS'),
+      operatorAllowList: config.get('POWER_ENGINE_OPERATOR_IDS'),
       operatorVerifier: credentialsClient,
       credentialActivator: credentialsClient,
       // Finding #15: arm the power-engine pause/resume routes with the queue manager.

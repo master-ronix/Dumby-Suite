@@ -81,7 +81,7 @@ The application is built as a pnpm monorepo workspace member at `workspace/apps/
 |------|---------------|------------|
 | **Core Framework** | Bootstrap, DI, module system, middleware, permissions, data layer, cache, queue, observability, shutdown, the core Renderer | YES — full implementation |
 | **Shipped Modules** | The modules that constitute the user-facing surface on delivery | YES — the Core Command Surface specified in `interface.md` |
-| **Control-Plane Services** | PEP, CLAI, Swastik, Credentials Service, Personas (Twill) | SCAFFOLD ONLY — typed interfaces and entry points; no operational implementation |
+| **Control-Plane Services** | Power Engine, CLAI, Swastik, Credentials Service, Personas (Twill) | SCAFFOLD ONLY — typed interfaces and entry points; no operational implementation |
 
 ### 1.3 Non-Goals
 
@@ -131,7 +131,7 @@ When implementing, auditing, or remediating a specific subsystem, read the sourc
 | Renderer & Presentation Grammar | §10.2, §16.5, §20 | — | ban registry (embed ban) |
 | Buffer Embed & Formal Notice Frame | §17.11, §19.2, §20, §28.6 | — | — |
 | Permission Engine | §21 | §19 | D-5.2 |
-| PEP / CLAI / Credentials | §22 | — | Part 6 |
+| Power Engine / CLAI / Credentials | §22 | — | Part 6 |
 | Configuration | §23 | §20 | D-5.4 |
 | Database | §24 | §21 | D-5.5 |
 | Caching | §25 | §22 | D-5.6 |
@@ -466,7 +466,7 @@ Each phase specifies: its goal, source-document sections to read, deliverables, 
 - `directive.md` Part 6 (D-6.1 to D-6.6)
 
 **Deliver:**
-- `src/entry/pep.ts` — PEP stub with typed interface
+- `src/entry/power-engine.ts` — Power Engine stub with typed interface
 - `src/entry/ssh-clai.ts` — CLAI SSH server entrypoint stub. The console speaks SSH with public-key authentication (ssh2) — no plaintext TCP REPL exists anywhere in the codebase
 - `src/entry/swastik.ts` — Swastik stub (manifest reading must NOT use `import()` — read D-4.9)
 - `src/entry/credentials.ts` — Credentials Service stub

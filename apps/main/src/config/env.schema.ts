@@ -22,8 +22,8 @@ const baseEnvSchema = z
     HEALTH_PORT: z.coerce.number().int().positive().default(8081),
     METRICS_BIND_HOST: z.string().default('127.0.0.1'),
     METRICS_PORT: z.coerce.number().int().positive().default(8082),
-    PEP_BIND_HOST: z.string().default('127.0.0.1'),
-    PEP_PORT: z.coerce.number().int().positive().default(8083),
+    POWER_ENGINE_BIND_HOST: z.string().default('127.0.0.1'),
+    POWER_ENGINE_PORT: z.coerce.number().int().positive().default(8083),
     CLAI_BIND_HOST: z.string().default('127.0.0.1'),
     CLAI_PORT: z.coerce.number().int().positive().default(8084),
     // UR-C-06: CLAI session bounds.
@@ -98,10 +98,10 @@ const baseEnvSchema = z
           return false;
         }
       }, 'ENCRYPTION_ROOT_KEY must decode to exactly 32 bytes'),
-    PEP_TRUSTED_SOURCES: csvIds(),
-    // §22.5: the independently-configured PEP operator allow-list — the identities that may
+    POWER_ENGINE_TRUSTED_SOURCES: csvIds(),
+    // §22.5: the independently-configured Power Engine operator allow-list — the identities that may
     // decide governance approvals. Distinct from (but typically overlapping) BOT_OWNER_IDS.
-    PEP_OPERATOR_IDS: csvIds(),
+    POWER_ENGINE_OPERATOR_IDS: csvIds(),
     CLAI_AUTHKEY_STORAGE_URL: z.string().default(''),
 
     MODULES_DIR: z.string().default('/mnt/modules'),

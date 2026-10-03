@@ -231,7 +231,7 @@ FIGURE 0-A — DUMBY IN ONE DIAGRAM
 
  Parallel, separately-deployed control-plane services (never modules,
  never part of the gateway-connected process):
- • Power Engine Panel (PEP) — global administrative authority (§22)
+ • Power Engine Panel (Power Engine) — global administrative authority (§22)
  • CLAI — operator terminal: a real ssh2 public-key SSH server at src/entry/ssh-clai.ts (§22.6)
  • Swastik — deployment / hot-reload / hot-swap (§15)
  • Credentials Service — shared credential issuance (§22.8)
@@ -1412,7 +1412,7 @@ Every entrypoint boots the identical DI container against the identical core ser
 (§10); each simply starts a subset of them and skips the rest. `main.ts` is the only
 entrypoint that opens a gateway connection and loads feature modules — including when
 started against a Persona's token rather than the main bot's (§35). The other five
-never do either: they are how PEP, CLAI, Swastik, and the Credentials Service each run
+never do either: they are how Power Engine, CLAI, Swastik, and the Credentials Service each run
 as their own deployable process rather than a code path inside the bot.
 
 ### 7.6 `src/monetization/` — Reserved Monetization Scaffold
@@ -1442,7 +1442,7 @@ been built on top of it.
 
 The `src/monetization/` directory is currently at ~0% implementation — the empty directory structure is documented as the "expected, complete state." However, this deferral lacks explicit rationale for why monetization is deferred and what conditions would trigger implementation. The specification requires either a defined monetization feature (with at minimum a chosen model — subscription, pay-per-use, or one-time) or an explicit deferral document with rationale (e.g., "monetization is deferred until module marketplace adoption reaches N guilds"), ensuring the empty scaffold is a conscious decision rather than an oversight.
 
-The `POST /api/pep/:functionName` route in `src/entry/pep.ts` must dispatch to real domain handlers in `PowerEngineService` based on the function name, rather than echoing the request body back as a no-op (`async => body`). The function-name → handler dispatch mapping must cover all 17 documented PEP control domains.
+The `POST /api/pep/:functionName` route in `src/entry/power-engine.ts` must dispatch to real domain handlers in `PowerEngineService` based on the function name, rather than echoing the request body back as a no-op (`async => body`). The function-name → handler dispatch mapping must cover all 17 documented Power Engine control domains.
 
 - **Intent:** SSH-hosted admin REPL.
 - This is specified but not yet implemented.
@@ -3908,7 +3908,7 @@ Every deployment surface — manual upload, repository-triggered deployment (§1
 and operator-initiated deployment — passes a token-bucket + cooldown rate limiter
 with four independent dimensions: per-developer, per-repository, per-module, and
 global. Each dimension has its own token bucket and its own cooldown window, all
-four are PEP-tunable at runtime through the policy-tuning controls (§22.2) with the
+four are Power Engine-tunable at runtime through the policy-tuning controls (§22.2) with the
 previous value recorded in the audit row, and exceeding any one of them queues the
 deployment rather than dropping it: the deployment is accepted with a 429-equivalent
 response naming the earliest admissible time, and the queue drains in arrival order
@@ -4500,7 +4500,7 @@ Promotion from staging to production should require a smoke load in the Swastik 
 
 #### Design Consideration — Verify Signature on Every Load and Reload
 
-Signature verification points must be specified and enforced at every load and reload: the runtime module loader, the hot-swap reload path, and PEP revocation checks. This enforces the intended Marketplace revocation model — a revoked or tampered artifact cannot re-enter a running process through any path.
+Signature verification points must be specified and enforced at every load and reload: the runtime module loader, the hot-swap reload path, and Power Engine revocation checks. This enforces the intended Marketplace revocation model — a revoked or tampered artifact cannot re-enter a running process through any path.
 
 ### 15.6 Developer Registration & Token-Based Identity
 
@@ -4737,7 +4737,7 @@ manifests, and the `release-manager.ts` entrypoint driving its phase state machi
 
 Every accepted build carries full provenance in the `builds` table: `sourceArchiveHash`, `artifactHash`, `lockfileHash`, `gateResultsHash`, the machine-readable SBOM, the Ed25519 `signature` with its `signatureKeyId`, and the `signedDescriptor` — the signature computed over the exact promoted artifact bytes bound to the provenance tuple (moduleSlug, version, devId, buildId, sourceHash, artifactHash, gateResultsHash). A build row missing any provenance column is not promotable, and identity-level binding (a devId/buildId pair) never substitutes for the signature.
 
-The runtime loader verifies the Ed25519 signature before every load and every reload — bootstrap, hot-swap, fresh install, and post-revocation re-check — and refuses the load outright on verification failure: the module is neither imported nor executed, the refusal is audited, and the previous version keeps serving. An artifact swapped after signing fails this check because the signature no longer covers the deployed bytes. The **signed Effective Config Descriptor** — module id, build id, resolved config (manifest defaults plus live PEP overrides), approval status, approver, timestamp, and revocation flag — is mounted read-only in the module sandbox, and its signature is verified at the same load boundary as the artifact's. `signModule` runs on Gate 5 approval and `revokeModuleSignature` on revocation (§16.4). The Ed25519 signing subsystem itself — key ceremony, custody, and rotation — is deferred greenfield work; until it lands, Swastik's in-process signer holds the keys, and every verification gate specified here is enforced regardless.
+The runtime loader verifies the Ed25519 signature before every load and every reload — bootstrap, hot-swap, fresh install, and post-revocation re-check — and refuses the load outright on verification failure: the module is neither imported nor executed, the refusal is audited, and the previous version keeps serving. An artifact swapped after signing fails this check because the signature no longer covers the deployed bytes. The **signed Effective Config Descriptor** — module id, build id, resolved config (manifest defaults plus live Power Engine overrides), approval status, approver, timestamp, and revocation flag — is mounted read-only in the module sandbox, and its signature is verified at the same load boundary as the artifact's. `signModule` runs on Gate 5 approval and `revokeModuleSignature` on revocation (§16.4). The Ed25519 signing subsystem itself — key ceremony, custody, and rotation — is deferred greenfield work; until it lands, Swastik's in-process signer holds the keys, and every verification gate specified here is enforced regardless.
 
 ### Atomic Promotion — renameSync Swap Under Redis Lock
 
@@ -4749,7 +4749,7 @@ Staging is a bounded resource, not an unbounded scratch area. Swastik enforces i
 
 ### Unified Build Status Vocabulary
 
-One status vocabulary governs the entire pipeline end to end — `RECEIVED → VALIDATING → BUILDING → VALIDATED → STAGED → PROMOTING → LIVE` for the success path, with exactly two terminal failure states: `REJECTED` (a gate failed) and `ROLLED_BACK` (promotion or reload failed and the previous version was restored). The same words appear on the upload API's response, the Deployment Records (§15.12), the developer portal, and PEP's deployment queries — no subsystem invents its own synonyms, and every state transition is an audited event in the same vocabulary.
+One status vocabulary governs the entire pipeline end to end — `RECEIVED → VALIDATING → BUILDING → VALIDATED → STAGED → PROMOTING → LIVE` for the success path, with exactly two terminal failure states: `REJECTED` (a gate failed) and `ROLLED_BACK` (promotion or reload failed and the previous version was restored). The same words appear on the upload API's response, the Deployment Records (§15.12), the developer portal, and Power Engine's deployment queries — no subsystem invents its own synonyms, and every state transition is an audited event in the same vocabulary.
 
 ### Selftest Gate Before Promotion
 
@@ -5541,7 +5541,7 @@ Every command, in every tier including Admin, declares `guildOnly: true` and reg
 guild-context only; `AuthMiddleware` rejects any DM-originated interaction outright.
 There is no exception, no sanctioned DM surface, and no configuration that opens one
 for the main bot (ADR-002, docs/adr/). The operator path that the old Admin-tier DM
-exception used to serve is fully covered by the control plane instead: PEP's
+exception used to serve is fully covered by the control plane instead: Power Engine's
 authenticated REST surface and CLAI's SSH terminal (§22) are both reachable when the
 gateway is down, and §28.6's maintenance-mode allow-list keeps the operators of that
 mechanism from being locked out of it — the lockout-avoidance path is re-verified
@@ -5928,7 +5928,7 @@ manifest-declaration order.
 > AbortController/timeouts on module async operations are specified but
 > not yet enforced — this is one of five documented hot-swap leak vectors.
 
-> **PEP Endpoint Count:** The PEP (Power Engine Panel) exposes 17 control domains across its API surface. Earlier documentation cited inconsistent counts (14 in compliance README, 17 in API docs, 36 in one audit). The authoritative count is 17 control domains; the endpoint table in §7 and the compliance matrix in §45 must both reflect this single accurate figure.
+> **Power Engine Endpoint Count:** The Power Engine (Power Engine Panel) exposes 17 control domains across its API surface. Earlier documentation cited inconsistent counts (14 in compliance README, 17 in API docs, 36 in one audit). The authoritative count is 17 control domains; the endpoint table in §7 and the compliance matrix in §45 must both reflect this single accurate figure.
 
 ```
 TABLE 19-A — Built-In Stages
@@ -6071,9 +6071,9 @@ the request level: a module author never writes their own top-level try/catch ar
 an entire command purely to avoid leaking a stack trace to a user, because the pipeline
 already guarantees that outcome for every command in the system uniformly.
 
-### 19.5 PEP "Freedom by Default" — Principle vs Capacity Alignment
+### 19.5 Power Engine "Freedom by Default" — Principle vs Capacity Alignment
 
-The Policy Enforcement Point (PEP) operates on a "freedom by default" practice: controls exist in the middleware pipeline (§19.1–19.2), but the framing of which controls are mandatory versus optional is incomplete. The principle states that modules should be free to operate unless explicitly restricted, but the capacity to enforce restrictions (e.g., rate limiting, feature flags, tier-based caps) is not fully documented as aligned with this principle. The specification requires the PEP principle and enforcement capacity honestly aligned: each control layer in the middleware pipeline is documented as either always-on (capacity constraint) or configurable (principle-driven), with the "freedom by default" framing applied only to configurable layers.
+The Policy Enforcement Point (Power Engine) operates on a "freedom by default" practice: controls exist in the middleware pipeline (§19.1–19.2), but the framing of which controls are mandatory versus optional is incomplete. The principle states that modules should be free to operate unless explicitly restricted, but the capacity to enforce restrictions (e.g., rate limiting, feature flags, tier-based caps) is not fully documented as aligned with this principle. The specification requires the Power Engine principle and enforcement capacity honestly aligned: each control layer in the middleware pipeline is documented as either always-on (capacity constraint) or configurable (principle-driven), with the "freedom by default" framing applied only to configurable layers.
 ### 19.6 Three-Scope Config Model — Process-Module Scope Missing
 
 The configuration system currently defines two scopes: core (global framework config) and guild (per-guild config). A formal process-module scope — where each module's `{MODULE_NAME}_*` environment variables are validated against the module's own manifest config schema — does not exist as a distinct scope. Module-level configuration is currently handled ad hoc through env vars without a formal scope boundary. The specification requires three distinct config scopes: core, guild, and process-module, each with its own validation, lifecycle, and access boundaries.
@@ -6106,7 +6106,7 @@ Memory leak threat model, five vectors: (1) hot-reload zombies (uncleared `setIn
 
 - Each vector addressed by Layer 2 prevention mechanisms.
 
-> **Admin Route Naming Standard:** PEP admin routes in `http/routes/admin.routes.ts` must use consistent REST-style naming aligned to the 17 documented control domains (`guild.unsuspend`, `module.unsuspend`, `developer.unsuspend`, `command.suspend`, `command.unsuspend`, `persona.suspend`). Backward-compatible route aliases should be provided where existing camelCase action names are renamed.
+> **Admin Route Naming Standard:** Power Engine admin routes in `http/routes/admin.routes.ts` must use consistent REST-style naming aligned to the 17 documented control domains (`guild.unsuspend`, `module.unsuspend`, `developer.unsuspend`, `command.suspend`, `command.unsuspend`, `persona.suspend`). Backward-compatible route aliases should be provided where existing camelCase action names are renamed.
 
 A new MDIS backend realizes compliance feature #20: the manifest's optional `dashboardSchema` field is rendered into a per-module configuration UI served to a web dashboard.
 
@@ -6525,7 +6525,7 @@ TABLE 21-A — Fail-Open vs. Fail-Closed by Layer
 **Layer 2 persistence.** The blacklist is backed by the `blocked_users` table
 (§24.2) — global rows (`guildId` null) and guild-scoped rows, each with an optional
 expiry — read through a `BlacklistLookup` service with a TTL cache in front of the
-table, and written exclusively through PEP's blacklist write endpoints
+table, and written exclusively through Power Engine's blacklist write endpoints
 (`blockUser`/`unblockUser` in the blacklist family, §22.3); there is no
 in-memory-only list, and the cache's TTL bounds how long an unblock can lag behind
 its write.
@@ -6780,9 +6780,9 @@ where the bot process itself is completely down, which is exactly the scenario i
 which an operator most needs them. An Admin-tier module, by contrast, only ever runs
 *inside* the bot process — useless the moment that process is the thing in trouble.
 
-### 22.2 Power Engine Panel (PEP) — Purpose & the Function-Calling Model
+### 22.2 Power Engine Panel (Power Engine) — Purpose & the Function-Calling Model
 
-PEP is the framework's global administrative authority — the concrete mechanism
+Power Engine is the framework's global administrative authority — the concrete mechanism
 behind Principle P14 (§3): a capacity for total, fleet-wide control that exists for
 deliberate, logged intervention, never as ambient enforcement. It can suspend any
 
@@ -6797,11 +6797,11 @@ guild, module, developer, or command, fleet-wide, instantly, regardless of what 
 individual guild administrator or module author has configured.
 
 > **P14 tension:** P14 ("freedom by default, authority by exception") is
-> contradicted by PEP's 17 control domains — the framework has an instant
+> contradicted by Power Engine's 17 control domains — the framework has an instant
 > global kill switch (suspendGuild/Module/Developer/Command). This is
 > correct for abuse/security response but should be acknowledged explicitly.
 
-> **Access and transport.** Every PEP route — and the admin routes that share
+> **Access and transport.** Every Power Engine route — and the admin routes that share
 > its action registry — authenticates the caller with a bearer credential issued
 > by the Credentials Service (§22.8) and validated against the configured operator
 > allow-list; a request without both is rejected with 401 before any function
@@ -6811,12 +6811,12 @@ individual guild administrator or module author has configured.
 > combination: the call must both arrive over the interface the listener is
 > bound to and carry a valid operator token, so neither a network position
 > alone nor a leaked token presented from outside the control-plane boundary
-> authenticates. PEP's HTTP listener binds loopback (127.0.0.1) by
+> authenticates. Power Engine's HTTP listener binds loopback (127.0.0.1) by
 > default; the bind host is deliberately configurable for deployments that
 > terminate authentication at a private network boundary, and it is never
 > `0.0.0.0` out of the box.
 
-PEP exposes its capabilities as a catalog of **callable functions** — each with a
+Power Engine exposes its capabilities as a catalog of **callable functions** — each with a
 name, a typed parameter schema, and a description — rather than a fixed set of
 hardcoded terminal commands. The catalog contains three kinds of callable function:
 
@@ -6831,40 +6831,40 @@ hardcoded terminal commands. The catalog contains three kinds of callable functi
   like act functions — an operator tuning a response is never guessing at state.
 - **Policy-tuning controls** — the read/write pair for tunable policy: rate-limit
   windows (§21.5), cooldown overrides, deployment rate-limit buckets (§13.6), and
-  detection thresholds. Every tuning write is itself a PEP act function: audited,
+  detection thresholds. Every tuning write is itself a Power Engine act function: audited,
   reasoned, and reversible, with the previous value recorded in the audit row.
 
 Long-running views stream over **Server-Sent Events**: a subscribed client receives
 push updates for the state it is observing (fleet health, deployment progress through
 the §15.12 records, audit tail) rather than polling. The SSE surface carries the same
-authentication as every other PEP route and is what gives PEP's REST API a
+authentication as every other Power Engine route and is what gives Power Engine's REST API a
 frontend-quality bar — a dashboard, the developer portal, or a future operator UI can
-be built entirely against PEP's own API without a parallel backend ever being
-written. This shape is deliberate: the identical schema format serves PEP's REST API
+be built entirely against Power Engine's own API without a parallel backend ever being
+written. This shape is deliberate: the identical schema format serves Power Engine's REST API
 (§44.6), CLAI's terminal (§22.6), and any structured front end layered on top later
-without any change to PEP's own implementation — the function catalog is the single
+without any change to Power Engine's own implementation — the function catalog is the single
 contract every caller, human or automated, is validated against identically.
 
 ```
-DIAGRAM 22-A — PEP as a Function Catalog, Not a Command List
+DIAGRAM 22-A — Power Engine as a Function Catalog, Not a Command List
 
  Caller (CLAI terminal, authenticated REST client, or a future structured
  natural-language front end)
  │
  ▼
- PEP Function Dispatcher
+ Power Engine Function Dispatcher
  validates the call against the named function's typed parameter schema
  (rejects malformed calls before any side effect)
  │
  ▼
  One of 17 control domain functions executes through the shared action registry — every entry resolves to a real domain handler, and an entry without one returns 501 Not Implemented without writing an audit row
 
-All 17 control domain functions expose typed Zod parameter schemas, descriptions, REST API exposure, and CLAI terminal command mappings through the shared action registry that serves PEP's REST surface, CLAI's terminal, and the admin routes identically; an entry that does not yet resolve to a domain handler returns 501 and never writes an audit row for an action that did not occur.
+All 17 control domain functions expose typed Zod parameter schemas, descriptions, REST API exposure, and CLAI terminal command mappings through the shared action registry that serves Power Engine's REST surface, CLAI's terminal, and the admin routes identically; an entry that does not yet resolve to a domain handler returns 501 and never writes an audit row for an action that did not occur.
  │
  ▼
- Mandatory append-only audit_logs write (source: 'PEP', server-derived) enforced by a Postgres trigger blocking UPDATE/DELETE, performed after the domain handler completes so the row records the true outcome — applied, failed, or rejected — never a prediction; revocation and rejected calls are audited as well
+ Mandatory append-only audit_logs write (source: 'Power Engine', server-derived) enforced by a Postgres trigger blocking UPDATE/DELETE, performed after the domain handler completes so the row records the true outcome — applied, failed, or rejected — never a prediction; revocation and rejected calls are audited as well
 
-Canary revocation checks run on every module load (bootstrap, discovery, onLoad, onReady, hot-swap, fresh install, and immediately after any PEP signature revocation) rather than only at process restart, so a revoked module cannot execute for up to a full process lifetime.
+Canary revocation checks run on every module load (bootstrap, discovery, onLoad, onReady, hot-swap, fresh install, and immediately after any Power Engine signature revocation) rather than only at process restart, so a revoked module cannot execute for up to a full process lifetime.
 
 
 **Catalog integrity at boot.** Every catalog entry is a real adapter over an
@@ -6876,21 +6876,21 @@ explicit not-implemented marker, and an entry wired to no backend fails the boot
 a marker-only domain that silently no-ops is a lying control surface, worse than an
 absent one. No route exists without a backing catalog entry.
 
-A no-stub test walks every registered admin and PEP route in CI: each route must
+A no-stub test walks every registered admin and Power Engine route in CI: each route must
 resolve to a real domain handler or carry the explicit not-implemented marker,
 and a route whose handler is an empty `async () => {}` returning
 `200 {ok:true}` fails the test. An honest `501 NOT_IMPLEMENTED` is acceptable
 anywhere the primitive does not yet exist; a fake success is not, anywhere.
 
-Revocation status is verified at every load boundary — bootstrap, module discovery, onLoad, onReady, hot-swap, fresh install, and post-PEP revocation — against the PEP revocation list, not only at process restart.
+Revocation status is verified at every load boundary — bootstrap, module discovery, onLoad, onReady, hot-swap, fresh install, and post-Power Engine revocation — against the Power Engine revocation list, not only at process restart.
 
-Revocation propagation is verified at all six module-load boundaries plus post-PEP: Swastik's signature verifier, the runtime loader, and PEP revokeModuleSignature each emit audit-logged verification events so a revocation is provably observed at every boundary.
+Revocation propagation is verified at all six module-load boundaries plus post-Power Engine: Swastik's signature verifier, the runtime loader, and Power Engine revokeModuleSignature each emit audit-logged verification events so a revocation is provably observed at every boundary.
  │
  ▼
  Result returned to caller
 ```
 
-### 22.3 PEP Control Domain Catalog
+### 22.3 Power Engine Control Domain Catalog
 
 > **Module validation gap:** Validation happens once at upload time.
 > A module that passes structural validation but has a logic bug still
@@ -6907,7 +6907,7 @@ Component interactions (button, select, modal submit) re-run permission checks b
 **
 **Compliance:** feature #30.
 
-**PEP (Power Engine Panel).** PEP is specified at `src/entry/pep.ts`: the four
+**Power Engine (Power Engine Panel).** Power Engine is specified at `src/entry/power-engine.ts`: the four
 foundational domains and thirteen extended domains dispatch through the shared
 action registry. `suspendDeveloper` validates its input against a Zod schema
 before any state changes — a malformed payload returns `400` with field-level
@@ -6923,7 +6923,7 @@ plane writes is declared in one keys module alongside its consuming service, and
 key without a live consumer is removed rather than parked — no control-plane
 action writes a state row that nothing reads back.
 
-### 22.4 PEP Control Domain Catalog
+### 22.4 Power Engine Control Domain Catalog
 
 Seventeen control domains in total: four original, foundational domains, and thirteen
 extended domains that reach into every other core subsystem this reference documents.
@@ -6994,7 +6994,7 @@ TABLE 22-B — The Thirteen Extended Control Domains, By Subsystem
 ```
 
 Every one of the seventeen writes an unconditional, reasoned `audit_logs` entry —
-tagged `source: 'PEP'`, derived by the server from the authenticated caller — after
+tagged `source: 'Power Engine'`, derived by the server from the authenticated caller — after
 its domain handler completes and before returning a result to its caller, with no
 exception: the row records the handler's actual outcome (applied, failed, or
 rejected), so the audit trail can never claim an intervention that did not happen.
@@ -7031,17 +7031,17 @@ payload rather than an empty object.
 against the same schema so drift between them fails CI rather than crashing at
 query time.
 
-### 22.5 PEP Deployment & Access Model
+### 22.5 Power Engine Deployment & Access Model
 
-PEP runs with no gateway connection and no loaded modules — it never speaks Discord's
+Power Engine runs with no gateway connection and no loaded modules — it never speaks Discord's
 Gateway protocol at all, only its own authenticated REST surface (§44.6). Access
 requires a credential issued by the Credentials Service (§22.8) and bound to a named
 operator identity, distinct from — and held to at least the same scrutiny as —
 Admin-tier's `BOT_OWNER_IDS` check (§13.6): the two overlap in practice for a typical
-deployment's smallest operator set, but PEP's own access list is independently
+deployment's smallest operator set, but Power Engine's own access list is independently
 
 
-**Internal-surface authentication.** Every internal HTTP surface — PEP's REST
+**Internal-surface authentication.** Every internal HTTP surface — Power Engine's REST
 routes, the admin routes sharing its action registry, CLAI's dispatch bridge, the
 Credentials Service's issue/revoke endpoints, Swastik's `/internal/*` routes, and
 the bot's `/internal/reload` (§15.9) — authenticates service-to-service calls with
@@ -7059,15 +7059,15 @@ and the interface the call arrived on, so a declared-but-unauthenticated source
 changes nothing about what a call may do.
 configured rather than inherited automatically from the bot-owner list, since not
 every Admin-tier-capable Discord user necessarily needs fleet-wide REST access to
-PEP's control domains.
+Power Engine's control domains.
 
 ### 22.6 CLAI — Purpose & Access Model
 
 CLAI (Command Line Administrative Interface) is an SSH-hosted operator terminal
-providing direct, interactive access to PEP's function catalog from outside Discord
+providing direct, interactive access to Power Engine's function catalog from outside Discord
 entirely. Its defining property is independence from every other part of the stack
 that could be the thing currently broken: CLAI requires only SSH reachability and
-PEP's own health, meaning it remains a viable intervention path even when the
+Power Engine's own health, meaning it remains a viable intervention path even when the
 Discord gateway connection is down, a specific shard group is unresponsive, or a
 core restart is mid-rollout — exactly the failure modes in which an operator most
 needs a way in that does not itself depend on the thing failing.
@@ -7081,7 +7081,7 @@ operator token verified timing-safely over the same transport, so there are exac
 two sanctioned paths, registered public key or issued token. The fingerprint-text
 REPL is disabled in production builds: a session on a production CLAI server offers
 no fingerprint recital and no unauthenticated prompt of any kind, and every command
-issued inside a session dispatches through the real authenticated PEP function
+issued inside a session dispatches through the real authenticated Power Engine function
 dispatcher (§22.2) carrying the operator's identity — never an echo.
 
 Authentication is SSH public-key only — no password path exists — with each
@@ -7113,28 +7113,28 @@ revoked through `credentials.issue` / `credentials.rotate` /
 revocation removes both the keypair and the TOTP binding on the next connection
 attempt.
 
-### The 17 PEP Control Domains and Unconditional Audit
+### The 17 Power Engine Control Domains and Unconditional Audit
 
-PEP exposes its capabilities as a catalog of callable functions — each entry carries a name, a typed parameter schema, and a description. The catalog spans 17 control domains: the four original suspend primitives (`suspendGuild`, `suspendModule`, `suspendDeveloper`, `suspendCommand`) plus thirteen extended domains, including maintenance, cache, job queue, rate limits, shard management, deployment, persona, audit, marketplace, and credentials. Every invocation writes an unconditional `audit_logs` entry after its domain handler completes, recording the true outcome — audit is part of the function's completion path, not an optional afterthought. The identical schema format serves both the PEP REST API and the CLAI terminal (implemented in `apps/main/src/http/power-engine-dispatcher.ts`), keeping the catalog shape future-proof for an NLP front-end.
+Power Engine exposes its capabilities as a catalog of callable functions — each entry carries a name, a typed parameter schema, and a description. The catalog spans 17 control domains: the four original suspend primitives (`suspendGuild`, `suspendModule`, `suspendDeveloper`, `suspendCommand`) plus thirteen extended domains, including maintenance, cache, job queue, rate limits, shard management, deployment, persona, audit, marketplace, and credentials. Every invocation writes an unconditional `audit_logs` entry after its domain handler completes, recording the true outcome — audit is part of the function's completion path, not an optional afterthought. The identical schema format serves both the Power Engine REST API and the CLAI terminal (implemented in `apps/main/src/http/power-engine-dispatcher.ts`), keeping the catalog shape future-proof for an NLP front-end.
 
 ### 22.7 CLAI Session Model & Command Surface
 
 A CLAI session is a REPL: a connecting operator is dropped into an interactive prompt
-that resolves each typed command to a call against PEP's function catalog, rendering
+that resolves each typed command to a call against Power Engine's function catalog, rendering
 results in human-readable form (tables for list-shaped results, formatted diffs for
-state changes) rather than raw JSON — the terminal is a presentation layer over PEP's
+state changes) rather than raw JSON — the terminal is a presentation layer over Power Engine's
 functions, not an independent capability surface with its own logic. Every command a
-CLAI session issues carries the connecting operator's identity through to PEP's own
+CLAI session issues carries the connecting operator's identity through to Power Engine's own
 audit write, so `audit_logs` distinguishes an intervention made through CLAI from one
-made through PEP's REST API directly, even though both ultimately invoke the identical
+made through Power Engine's REST API directly, even though both ultimately invoke the identical
 function.
 
-Every command a CLAI session issues executes against the real PEP route: the
+Every command a CLAI session issues executes against the real Power Engine route: the
 dispatch bridge presents a Credentials-Service-issued service-to-service
 credential (`purpose: 'service_to_service'`, §22.8) on each call, so CLAI's
-privilege over PEP is an issued credential, never a network position or an
-asserted identity. Each command mints a correlation ID that travels on the PEP
-call and is written into both the CLAI session's audit row and the PEP
+privilege over Power Engine is an issued credential, never a network position or an
+asserted identity. Each command mints a correlation ID that travels on the Power Engine
+call and is written into both the CLAI session's audit row and the Power Engine
 handler's audit row, so a terminal intervention and the control-plane change
 it caused join on a single `correlationId`. Rendering is honest: the terminal
 shows the handler's actual outcome — a failed or rejected invocation renders
@@ -7170,12 +7170,12 @@ The Credentials Service is the single, shared issuance path for every credential
 Documented dev-ID lifecycle with explicit expiry, renewal, and break-glass recovery.
 
 architecture hands out at runtime — Swastik's developer dev IDs and build IDs (§15.6),
-PEP and CLAI operator access credentials (including CLAI operator keypairs, issued
+Power Engine and CLAI operator access credentials (including CLAI operator keypairs, issued
 and rotated through the credentials domain's issue/rotate/revoke functions), any
 internal service-to-service authentication token one control-plane process needs to
 call another, and the verifiable license IDs every approved license's paper
 certificate carries (§15.7). Consolidating issuance into one service, rather than
-letting Swastik, PEP, and CLAI each mint their own credentials independently, is what
+letting Swastik, Power Engine, and CLAI each mint their own credentials independently, is what
 makes Principle P13 hold for secret issuance specifically: exactly one place
 generates, hashes, and revokes credentials, so an audit of "every credential this
 system has ever issued" is one table, not a reconciliation across three. Paper
@@ -7208,9 +7208,9 @@ at §22.10 — public-key-only authentication against the operator tables, no
 password or fingerprint-text path, sessions bounded by the idle-timeout and
 typed-confirmation discipline of §22.7.
 
-**PEP function dispatch.** Every control domain in the catalog dispatches to a
+**Power Engine function dispatch.** Every control domain in the catalog dispatches to a
 real domain handler behind the validated envelope, with the shared action registry
-serving PEP's REST surface, CLAI's terminal, and the admin routes identically; an
+serving Power Engine's REST surface, CLAI's terminal, and the admin routes identically; an
 entry that does not yet resolve to a handler returns `501 Not Implemented` and
 writes no audit row; audit logging is mandatory on every action that does execute.
 
@@ -7257,7 +7257,7 @@ or the registration blocks promotions from either side. Registration, review, an
 the tier-specific license classes are exercised through the governance API family
 (§44.8).
 
-**PEP Enforcement / Live Config Override Absent from F3 Rewrite**
+**Power Engine Enforcement / Live Config Override Absent from F3 Rewrite**
 The "pep enforcement / live config override" idea from the original spec is not in the F3 rewrite at all.
 
 Explicit decision: either reintroduce as the Effective Config Descriptor's override feed or document as intentionally out of scope.
@@ -7277,9 +7277,9 @@ DIAGRAM 22-B — Control-Plane Services, Complete Relationship
  │ │ │
  ▼ ▼ ▼
 ┌──────┐ ┌───────────┐ ┌──────────────┐
-│Swastik│ │ PEP │ │ CLAI │
+│Swastik│ │ Power Engine │ │ CLAI │
 │(§15) │ │ (function │ │ (SSH terminal, │
-│ │ │ catalog, │ │ calls PEP's │
+│ │ │ catalog, │ │ calls Power Engine's │
 │ │ │ §22.2) │ │ functions) │
 └───┬───┘ └─────┬──────┘ └───────┬───────┘
  │ │ │
@@ -7310,7 +7310,7 @@ without any of them needing to know the others exist beyond the shared data laye
 
 ### 22.10 CLAI — SSH Public-Key Operator Terminal
 
-CLAI binds 127.0.0.1 and authenticates operators via ssh2 public-key verification against the clai_operators/clai_authkeys tables. The SSH host key is generated fresh at every process start and is not persisted, so operators cannot pin a fingerprint across restarts; this ephemerality is an accepted risk, mitigated by the loopback bind — the terminal is reachable only from the host, and any host-key substitution would require host-level compromise. No node:net plaintext REPL path exists in the specification, and there is no plaintext credential channel of any kind. PEP dispatch is issued over the authenticated SSH session, carrying the operator's identity through to PEP's audit write (§22.7). The command surface presented inside the session is the PEP function catalog itself — observe, read, policy-tuning, and act functions (§22.2) — so an operator's terminal session and an authenticated REST call are two views of one engine, never two engines.
+CLAI binds 127.0.0.1 and authenticates operators via ssh2 public-key verification against the clai_operators/clai_authkeys tables. The SSH host key is generated fresh at every process start and is not persisted, so operators cannot pin a fingerprint across restarts; this ephemerality is an accepted risk, mitigated by the loopback bind — the terminal is reachable only from the host, and any host-key substitution would require host-level compromise. No node:net plaintext REPL path exists in the specification, and there is no plaintext credential channel of any kind. Power Engine dispatch is issued over the authenticated SSH session, carrying the operator's identity through to Power Engine's audit write (§22.7). The command surface presented inside the session is the Power Engine function catalog itself — observe, read, policy-tuning, and act functions (§22.2) — so an operator's terminal session and an authenticated REST call are two views of one engine, never two engines.
 
 - ** signModule on Gate 5 approval; revokeModuleSignature on revocation.
 
@@ -7672,7 +7672,7 @@ blocked_users -- Layer 2 blacklist (§21.2)
 
 audit_logs -- append-only, never updated
  id uuid PK
- source string -- 'PEP' | 'SWASTIK' | 'CLAI' | 'GUILD' |
+ source string -- 'Power Engine' | 'SWASTIK' | 'CLAI' | 'GUILD' |
  -- 'MDIS' | a module's own name
  actorId snowflake or service-identity string
  action string
@@ -8011,7 +8011,7 @@ backfill-on-miss behavior are internal to the manager.
  leaderboard:{guildId}:{period}
 ```
 
-Namespacing by domain is what makes `flushCacheNamespace` (PEP's extended control
+Namespacing by domain is what makes `flushCacheNamespace` (Power Engine's extended control
 domain, §22.3) a targeted, prefix-based invalidation rather than an all-or-nothing
 flush — an operator recovering from a stale-cache incident in one subsystem clears
 exactly that subsystem's keys, leaving every other domain's cached data untouched.
@@ -8575,7 +8575,7 @@ dropped work is a first-class, alertable metric rather than an invisible loss.
 
 ### 28.6 Maintenance Mode
 
-A global, Redis-backed flag — set and cleared exclusively through PEP's
+A global, Redis-backed flag — set and cleared exclusively through Power Engine's
 `enterMaintenanceMode`/`exitMaintenanceMode` control domains (§22.3) — checked by
 `MaintenanceModeMiddleware` at priority `-20`, the outermost layer of the entire
 pipeline (§19.2). While set, every command's buffer embed is edited into the formal
@@ -8782,7 +8782,7 @@ TABLE 29-B — Job Retry Defaults
 └─────────────────┴──────────────────────────────────────────────────────┘
 ```
 
-A dead-lettered job is visible to an operator through PEP's `requeueDeadLetter`
+A dead-lettered job is visible to an operator through Power Engine's `requeueDeadLetter`
 control domain (§22.3) for manual inspection and, where the underlying issue has been
 resolved, manual re-queueing — the framework never silently discards work it
 couldn't complete.
@@ -9112,7 +9112,7 @@ since every added dependency is also an added trust boundary.
 ### 32.6 Audit Logging as a Security Control
 
 `audit_logs` (§24.2) is the single, append-only, never-updated record every
-consequential action in the system writes to — PEP's seventeen control domains
+consequential action in the system writes to — Power Engine's seventeen control domains
 (§22.3, mandatory before any result is returned), Swastik's full deployment lifecycle
 (§15.10), every guild configuration change (§23.5), and Admin-tier invocations both
 granted and rejected (§13.6). Security review of "what happened and who did it" is
@@ -9722,7 +9722,7 @@ TABLE 36-A — Twenty-Two Illustrative Modules by Tier
 │ │ │ │ │ introspection (memory, │
 │ │ │ │ │ event-loop lag, DI state) │
 │ 2 │ fleet-control │ admin │ — │ Discord-native wrapper over a │
-│ │ │ │ │ curated subset of PEP's │
+│ │ │ │ │ curated subset of Power Engine's │
 │ │ │ │ │ control domains (§22.3) │
 ├───┼────────────────────┼─────────────┼─────────────┼────────────────────────────┤
 │ 3 │ help │ core │ — │ Dynamically generated command │
@@ -10681,10 +10681,10 @@ Direct import is never used to read a manifest — the manifest is extracted by 
 
 ### 41.5 Deploying the Control-Plane Services & Personas
 
-PEP, CLAI, Swastik, and the Credentials Service (§22) each get their own Kubernetes
+Power Engine, CLAI, Swastik, and the Credentials Service (§22) each get their own Kubernetes
 `Deployment` — typically single-replica or small-replica-count, since none of them
 carries gateway-connected, shardable load the way the bot process does — reachable
-only from within the cluster's own network (CLAI's SSH listener and PEP's REST API
+only from within the cluster's own network (CLAI's SSH listener and Power Engine's REST API
 are never exposed on a public-facing Service/Ingress; an operator reaches them through
 a bastion, VPN, or `kubectl port-forward`, never the open internet directly). A
 Persona (§35) deploys as an entirely separate instance of the bot `Deployment` itself
@@ -10858,7 +10858,7 @@ SYMPTOM — dumby_errors_unexpected_total / dumby_commands_total crosses the
  ratio), or Redis reachability (§26.5) — NOT module code, since no single
  module code change plausibly explains an even spread across unrelated
  modules.
- 4. If a specific recent module version is implicated, PEP's suspendModule or
+ 4. If a specific recent module version is implicated, Power Engine's suspendModule or
  Swastik's rollbackModuleVersion (§22.3) is the fastest mitigation —
  resolve root cause after restoring stability, not before.
  5. Every DumbyError-taxonomy error (§28.1) logged at this point already
@@ -11032,7 +11032,7 @@ Independent per-layer thresholds matching the documented floors.
 
 - Fully Implemented. `logger.ts` (77L, Pino + redact), `metrics/registry.ts` (86L, prom-client, 5+ metrics: commands_total, rate_limit_rejections, permission_denials, cache_hits/misses, db_query_duration, module_load_duration), `tracing.ts` (56L, OTel SDK + OTLP). The tracing claim carries a recorded survey disagreement — one inventory records the SDK wiring, another flags it as not confirmed — noted here rather than silently resolved.
 
-### 43.25 PEP dispatcher (Power Engine)
+### 43.25 Power Engine dispatcher (Power Engine)
 
 - Envelope correct; domains mostly stubs.
 - Domains implemented.
@@ -11081,7 +11081,7 @@ Independent per-layer thresholds matching the documented floors.
 - `CommandRouter` try/catch around `execute`; `EventRouter` per-handler try/catch; `ModuleLoader` fatal/degraded classification.
 - Maintained; verified on the `CommandRouter` live path (§19.2's structural wiring test).
 
-### 43.35 PEP dispatcher with unconditional audit logging
+### 43.35 Power Engine dispatcher with unconditional audit logging
 
 - power-engine-dispatcher.ts (112L) validates actorId/source/reason, rejects untrusted sources, writes an audit_logs entry for EVERY attempt (allowed or rejected) BEFORE handler execution.
 - Maintain audit-as-precondition semantics.
@@ -11145,7 +11145,7 @@ TABLE 44-A — Authentication Contexts
 │ Swastik developer │ Dev ID, issued by the │ Module upload, versioning, │
 │ │ Credentials Service │ own-developer status (§15.6) │
 │ │ (§22.8), Bearer header │ │
-│ PEP / CLAI operator │ Operator credential, │ The seventeen control │
+│ Power Engine / CLAI operator │ Operator credential, │ The seventeen control │
 │ │ issued by the Credentials │ domains (§22.3) — never │
 │ │ Service │ reachable from the public │
 │ │ │ internet directly (§41.5) │
@@ -11215,12 +11215,12 @@ same HMAC discipline §32.3 requires of *inbound* webhooks, so a developer recei
 this notification can verify it genuinely originated from this deployment's Swastik
 instance rather than trusting an unauthenticated POST body.
 
-### 44.6 PEP REST API
+### 44.6 Power Engine REST API
 
-Every one of PEP's seventeen control domains (§22.3) is reachable as an authenticated
+Every one of Power Engine's seventeen control domains (§22.3) is reachable as an authenticated
 POST to `/api/pep/{functionName}`, with a request body validated against that
 function's own typed parameter schema (§22.2's function-catalog model) — the identical
-schema CLAI's terminal (§22.7) validates against before ever reaching PEP itself,
+schema CLAI's terminal (§22.7) validates against before ever reaching Power Engine itself,
 since CLAI is a presentation layer over this same API, not an independent capability
 surface.
 
@@ -11240,7 +11240,7 @@ The REST surface is organized into versioned, OpenAPI-documented API families. E
 family is versioned independently (an `/api/v1/...` path carries its own contract,
 registered in the Compatibility Ledger §14.4), documented by a machine-generated
 OpenAPI specification published alongside each release, and held to the
-frontend-quality bar PEP established (§22.2) — schema-validated inputs, streaming
+frontend-quality bar Power Engine established (§22.2) — schema-validated inputs, streaming
 updates where a view is live, and error bodies a client can program against:
 
 ```
@@ -11343,7 +11343,7 @@ TABLE 45-A — Compliance Matrix
 │ 34 │ One permission engine shared by the bot and the web │ §21.7 │
 │ │ dashboard, no parallel implementation │ │
 │ 35 │ Global administrative authority via a documented function │ §22.2–§22.3 │
-│ │ catalog (PEP) │ │
+│ │ catalog (Power Engine) │ │
 │ 36 │ Out-of-band operator access independent of gateway health │ §22.6 │
 │ │ (CLAI) │ │
 │ 37 │ Single, shared credential issuance path │ §22.8 │
@@ -11377,7 +11377,7 @@ TABLE 45-A — Compliance Matrix
 │ 55 │ First-class manifest visibility enum validated at all │ §11.2, §13.3 │
 │ │ three manifest validation points │ │
 │ 56 │ Deployment rate limits (token-bucket + cooldown, │ §13.6 │
-│ │ PEP-tunable) on every deployment surface │ │
+│ │ Power Engine-tunable) on every deployment surface │ │
 │ 57 │ Repository-triggered deployment with OIDC-validated │ §15.11 │
 │ │ binding and durable Deployment Records │ │
 │ 58 │ Instant MDIS ↔ backend sync over per-guild Redis │ §16.5 │
@@ -11432,7 +11432,7 @@ TABLE 46-A — Capability Comparison
 │ Observability │ Ad hoc console.log, if anything │ Structured logs, metrics, and │
 │ │ │ traces by default, unified by │
 │ │ │ correlationId (§27) │
-│ Operational control plane │ None — a code change and redeploy │ PEP, CLAI, Swastik, and the │
+│ Operational control plane │ None — a code change and redeploy │ Power Engine, CLAI, Swastik, and the │
 │ │ is the only lever │ Credentials Service, all │
 │ │ │ independent of bot-process │
 │ │ │ health (§22) │
@@ -11454,7 +11454,7 @@ discipline alone.
 
 ### 46.12 Persona system data model (compliance #40)
 
-- `entry/clai.ts` (188 lines): SSH REPL with SSH public-key authentication (clai_operators table), PEP dispatch, session management, help/whoami/quit commands.
+- `entry/clai.ts` (188 lines): SSH REPL with SSH public-key authentication (clai_operators table), Power Engine dispatch, session management, help/whoami/quit commands.
 - Real SSH via ssh2 public-key transport at `src/entry/ssh-clai.ts` (§22.6).
 
 ## 47. Glossary & Topic Index
@@ -11474,7 +11474,7 @@ TABLE 47-A — Term Reference
 │ BCCM │ Bot Command Cosmetics for Marketplace — guild-level │
 │ │ command rename/alias tooling (§17.8) │
 │ CLAI │ Command Line Administrative Interface — SSH-hosted │
-│ │ operator terminal over PEP's function catalog (§22.6) │
+│ │ operator terminal over Power Engine's function catalog (§22.6) │
 │ Core tier │ The permanently-loaded, non-disableable module tier, │
 │ │ skipping RBAC resolution by design (§13.2) │
 │ CommandContext │ The per-interaction, scoped-container object carrying │
@@ -11500,7 +11500,7 @@ TABLE 47-A — Term Reference
 │ │ vertical slice governed by one manifest (§11.1) │
 │ MTP │ Metric Track Protocol — module-agnostic usage metering │
 │ │ in abstract units (§31.4) │
-│ PEP │ Power Engine Panel — the global administrative │
+│ Power Engine │ Power Engine Panel — the global administrative │
 │ │ authority, exposed as a function catalog (§22.2) │
 │ Persona │ An additional, fully independent Discord Application │
 │ │ identity running the same codebase (§35.2) │
@@ -11585,7 +11585,7 @@ TABLE 47-B — Section Index by Part
 │ │ §16 Marketplace & MDIS │
 │ IV — Request & Interaction Layer │ §17 Commands · §18 Events · §19 │
 │ │ Middleware · §20 Interactions · §21 │
-│ │ Permissions · §22 PEP/CLAI/Credentials │
+│ │ Permissions · §22 Power Engine/CLAI/Credentials │
 │ V — Data & State │ §23 Configuration · §24 Database · │
 │ │ §25 Caching · §26 State Externalization│
 │ VI — Reliability, Security & Operations │ §27 Observability · §28 Errors · §29 │
@@ -12170,12 +12170,12 @@ The support program provides community-based support through Discord (a support 
 
 > Invalid uploads are rejected with specific validation errors
 
-#### [From §6 (System Architecture)] — PEP (Policy Enforcement Point)
+#### [From §6 (System Architecture)] — Power Engine (Policy Enforcement Point)
 
 - **Intent:** Emergency authority for revocation, suspension, emergency disablement with mandatory audit logging.
 - **Purpose:** Fully implemented enforcement methods + audit logging.
 - [SPEC] — every control domain resolves to a real domain handler or returns an honest 501 NOT_IMPLEMENTED; the no-stub test walks every route (§22.3).
-- Full enforcement + audit; Swastik enforces PEP decisions.
+- Full enforcement + audit; Swastik enforces Power Engine decisions.
 
 #### [From §7 (Directory & File Structure)] — /health slash command
 
@@ -12208,7 +12208,7 @@ The support program provides community-based support through Discord (a support 
 
 ####
 
-> ### 7.10.1 PEP Route Dispatch
+> ### 7.10.1 Power Engine Route Dispatch
 
 ####
 
@@ -12447,7 +12447,7 @@ Maintain; wire core/commands into the active path.
 - [SPEC] — resolved as a mandatory stage of every dispatch through the 12-stage middleware pipeline (§19.1); the structural wiring test fails the build if the live router bypasses it.
 - Fully Implemented and wired into every command dispatch through the middleware pipeline.
 
-#### [From §13 (Module Tiers & Lifecycle)] — PEP Seventeen Control Domains
+#### [From §13 (Module Tiers & Lifecycle)] — Power Engine Seventeen Control Domains
 
 - **Intent:** A catalog of callable functions for deliberate, logged intervention.
 - **Purpose:** Enable fleet-wide response to abuse/security without redeploy.
@@ -12551,7 +12551,7 @@ Maintain API response + optional signed webhook.
 
 ####
 
-> (whose signature is verified at every load boundary — initial import, hot-swap re-import, and reload — not only at process restart; `PEP.revokeModuleSignature` triggers immediate re-verification of the affected module at the next load boundary)
+> (whose signature is verified at every load boundary — initial import, hot-swap re-import, and reload — not only at process restart; `Power Engine.revokeModuleSignature` triggers immediate re-verification of the affected module at the next load boundary)
 
 #### [From §15 (Swastik — Hot Reload & Dynamic Module Management)] POST /swastik/modules/upload (Module Upload Endpoint)
 
@@ -12679,12 +12679,12 @@ Maintain as-is; document the PaginationManager API and Redis session storage pat
 
 #### [From §22 (Power Engine Panel, CLAI & Credentials Service)] — CLAI (Control-Plane Entry Point)
 
-- **Intent:** CLAI is an SSH-hosted operator terminal providing direct, interactive access to PEP's function catalog from outside Discord entirely. Its defining property is independence from every other part of the stack that could be the thing currently broken.
+- **Intent:** CLAI is an SSH-hosted operator terminal providing direct, interactive access to Power Engine's function catalog from outside Discord entirely. Its defining property is independence from every other part of the stack that could be the thing currently broken.
 - **Purpose:** Provide a viable intervention path even when the Discord gateway is down, a shard group is unresponsive, or a core restart is mid-rollout.
 - Specified as SSH-hosted terminal with public-key authentication. Architecture-only. Project context indicates entry/clai.ts may be a SSH (ssh2) socket — a spec-vs-implementation mismatch.
-- Implemented SSH-hosted terminal with per-operator key registration/revocation, connecting to PEP's function catalog.
+- Implemented SSH-hosted terminal with per-operator key registration/revocation, connecting to Power Engine's function catalog.
 
-#### [From §22 (Power Engine Panel, CLAI & Credentials Service)] PEP signModule / revokeModuleSignature
+#### [From §22 (Power Engine Panel, CLAI & Credentials Service)] Power Engine signModule / revokeModuleSignature
 
 #### [From §22 (Power Engine Panel, CLAI & Credentials Service)] entry/clai.ts (SSH (ssh2) server)
 

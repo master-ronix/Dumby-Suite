@@ -37,7 +37,7 @@ test('POST /admin/system/maintenance-mode dispatches to power engine', async () 
   expect(dispatcher.dispatch).toHaveBeenCalled();
 }, 15_000);
 
-test('PEP economy endpoint answers honest 501 (no stub, no fake 200)', async () => {
+test('Power Engine economy endpoint answers honest 501 (no stub, no fake 200)', async () => {
   const app = Fastify();
   const dispatcher = { dispatch: vi.fn() };
   const deps = {
@@ -58,7 +58,7 @@ test('PEP economy endpoint answers honest 501 (no stub, no fake 200)', async () 
   expect(dispatcher.dispatch).not.toHaveBeenCalled();
 });
 
-test('PEP feature-flags endpoint answers honest 501 and dispatches nothing (UR-A-04)', async () => {
+test('Power Engine feature-flags endpoint answers honest 501 and dispatches nothing (UR-A-04)', async () => {
   const app = Fastify();
   const dispatcher = { dispatch: vi.fn().mockResolvedValue({ ok: true }) };
   const deps = {

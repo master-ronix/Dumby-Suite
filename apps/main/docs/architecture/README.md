@@ -11,7 +11,7 @@ This directory contains the architectural documentation for the Dumby Unified Mo
 - **[Permission Engine](#permission-engine)** — The 7-layer authorization system.
 - **[Database Schema](#database-schema)** — The complete core schema reference.
 - **[Caching Architecture](#caching-architecture)** — L1/L2 cache design.
-- **[Control Plane](#control-plane)** — PEP, CLAI, Swastik, Credentials Service.
+- **[Control Plane](#control-plane)** — Power Engine, CLAI, Swastik, Credentials Service.
 
 ## System Overview
 
@@ -92,7 +92,7 @@ Four separately-deployed processes sharing the same PostgreSQL primary and Redis
 
 | Service | Entry point | Tier | Status |
 |---|---|---|---|
-| Power Engine Panel (PEP) | `src/entry/pep.ts` | Tier 2 | Functional |
+| Power Engine Panel (Power Engine) | `src/entry/power-engine.ts` | Tier 2 | Functional |
 | CLAI | `src/entry/clai.ts` | Tier 3 | Stub — see ADR 004 |
 | Swastik | `src/entry/swastik.ts` | Tier 3 | Partial — see ADR 004 |
 | Credentials Service | `src/entry/credentials.ts` | Tier 2 | Functional |

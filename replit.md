@@ -37,7 +37,7 @@ pnpm --filter @workspace/dumby run swastik:deploy
 - **DB:** PostgreSQL via Knex.js (no ORM), 30 core migrations
 - **Cache:** L1 (in-process LRU) + L2 (Redis via ioredis)
 - **Queue:** BullMQ (Redis-backed)
-- **HTTP:** Fastify (health, metrics, admin REST, PEP)
+- **HTTP:** Fastify (health, metrics, admin REST, Power Engine)
 - **Logging:** Pino (structured JSON)
 - **Metrics:** prom-client
 - **Tracing:** OpenTelemetry SDK
@@ -65,7 +65,7 @@ workspace/
 │   │   │   ├── health/     ← Core: /health command (Components V2)
 │   │   │   ├── hello/      ← Core: /hello command (Components V2)
 │   │   │   └── _template/  ← Module scaffolding template
-│   │   ├── entry/          ← main, worker, pep, clai, swastik, credentials
+│   │   ├── entry/          ← main, worker, power-engine, clai, swastik, credentials
 │   │   └── ...             ← errors, resilience, ratelimit, shutdown, discord, i18n, ...
 │   ├── tests/unit/         ← 33 test files, 446 tests
 │   ├── deploy/             ← k8s (base + overlays) + Terraform modules
@@ -92,7 +92,7 @@ workspace/
 | Tier | Status |
 |---|---|
 | Tier 1 (full) | Bootstrap · Shutdown · DI · Config · DB+migrations · Cache (L1+L2+StampedeGuard) · Commands · Events · Middleware (12 stages) · Permissions (7 layers) · RBAC · Module system · Errors · Observability · `/health` + `/hello` · Health endpoints · HTTP server |
-| Tier 2 (functional) | Job queue (BullMQ) · Rate limiting · Webhook infra · PEP (all 17 domains) · Credentials Service |
+| Tier 2 (functional) | Job queue (BullMQ) · Rate limiting · Webhook infra · Power Engine (all 17 domains) · Credentials Service |
 | Tier 3 (scaffolded) | CLAI (SSH REPL) · Swastik (filesystem staging) · Persona/Twill data model · MDIS backend contract |
 
 ## User Preferences

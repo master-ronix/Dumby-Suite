@@ -35,7 +35,7 @@ Operational runbooks for the Dumby Unified Modular Bot System.
 
 ## Enabling / Disabling Maintenance Mode
 
-Maintenance mode is controlled via the Power Engine Panel (PEP):
+Maintenance mode is controlled via the Power Engine Panel (Power Engine):
 
 ```
 POST /api/admin/power-engine/maintenance.enable
@@ -47,7 +47,7 @@ POST /api/admin/power-engine/maintenance.disable
 Body: { "actorId": "<operator-id>", "source": "dashboard", "reason": "<all-clear>" }
 ```
 
-Every PEP call writes an unconditional `audit_logs` row before returning. An empty `reason` is rejected.
+Every Power Engine call writes an unconditional `audit_logs` row before returning. An empty `reason` is rejected.
 
 ---
 
@@ -109,7 +109,7 @@ The new plaintext token is returned exactly once in the response. Store it secur
 1. Check `/health/liveness` and `/health/readiness` — determines bootstrap stage.
 2. Query Prometheus metrics at `/metrics` — look for error rate spikes, rate-limit rejections.
 3. Query structured logs (Pino JSON → your log aggregator) — filter by `correlationId` from the failing interaction.
-4. Use CLAI (SSH) to run PEP commands without direct database access: `audit query --limit 50 --after <timestamp>`.
-5. Check `audit_logs` table for recent PEP actions: `SELECT * FROM audit_logs ORDER BY id DESC LIMIT 100;`
+4. Use CLAI (SSH) to run Power Engine commands without direct database access: `audit query --limit 50 --after <timestamp>`.
+5. Check `audit_logs` table for recent Power Engine actions: `SELECT * FROM audit_logs ORDER BY id DESC LIMIT 100;`
 
 **CLAI is accessible only from a private network position** (bastion/VPN) — it is never exposed on a public interface (ADR 001).
