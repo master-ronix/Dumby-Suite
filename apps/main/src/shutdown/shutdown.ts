@@ -6,6 +6,7 @@ import type { Redis } from 'ioredis';
 import type { Client } from 'discord.js';
 import type { ModuleLoader } from '../module-system/loader.js';
 import { type SHUTDOWN_STEPS, shutdownStepNumber } from '../bootstrap/stages.js';
+import { shutdownTracing } from '../tracing/tracing.js';
 
 export interface ShutdownDeps {
   logger: Logger;
@@ -64,7 +65,7 @@ export async function gracefulShutdown(deps: ShutdownDeps, signal: string): Prom
     await deps.metricsServer.close();
   });
 
-  await runStep(deps, 'FLUSH_LOGS_AND_TRACES', async () => {});
+  await runStep(deps, 'FLUSH_LOGS_AND_TRACES', () => shutdownTracing());
 
   await runStep(deps, 'CLOSE_QUEUE_CONNECTIONS', async () => {
     deps.queueRedis.disconnect();

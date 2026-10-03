@@ -6,6 +6,7 @@ import { ConfigService } from '../config/config.service.js';
 import { HttpCredentialClient } from '../credentials/credential-client.js';
 import { createLogger, type Logger } from '../logging/logger.js';
 import { MetricsRegistry } from '../metrics/registry.js';
+import { initTracing } from '../tracing/tracing.js';
 import { DbClient } from '../db/client.js';
 import { InternalEventBus } from '../events/event-bus.js';
 import { EventRouter } from '../events/event-router.js';
@@ -121,6 +122,14 @@ export async function bootstrap(): Promise<void> {
   const metrics = new MetricsRegistry();
   container.registerValue(CORE_TOKENS.Logger, logger);
   container.registerValue(CORE_TOKENS.Metrics, metrics);
+  // §5.10 — OpenTelemetry tracing. `initTracing` no-ops unless TELEMETRY_ENABLED, so this is
+  // inert by default; before this it was never called and the tracing SDK never started.
+  initTracing({
+    enabled: config.get('TELEMETRY_ENABLED'),
+    sampleRate: config.get('TRACE_SAMPLE_RATE'),
+    exporterEndpoint: config.get('OTEL_EXPORTER_OTLP_ENDPOINT'),
+    serviceName: 'dumby-main',
+  });
   const metricsServer = buildMetricsServer(metrics);
   await metricsServer.listen({
     port: config.get('METRICS_PORT'),

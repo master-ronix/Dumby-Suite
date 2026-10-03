@@ -790,6 +790,7 @@ and the five slice deviations are in `migration-ledger.md` §M0 slice 6a.
 | §5.9 | — | M9 | Runtime step 1/4 — job queues: nothing registered a module's BullMQ job processors, so the runtime had no queues. `LoadedModule.jobs` + the loader registers each declared queue via `QueueManager.registerQueue`. Proof: `m9-job-queue-registration.test.ts` (2 tests) | DONE |
 | §15.1 | — | M9 | Runtime step 2/4 — gateway event handlers: the `EventRouter` was never constructed (no token, no handlers). Added `CORE_TOKENS.EventRouter`, `LoadedModule.events`, the loader registering handlers, and bootstrap subscribing the client to the router's events. Proof: `m9-gateway-event-routing.test.ts` (2 tests) | DONE |
 | §29.6 | — | M9 | Runtime step 3/4 — the scheduler: the `Scheduler` class existed but was never instantiated, so no recurring work ran. Added `CORE_TOKENS.Scheduler`, `LoadedModule.tasks`, the loader registering cron tasks, and bootstrap constructing + starting it. Proof: `m9-scheduler-wiring.test.ts` (3 tests) | DONE |
+| §5.10 | — | M9 | Runtime step 4/4 — tracing/metrics: the metrics half was wired, but `initTracing` was never called and the `FLUSH_LOGS_AND_TRACES` shutdown step was an empty stub. bootstrap now calls `initTracing` from the telemetry env keys; shutdown flushes via `shutdownTracing()`. Proof: `m9-tracing-wiring.test.ts` (3 tests) | DONE |
 
 ### UR 2.0 — Post-Re-Baseline Conformance & Audit Evidence (recorded 2026-10-01)
 
