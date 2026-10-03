@@ -22,6 +22,7 @@ import { ModuleLoader } from '../module-system/loader.js';
 import { defaultEnabledForTier } from '../module-system/tier-rules.js';
 import { PermissionResolver } from '../permissions/resolver.js';
 import { AdminEvalGate } from '../permissions/admin-eval-gate.js';
+import { DiscordOAuth2Client } from '../http/oauth/oauth2-client.js';
 import { BootstrapProgress } from './stages.js';
 import { buildApiServer, buildHealthServer, buildMetricsServer } from '../http/server.js';
 import { PowerEngineDispatcher } from '../http/power-engine-dispatcher.js';
@@ -374,6 +375,18 @@ export async function bootstrap(): Promise<void> {
     allowed: adminEvalGateState.allowed,
     reason: adminEvalGateState.reason,
   });
+  // §19.7 — the dashboard's Discord OAuth2 client. Both OAUTH_CLIENT_ID and OAUTH_REDIRECT_URI
+  // were previously declared and read by no code; the client is inert until they are configured.
+  const oauth2Client = new DiscordOAuth2Client({
+    config: {
+      clientId: config.get('OAUTH_CLIENT_ID'),
+      clientSecret: config.get('OAUTH_CLIENT_SECRET'),
+      redirectUri: config.get('OAUTH_REDIRECT_URI'),
+    },
+    logger,
+  });
+  container.registerValue(CORE_TOKENS.OAuth2, oauth2Client);
+  logger.info('oauth2-client-state', { configured: oauth2Client.isConfigured() });
   container.registerValue(CORE_TOKENS.CommandRegistry, commandRegistry);
   container.registerValue(CORE_TOKENS.CommandRouter, commandRouter);
   container.registerValue(CORE_TOKENS.Renderer, renderer);
@@ -624,6 +637,7 @@ export async function bootstrap(): Promise<void> {
     progress,
     metrics,
     config,
+    oauth2Client: oauth2Client.isConfigured() ? oauth2Client : undefined,
     adminDeps: {
       dispatcher: new PowerEngineDispatcher(
         { trustedSources: config.get('PEP_TRUSTED_SOURCES') },

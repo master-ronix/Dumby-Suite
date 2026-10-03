@@ -11,6 +11,8 @@ import { registerHealthRoutes } from './routes/health.routes.js';
 import { registerMetricsRoutes } from './routes/metrics.routes.js';
 import { registerInfoRoutes } from './routes/info.routes.js';
 import { registerAdminRoutes, type AdminRoutesDeps } from './routes/admin.routes.js';
+import { registerOAuthRoutes } from './routes/oauth.routes.js';
+import type { DiscordOAuth2Client } from './oauth/oauth2-client.js';
 
 export interface BuildServerOptions {
   logger: Logger;
@@ -18,6 +20,8 @@ export interface BuildServerOptions {
   metrics: MetricsRegistry;
   config: ConfigService;
   adminDeps: AdminRoutesDeps;
+  /** §19.7 — present only when the Discord OAuth2 dashboard credentials are configured. */
+  oauth2Client?: DiscordOAuth2Client | undefined;
 }
 
 const ADMIN_PATH_PREFIX = '/admin/';
@@ -48,6 +52,9 @@ export function buildApiServer(options: BuildServerOptions): FastifyInstance {
 
   registerInfoRoutes(app, options.config);
   registerAdminRoutes(app, options.adminDeps);
+  if (options.oauth2Client !== undefined) {
+    registerOAuthRoutes(app, options.oauth2Client);
+  }
 
   return app;
 }
