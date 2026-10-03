@@ -147,6 +147,10 @@ export async function bootstrap(): Promise<void> {
     statementTimeoutMs: config.get('DATABASE_STATEMENT_TIMEOUT_MS'),
     slowQueryThresholdMs: config.get('SLOW_QUERY_THRESHOLD_MS'),
     criticalQueryThresholdMs: config.get('CRITICAL_QUERY_THRESHOLD_MS'),
+    // §24 — read-replica routing: reads go to a replica within DATABASE_REPLICA_MAX_LAG_MS, else
+    // to the primary. Both keys were previously declared and read by no code.
+    replicaUrls: config.get('DATABASE_REPLICA_URLS'),
+    replicaMaxLagMs: config.get('DATABASE_REPLICA_MAX_LAG_MS'),
     logger,
   });
   container.registerValue(CORE_TOKENS.Db, db);
