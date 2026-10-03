@@ -37,8 +37,8 @@ const baseEnvSchema = z
     // issuance are delegated there alone). Hostname of the container/host running it.
     CREDENTIALS_SERVICE_URL: z.string().url().default('http://127.0.0.1:8086'),
     CREDENTIALS_SERVICE_TIMEOUT_MS: z.coerce.number().int().positive().default(2000),
-    TWIXTER_BIND_HOST: z.string().default('127.0.0.1'),
-    TWIXTER_PORT: z.coerce.number().int().positive().default(8090),
+    TWILL_BIND_HOST: z.string().default('127.0.0.1'),
+    TWILL_PORT: z.coerce.number().int().positive().default(8090),
 
     BOT_TOKEN: z.string().default(''),
     PERSONA_ID: z.string().default(''),

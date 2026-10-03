@@ -13,7 +13,7 @@ const ENTRY_POINTS = [
   'ssh-clai.ts',
   'credentials.ts',
   'swastik.ts',
-  'twixter.ts',
+  'twill.ts',
 ];
 
 function entrySource(file: string): string {
