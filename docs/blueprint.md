@@ -614,7 +614,7 @@ Developer registration via `entry/swastik.ts` must implement a formal licensing 
 
 - ** Build from SHA (never branch head), cosign signing, SBOM, provenance, digest pin. The specification requires: ** Build from immutable Git SHA; registry/dumby@sha256; SBOM; cosign; provenance; metadata in PostgreSQL.
 
-- ** Renewable Redis lease + PostgreSQL durable record; fencing tokens; heartbeat; lock/unlock API. The specification requires: ** Redis key drm:core-release:lease:{env}, TTL 30s, heartbeat 10s, fencing token; lock/renew/unlock API; queue valid uploads; defer scheduled restart.
+- ** Renewable Redis lease + PostgreSQL durable record; fencing tokens; heartbeat; lock/unlock API. The specification requires: ** Redis key release-manager:core-release:lease:{env}, TTL 30s, heartbeat 10s, fencing token; lock/renew/unlock API; queue valid uploads; defer scheduled restart.
 
 - ** Rolling (default maxUnavailable:0,maxSurge:1), blue-green with shard handoff, phased ramp, DAG workload ordering. The specification requires: ** Selectable strategies; DAG order: expand-only migrations→workers→main bot→personas→reconciliation.
 
@@ -10464,9 +10464,9 @@ separate "manual deploy path" diverging from the automated one.
 
 The Release Manager's lease reconciliation, phase recovery, and rollback map naturally onto the controller pattern; implementing it as a controller-runtime operator (Go, Kubebuilder) would make desired-vs-actual state convergence idiomatic rather than bespoke. The Release Manager is specified as a service; a controller-operator implementation remains a design option with no contract change. Impact: Medium; Feasibility: High.
 
-Release Manager is an external, separately built, Swastik-coordinated release actuator: it never lives at `/dumby/src/entry/release-manager.ts` or `/dumby/dist/entry/drm.js`. Canonical path: `/dumby-release-manager/src/entry/release-manager.ts` (monorepo variant `/platform/drm/src/entry/release-manager.ts`), with its own repository, build artifact, and deployment. This specification supersedes all earlier drafts that placed Release Manager inside `dumby/src/entry/`.
+Release Manager is an external, separately built, Swastik-coordinated release actuator: it never lives at `/dumby/src/entry/release-manager.ts` or `/dumby/dist/entry/release-manager.js`. Canonical path: `/dumby-release-manager/src/entry/release-manager.ts` (monorepo variant `/platform/release-manager/src/entry/release-manager.ts`), with its own repository, build artifact, and deployment. This specification supersedes all earlier drafts that placed Release Manager inside `dumby/src/entry/`.
 
-- Specified — Release Manager is never `/dumby/src/entry/release-manager.ts` or `/dumby/dist/entry/drm.js`. Canonical path: `/dumby-release-manager/src/entry/release-manager.ts`. Monorepo variant: `/platform/drm/src/entry/release-manager.ts`. Separate repository, build artifact, deployment.
+- Specified — Release Manager is never `/dumby/src/entry/release-manager.ts` or `/dumby/dist/entry/release-manager.js`. Canonical path: `/dumby-release-manager/src/entry/release-manager.ts`. Monorepo variant: `/platform/release-manager/src/entry/release-manager.ts`. Separate repository, build artifact, deployment.
 
 - Implemented Release Manager in separate repository with independent Docker image and Kubernetes manifests.
 
@@ -12197,7 +12197,7 @@ The support program provides community-based support through Discord (a support 
 
 #### [From §7 (Directory & File Structure)] — Observability (logging/metrics/tracing, items 217-239) implemented
 
-- ** Metrics (drm_deploy_total, deploy_duration, phase_duration, rollback_total, swastik_lock_*, canary_*, lease_*, reconcile_mismatch_*), logs (service:'drm',deploy_id,phase,actor_id,trace_id), tracing spans per phase. The specification requires: ** Metrics + logs + traces as specified.
+- ** Metrics (release_manager_deploy_total, deploy_duration, phase_duration, rollback_total, swastik_lock_*, canary_*, lease_*, reconcile_mismatch_*), logs (service:'release-manager',deploy_id,phase,actor_id,trace_id), tracing spans per phase. The specification requires: ** Metrics + logs + traces as specified.
 
 #### [From §7 (Directory & File Structure)] — Two-tier cache (L1 LRU + L2 Redis + PER + stampede guard + negative caching)
 
