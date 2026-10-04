@@ -1,0 +1,21 @@
+{
+  "$id": "contracts/config.schema.json",
+  "title": "Configuration (core|guild|process-module)",
+  "$defs": {
+    "bootstrap": {
+      "type": "object",
+      "properties": {
+        "HEALTH_PORT": {
+          "type": "integer",
+          "default": 3000
+        },
+        "DATABASE_URL": {
+          "type": "string"
+        },
+        "REDIS_URL": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

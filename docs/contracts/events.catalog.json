@@ -1,0 +1,59 @@
+{
+  "$id": "contracts/events.catalog.json",
+  "title": "Typed event catalog (single source)",
+  "name_format": "{domain}.{entity}.{action}  (regex-enforced at registration)",
+  "reserved_prefix": "dumby.  (core emissions only; modules may not emit under it)",
+  "gateway_events": [
+    "guildMemberAdd",
+    "guildMemberRemove",
+    "messageCreate",
+    "messageDelete",
+    "guildBanAdd",
+    "guildBanRemove",
+    "interactionCreate",
+    "channelCreate",
+    "channelDelete",
+    "roleCreate",
+    "roleDelete",
+    "guildCreate",
+    "guildDelete"
+  ],
+  "internal_topics": [
+    {
+      "name": "dumby.system.ready",
+      "producer": "core",
+      "payload": "{ correlationId, shardId }"
+    },
+    {
+      "name": "moderation.case.created",
+      "producer": "moderation",
+      "payload": "{ caseId, guildId, userId, action }"
+    },
+    {
+      "name": "moderation.ban.issued",
+      "producer": "moderation",
+      "payload": "{ banId, userId, guildId, reason }"
+    },
+    {
+      "name": "moderation.mute.scheduled",
+      "producer": "moderation",
+      "payload": "{ userId, guildId, until }"
+    },
+    {
+      "name": "economy.transaction.recorded",
+      "producer": "economy",
+      "payload": "{ userId, guildId, amount, kind }"
+    },
+    {
+      "name": "logging.event.received",
+      "producer": "logging",
+      "payload": "{ guildId, event, actorId }"
+    },
+    {
+      "name": "antiraid.threshold.crossed",
+      "producer": "anti-raid",
+      "payload": "{ guildId, window, count }"
+    }
+  ],
+  "note": "Every emit must name a catalog entry; payload changes are breaking (major bump). Enforcement: require-eventsCatalog-entry lint + runtime bus wrapper + Swastik catalogConsistency."
+}

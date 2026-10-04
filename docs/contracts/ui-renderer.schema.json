@@ -1,0 +1,31 @@
+{
+  "$id": "contracts/ui-renderer.schema.json",
+  "components_v2": {
+    "Container": 17,
+    "TextDisplay": 10,
+    "MediaGallery": 12,
+    "Separator": 14,
+    "ActionRow": 1
+  },
+  "flags": {
+    "IS_COMPONENTS_V2": 32768
+  },
+  "density_modes": [
+    "D",
+    "M",
+    "C"
+  ],
+  "accent": "#5865F2",
+  "reason_codes": [
+    "UNKNOWN_COMMAND",
+    "MAINTENANCE",
+    "NOT_FOUND",
+    "FORBIDDEN",
+    "RESTRICTED",
+    "COOLDOWN",
+    "RATE_LIMITED",
+    "GUILD_UNAVAILABLE",
+    "MODULE_ERROR",
+    "OVERDUE"
+  ]
+}

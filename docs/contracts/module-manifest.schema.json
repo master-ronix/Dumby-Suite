@@ -1,0 +1,301 @@
+{
+  "$id": "contracts/module-manifest.schema.json",
+  "title": "Module Manifest \u2014 the specified contract",
+  "note": "Expresses the specification (blueprint \u00a711.2 / \u00a713.3). The runtime Zod schema (apps/main/src/module-system/manifest.schema.ts) currently narrows several fields; those are implementation gaps, not spec changes \u2014 see x-code-gaps and status/code-reconciliation.json.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "name",
+    "version",
+    "description",
+    "tier",
+    "hardcoded",
+    "devId",
+    "buildId",
+    "visibility",
+    "releaseStatus"
+  ],
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120
+    },
+    "tier": {
+      "enum": [
+        "admin",
+        "core",
+        "standard",
+        "marketplace"
+      ]
+    },
+    "devGuildOnly": {
+      "type": "boolean"
+    },
+    "hardcoded": {
+      "type": "boolean"
+    },
+    "hardcodeGuildId": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "visibility": {
+      "enum": [
+        "public",
+        "unlisted",
+        "private"
+      ]
+    },
+    "releaseStatus": {
+      "enum": [
+        "private",
+        "public"
+      ]
+    },
+    "devId": {
+      "type": "string"
+    },
+    "buildId": {
+      "type": "string"
+    },
+    "marketplaceCategory": {
+      "enum": [
+        "audio",
+        "community",
+        "security",
+        "integrations",
+        "utility"
+      ]
+    },
+    "required": {
+      "type": "boolean",
+      "default": false
+    },
+    "depends": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "token",
+          "version"
+        ],
+        "properties": {
+          "token": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "provides": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "token",
+          "contract"
+        ],
+        "properties": {
+          "token": {
+            "type": "string"
+          },
+          "contract": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "intents": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "partials": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "commands": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "services": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "repositories": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "jobs": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "tasks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "routes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "middleware": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "migrations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "locales": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "config": {
+      "type": "object"
+    },
+    "eventsCatalog": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "dashboardSchema": {
+      "type": "object"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "tier": {
+            "const": "admin"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "devGuildOnly": {
+            "const": true
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "tier": {
+            "const": "marketplace"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "marketplaceCategory"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "hardcoded": {
+            "const": true
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "visibility": {
+            "const": "private"
+          },
+          "releaseStatus": {
+            "const": "private"
+          }
+        },
+        "required": [
+          "hardcodeGuildId"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "hardcoded": {
+            "const": false
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "visibility"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "releaseStatus": {
+            "const": "public"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "hardcoded": {
+            "const": false
+          },
+          "visibility": {
+            "const": "public"
+          }
+        }
+      }
+    }
+  ],
+  "x-code-gaps": [
+    "releaseStatus: runtime ['alpha','beta','stable','deprecated'] optional (spec: ['private','public'], required)",
+    "visibility: absent from the runtime schema (spec: required field)",
+    "devId / buildId: optional in the runtime schema (spec: required)",
+    "required: mandatory boolean in the runtime schema (spec: default false)",
+    "marketplaceCategory: free string in the runtime schema (spec: closed five-value enum)",
+    "depends / provides / services: z.array(z.string()) in the runtime schema (spec: arrays of structured objects)"
+  ],
+  "x-code-ref": "apps/main/src/module-system/manifest.schema.ts"
+}
