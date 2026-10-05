@@ -126,3 +126,8 @@ request records, never edits to frozen ones.
   check: "Every canonical document has a definition/intent/impact/purpose entry"
   test: tests/docs/definitions-index.spec.ts
 ```
+
+## Named entities
+
+**files & artifacts:** `workspace/docs/`
+

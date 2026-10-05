@@ -38,7 +38,7 @@ Dumby's reliability is engineered, not hoped for:
 
 ### 11.3 The Permission Engine
 
-The seven-layer permission resolution engine is the single source of truth for authorisation across the entire feature surface:
+The seven-layer permission resolution engine is the authoritative model for authorisation across the entire feature surface; its single normative statement is `spec/request-layer/permission-authorization-engine.md` §21, to which this summary defers:
 
 1. **Bot Owner Override** — the user is identified in `BOT_OWNER_IDS`; access granted unconditionally. This is an operator override, not a rank.
 2. **Blacklist Check** — the user or guild is on a blacklist; access denied.
@@ -46,9 +46,9 @@ The seven-layer permission resolution engine is the single source of truth for a
 4. **Channel Restriction** — the command is allowed in this channel; if not, access denied.
 5. **Discord Native Permission** — the user has the required Discord permission bits; if not, access denied.
 6. **RBAC Role** — the user's Dumby rank (OWNER/ADMINISTRATOR/MODERATOR/HELPER/MEMBER/RESTRICTED) grants access; if not, access denied. OWNER here is the guild's ownership account — distinct from the bot-owner override in Layer 1, which is not a rank.
-7. **Explicit Grant Override** — a Layer 7 override (permit, whitelist, blacklist, cooldown, rate-limit) applies; this is the final arbiter.
+7. **Explicit Grant Override** — a Layer 7 override (permit, whitelist, blacklist, cooldown, rate-limit) applies; it is consulted immediately after Layer 3, above Layers 4–6, and its outcome is final.
 
-This is the canonical ordering of DIAGRAM 21-A in `blueprint.md` §21, and it resolves in that fixed sequence. Two scopes deny by default: the **module-availability check at Layer 3 fails closed** (an unknown or disabled guild/module denies rather than allows), and the **rank resolution at Layer 6 denies by default** (a command with no explicit permission declaration is unreachable by any non-owner user, and RESTRICTED is the automatic floor). Every other layer refines access above that floor; only Layer 1's operator override bypasses it.
+Resolution follows DIAGRAM 21-A in `spec/request-layer/permission-authorization-engine.md` §21 in the fixed sequence **1 → 2 → 3 → 7 → 4 → 5 → 6** — Layer 7 is consulted immediately after Layer 3, above Layers 4–6. Two scopes deny by default: the **module-availability check at Layer 3 fails closed** (an unknown or disabled guild/module denies rather than allows), and the **rank resolution at Layer 6 denies by default** (a command with no explicit permission declaration is unreachable by any non-owner user, and RESTRICTED is the automatic floor). Every other layer refines access above that floor; only Layer 1's operator override bypasses it.
 
 No command handler implements any permission logic of its own. All authorisation logic lives exclusively in the resolver or in the middleware that calls it. This means permission policy is consistent across every module — there is one permission model, not N models that happen to agree most of the time.
 

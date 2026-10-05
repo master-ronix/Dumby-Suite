@@ -1,0 +1,2371 @@
+{
+  "schema": "entities/v1",
+  "note": "Frozen named-entity inventory from the authoritative sources. CI gate: every entity must appear in the reader-facing corpus (blueprint/ documentation/ spec/ adr/ upgradation/).",
+  "source_files": [
+    "_inbox/blueprint.md",
+    "_inbox/interface.md",
+    "_inbox/directive.md",
+    "_inbox/concept.md",
+    "_inbox/directory.md",
+    "_inbox/definitions.md"
+  ],
+  "count": 589,
+  "entities": [
+    {
+      "entity": "@fastify/rate-limit",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "@v3",
+      "source": "directive.md"
+    },
+    {
+      "entity": "APPLICATION_COMMAND_AUTOCOMPLETE_RESULT",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "AUTOCOMPLETE_BUDGET_MS",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "AdminTierGateMiddleware",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "AnalyticsMiddleware",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "AnonymizationService",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "Application.bootstrap",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "Application.shutdown",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "AuthMiddleware",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "BOT_OWNER_IDS",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "BOT_TOKEN",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "BackupService",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "BaseProcessor",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "BaseProcessor.process",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "BaseRepository",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "BlacklistLookup",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "CHANGELOG.md",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "CLIENT_READY",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "CODEOWNERS",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "COMMAND_REGISTER",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "COMMAND_SUSPENDED",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "COOLDOWN",
+      "source": "interface.md"
+    },
+    {
+      "entity": "CORE_TOKENS",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "CREDENTIALS_SERVICE_PORT",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "CRITICAL_QUERY_THRESHOLD_MS",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "CacheManager",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "CircuitBreaker",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "CircuitOpenError",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "CollisionPendingError",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "Command.execute",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "CommandCeilingExceededError",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "CommandCeilingService",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "CommandCollisionError",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "CommandContext",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "CommandContext.logger",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "CommandCosmeticsService",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "CommandDeployer",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "CommandDeploymentPlanner",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "CommandKeyCollisionError",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "CommandLifecycleHotSwapService",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "CommandRegistry",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "CommandRouter",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "ConfigurationError",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "ConflictError",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "CooldownMiddleware",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "DATABASE_POOL_MAX",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "DATABASE_REPLICA_MAX_LAG_MS",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "DATABASE_REPLICA_URLS",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "DATABASE_SSL",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "DATABASE_STATEMENT_TIMEOUT_MS",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "DATABASE_URL",
+      "source": "directive.md"
+    },
+    {
+      "entity": "DEVELOPER_DEPLOY_DENIED",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "DEVELOPMENT_GUILD_ID",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "DEV_GUILD_ID",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "DISCORD_LOGIN",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "DependencyUnavailableError",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "Dumby-Suite-main/",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "DumbyError",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "EADDRINUSE",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "EMBED_COLORS",
+      "source": "directive.md"
+    },
+    {
+      "entity": "ENV_KEYS",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "EVALSHA",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "EVENT_BUS_MAX_EMIT_DEPTH",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "EVENT_LOOP_LAG_SHED_THRESHOLD_MS",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "EmbedBuilder",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "ErasureCoordinator",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "EventBus",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "EventBus.on",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "EventCatalog",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "EventCycleError",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "EventRouter",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "ExpiredMuteCleanupTask",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "ExternalServiceError",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "FOLLOWUP_ALARM_MS",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "FORBIDDEN",
+      "source": "interface.md"
+    },
+    {
+      "entity": "FinalizationRegistry",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "GUILD_UNAVAILABLE",
+      "source": "interface.md"
+    },
+    {
+      "entity": "GatewayIntentBits",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "GuildCommandChangeQueue",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "GuildCommandChangeScheduler",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "GuildConfigMiddleware",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "GuildId",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "GuildMembers",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "GuildPresences",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "HEALTH_PORT",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "HorizontalPodAutoscaler",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "HotSwapService",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "HttpClient",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "HttpServer",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "I18nManager",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "ICommand.execute",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "IComponentHandler",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "INTERACTION_TIMEOUT",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "INTERNAL_API_KEY",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "IS_COMPONENTS_V2",
+      "source": "interface.md"
+    },
+    {
+      "entity": "ITimerService",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "InputSanitizer",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "InteractionRegistry",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "InternalError",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "InternalEventBus",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "JWT_SIGNING_KEY",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "LISTEN",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "LocaleMiddleware",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "MAINTENANCE",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "MAJOR.MINOR.PATCH",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "MAX_REMINDER_HORIZON_DAYS",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "MEMORY_LEAK_THRESHOLD_KB",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "MODULES_DIR",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "MODULE_ERROR",
+      "source": "interface.md"
+    },
+    {
+      "entity": "MODULE_UPLOAD_DENIED_NON_OWNER",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "MaintenanceModeError",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "MaintenanceModeMiddleware",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "MessageContent",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "MessageEmbed",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "MeteringService",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "MiddlewarePipeline",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "MiddlewarePipeline.execute",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "MigrationRunner",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "MockContainer",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "MockGatewayAdapter",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "ModalSubmitInteraction",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "ModuleConfigScope",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "ModuleDisabledResult",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "ModuleLoader",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "ModuleWorkerHost",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "NEW_VAR",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "NODE_ENV",
+      "source": "directive.md"
+    },
+    {
+      "entity": "NOTIFY",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "NOT_FOUND",
+      "source": "interface.md"
+    },
+    {
+      "entity": "NULL",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "NX",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "NotFoundError",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "OPEN",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "OVERDUE",
+      "source": "interface.md"
+    },
+    {
+      "entity": "PERSONA_ID",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "PORT",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "PathContainmentError",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "PermissionContext",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "PermissionDeniedError",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "PermissionMiddleware",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "PermissionResolver",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "PersonaCommandBindingService",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "PowerEngineService",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "QueryLogger",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "QueueManager",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "QueueManager.enqueue",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "RATE_LIMITED",
+      "source": "interface.md"
+    },
+    {
+      "entity": "RECEIVED",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "REDIS_TLS",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "REDIS_URL",
+      "source": "directive.md"
+    },
+    {
+      "entity": "REJECTED",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "REMINDERS_MAX_HORIZON_DAYS",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "RESTRICTED",
+      "source": "interface.md"
+    },
+    {
+      "entity": "ROLLED_BACK",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "RateLimitMiddleware",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "RateLimitedError",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "ReadWriteMany",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "RedisLockStore",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "RedisLockStore.acquire",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "ReminderDeliveryJob",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "RetryPolicy",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "RollingUpdate",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "SCREAMING_SNAKE_CASE",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "SELECT",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "SHARD_COUNT",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "SHARD_RANGE",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "SIGINT",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "SIGKILL",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "SIGTERM",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "SIGUSR2",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "SLOW_QUERY_THRESHOLD_MS",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "SO_REUSEADDR",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "STAGED",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "SWASTIK",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "SWASTIK_LIVE_VOLUME_PATH",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "SWASTIK_MANIFEST_INVALID",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "ScaledObject",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "ShardingManager",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "SlashCommandBuilder",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "StatefulSet",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "TELEMETRY_ENABLED",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "TRACE_SAMPLE_RATE",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "TraceMiddleware",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "TransactionManager",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "TypeError",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "UNKNOWN_COMMAND",
+      "source": "interface.md"
+    },
+    {
+      "entity": "UnauthorizedError",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "ValidationError",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "WeakRef",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "WorkerThreadPool",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "_template",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "_template/",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "actionId",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "actorId",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "adapters/",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "afterState",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "allowedExternalDomains",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "approvalStatus",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "apps/main/",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "apps/main/.github/",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "apps/main/deploy/k8s/base/swastik-volumes.yaml",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "apps/main/docker-compose.yml",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "apps/main/docker/Dockerfile",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "apps/main/docker/docker-compose.yml",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "apps/main/package.json",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "apps/main/src/core/",
+      "source": "definitions.md"
+    },
+    {
+      "entity": "apps/main/src/db/repositories/base.repository.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "apps/main/src/discord/",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "apps/main/src/discord/client-builder.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "apps/main/src/http/",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "apps/main/src/http/client.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "apps/main/src/http/power-engine-dispatcher.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "apps/main/src/module-system/manifest.schema.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "apps/main/src/module-system/tier-rules.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "apps/main/src/permissions/",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "apps/main/tsconfig.json",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "apps/main/vitest.config.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "apps/main/vitest.integration.config.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "artifactHash",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "assertEmitted",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "assertEnqueued",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "assertLogged",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "assertPathInside",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "audit_log",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "audit_logs",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "backup_history",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "banner.png",
+      "source": "interface.md"
+    },
+    {
+      "entity": "be39a52",
+      "source": "definitions.md"
+    },
+    {
+      "entity": "beforeState",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "blockUser",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "blocked_users",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "blocked_users.expiresAt",
+      "source": "directive.md"
+    },
+    {
+      "entity": "blueprint.md",
+      "source": "directive.md"
+    },
+    {
+      "entity": "bodyLimit",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "bootstrap/bootstrap.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "bootstrap/stages.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "broadcastEval",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "buildApiServer",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "buildHealthServer",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "buildId",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "buildMetricsServer",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "builds.sourceArchiveHash",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "catalog.json",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "catalogConsistency",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "change-log.md",
+      "source": "directive.md"
+    },
+    {
+      "entity": "check-configmap-keys.mjs",
+      "source": "directive.md"
+    },
+    {
+      "entity": "check-workflows.mjs",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "chore/",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "ci.yml",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "clai_authkeys",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "clai_operators",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "classifyLoadFailures",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "client-builder.ts",
+      "source": "directive.md"
+    },
+    {
+      "entity": "client.shard.broadcastEval",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "cmd/release-manager/main.go",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "collision-resolution.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "command-ceiling.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "command-deployer.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "command-registry.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "command-router.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "command.suspend",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "command.unsuspend",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "commandId",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "commands/",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "components-v2.ts",
+      "source": "directive.md"
+    },
+    {
+      "entity": "concept.md",
+      "source": "definitions.md"
+    },
+    {
+      "entity": "config/configmap-patcher.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "config/dumby-config-diff.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "configSchema",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "console.log",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "constants/index.ts",
+      "source": "directive.md"
+    },
+    {
+      "entity": "context.locale",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "context.metadata",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "context.rbacRole",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "context.shardId",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "core/commands",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "core/commands/__tests__/",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "core/commands/ports.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "correlationId",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "createdAt",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "createdBy",
+      "source": "directive.md"
+    },
+    {
+      "entity": "created_at",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "credentialHash",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "credentials.issue",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "credentials.revoke",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "credentials.rotate",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "credentials.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "crossModuleReads",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "crypto.timingSafeEqual",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "custom_id",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "dashboardSchema",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "db.knex",
+      "source": "directive.md"
+    },
+    {
+      "entity": "db.ts",
+      "source": "concept.md"
+    },
+    {
+      "entity": "defaultMemberPermissions",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "defineManifest",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "definitions.md",
+      "source": "definitions.md"
+    },
+    {
+      "entity": "dependabot.yml",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "dependency-review.yml",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "deploy-production.yml",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "deploy-staging.yml",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "deploy/k8s/base/configmap.yaml",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "deploy/k8s/base/deployment.yaml",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "deploy/k8s/base/hpa.yaml",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "deploy/k8s/base/service.yaml",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "deploy/k8s/overlays/dev/",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "deploy/k8s/overlays/staging/",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "deploy/terraform/modules/cache/",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "deploy/terraform/modules/redis/",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "deployAll",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "description.md",
+      "source": "interface.md"
+    },
+    {
+      "entity": "devGuildOnly",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "devId",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "devIdHash",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "developer.unsuspend",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "developerId",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "di/container.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "di/mock-container.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "di/tokens.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "directive.md",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "directory.md",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "disabled_commands",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "discordApplicationId",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "docs/",
+      "source": "directory.md"
+    },
+    {
+      "entity": "docs/adr/",
+      "source": "directive.md"
+    },
+    {
+      "entity": "docs/compliance/README.md",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "docs/directory.md",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "docs/ur/",
+      "source": "directive.md"
+    },
+    {
+      "entity": "documentation.md",
+      "source": "definitions.md"
+    },
+    {
+      "entity": "dumby.",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "dumby.code-snippets",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "dumby/core/ui/ResponseSchema.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "dumby/deploy/deploy-config.yaml",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "dumby/forbidden-core-import",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "dumby/no-orphaned-closures",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "dumby/src/entry/",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "dumby_command_duration_seconds",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "dumby_memory_usage_gauge",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "dumby_queue_depth",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "emitSync",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "emptyDir",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "en-US.json",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "enterMaintenanceMode",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "entry/clai.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "entry/main.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "entry/ssh-clai.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "entry/swastik.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "entry/worker.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "env.schema.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "env/dev",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "env/prod",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "env/staging",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "eventBus.emit",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "eventsCatalog",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "exactOptionalPropertyTypes",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "exitMaintenanceMode",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "feature/",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "findDuePending",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "fix/",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "flushCacheNamespace",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "forbiddenIntents",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "formatRelative",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "formatters.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "frameworkApiVersion",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "fs.renameSync",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "fsGroup",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "gateResultsHash",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "gateway.live-adapter.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "gatewayEventsShedTotal",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "generate-docs.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "guild.unsuspend",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "guildId",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "guild_command_queue",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "guild_configs",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "guild_module_states",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "guild_module_states.dataRetentionPolicy",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "guild_module_states.installed_at",
+      "source": "interface.md"
+    },
+    {
+      "entity": "guild_outbound_webhooks",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "guild_persona_bindings",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "hardcodeGuildId",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "http/routes/admin.routes.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "http/server.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "httpStatus",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "i18n-manager.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "initTracing",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "installedAt",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "interaction-registry.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "interaction.reply",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "interactionCreate",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "interface.md",
+      "source": "directive.md"
+    },
+    {
+      "entity": "isLive",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "isOperational",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "isReady",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "isStarted",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "jobId",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "keyId",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "knex_migrations",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "limits.memory",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "live/",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "loadModulesFromSwastikVolume",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "loader.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "locales/",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "lockfileHash",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "logger.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "logo.png",
+      "source": "interface.md"
+    },
+    {
+      "entity": "lstatSync",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "main.tf",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "main.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "manifest.schema.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "manifest.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "marketplaceCategory",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "marketplace_listings",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "marketplace_listings.devId",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "master-prompt.md",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "maxCommandsPerModule",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "max_connections",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "messageCreate",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "messageDelete",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "metering_usage_daily",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "metricUnitsConsumed",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "metrics/registry.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "middleware-pipeline.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "migrations/",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "minimumReleaseAge",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "minimumReleaseAgeExclude",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "models/",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "module.unsuspend",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "module_selftest_entries",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "modules/_template/",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "modules/manifest.schema.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "modules/register-all.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "modules/swastik-loader.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "mtp_token_ledger_daily",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "multipart/form-data",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "negative_hit",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "noUncheckedIndexedAccess",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "onConfigChange",
+      "source": "concept.md"
+    },
+    {
+      "entity": "onLoad",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "onReady",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "onUnload",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "ownerDevId",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "ownershipTransferredAt",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "package.json",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "packages/swastik",
+      "source": "definitions.md"
+    },
+    {
+      "entity": "packages/swastik/_template/",
+      "source": "directory.md"
+    },
+    {
+      "entity": "parseManifest",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "path.join",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "pep.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "permissions.rbac",
+      "source": "directive.md"
+    },
+    {
+      "entity": "persona.suspend",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "persona_identities",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "pg_partman",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "pnpm-workspace.yaml",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "postMessage",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "process.env",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "process.env.LEGACY_VAR",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "purgeByGuildId",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "purgeByUserId",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "qm-dev-001",
+      "source": "interface.md"
+    },
+    {
+      "entity": "queryAuditLog",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "queue/queue-manager.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "queue/scheduler.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "queueName",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "rbac.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "rbac_grants",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "rbac_group_roles",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "rbac_groups",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "rbac_sets",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "refactor/",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "register-all.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "registry.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "release-manager.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "release.yml",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "releaseStatus",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "reminders@1.4.0",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "requeueDeadLetter",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "require-eventsCatalog-entry",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "require.cache",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "requiredRBACFloor",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "resolvePermission",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "resourceTracker.clearAllTimers",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "revocationReason",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "revokeModuleSignature",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "revokedAt",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "revokedBy",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "runAsNonRoot",
+      "source": "directive.md"
+    },
+    {
+      "entity": "safeJoin",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "scripts/check-workflows.mjs",
+      "source": "directive.md"
+    },
+    {
+      "entity": "scripts/generate-docs.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "scripts/kind-dev-up.sh",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "scripts/load-test.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "securityContext",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "securityContext.fsGroup",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "services/",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "setInterval",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "setTimeout",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "shardCount",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "shardDisconnect",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "shardReconnecting",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "shouldEarlyRecompute",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "signModule",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "signatureKeyId",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "signedDescriptor",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "signing_keys",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "sourceArchiveHash",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "src/",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "src/bootstrap/bootstrap.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "src/commands/",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "src/commands/ports.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "src/config/",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "src/core/",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "src/core/commands/",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "src/core/modules/",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "src/credentials/",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "src/db/migrations/core/",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "src/db/repositories/",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "src/entry/",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "src/entry/credentials.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "src/entry/main.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "src/entry/power-engine.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "src/entry/ssh-clai.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "src/entry/swastik.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "src/entry/worker.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "src/errors/taxonomy.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "src/http/HttpClient",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "src/http/middleware/",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "src/i18n/",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "src/interactions/interaction-registry.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "src/mdis/",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "src/module-system/",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "src/modules/",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "src/monetization/",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "src/permissions/",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "src/permissions/resolver.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "src/shared",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "src/shared/",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "src/shared/testing/fixtures/",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "src/shared/utils/",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "src/shared/utils/retry.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "ssh-clai.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "ssh2",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "stages.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "superRefine",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "suspendCommand",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "suspendDeveloper",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "suspendGuild",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "suspendModule",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "suspendedAt",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "suspendedBy",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "suspensionReason",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "swastik-loader.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "swastik.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "swastik/lock-client.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "swastik/queue-reconciliation.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "swastik/scheduled-restart.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "swastik_builds",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "swastik_developers",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "symlinkSync",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "system.fatalError",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "targetId",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "targetType",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "terminationGracePeriodSeconds",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "tests/chaos/",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "tests/e2e/",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "tests/smoke/",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "textPrefixes",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "tier-rules.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "toJSON",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "tools/release_manager/",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "topo-sort.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "topologicalLoadOrder",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "tracing.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "tsconfig.json",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "unblockUser",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "uncaughtException",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "unhandledRejection",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "updatedBy",
+      "source": "directive.md"
+    },
+    {
+      "entity": "userMessage",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "v5.0.0",
+      "source": "interface.md"
+    },
+    {
+      "entity": "vitest.config.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "vitest.integration.config.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "volumeMounts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "webhook_deliveries_idempotency",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "worker.ts",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "worker_threads",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "workspace/docs/",
+      "source": "definitions.md"
+    },
+    {
+      "entity": "writeAudit",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "x.y.z",
+      "source": "blueprint.md"
+    },
+    {
+      "entity": "z.unknown",
+      "source": "blueprint.md"
+    }
+  ]
+}

@@ -1107,6 +1107,6 @@ None (conceptual).
 
 ---
 
-## Extracted status & design entries (inline, from the original reference)
+## Inline status & design entries
 
-Split into per-department files under `spec/reference/inline-status-entries/` for context-window efficiency; every entry is preserved there verbatim.
+Maintained in per-department files under `spec/reference/inline-status-entries/`.

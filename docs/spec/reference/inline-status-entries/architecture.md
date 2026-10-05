@@ -14,7 +14,7 @@ review_state: pending-evidence
 
 ## Inline status & design entries — architecture
 
-Status, `Design Consideration`, and `§X Addition` entries the original reference interleaved inline, consolidated here verbatim for this department.
+Status, `Design Consideration`, and `§X Addition` entries for this department.
 
 ### 8.11 DI container verified (Symbol tokens, 3 lifetimes, freeze, child containers)
 
@@ -84,6 +84,6 @@ A Core-tier command module (`/health`) and a Standard-tier command module (`/hel
 ## Acceptance
 ```acceptance
 - id: ACC-REF-INLINE-architecture
-  check: "Every inline status/design entry is preserved verbatim for this department"
+  check: "Every inline status/design entry for this department is present"
   test: tests/docs/inline-status-entries.spec.ts
 ```

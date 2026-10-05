@@ -128,8 +128,6 @@ None (conceptual).
 ## Edges (-> blueprint)
 - SPEC-08-REFERENCE -> status/compliance.json (generated from contracts + capabilities)
 
-## Named entities (from the original reference)
-
-The original reference named these entities in "47. Glossary & Topic Index". They are preserved here so no identifier is lost in the restructure.
+## Named entities
 
 **classes, interfaces & symbols:** `Comms`

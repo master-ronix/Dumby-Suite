@@ -14,7 +14,7 @@ review_state: pending-evidence
 
 ## Inline status & design entries — lifecycle
 
-Status, `Design Consideration`, and `§X Addition` entries the original reference interleaved inline, consolidated here verbatim for this department.
+Status, `Design Consideration`, and `§X Addition` entries for this department.
 
 ### 37.4.4 Vitest Configuration — Referenced but Location Unconfirmed
 
@@ -145,6 +145,6 @@ Independent per-layer thresholds matching the documented floors.
 ## Acceptance
 ```acceptance
 - id: ACC-REF-INLINE-lifecycle
-  check: "Every inline status/design entry is preserved verbatim for this department"
+  check: "Every inline status/design entry for this department is present"
   test: tests/docs/inline-status-entries.spec.ts
 ```

@@ -142,9 +142,7 @@ Divergences are recorded in `status/code-reconciliation.json`.
 - SPEC-06-OPERATIONS -> all departments (observability + errors are cross-cutting)
 - SPEC-06-OPERATIONS#SECURITY -> SPEC/00-GOVERNANCE (secrets, ban registry enforcement)
 
-## Named entities (from the original reference)
-
-The original reference named these entities in this section. They are preserved here so no identifier is lost in the restructure.
+## Named entities
 
 **classes, interfaces & symbols:** `CloudWatch`, `Honeycomb`, `Jaeger`, `Loki`, `Tempo`, `initTracing`
 

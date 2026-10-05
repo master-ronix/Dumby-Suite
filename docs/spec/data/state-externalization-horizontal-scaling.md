@@ -138,8 +138,6 @@ Divergences are recorded in `status/code-reconciliation.json`.
 - SPEC-05-DATA -> SPEC-02-ARCHITECTURE (PostgreSQL system of record; Redis acceleration)
 - SPEC-05-DATA -> SPEC-03-MODULES (each module owns its tables)
 
-## Named entities (from the original reference)
-
-The original reference named these entities in "26. State Externalization & Horizontal Scaling". They are preserved here so no identifier is lost in the restructure.
+## Named entities
 
 **classes, interfaces & symbols:** `Redis-`, `SHARD_COUNT-1`, `shardCount`, `DATABASE_REPLICA_`, `MAX_LAG_MS`

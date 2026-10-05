@@ -246,10 +246,8 @@ None (conceptual).
 - SPEC-02-ARCHITECTURE-0007 -> blueprint/structure.md (structure edges)
 - SPEC-02-ARCHITECTURE-0007#TIER_VOLUMES -> SPEC-03-MODULES
 
-## Named entities (from the original reference)
-
-The original reference named these entities in this section. They are preserved here so no identifier is lost in the restructure.
+## Named entities
 
 **classes, interfaces & symbols:** `CPU-isolated`, `Deployers`, `requestLogger`
 
-**files & artifacts:** `ApplicationContext.ts`, `BaseJob.ts`, `BaseMiddleware.ts`, `BaseProcessor.ts`, `BaseRepository.ts`, `BlacklistService.ts`, `CacheManager.ts`, `ConfigManager.ts`, `DatabaseManager.ts`, `DumbyError.ts`, `EventRouter.ts`, `GuildConfigService.ts`, `GuildModuleStateService.ts`, `HealthServer.ts`, `HttpServer.ts`, `I18nManager.ts`, `InternalEventBus.ts`, `L1Cache.ts`, `L2Cache.ts`, `Metrics.ts`, `MiddlewarePipeline.ts`, `MigrationRunner.ts`, `MockContainer.ts`, `ModuleLoader.ts`, `ModuleManifest.ts`, `ModuleRegistry.ts`, `PermissionResolver.ts`, `QueryLogger.ts`, `QueueManager.ts`, `RBACService.ts`, `STATUS_AND_VERIFICATION.md`, `StampedeGuard.ts`, `commitlint.config.ts`, `context.ts`, `crypto.ts`, `discord.ts`, `durations.ts`, `embed.ts`, `eslint.config.ts`, `extensions.json`, `launch.json`, `lifetimes.ts`, `limits.ts`, `pagination.ts`, `pnpm-lock.yaml`, `prettier.config.ts`, `routes.ts`, `scaffold.ts`, `schema.ts`, `seed.ts`, `settings.json`, `snowflake.ts`
+**files & artifacts:** `ApplicationContext.ts`, `BaseJob.ts`, `BaseMiddleware.ts`, `BaseProcessor.ts`, `BaseRepository.ts`, `BlacklistService.ts`, `CacheManager.ts`, `ConfigManager.ts`, `DatabaseManager.ts`, `DumbyError.ts`, `EventRouter.ts`, `GuildConfigService.ts`, `GuildModuleStateService.ts`, `HealthServer.ts`, `HttpServer.ts`, `I18nManager.ts`, `InternalEventBus.ts`, `L1Cache.ts`, `L2Cache.ts`, `Metrics.ts`, `MiddlewarePipeline.ts`, `MigrationRunner.ts`, `MockContainer.ts`, `ModuleLoader.ts`, `ModuleManifest.ts`, `ModuleRegistry.ts`, `PermissionResolver.ts`, `QueryLogger.ts`, `QueueManager.ts`, `RBACService.ts`, `STATUS_AND_VERIFICATION.md`, `StampedeGuard.ts`, `commitlint.config.ts`, `context.ts`, `crypto.ts`, `discord.ts`, `durations.ts`, `embed.ts`, `eslint.config.ts`, `extensions.json`, `launch.json`, `lifetimes.ts`, `limits.ts`, `pagination.ts`, `pnpm-lock.yaml`, `prettier.config.ts`, `routes.ts`, `scaffold.ts`, `schema.ts`, `seed.ts`, `settings.json`, `snowflake.ts`, `adapters/`, `models/`

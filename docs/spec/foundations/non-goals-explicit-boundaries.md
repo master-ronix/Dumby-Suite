@@ -182,8 +182,6 @@ None (conceptual).
 ## Edges (-> blueprint)
 - SPEC-01-FOUNDATIONS-0004#BAN_REGISTRY -> SPEC/00-GOVERNANCE (four enforcement layers per ban)
 
-## Named entities (from the original reference)
-
-The original reference named these entities in "4. Non-Goals & Explicit Boundaries". They are preserved here so no identifier is lost in the restructure.
+## Named entities
 
 **classes, interfaces & symbols:** `Policy-Enforcement-Point`, `PowerEngineDispatcher`

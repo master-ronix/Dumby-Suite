@@ -3,31 +3,82 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.0.0
+version: 5.1.0
+chain_role: record
+preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
+change_log: upgradation/change-log.md
 authority_scope: [history]
 ---
 
 # DUMBY Documentation — Unified Change Log
 
 > **One project. One continuous history.**
-> Archive lineage: v1.0.0 → FINAL (13 drafts) · Living reference pair: v4.5.1 (`documentation.md` · `blueprint.md`) · Living document set: v5.0.0 (nine canonical documents · `docs/adr/` · `docs/ur/`)
-> Last recorded: 2026-10-01 (UR-20260918-001 rev 2.0 — post-re-baseline Conformance & Audit Evidence Set read finding-by-finding; migration protocol 5.3.0 and the corrected M0 per-request record)
+> Archive lineage: v1.0.0 → FINAL (13 drafts) · Living reference pair: v4.5.1 · Restructured corpus: v5.0.0 (`blueprint/` · `documentation/` · `spec/<department>/` · `adr/` · `upgradation/`)
+> Last recorded: 2026-10-05 (trigger-chain revision 5.1.0 — meta-prompt, master-prompt, migration-prompt, entry and this log re-based onto one shared chain skeleton with explicit handoff/return conditions)
 
 ---
 
 ## Table of Contents
 
-1. Scope & Method
-2. Master Version Table
-3. Version-by-Version History
-4. Cross-Version Defect Lifecycle
-5. Open Items Carried Forward
+- **Chain Contract** — §1 Identity · §2 Purpose · §3 Preconditions · §4 Inputs · §5 Ordered Steps · §6 Artefacts Produced · §7 Acceptance Criteria · §8 Change-Log Record
+- **§9 Record** — the history — §1 Scope & Method · §2 Master Version Table · §3 Version-by-Version History · §4 Cross-Version Defect Lifecycle · §5 Open Items Carried Forward
 
 ---
 
-## 1. Scope & Method
+## 1. Identity
 
-### 1.1 Scope
+- **Chain role:** *record* — the terminal sink of the trigger chain.
+- **Preceded by:** any chain document that completes a step — `prompts/meta-prompt.md` (activation), `orchestration/master-prompt.md` (build), `migration/migration-prompt.md` (migration).
+- **Hands off to:** nothing — it is terminal. Its entries are the chain's audit trail and the state of record.
+- **Authority:** normative, `authority_scope: [history]`.
+
+## 2. Purpose
+
+Record every step of the chain into one continuous, evidence-verified history, so that an item without a record here did not happen. It is where the activation, build, and migration lines are written, and where each step's completion is made provable.
+
+## 3. Preconditions
+
+- A chain step has completed (an activation, a build phase, or a closed migration request row).
+- The step has produced its record line per its own §8.
+
+## 4. Inputs
+
+| Input | Source | Use |
+|-------|--------|-----|
+| Activation line | `prompts/meta-prompt.md` §8 | one per run |
+| Build line | `orchestration/master-prompt.md` §8 | one per phase |
+| Migration line | `migration/migration-prompt.md` §8 | one per closed request row |
+
+## 5. Ordered Steps
+
+1. Receive the step's record line.
+2. Apply the controlled vocabulary of §1.5.
+3. Append it to the version-by-version history (§3) under the current version.
+4. Update the `Last recorded` line at the head of this document.
+
+## 6. Artefacts Produced
+
+| Artefact | Path | When |
+|----------|------|------|
+| Version entries | `upgradation/change-log.md` §3 | per chain revision or step |
+| Defect lifecycle | `upgradation/change-log.md` §4 | per introduced defect |
+| Open items | `upgradation/change-log.md` §5 | per carried item |
+
+## 7. Acceptance Criteria
+
+- Every chain step has exactly one record line; each entry uses the §1.5 controlled vocabulary; no completed step's record is missing.
+
+## 8. Change-Log Record
+
+This document is self-recording: its own revisions are entries under §3 (see the trigger-chain revision entry below).
+
+---
+
+## 9. Record
+
+### 1. Scope & Method
+
+#### 1.1 Scope
 
 This log covers the throughline in `01_Documentation_Versions_PRIMARY_LINEAGE` — the 13 files that are one project's continuous revision history — plus, from 2026-09-11, the two _living_ reference documents (`documentation.md`, `blueprint.md`), whose v4.5.1 headers carry the explicit instruction "record in change-log.md."
 
@@ -35,7 +86,7 @@ From 2026-09-18 it additionally covers the full v5.0.0 document set — all nine
 
 It does not cover the five alternate/forked drafts in `02_Documentation_Versions_ALTERNATE_BRANCHES` (an early independent TypeScript pass, two JavaScript-ESM fork revisions, an unversioned alternate tier draft, and a rejected consolidation attempt). Those are real documents but were never merged into this line, so they sit outside a changelog for _this_ project.
 
-### 1.2 Method
+#### 1.2 Method
 
 Four independent evidence sources were cross-checked for every entry, and no claim rests on only one of them:
 
@@ -46,11 +97,11 @@ Four independent evidence sources were cross-checked for every entry, and no cla
 
 A fifth source applies to the v4.5.1 entry only: direct programmatic checks of the assembled files and the merged Unified Update Request (UUR). No pre-update copies of the living documents existed for a version-to-version diff, so their pre-update states are cited as _attested_, never as diff-verified.
 
-### 1.3 The self-verification caveat (stated once, applies throughout)
+#### 1.3 The self-verification caveat (stated once, applies throughout)
 
 Where a document's own embedded **Self-Verification Report** is cited, one caveat applies: the v4.0.0 and v4.1.0 reports are byte-identical to each other (confirmed by direct diff), meaning that section is boilerplate carried forward unedited and is _not_ independent evidence of what changed in v4.1.0 specifically — the diff-verified facts come from the file body, not its self-report. The same defect family re-manifests at v4.5.1 in `documentation.md`'s §51 (see that entry).
 
-### 1.4 Content evidence over labels
+#### 1.4 Content evidence over labels
 
 Several files' own filenames or self-declared headers are wrong. This log follows content evidence in every such case:
 
@@ -65,7 +116,7 @@ Two smaller notes from the same reconciliation:
 - No standalone **v3.0.1** file exists anywhere in the archive. v3.0.2's own header says it includes "3.0.1 fixes," so it most likely lived only as an in-conversation patch folded straight into v3.0.2 before being saved separately.
 - Item 08 (the RBAC/CLAI addendum) self-labels as "Core Directive Specification v5.0" but is not a version in this sequence at all — it describes itself as an addendum extending `DUMBY_v4_1_0.md`, "a continuation, not a separate document." It is logged as an interstitial artifact, not a numbered release.
 
-### 1.5 Entry template (controlled vocabulary)
+#### 1.5 Entry template (controlled vocabulary)
 
 Every version entry in §3 uses the same fixed set of labels, always in this order. Only the applicable labels appear.
 
@@ -85,7 +136,7 @@ Each entry opens with a one-line metadata footer: _lines · size · basis of ver
 
 ---
 
-## 2. Master Version Table
+### 2. Master Version Table
 
 | #   | Version    | Lines           | Size           | Theme                                                                                                                                                                                                                                                                                                                                                        |
 | --- | ---------- | --------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -108,11 +159,11 @@ Each entry opens with a one-line metadata footer: _lines · size · basis of ver
 
 ---
 
-## 3. Version-by-Version History
+### 3. Version-by-Version History
 
 ---
 
-### v1.0.0 — "UMDB Framework" (Original Blueprint)
+#### v1.0.0 — "UMDB Framework" (Original Blueprint)
 
 _2,561 lines · 115 KB · basis: production changelog plus section-comparison checks_
 
@@ -129,7 +180,7 @@ _2,561 lines · 115 KB · basis: production changelog plus section-comparison ch
 
 ---
 
-### v2.0.0 — Renamed to Dumby; 22-Module Catalog
+#### v2.0.0 — Renamed to Dumby; 22-Module Catalog
 
 _6,321 lines · 336 KB · basis: production changelog plus section-comparison checks_
 
@@ -146,7 +197,7 @@ _6,321 lines · 336 KB · basis: production changelog plus section-comparison ch
 
 ---
 
-### v2.1.0 — Module Depth Completion Pass
+#### v2.1.0 — Module Depth Completion Pass
 
 _6,956 lines · 380 KB · basis: production changelog plus a fresh integrity re-audit_
 
@@ -164,7 +215,7 @@ _6,956 lines · 380 KB · basis: production changelog plus a fresh integrity re-
 
 ---
 
-### v3.0.0 — Tiered Module System + TypeScript Migration
+#### v3.0.0 — Tiered Module System + TypeScript Migration
 
 _7,821 lines · 504 KB · basis: production changelog plus section-comparison checks_
 
@@ -189,7 +240,7 @@ _7,821 lines · 504 KB · basis: production changelog plus section-comparison ch
 
 ---
 
-### v3.0.2 — Terminology Sweep + First Backfill Fix
+#### v3.0.2 — Terminology Sweep + First Backfill Fix
 
 _7,929 lines · 514 KB · basis: direct grep and section-comparison checks; Weakness Audit confirmed matching this exact draft_
 
@@ -219,7 +270,7 @@ _7,929 lines · 514 KB · basis: direct grep and section-comparison checks; Weak
 
 ---
 
-### v4.0.0 — First v4 Release; 9-Part Restructure
+#### v4.0.0 — First v4 Release; 9-Part Restructure
 
 _4,219 lines · 310 KB · basis: full-file diff lineage begins here; self-report cross-checked directly. Filed as `DUMBY_v4_FINAL.md`, actually the first v4 release._
 
@@ -247,7 +298,7 @@ _4,219 lines · 310 KB · basis: full-file diff lineage begins here; self-report
 
 ---
 
-### v4.1.0 — The Extensibility Contract + Reliability Hardening
+#### v4.1.0 — The Extensibility Contract + Reliability Hardening
 
 _4,330 lines · 331 KB · basis: full-file diff against v4.0.0 (195-line diff, 149 changed lines — a genuinely surgical release)_
 
@@ -276,7 +327,7 @@ _4,330 lines · 331 KB · basis: full-file diff against v4.0.0 (195-line diff, 1
 
 ---
 
-### Addendum (interstitial) — RBAC / Slash-Lifecycle / CLAI
+#### Addendum (interstitial) — RBAC / Slash-Lifecycle / CLAI
 
 _312 lines · 33 KB · extends v4.1.0; not a numbered version. Self-labeled "Core Directive Specification v5.0" — an aspirational label, not a real position in the sequence._
 
@@ -293,7 +344,7 @@ _312 lines · 33 KB · extends v4.1.0; not a numbered version. Self-labeled "Cor
 
 ---
 
-### v4.2.0 — Security & Compliance Hardening Release
+#### v4.2.0 — Security & Compliance Hardening Release
 
 _4,420 lines · 377 KB · basis: full-file diff against v4.1.0 (283-line diff, 190 changed lines). The single largest concentration of fixes in the whole lineage._
 
@@ -329,7 +380,7 @@ _4,420 lines · 377 KB · basis: full-file diff against v4.1.0 (283-line diff, 1
 
 ---
 
-### v4.3.0 — Module Catalog to Illustrative-Only; Power Engine Introduced
+#### v4.3.0 — Module Catalog to Illustrative-Only; Power Engine Introduced
 
 _3,908 lines · 348 KB · shrinks by ~500 lines net despite new content, since catalog-depth removal outweighs what was added_
 
@@ -346,7 +397,7 @@ _3,908 lines · 348 KB · shrinks by ~500 lines net despite new content, since c
 
 ---
 
-### v4.4.0 — Power Engine Panel, RBAC Redesign, BCCM, CLAI, MTP, 404 Mode, Personas
+#### v4.4.0 — Power Engine Panel, RBAC Redesign, BCCM, CLAI, MTP, 404 Mode, Personas
 
 _4,165 lines · 402 KB · basis: full-file diff against v4.3.0 (411-line diff, 339 changed lines). Filed as `DUMBY_v4_draft.md`, actually the complete, shipped v4.4.0._
 
@@ -366,7 +417,7 @@ _4,165 lines · 402 KB · basis: full-file diff against v4.3.0 (411-line diff, 3
 
 ---
 
-### v4.5.0 — 29-Codename Rosetta Stone; Swastik; Credentials Service
+#### v4.5.0 — 29-Codename Rosetta Stone; Swastik; Credentials Service
 
 _4,367 lines · 412 KB · both the filename and the internal header say "4.4.0" — both are wrong_
 
@@ -387,7 +438,7 @@ _4,367 lines · 412 KB · both the filename and the internal header say "4.4.0" 
 
 ---
 
-### FINAL — Core-Only Consolidated Reference
+#### FINAL — Core-Only Consolidated Reference
 
 _1,682 lines · 220 KB · ~32,500 words · genuinely the last archive document, and a full re-synthesis, not an incremental patch_
 
@@ -417,7 +468,7 @@ _1,682 lines · 220 KB · ~32,500 words · genuinely the last archive document, 
 
 ---
 
-### v4.5.1 — Structure-Enforced Edition (Living Reference Pair)
+#### v4.5.1 — Structure-Enforced Edition (Living Reference Pair)
 
 _Recorded 2026-09-11. `documentation.md`: 10,949 lines · 1,111,809 bytes · 51 numbered sections in 9 Parts, plus an Audit Register appendix and Colophon. `blueprint.md`: 13,099 lines · 988,665 bytes · 48 numbered sections plus Appendices A–C, a PART 0 orientation, an Audit Register appendix, and Colophon. Basis: direct programmatic checks against both assembled files and the merged UUR; no pre-update copies existed for a diff._
 
@@ -456,7 +507,7 @@ _Recorded 2026-09-11. `documentation.md`: 10,949 lines · 1,111,809 bytes · 51 
 
 ---
 
-### v4.6.0 — Production-Readiness Edition (Living Reference Pair)
+#### v4.6.0 — Production-Readiness Edition (Living Reference Pair)
 
 _Recorded 2026-09-13. `documentation.md`: 10,953 lines · `blueprint.md`: 13,102 lines. Basis: direct application of the merged UUR's remaining actionable findings and the eight headline design decisions distilled from its executive summary._
 
@@ -491,7 +542,7 @@ _Recorded 2026-09-13. `documentation.md`: 10,953 lines · `blueprint.md`: 13,102
 - The three code-level items tracked inside the documents (CLAI ssh2 server rewrite, worker-only bootstrap path, docker-compose consolidation) — these are code deliverables, not documentation deliverables.
 - Normalization of the merged UUR's internal cross-references (upstream fix needed).
 
-### v4.6.1 — Build-Engine Remediation Pass (Runtime Compliance)
+#### v4.6.1 — Build-Engine Remediation Pass (Runtime Compliance)
 
 _Recorded 2026-09-13. Basis: the Build-Engine Gap-Manifest audit of the State B codebase
 (`GAP_MANIFEST.md`, regenerated this date). Executes v4.6.0's D1/D6/D3 decisions in code and
@@ -567,7 +618,7 @@ closes the runtime-behavior gaps the living documents had already specified._
 ---
 
 
-### v5.0.0 — Consolidated Re-Baseline Edition (Set-Wide)
+#### v5.0.0 — Consolidated Re-Baseline Edition (Set-Wide)
 
 _Recorded 2026-09-18. Basis: upgradation request **UR-20260918-001** — the consolidated program
 absorbing all 121 verified requests from its three sources: 31 v5.0 program URs (5.0-UR-1), 88
@@ -628,7 +679,7 @@ system, command surface, versions), cross-reference resolution, and a clean-lang
 to a request of the v5.0 program records its own change-log line citing the request ID; the master
 traceability index is the consolidated request's section-level table.
 
-### v5.0.0 Implementation Track — Per-Request Record
+#### v5.0.0 Implementation Track — Per-Request Record
 
 _Recorded 2026-09-30. Basis: migration-prompt.md 5.1.0 (rule R11). The migration protocol at 5.0.2
 carried no change-log discipline, so the code landings below were recorded retroactively as part
@@ -885,7 +936,7 @@ and the five slice deviations are in `migration-ledger.md` §M0 slice 6a.
 | UR-C-28 | 119 | M9 | Closed under M9 — Step-level `env:`/stdin secrets; mktemp kubeconfig with trap; SHA-pinned actions; root `dependabot.yml`; `check-workflow… See the M9 item record. | DONE |
 | UR-C-30 | 121 | M9 | Closed under M9 — TOTP after publickey for destructive domains; `POST /admin/operators` + seed for register/rotate/revoke; 10-minute idle … See the M9 item record. | DONE |
 
-### UR 2.0 — Post-Re-Baseline Conformance & Audit Evidence (recorded 2026-10-01)
+#### UR 2.0 — Post-Re-Baseline Conformance & Audit Evidence (recorded 2026-10-01)
 
 _Basis: UR-20260918-001 revision 2.0 (01/10/2026), which registers the ten-document Conformance &
 Audit Evidence Set (E1–E10) — 242 conformance findings across five workstreams, a full codebase audit
@@ -963,7 +1014,17 @@ recorded as documentation impact under the UR; their implementation executes und
 
 ---
 
-## 4. Cross-Version Defect Lifecycle
+### v5.1.0 (trigger chain) — Governed Trigger Chain
+
+**Changed** — The four trigger-chain documents were re-based onto one shared chain skeleton (identity · purpose · preconditions · inputs · ordered steps · artefacts · acceptance · change-log record) with explicit handoff and return conditions: `prompts/meta-prompt.md` (activate) hands off to `orchestration/master-prompt.md` (build, State A) or `migration/migration-prompt.md` (migrate, State B); each returns to the meta-prompt after writing its record; `upgradation/change-log.md` is the terminal sink. `prompts/entry.md` is the shared state-detection procedure.
+**Fixed** — Stale references removed chain-wide: dead `workspace/**` paths, the restructure-adaptation blocks, the "Blueprint § / Documentation § / Directive Part" loading table (replaced with a current `spec/<department>/` map), and the "nine-document set" wording. Authority is now cited from `spec/governance/directive-charter-how-to-use-this-document.md` in every chain document.
+**Verified** — Every cross-reference in the four documents resolves to a current path; the handoff order is meta → (master | migration) → change-log; each document carries the shared skeleton; a `check-chain` gate fails the build on a broken reference, a broken handoff order, or a missing skeleton section.
+
+_locations · size · basis: chain documents under `docs/` · structural diff against the prior chain · direct reference resolution_
+
+---
+
+### 4. Cross-Version Defect Lifecycle
 
 The single most useful thing a _unified_ changelog can show that 13 separate ones can't: several defects were found once and travelled across multiple versions before actually closing. Tracked end-to-end:
 
@@ -997,7 +1058,7 @@ The single most useful thing a _unified_ changelog can show that 13 separate one
 
 ---
 
-## 5. Open Items Carried Forward
+### 5. Open Items Carried Forward
 
 **From the archive lineage**
 

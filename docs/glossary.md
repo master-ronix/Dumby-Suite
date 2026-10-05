@@ -61,6 +61,44 @@ The seven-layer permission engine has a working vocabulary of its own, concentra
 
 **The override boundary.** Layer 7 grants are powerful, but they are not sovereign. Layers 1–3 — the bot-owner override, the blacklist, and guild/module availability — the bot-capability check, and the RESTRICTED floor can never be overridden by any grant. Whatever a guild's grants say, they cannot unlock what the system itself refuses, cannot un-bar what the platform has blacklisted, and cannot demote a member below RESTRICTED.
 
+### 16.2 Term disambiguation — one term, one meaning
+
+Several working words carry more than one sense in Dumby. Each sense below is canonical, and
+is written with its qualifier wherever it is meant; an unqualified bare use is not a
+definition. This subsection is the single statement of these senses — a document that needs
+one cites it rather than restating it.
+
+**module** — two senses, always qualified. A **feature module** is an independently-owned,
+tier-placed unit of behaviour loaded through the module system (the sense used throughout
+`spec/modules/`). The **`swastik` package** is the module-authoring SDK a developer imports.
+"Module" unqualified means a feature module; the SDK is always named `swastik`.
+
+**core** — three senses. The **Application Core** is the single in-tree TypeScript application
+under `apps/main/` (`src/core/`) that owns bootstrap, the request pipeline, and every
+subsystem. A **Core-tier module** is a module whose manifest tier is `core`. The **Core
+Command Surface** is the reference command set (`/dashboard`, `/health`, `/browse`, `/queue`,
+`/persona`, `/permit`, `/modules`, `/hello`). "Core" unqualified means the Application Core.
+
+**persona** — two senses. The **Twill persona system** is the bring-your-own-identity subsystem
+(a subsystem name). A **persona instance** is one hosted identity serving exactly one guild.
+The `/persona` command manages persona instances.
+
+**token** — four senses, never interchangeable. A **DI token** is a Symbol key in the
+dependency-injection container. A **Discord bot token** is a guild's own credential used by a
+Twill persona. A **fencing token** is the monotonic lock value exchanged during a Release
+Manager scheduled restart. An **OAuth2 token** is the credential MDIS uses to authenticate a
+dashboard request. Each is written with its qualifier.
+
+**tier** — three senses. A **module tier** is one of the four trust tiers (admin, core,
+standard, marketplace) that place a module on its volume. **Marketplace visibility** is the
+three-valued manifest enum (public, unlisted, private). A **cache tier** is L1 (in-process) or
+L2 (Redis) of the two-tier cache. The counts differ per sense — four module tiers, three
+visibility values, two cache tiers — and each is written with its qualifier.
+
+**layer** — two senses. An **RBAC layer** is one of the seven ordered permission-resolution
+layers (§21). An **architecture layer** is a layer of the application topology. "Layer" in a
+permission context always means an RBAC layer.
+
 ---
 
 *End of Dumby Concept Documentation*

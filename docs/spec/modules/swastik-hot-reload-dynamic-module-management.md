@@ -430,8 +430,10 @@ provenance, licensing, and signature verification all succeed.
 - SPEC-03-MODULES -> SPEC/00-GOVERNANCE (tier + licence rules)
 - SPEC-03-MODULES#SWASTIK -> SPEC-06-OPERATIONS (hot-swap + promotion pipeline)
 
-## Named entities (from the original reference)
+## Named entities
 
-The original reference named these entities in "15. Swastik — Hot Reload & Dynamic Module Management". They are preserved here so no identifier is lost in the restructure.
+**classes, interfaces & symbols:** `Cache-Busting`, `Concurrent-user`, `Hot-Reloaded`, `HotSwapService`, `OIDC-validated`, `OIDC-verified`, `deployAll`, `livePointer`, `loadModulesFromSwastikVolume`, `lstatSync`, `ownerDevId`, `ownershipTransferredAt`, `preHandler`, `resolvedPath`, `stagedPointer`, `stagingRoot`, `symlinkSync`, `volumeRoot`, `PathContainmentError`, `DEVELOPER_DEPLOY_DENIED`, `INTERNAL_AUTH_DENIED`, `MODULE_UPLOAD_DENIED_NON_OWNER`, `crypto.timingSafeEqual`, `fs.renameSync`, `index.js`, `lock-client.ts`, `pnpm-lock.yaml`, `queue-reconciliation.ts`, `release-manager.ts`, `scheduled-restart.ts`, `path.join`
+**files & artifacts:** `apps/main/deploy/k8s/base/swastik-volumes.yaml`, `modules/register-all.ts`, `modules/swastik-loader.ts`, `swastik/lock-client.ts`, `swastik/queue-reconciliation.ts`, `swastik/scheduled-restart.ts`
+**events & identifiers:** `dumby_memory_usage_gauge`, `x.y.z`
 
-**classes, interfaces & symbols:** `Cache-Busting`, `Concurrent-user`, `Hot-Reloaded`, `HotSwapService`, `OIDC-validated`, `OIDC-verified`, `deployAll`, `livePointer`, `loadModulesFromSwastikVolume`, `lstatSync`, `ownerDevId`, `ownershipTransferredAt`, `preHandler`, `resolvedPath`, `stagedPointer`, `stagingRoot`, `symlinkSync`, `volumeRoot`, `PathContainmentError`, `DEVELOPER_DEPLOY_DENIED`, `INTERNAL_AUTH_DENIED`, `MODULE_UPLOAD_DENIED_NON_OWNER`, `crypto.timingSafeEqual`, `fs.renameSync`, `index.js`, `lock-client.ts`, `pnpm-lock.yaml`, `queue-reconciliation.ts`, `release-manager.ts`, `scheduled-restart.ts`
+

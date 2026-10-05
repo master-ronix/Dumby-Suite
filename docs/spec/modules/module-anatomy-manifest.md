@@ -374,14 +374,12 @@ gap where the two differ.
 - SPEC-03-MODULES -> SPEC/00-GOVERNANCE (tier + licence rules)
 - SPEC-03-MODULES#SWASTIK -> SPEC-06-OPERATIONS (hot-swap + promotion pipeline)
 
-## Named entities (from the original reference)
-
-The original reference named these entities in this section. They are preserved here so no identifier is lost in the restructure.
+## Named entities
 
 **classes, interfaces & symbols:** `Cache-level`, `CacheService`, `ConfigService`, `Data-level`, `DatabaseService`, `Event-level`, `Flattened`, `LoggerService`, `MetricsService`, `Powers`, `QuotaEnforcingCacheService`, `QuotaEnforcingDatabaseService`, `QuotaEnforcingEventBus`, `QuotaEnforcingHttpService`, `Resource-level`, `ResourceQuotaEnforcer`, `SchedulerService`, `Service-level`, `Symbols`, `TracingService`, `TypeAlias`, `frameworkApiVersion`
 
 **config/env constants:** `MODULE_DISCOVERY`, `NEW_VAR`
 
-**events & identifiers:** `CacheService.`, `ConfigManager.`, `MigrationRunner.`, `ModuleValidator.`, `QuotaExceededError.`, `ResourceQuotaEnforcer.`, `SCREAMING_SNAKE_CASE.`, `module.hardcodeGuildId`, `moduleName.permissionName`, `onUnload.`, `process.env.LEGACY_VAR`, `repository.findActiveCases`, `service.banUser`, `this.eventBus.emit`
+**events & identifiers:** `CacheService.`, `ConfigManager.`, `MigrationRunner.`, `ModuleValidator.`, `QuotaExceededError.`, `ResourceQuotaEnforcer.`, `SCREAMING_SNAKE_CASE.`, `module.hardcodeGuildId`, `moduleName.permissionName`, `onUnload.`, `process.env.LEGACY_VAR`, `repository.findActiveCases`, `service.banUser`, `this.eventBus.emit`, `MAJOR.MINOR.PATCH`
 
-**files & artifacts:** `AppealNotifyJob.ts`, `CaseRepository.integration.test.ts`, `CaseRepository.ts`, `CaseService.ts`, `CaseService.unit.test.ts`, `DatabaseService.ts`, `ExpiredMuteCleanupTask.ts`, `InfractionRepository.ts`, `ModerationService.ts`, `ModerationService.unit.test.ts`, `PurgeService.ts`, `UnmuteJob.ts`, `_add_case_appeal_fields.ts`, `_create_cases.ts`, `_create_infractions.ts`, `ban.command.test.ts`, `ban.command.ts`, `case.command.ts`, `guildBanAdd.handler.ts`, `guildBanRemove.handler.ts`, `guildMemberRemove.handler.ts`, `history.command.ts`, `kick.command.ts`, `messageDelete.handler.ts`, `mute.command.ts`, `purge.command.ts`, `schema.ts`, `viewModHistory.context.ts`, `warn.command.ts`
+**files & artifacts:** `AppealNotifyJob.ts`, `CaseRepository.integration.test.ts`, `CaseRepository.ts`, `CaseService.ts`, `CaseService.unit.test.ts`, `DatabaseService.ts`, `ExpiredMuteCleanupTask.ts`, `InfractionRepository.ts`, `ModerationService.ts`, `ModerationService.unit.test.ts`, `PurgeService.ts`, `UnmuteJob.ts`, `_add_case_appeal_fields.ts`, `_create_cases.ts`, `_create_infractions.ts`, `ban.command.test.ts`, `ban.command.ts`, `case.command.ts`, `guildBanAdd.handler.ts`, `guildBanRemove.handler.ts`, `guildMemberRemove.handler.ts`, `history.command.ts`, `kick.command.ts`, `messageDelete.handler.ts`, `mute.command.ts`, `purge.command.ts`, `schema.ts`, `viewModHistory.context.ts`, `warn.command.ts`, `src/core/modules/`

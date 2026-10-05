@@ -3,33 +3,12 @@ id: MIGRATION-LEDGER-TEMPLATE-MD
 title: Migration Ledger Template
 kind: engine
 status: engine
-version: 5.0.0
+version: 5.1.0
+chain_role: ledger
+preceded_by: migration/migration-prompt.md
+change_log: upgradation/change-log.md
 ---
 
-## Adaptation for the restructured docs (read first)
-
-<!-- structure-adapted: references point at the restructured corpus -->
-> **Corpus layout (restructured).** The two centralised documents are now `blueprint/` (the
-> *wiring* — how everything connects, coordinates, stays compatible, and flows from root to the
-> end-user surface, for every role) and `documentation/` (the *wiki / API book*). The behavioural
-> specification is distributed by department under `spec/<department>/` (governance, orientation,
-> foundations, architecture, modules, request-layer, data, operations, lifecycle, reference). The
-> old single files map as: the blueprint → `spec/<dept>/` (wiring in `blueprint/`); the directive
-> → `spec/governance/`; the interface spec → `spec/request-layer/`; the directory reference →
-> `spec/architecture/directory-file-structure.md`; the concept doc → `documentation/overview/`;
-> the change log → `upgradation/change-log.md`; the definitions index →
-> `spec/orientation/definitions.md`; `adr/` stays `adr/`; the request records → `upgradation/`;
-> the legacy record → `archive/v4.5.1/documentation.md`. Machine layer: `manifest.json`,
-> `contracts/`, `status/`. Entry: `prompts/entry.md`.
-
-
-- Docs base path is **`docs/`** (NOT the old `workspace/docs/`).
-- Read **`manifest.json`** first. Only `status: normative` artifacts are authority. **Never read `archive/**` as current.**
-- Load **only the department spec(s)** for the task (`spec/<dept>/`) + their `contracts/` — not the whole corpus.
-- Obey **`status/capabilities.json`**: do not build `deferred` items; do not re-implement `implemented` ones.
-- Reference behaviour by `SPEC-…` id and interfaces by `contracts/` path — never re-derive from prose.
-- Start at the single entry procedure: **`prompts/entry.md`**.
-- Record shape unchanged; keys now cite `SPEC-…` ids and `upgradation/` UR rows.
 # Migration Ledger — v5.0.0 Re-Baseline (Template & Record Shape)
 
 > **READ THIS FIRST — THIS FILE IS NOT A LEDGER TO COPY.**
@@ -41,7 +20,7 @@ version: 5.0.0
 >
 > **5.3.0 evidence extraction (01/10/2026).** All ten evidence documents (E1–E10) were then read finding-by-finding. The snapshot now carries the **provenance** of the ahead-of-record work (commits `d334cfb`/`581499e`, 2026-09-26; prior ledger removed at `9f7e427`), a **tree-state evidence map** (prompt §3.0.3) and the **true-unknowns register** (prompt §3.0.4).
 >
-> Protocol: `docs/migration-prompt.md` **v5.3.0** (twenty-item work order, three blocks: M0–M8 → MR-1–MR-8 → M9–M11; rules R1–R12; slice mechanics §5; change-log protocol §6; reconciliation gate §3.0.2; tree-state evidence map §3.0.3; true-unknowns register §3.0.4)
+> Protocol: `migration/migration-prompt.md` **v5.3.0** (twenty-item work order, three blocks: M0–M8 → MR-1–MR-8 → M9–M11; rules R1–R12; slice mechanics §5; change-log protocol §6; reconciliation gate §3.0.2; tree-state evidence map §3.0.3; true-unknowns register §3.0.4)
 
 ---
 
@@ -58,7 +37,7 @@ version: 5.0.0
 
 - Created: <date>
 - Last updated: <date> · Current item: <id> · Next action: <one line>
-- Protocol: docs/migration-prompt.md v5.2.0 (R1–R12)
+- Protocol: migration/migration-prompt.md v5.2.0 (R1–R12)
 - Coverage map: 121 request rows (UR-20260918-001 §8.1.2) → one owning item each, per the prompt's §3.0
 - Reconciliation: state of record re-triaged against the tree (prompt R12) — see the ledger's reconciliation block
 ```
@@ -118,7 +97,7 @@ UR 2.0 §8.13.2 SC-01 reopened three rows from DONE to PARTIAL: **UR-B-01** (own
 
 **True unknowns (prompt §3.0.4):** flat `src/` vs `src/core/`; dead husky/commitlint; missing `scripts/check-configmap-keys.mjs`; §32.10 InputSanitizer; §32.8 token-leak scanning; D-7.5.5 policy lockfile; split-brained maintenance mode; and the ~24 UR §8.13.4 items — each needs an owner or a logged deviation.
 
-**Volume-path vocabulary (E7 F3; E10 C-10/I12):** deployed staging `/mnt/modules/swastik-staging`, live `/mnt/modules/modules-core`, both nested inside `MODULES_DIR=/mnt/modules`; the `/data/swastik-*` vocabulary in STATUS.md/directory.md is the wrong one.
+**Volume-path vocabulary (E7 F3; E10 C-10/I12):** deployed staging `/mnt/modules/swastik-staging`, live `/mnt/modules/modules-core`, both nested inside `MODULES_DIR=/mnt/modules`; the `/data/swastik-*` vocabulary in STATUS.md and the directory reference is the wrong one.
 
 ---
 
@@ -218,6 +197,6 @@ The master traceability index is and remains the frozen UR's own §8.1.2 table (
 | Version | Date | Author | Change |
 |---|---|---|---|
 | 1.0 | 2026-09-24 | Dumby Core Engineering | Initial template shipped with migration-prompt 5.0.0 |
-| 2.0 | 2026-09-30 | Dumby Core Engineering | Complete rewrite for protocol 5.1.0: withdrawn the copy-on-first-run role (the live ledger at the repository root is authoritative — resume it); the all-NOT-STARTED summary replaced with a dated true-state snapshot (M0 IN-PROGRESS, slices 1–5 DONE, P0 row board, slice map, landing commit); item record shape extended to the fields practice actually writes (rows owned, source-of-truth-read, row triage, change-log entry, deliberate-not-done-with-routing); slice record shape added with the five standing constraints; change-log discipline section added (R11); protocol path corrected (`docs/migration-prompt.md`, not `docs/…`) |
+| 2.0 | 2026-09-30 | Dumby Core Engineering | Complete rewrite for protocol 5.1.0: withdrawn the copy-on-first-run role (the live ledger at the repository root is authoritative — resume it); the all-NOT-STARTED summary replaced with a dated true-state snapshot (M0 IN-PROGRESS, slices 1–5 DONE, P0 row board, slice map, landing commit); item record shape extended to the fields practice actually writes (rows owned, source-of-truth-read, row triage, change-log entry, deliberate-not-done-with-routing); slice record shape added with the five standing constraints; change-log discipline section added (R11); protocol path corrected (`migration/migration-prompt.md`, not `docs/…`) |
 | 2.1 | 2026-10-01 | Dumby Core Engineering | Conformance-reconciliation revision for protocol 5.2.0 (UR-20260918-001 rev 2.0, the E1–E10 evidence set): snapshot corrected in both directions — M0 tally 5 DONE / 9 PARTIAL / 3 OPEN (UR-B-01/UR-B-03/UR-C-06 reopened), and M1–M9 marked "record: NOT STARTED — tree: shaped code present" for reconciliation; reconciliation gate and evidence-corpus references added (R12, §3.0.1/§3.0.2); item record shape extended with Evidence references, Tree state, and Ahead-of-record fields; deviation rule range widened to R1–R12 |
 | 2.2 | 2026-10-01 | Dumby Core Engineering | Evidence-extraction revision for protocol 5.3.0: snapshot gains the ahead-of-record **provenance** (commits `d334cfb`/`581499e`, 2026-09-26; prior ledger removed at `9f7e427`), a pointer to the prompt's **tree-state evidence map** (§3.0.3) and **true-unknowns register** (§3.0.4), and the corrected **volume-path vocabulary**; item record shape gains a **Provenance of ahead-of-record work** field |

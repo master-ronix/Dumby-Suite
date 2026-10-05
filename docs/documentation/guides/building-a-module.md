@@ -305,7 +305,7 @@ You do not build these; you *use* them. Here is exactly how each one touches you
   data* (title, slots, rows, buttons); the Renderer composes the Components v2 frame, applies
   the accent token, and renders it. Classic `EmbedBuilder`/`MessageEmbed` is banned outright
   (ADR-001). If you find yourself formatting a string into a box, you are doing the Renderer's job.
-- **BCCM (the command-collision & change-queue manager)** — when your module registers
+- **BCCM (Bot Command Cosmetics for Marketplace)** — when your module registers
   commands, BCCM owns the guild command registry: it detects collisions (fatal), batches the
   per-guild upsert into the change queue, and enforces the command ceiling. You register through
   the framework; BCCM is why you never call Discord's command API directly, and why a name

@@ -133,8 +133,8 @@ None (conceptual).
 - SPEC-07-LIFECYCLE -> orchestration/ (build pipeline)
 - SPEC-07-LIFECYCLE -> SPEC-06-OPERATIONS (runbooks + SLOs)
 
-## Named entities (from the original reference)
-
-The original reference named these entities in "40. CI/CD Pipeline". They are preserved here so no identifier is lost in the restructure.
+## Named entities
 
 **classes, interfaces & symbols:** `Dead-code`, `Unfulfilled`, `release-manager.js`, `release-manager.ts`
+**files & artifacts:** `core/commands/__tests__/`
+

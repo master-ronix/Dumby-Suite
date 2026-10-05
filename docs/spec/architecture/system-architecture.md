@@ -191,8 +191,6 @@ None (conceptual).
 - SPEC-02-ARCHITECTURE-0006#COMMAND_TRACE -> SPEC-04-REQUEST-LAYER (the trace is the request pipeline)
 - SPEC-02-ARCHITECTURE-0006#MODULE_COMMS -> SPEC-03-MODULES (five sanctioned patterns)
 
-## Named entities (from the original reference)
-
-The original reference named these entities in "6. System Architecture". They are preserved here so no identifier is lost in the restructure.
+## Named entities
 
 **classes, interfaces & symbols:** `ApplicationCommand`, `ForCrossModuleRead-suffixed`, `ShardingManager`, `SomeClass`, `GuildConfigRepository.findByGuildId`, `TOKENS.GuildSettings.Service.get`, `SomeService.js`

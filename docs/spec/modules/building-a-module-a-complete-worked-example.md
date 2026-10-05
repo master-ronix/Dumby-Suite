@@ -278,9 +278,7 @@ the same strict flags does not build.
 - SPEC-03-MODULES -> SPEC/00-GOVERNANCE (tier + licence rules)
 - SPEC-03-MODULES#SWASTIK -> SPEC-06-OPERATIONS (hot-swap + promotion pipeline)
 
-## Named entities (from the original reference)
-
-The original reference named these entities in this section. They are preserved here so no identifier is lost in the restructure.
+## Named entities
 
 **classes, interfaces & symbols:** `ChatInputCommandInteraction`, `ConfirmationHelper`, `DM-delivered`, `ILogger`, `IQueueManager`, `IReminderRepository`, `IReminderService`, `PaginationHelper`, `ReminderDeliveredPayload`, `ReminderDeliveryJob`, `ReminderRepository`, `ReminderRow`, `ReminderScheduledPayload`, `ScheduleReminderInput`, `Standardized`, `addStringOption`, `buildSuccessEmbed`, `delayMs`, `formatRelative`, `futureDate`, `gRPC`, `notNullable`, `parseRelativeOrAbsoluteTime`, `reminderId`, `setDescription`, `setName`, `setRequired`, `toBe`, `useTz`
 
@@ -288,4 +286,4 @@ The original reference named these entities in this section. They are preserved 
 
 **events & identifiers:** `REMINDERS_TOKENS.ReminderRepository`, `REMINDERS_TOKENS.ReminderService`, `ReminderRepository.updateById`, `Reminders.ReminderRepository`, `Reminders.ReminderService`, `TOKENS.EventBus`, `container.eventBus.assertEmitted`, `input.fireAt`, `input.fireAt.getTime`, `interaction.guildId`, `interaction.options.getString`, `job.data.reminderId`, `knex.schema.createTable`, `knex.schema.dropTable`, `notNullable.defaultTo`, `opt.setName`, `payload.fireAt.getTime`, `payload.reminderId`, `primary.defaultTo`, `rejects.toThrow`, `reminder.fireAt`, `reminder.userId`, `t.bigInteger`, `this.discordClient.users.fetch`, `this.eventBus.emit`, `this.findMany`, `this.repo.findById`, `this.repo.updateById`
 
-**files & artifacts:** `ReminderDeliveryJob.ts`, `ReminderRepository.ts`, `ReminderService.ts`, `ReminderService.unit.test.ts`, `_create_reminders.ts`, `remind.command.ts`
+**files & artifacts:** `ReminderDeliveryJob.ts`, `ReminderRepository.ts`, `ReminderService.ts`, `ReminderService.unit.test.ts`, `_create_reminders.ts`, `remind.command.ts`, `apps/main/tsconfig.json`

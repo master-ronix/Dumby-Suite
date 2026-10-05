@@ -1,0 +1,59 @@
+{
+  "schema": "terminology/v1",
+  "note": "Canonical terminology for the reader-facing corpus. CI gate: check-terminology.mjs. A forbidden literal is a competing form of a canonical term; an alias may appear only in its allowed files (the explicit rename record); a required literal is a definition that must be present.",
+  "forbidden_literals": [
+    {
+      "literal": "command-collision & change-queue manager",
+      "canonical": "Bot Command Cosmetics for Marketplace",
+      "reason": "BCCM has one canonical expansion"
+    },
+    {
+      "literal": "OWNER > ADMIN > MOD > HELPER",
+      "canonical": "OWNER > ADMINISTRATOR > MODERATOR > HELPER",
+      "reason": "canonical rank names are ADMINISTRATOR and MODERATOR"
+    }
+  ],
+  "alias_allowlist": [
+    {
+      "alias": "Twixter",
+      "allowed_in": [
+        "glossary.md",
+        "adr/ADR-008.md"
+      ],
+      "canonical": "Twill"
+    },
+    {
+      "alias": "DRM",
+      "allowed_in": [
+        "upgradation/change-log.md"
+      ],
+      "canonical": "Release Manager"
+    }
+  ],
+  "required_literals": [
+    {
+      "literal": "**module** — two senses",
+      "file": "glossary.md"
+    },
+    {
+      "literal": "**core** — three senses",
+      "file": "glossary.md"
+    },
+    {
+      "literal": "**persona** — two senses",
+      "file": "glossary.md"
+    },
+    {
+      "literal": "**token** — four senses",
+      "file": "glossary.md"
+    },
+    {
+      "literal": "**tier** — three senses",
+      "file": "glossary.md"
+    },
+    {
+      "literal": "**layer** — two senses",
+      "file": "glossary.md"
+    }
+  ]
+}

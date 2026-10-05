@@ -214,3 +214,8 @@ None (conceptual).
 
 ## Edges (-> blueprint)
 - SPEC-01-FOUNDATIONS-0003 -> SPEC/00-GOVERNANCE (each principle is enforced by a named mechanism)
+
+## Named entities
+
+**files & artifacts:** `modules/_template/`, `modules/manifest.schema.ts`
+

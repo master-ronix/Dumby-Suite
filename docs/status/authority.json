@@ -1,0 +1,14 @@
+{
+  "schema": "authority/v1",
+  "note": "Single-authority registry. CI gate: check-authority.mjs — each claim phrase may appear only in its owning document among the reader-facing corpus; every other document defers rather than restating.",
+  "claims": [
+    {
+      "phrase": "single normative statement of the seven-layer model",
+      "owner": "spec/request-layer/permission-authorization-engine.md"
+    },
+    {
+      "phrase": "single normative statement of precedence",
+      "owner": "spec/governance/directive-charter-how-to-use-this-document.md"
+    }
+  ]
+}

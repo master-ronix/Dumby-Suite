@@ -36,7 +36,8 @@ for g in scripts/docs/check-*.mjs; do node "$g"; done
 
 Gates: manifest · coverage · **ledger-content** · frontmatter · contracts · counts ·
 no-restatement · archive-guard · status-evidence · anchors · anchor-paths · acceptance ·
-reconciliation · code-reconciliation.
+reconciliation · code-reconciliation · **entities** · **terminology** · **authority** ·
+**facts** · **normative-markers** · **chain**.
 
 Where the specification and the running code diverge, the divergence is recorded in
 `status/code-reconciliation.json` — never smoothed over.

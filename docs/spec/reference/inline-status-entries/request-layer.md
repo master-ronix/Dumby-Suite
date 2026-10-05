@@ -14,7 +14,7 @@ review_state: pending-evidence
 
 ## Inline status & design entries — request-layer
 
-Status, `Design Consideration`, and `§X Addition` entries the original reference interleaved inline, consolidated here verbatim for this department.
+Status, `Design Consideration`, and `§X Addition` entries for this department.
 
 ### 18.5.3 Early-Refresh Cache Path — Unwired (Phase 1 ~80%)
 
@@ -48,6 +48,6 @@ action writes a state row that nothing reads back.
 ## Acceptance
 ```acceptance
 - id: ACC-REF-INLINE-request-layer
-  check: "Every inline status/design entry is preserved verbatim for this department"
+  check: "Every inline status/design entry for this department is present"
   test: tests/docs/inline-status-entries.spec.ts
 ```

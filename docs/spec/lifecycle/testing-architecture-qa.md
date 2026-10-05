@@ -131,12 +131,10 @@ None (conceptual).
 - SPEC-07-LIFECYCLE -> orchestration/ (build pipeline)
 - SPEC-07-LIFECYCLE -> SPEC-06-OPERATIONS (runbooks + SLOs)
 
-## Named entities (from the original reference)
-
-The original reference named these entities in this section. They are preserved here so no identifier is lost in the restructure.
+## Named entities
 
 **classes, interfaces & symbols:** `Alertmanager`, `Expanded`, `Grafana`, `MockGatewayAdapter`, `shardCount`
 
 **config/env constants:** `CORE_TOKENS`
 
-**files & artifacts:** `gateway.live-adapter.ts`
+**files & artifacts:** `gateway.live-adapter.ts`, `src/shared/testing/fixtures/`

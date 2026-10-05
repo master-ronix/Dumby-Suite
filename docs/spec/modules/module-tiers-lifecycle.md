@@ -244,8 +244,6 @@ Divergences are recorded in `status/code-reconciliation.json`.
 - SPEC-03-MODULES -> SPEC/00-GOVERNANCE (tier + licence rules)
 - SPEC-03-MODULES#SWASTIK -> SPEC-06-OPERATIONS (hot-swap + promotion pipeline)
 
-## Named entities (from the original reference)
-
-The original reference named these entities in "13. Module Tiers & Lifecycle". They are preserved here so no identifier is lost in the restructure.
+## Named entities
 
 **classes, interfaces & symbols:** `Engine-tunable`, `MiddlewarePipeline`, `botOwnerIds`, `commandId`

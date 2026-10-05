@@ -157,8 +157,6 @@ None (conceptual).
 ## Edges (-> blueprint)
 - SPEC-08-REFERENCE -> status/compliance.json (generated from contracts + capabilities)
 
-## Named entities (from the original reference)
-
-The original reference named these entities in "44. REST API, Webhooks & MDIS Reference". They are preserved here so no identifier is lost in the restructure.
+## Named entities
 
 **classes, interfaces & symbols:** `CircuitBreaker`

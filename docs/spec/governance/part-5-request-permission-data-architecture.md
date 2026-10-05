@@ -127,7 +127,8 @@ separately; the cascade and backfill-on-miss are internal. Cache keys follow
 the namespacing convention `{domain}:{entity}:{identifier}[:{sub-scope}]`.
 Stampede protection and negative caching are built in. Invalidation
 broadcasts bound the L1 consistency window fleet-wide; a probabilistic
-early-refresh mechanism MAY reduce expiry cliffs on hot keys. LISTEN/NOTIFY
+early-refresh mechanism is required and reduces expiry cliffs on hot keys (see
+`spec/data/caching-architecture.md`, Mechanism 2). LISTEN/NOTIFY
 is the documented fallback channel alongside Redis pub/sub.
 
 ### D-5.7 — State Externalization: The Core Scaling Constraint

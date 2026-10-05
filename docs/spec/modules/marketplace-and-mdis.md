@@ -250,8 +250,6 @@ Where this section and the tree disagree, the disagreement is recorded in
 - SPEC-03-MODULES -> SPEC/00-GOVERNANCE (tier + licence rules)
 - SPEC-03-MODULES#SWASTIK -> SPEC-06-OPERATIONS (hot-swap + promotion pipeline)
 
-## Named entities (from the original reference)
-
-The original reference named these entities in "16. Marketplace, MDIS & Extension System". They are preserved here so no identifier is lost in the restructure.
+## Named entities
 
 **classes, interfaces & symbols:** `MDIS-connected`, `developerId`, `marketplace_listings.devId`

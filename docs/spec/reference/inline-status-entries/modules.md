@@ -14,7 +14,7 @@ review_state: pending-evidence
 
 ## Inline status & design entries — modules
 
-Status, `Design Consideration`, and `§X Addition` entries the original reference interleaved inline, consolidated here verbatim for this department.
+Status, `Design Consideration`, and `§X Addition` entries for this department.
 
 ### 11.11 Admin Tier Security Gate — Mechanism and Threat Analysis
 
@@ -164,6 +164,6 @@ Each module runs in own process/container with CPU + memory quota, talking to co
 ## Acceptance
 ```acceptance
 - id: ACC-REF-INLINE-modules
-  check: "Every inline status/design entry is preserved verbatim for this department"
+  check: "Every inline status/design entry for this department is present"
   test: tests/docs/inline-status-entries.spec.ts
 ```

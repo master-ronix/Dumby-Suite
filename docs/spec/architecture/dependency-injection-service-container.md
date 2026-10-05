@@ -202,9 +202,7 @@ None (conceptual).
 ## Edges (-> blueprint)
 - SPEC-02-ARCHITECTURE-0010#CHILD_CONTAINERS -> SPEC-03-MODULES (module-scoped child containers)
 
-## Named entities (from the original reference)
-
-The original reference named these entities in this section. They are preserved here so no identifier is lost in the restructure.
+## Named entities
 
 **classes, interfaces & symbols:** `CaseRepository`, `CaseService`, `HttpServer`, `ICaseRepository`, `IGuildConfigService`, `ILogger`, `InfractionRepository`, `ModerationService`, `PermResolver`, `ServiceA`, `ServiceB`, `ServiceC`, `Symbols`, `Zod-validates`, `caseRepo`, `eventName`, `messagePattern`
 

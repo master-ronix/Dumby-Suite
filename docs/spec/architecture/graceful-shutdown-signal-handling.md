@@ -132,8 +132,8 @@ None (conceptual).
 ## Edges (-> blueprint)
 - SPEC-02-ARCHITECTURE-0009 -> SPEC-06-OPERATIONS (K8s terminationGracePeriodSeconds)
 
-## Named entities (from the original reference)
-
-The original reference named these entities in "9. Graceful Shutdown & Signal Handling". They are preserved here so no identifier is lost in the restructure.
+## Named entities
 
 **classes, interfaces & symbols:** `Precision`, `Swastik-driven`, `dumby.system.unhandledRejection`
+**files & artifacts:** `deploy/k8s/base/deployment.yaml`
+

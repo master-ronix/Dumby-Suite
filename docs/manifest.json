@@ -2,6 +2,10 @@
   "corpus_version": "5.0.0",
   "counts_source": "status/counts.json",
   "coverage_source": "status/coverage-ledger.json",
+  "entities_source": "status/entities.json",
+  "terminology_source": "status/terminology.json",
+  "authority_source": "status/authority.json",
+  "facts_source": "status/facts.json",
   "documents": [
     {
       "id": "BLUEPRINT",

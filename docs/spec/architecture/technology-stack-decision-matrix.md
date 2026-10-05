@@ -254,10 +254,8 @@ it owns must still have exactly one home.
 - SPEC-02-ARCHITECTURE-0005#TIER_VOLUMES -> SPEC-03-MODULES (modules live on the four per-tier volumes)
 - SPEC-02-ARCHITECTURE-0005#POSTGRES_REDIS -> SPEC-05-DATA (PostgreSQL = system of record; Redis = acceleration)
 
-## Named entities (from the original reference)
-
-The original reference named these entities in this section. They are preserved here so no identifier is lost in the restructure.
+## Named entities
 
 **classes, interfaces & symbols:** `CPU-bound`, `Containerization`, `Datadog`, `Discord-client`, `Honeycomb`, `Infra-as-code`, `Jaeger`, `Tempo`
 
-**files & artifacts:** `release-manager.js`, `release-manager.ts`
+**files & artifacts:** `release-manager.js`, `release-manager.ts`, `dumby/src/entry/`

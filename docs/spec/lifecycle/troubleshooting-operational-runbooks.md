@@ -142,8 +142,6 @@ None (conceptual).
 - SPEC-07-LIFECYCLE -> orchestration/ (build pipeline)
 - SPEC-07-LIFECYCLE -> SPEC-06-OPERATIONS (runbooks + SLOs)
 
-## Named entities (from the original reference)
-
-The original reference named these entities in "43. Troubleshooting & Operational Runbooks". They are preserved here so no identifier is lost in the restructure.
+## Named entities
 
 **classes, interfaces & symbols:** `DumbyError-taxonomy`, `EventLoopLagMonitor`, `Three-stage`, `onLag`

@@ -1,80 +1,82 @@
 ---
 id: PROMPTS-META-PROMPT-MD
-title: Build Engine Trigger
+title: Build Engine Trigger (Activation)
 kind: engine
 status: engine
-version: 5.0.0
+version: 5.1.0
+chain_role: activate
+preceded_by: operator
+handoff_to: orchestration/master-prompt.md (State A) | migration/migration-prompt.md (State B)
+change_log: upgradation/change-log.md
 ---
 
-## Adaptation for the restructured docs (read first)
+# Meta-Prompt — Build Engine Trigger
 
-<!-- structure-adapted: references point at the restructured corpus -->
-> **Corpus layout (restructured).** The two centralised documents are now `blueprint/` (the
-> *wiring* — how everything connects, coordinates, stays compatible, and flows from root to the
-> end-user surface, for every role) and `documentation/` (the *wiki / API book*). The behavioural
-> specification is distributed by department under `spec/<department>/` (governance, orientation,
-> foundations, architecture, modules, request-layer, data, operations, lifecycle, reference). The
-> old single files map as: the blueprint → `spec/<dept>/` (wiring in `blueprint/`); the directive
-> → `spec/governance/`; the interface spec → `spec/request-layer/`; the directory reference →
-> `spec/architecture/directory-file-structure.md`; the concept doc → `documentation/overview/`;
-> the change log → `upgradation/change-log.md`; the definitions index →
-> `spec/orientation/definitions.md`; `adr/` stays `adr/`; the request records → `upgradation/`;
-> the legacy record → `archive/v4.5.1/documentation.md`. Machine layer: `manifest.json`,
-> `contracts/`, `status/`. Entry: `prompts/entry.md`.
+## 1. Identity
 
+- **Chain role:** *activate* — the single activation entry of the trigger chain.
+- **Preceded by:** an operator or agent. This is the first document of the chain that is run.
+- **Hands off to:** `orchestration/master-prompt.md` (State A — greenfield) **or** `migration/migration-prompt.md` (State B — existing codebase). Exactly one fires.
+- **Terminal sink:** `upgradation/change-log.md` — every run records itself there.
+- **Authority:** this document selects and hands off; it does not build, migrate, or override the corpus authority order.
 
-- Docs base path is **`docs/`** (NOT the old `workspace/docs/`).
-- Read **`manifest.json`** first. Only `status: normative` artifacts are authority. **Never read `archive/**` as current.**
-- Load **only the department spec(s)** for the task (`spec/<dept>/`) + their `contracts/` — not the whole corpus.
-- Obey **`status/capabilities.json`**: do not build `deferred` items; do not re-implement `implemented` ones.
-- Reference behaviour by `SPEC-…` id and interfaces by `contracts/` path — never re-derive from prose.
-- Start at the single entry procedure: **`prompts/entry.md`**.
-- This trigger now defers to `prompts/entry.md` for state detection.
-# META-PROMPT — Dumby Build Engine Trigger
+## 2. Purpose
 
----
+Activate work on the project. It loads the authority layer, detects the state of the codebase, and hands the run to exactly one downstream prompt — the master prompt to build, or the migration prompt to bring an existing codebase or corpus up to the current specification. It is the only document an operator or agent must be pointed at to start a run, and the only place that decides which of the two protocols governs.
 
-You are now the Dumby Build Engine. Your sole purpose is to execute the construction of the Dumby Discord Unified Modular Bot System — from specification to deployable application — from any starting state, greenfield or partially-built.
+## 3. Preconditions
 
-## ACTIVATION
+- The repository is present, with `apps/main/` and `docs/` at its root.
+- `docs/manifest.json` and `docs/status/capabilities.json` are present and readable.
+- The operator or agent has read access to the whole repository.
 
-Read `orchestration/master-prompt.md` immediately. It is your execution brief — version 5.0.0, a complete detection, remediation, and build protocol. Follow it exactly.
+## 4. Inputs
 
-## YOUR FIRST ACTION: STATE DETECTION
+| Input | Path | Use |
+|-------|------|-----|
+| Corpus manifest | `manifest.json` | the normative artifact set |
+| Capability ledger | `status/capabilities.json` | what to build, what to defer, what not to re-implement |
+| State probe | `apps/main/` | greenfield vs existing |
+| Authority order | `spec/governance/directive-charter-how-to-use-this-document.md` | which document wins on conflict |
+| Entry procedure | `prompts/entry.md` | the single deterministic state-detection procedure |
 
-Before building anything, determine the state of `workspace/apps/main/`:
+## 5. Ordered Steps
 
-- If the directory does not exist or is empty → **State A (Greenfield)**. Begin at Phase 0 of the build plan.
-- If the directory contains code → **State B (Existing Codebase)**. Execute the Codebase State Detection & Audit Protocol (§3 of the master prompt) FIRST. This produces a Gap Manifest that classifies every subsystem as COMPLETE, FAULTY, PARTIAL, or MISSING. Then use the Remediation Protocol (§4) to drive every gap to closure.
+1. **Resolve the docs base path once** (default `docs/`); never assume it.
+2. **Load the authority layer.** Read `manifest.json`; treat only `status: normative` artifacts as authority and never read `archive/**` as current. Read the precedence order from `spec/governance/directive-charter-how-to-use-this-document.md` — cite it, never restate it.
+3. **Detect the state.** Run the single deterministic procedure in `prompts/entry.md` against `apps/main/`.
+4. **Hand off — exactly one path fires:**
+   - `apps/main/` empty or absent → **State A (greenfield)** → run `orchestration/master-prompt.md`.
+   - `apps/main/` contains code → **State B (existing)** → run `migration/migration-prompt.md`.
+5. **Return condition.** The handoff target returns when it has met its own Acceptance Criteria and written its Change-Log Record into `upgradation/change-log.md`. On return, verify that record exists; if it does not, the run is not complete.
+6. **Record the activation.** Append the activation line (§8) to `upgradation/change-log.md`.
 
-Do NOT skip the audit. Do NOT assume existing code is correct. A file that exists and compiles can still be faulty — a PermissionResolver that is registered but never invoked, a middleware pipeline that is defined but bypassed, a migration that exists but has no working `down()`. The audit detects these. The remediation protocol fixes them. The enforcement pass (§6) confirms zero gaps remain.
+### First action — state detection
 
-## OPERATING RULES
+Before building anything, determine the state of `apps/main/` (step 3). This is the run's first action; the full, deterministic procedure is `prompts/entry.md`, and the classification it returns selects the handoff in step 4.
 
-**1. Read before you build or fix.** Every phase and every remediation item names exact source-document sections to read. Read them from `docs/`. Never implement from assumption — implement from the specification.
+### Operating rules
 
-**2. Audit before you trust.** Existing code is not correct by default. Every subsystem is verified against the specification — structurally (does it exist?) AND behaviorally (does it work as specified?). Structural presence without behavioral correctness is FAULTY, not COMPLETE.
+The build engine's operating rules are owned by `orchestration/master-prompt.md` (Build Discipline and the Remediation Protocol) and are cited here, never restated: read before you build or fix; audit before you trust; remediate rather than rebuild unnecessarily; every fix needs a test; re-audit after fixing; the enforcement pass is mandatory; precedence is fixed and is read from `spec/governance/directive-charter-how-to-use-this-document.md`; be honest about status; keep one canonical path; the acceptance gate is not optional.
 
-**3. Remediate, don't rebuild unnecessarily.** Fix what is faulty or missing. Do not discard working code. Prefer targeted remediation over wholesale rebuild. But never preserve a fault for compatibility — the specification wins.
+## 6. Artefacts Produced
 
-**4. Every fix needs a test.** A remediation without a passing test is an unverified claim. Write a test that fails before the fix and passes after.
+| Artefact | Path | When |
+|----------|------|------|
+| State determination (Greenfield / Existing) | in-run | step 3 |
+| Activation record | `upgradation/change-log.md` | step 6 |
+| Delegated build or migration records | `upgradation/change-log.md` | on downstream return |
 
-**5. Re-audit after fixing.** A fix in one subsystem can surface faults in dependent subsystems. After remediating, re-verify everything that depends on the fixed subsystem.
+## 7. Acceptance Criteria
 
-**6. The Enforcement Pass is mandatory.** The build is NOT complete until a full re-audit produces an all-COMPLETE Gap Manifest. Anything less than all-COMPLETE is not done.
+- Exactly one handoff target was selected and run.
+- The selected target met its Acceptance Criteria and its Change-Log Record is present in `upgradation/change-log.md`.
+- The activation line (§8) is present in `upgradation/change-log.md`.
 
-**7. Precedence is fixed.** The single normative precedence order is stated in `spec/governance/` (§0.2); when sources conflict, the higher-precedence document wins and you record the conflict. Design tensions resolved by the ADR series in `adr/` are settled there; the frozen request records in `upgradation/` are provenance, never overridden by the build.
+## 8. Change-Log Record
 
-**8. Honesty about status.** Known gaps from `upgradation/change-log.md`'s defect lifecycle are addressed honestly — not replicated, not papered over. Where the spec says something is not yet implemented, the build implements it or tracks it as an open item.
+Per the entry discipline in `upgradation/change-log.md` §1.5, this document writes one **Activation** line per run:
 
-**9. One canonical path.** One bootstrap, one DI container, one event bus, one permission engine, one config system, one command router, one middleware pipeline. A second implementation of any core concern is a defect to detect and remove.
-
-**10. The acceptance gate is not optional.** The build is not complete until every checkbox in `spec/governance/` (rule D-8.11), every item in `spec/governance/` Appendix B, every defect in `upgradation/change-log.md`'s lifecycle, and every specification in `spec/request-layer/` is satisfied.
-
-## START
-
-Read `orchestration/master-prompt.md`. Detect your state. Execute.
-
-The project root is `workspace/apps/main/`. The docs live in `docs/`. Go.
-
----
+```
+- <date> · meta-prompt 5.1.0 · state=<Greenfield|Existing> · handoff=<master-prompt|migration-prompt> · return=<met|unmet>
+```

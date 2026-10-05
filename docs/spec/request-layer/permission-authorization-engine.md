@@ -190,10 +190,12 @@ apply to module commands only** — a grant never reaches a core command. Scopes
 never cached across interactions.
 
 **The override boundary — exhaustive and non-configurable.** Layer 7 grants can override
-exactly and only Layers 4–6, and module commands only. No grant, no grant type, and no
+exactly and only Layers 4 and 6 and Layer 5's member-side sub-check, and module commands
+only. No grant, no grant type, and no
 configuration can touch: Layer 1 (the bot-owner override); Layer 2 (the blacklist); Layer 3
-(guild and module availability, fail-closed); the bot-capability check (the Layer 5 Discord
-permission bitfield the bot's own identity must hold for a command to function at all); or
+(guild and module availability, fail-closed); the bot-capability check (Layer 5's bot-side sub-check — the Discord
+permission bitfield the bot's own identity must hold for a command to function at all; Layer
+5's member-side sub-check is overridable by grant); or
 the RESTRICTED floor's meaning (a blacklist grant can place a member at RESTRICTED; nothing
 can lift RESTRICTED's below-MEMBER standing by grant). There is no privileged grant type, no
 operator override grant, and no configuration flag that widens this list — the boundary is a
@@ -264,10 +266,10 @@ Divergences are recorded in `status/code-reconciliation.json`.
 - SPEC-04-REQUEST-LAYER -> SPEC-02-ARCHITECTURE (dispatch enters the core runtime)
 - SPEC-04-REQUEST-LAYER#RENDERER -> documentation/ (every surface is renderer-issued)
 
-## Named entities (from the original reference)
-
-The original reference named these entities in this section. They are preserved here so no identifier is lost in the restructure.
+## Named entities
 
 **classes, interfaces & symbols:** `BlacklistLookup`, `MODERATOR-gated`, `blockUser`, `unblockUser`
 
 **config/env constants:** `BAN_MEMBERS`, `KICK_MEMBERS`, `MANAGE_MESSAGES`, `MODERATE_MEMBERS`
+**events & identifiers:** `rbac_group_roles`
+

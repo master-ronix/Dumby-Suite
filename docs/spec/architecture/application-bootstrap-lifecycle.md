@@ -187,8 +187,6 @@ Each of these is tracked in `status/code-reconciliation.json` and the capabiliti
 - SPEC-02-ARCHITECTURE-0008#BOOTSTRAP -> all departments (bootstrap wires every subsystem)
 - SPEC-02-ARCHITECTURE-0008#WORKER_BOOTSTRAP -> SPEC-06-OPERATIONS (worker mode skips gateway stages)
 
-## Named entities (from the original reference)
+## Named entities
 
-The original reference named these entities in "8. Application Bootstrap & Lifecycle". They are preserved here so no identifier is lost in the restructure.
-
-**classes, interfaces & symbols:** `Proof-of-Existence`, `botOwnerIds`, `pathToFileURL`, `STARTUP_`
+**classes, interfaces & symbols:** `Proof-of-Existence`, `botOwnerIds`, `pathToFileURL`, `STARTUP_`, `require.cache`

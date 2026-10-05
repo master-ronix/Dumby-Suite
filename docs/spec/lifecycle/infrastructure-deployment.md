@@ -173,8 +173,8 @@ None (conceptual).
 - SPEC-07-LIFECYCLE -> orchestration/ (build pipeline)
 - SPEC-07-LIFECYCLE -> SPEC-06-OPERATIONS (runbooks + SLOs)
 
-## Named entities (from the original reference)
-
-The original reference named these entities in this section. They are preserved here so no identifier is lost in the restructure.
+## Named entities
 
 **classes, interfaces & symbols:** `CI-enforced`, `CVEs`, `Grype`, `READMEs`, `Reasonable`, `Trivy`, `httpGet`
+**config/env constants:** `limits.memory`
+

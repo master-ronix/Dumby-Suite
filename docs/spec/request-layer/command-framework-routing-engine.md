@@ -339,9 +339,7 @@ Divergences are recorded in `status/code-reconciliation.json`.
 - SPEC-04-REQUEST-LAYER -> SPEC-02-ARCHITECTURE (dispatch enters the core runtime)
 - SPEC-04-REQUEST-LAYER#RENDERER -> documentation/ (every surface is renderer-issued)
 
-## Named entities (from the original reference)
-
-The original reference named these entities in this section. They are preserved here so no identifier is lost in the restructure.
+## Named entities
 
 **classes, interfaces & symbols:** `AuditLogPort`, `EventBusPort`, `EventDispatcher`, `HttpServer`, `LoggerPort`, `Spamming`
 
@@ -350,3 +348,5 @@ The original reference named these entities in this section. They are preserved 
 **config/env constants:** `BAN_MEMBERS`
 
 **events & identifiers:** `GatewayClient.`, `GuildMember.`, `InteractionRouter.`
+**files & artifacts:** `src/commands/ports.ts`
+

@@ -144,8 +144,8 @@ None (conceptual).
 - SPEC-07-LIFECYCLE -> orchestration/ (build pipeline)
 - SPEC-07-LIFECYCLE -> SPEC-06-OPERATIONS (runbooks + SLOs)
 
-## Named entities (from the original reference)
-
-The original reference named these entities in "39. Development Workflow". They are preserved here so no identifier is lost in the restructure.
+## Named entities
 
 **classes, interfaces & symbols:** `Dumby-Suite-main`, `IEvent`, `IJob`, `IPermission`, `index.js`
+**files & artifacts:** `Dumby-Suite-main/`, `apps/main/docker/Dockerfile`
+

@@ -241,8 +241,6 @@ None (conceptual).
 - SPEC-01-FOUNDATIONS-0002#FAILURE_MODES -> SPEC-03-MODULES (contract enforces isolation)
 - SPEC-01-FOUNDATIONS-0002#MULTIPURPOSE_COMPARISON -> SPEC-04-REQUEST-LAYER (one seven-layer resolver)
 
-## Named entities (from the original reference)
-
-The original reference named these entities in "2. The Unified Modular Doctrine". They are preserved here so no identifier is lost in the restructure.
+## Named entities
 
 **classes, interfaces & symbols:** `Spectrum`

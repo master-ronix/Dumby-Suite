@@ -106,9 +106,7 @@ None (conceptual).
 ## Edges (-> blueprint)
 - SPEC-08-REFERENCE -> status/compliance.json (generated from contracts + capabilities)
 
-## Named entities (from the original reference)
-
-The original reference named these entities in this section. They are preserved here so no identifier is lost in the restructure.
+## Named entities
 
 **classes, interfaces & symbols:** `Credentials-Service`, `Grafana`, `LoadBalancer`, `PodDisruptionBudget`, `maxReplicas`, `minAvailable`, `minReplicas`, `targetCPUUtilizationPercentage`
 

@@ -3,90 +3,88 @@ id: ORCHESTRATION-MASTER-PROMPT-MD
 title: Master Build Prompt
 kind: engine
 status: engine
-version: 5.0.0
+version: 5.1.0
+chain_role: build
+preceded_by: prompts/meta-prompt.md (State A)
+handoff_to: upgradation/change-log.md
+change_log: upgradation/change-log.md
 ---
 
-## Adaptation for the restructured docs (read first)
-
-<!-- structure-adapted: references point at the restructured corpus -->
-> **Corpus layout (restructured).** The two centralised documents are now `blueprint/` (the
-> *wiring* — how everything connects, coordinates, stays compatible, and flows from root to the
-> end-user surface, for every role) and `documentation/` (the *wiki / API book*). The behavioural
-> specification is distributed by department under `spec/<department>/` (governance, orientation,
-> foundations, architecture, modules, request-layer, data, operations, lifecycle, reference). The
-> old single files map as: the blueprint → `spec/<dept>/` (wiring in `blueprint/`); the directive
-> → `spec/governance/`; the interface spec → `spec/request-layer/`; the directory reference →
-> `spec/architecture/directory-file-structure.md`; the concept doc → `documentation/overview/`;
-> the change log → `upgradation/change-log.md`; the definitions index →
-> `spec/orientation/definitions.md`; `adr/` stays `adr/`; the request records → `upgradation/`;
-> the legacy record → `archive/v4.5.1/documentation.md`. Machine layer: `manifest.json`,
-> `contracts/`, `status/`. Entry: `prompts/entry.md`.
-
-
-- Docs base path is **`docs/`** (NOT the old `workspace/docs/`).
-- Read **`manifest.json`** first. Only `status: normative` artifacts are authority. **Never read `archive/**` as current.**
-- Load **only the department spec(s)** for the task (`spec/<dept>/`) + their `contracts/` — not the whole corpus.
-- Obey **`status/capabilities.json`**: do not build `deferred` items; do not re-implement `implemented` ones.
-- Reference behaviour by `SPEC-…` id and interfaces by `contracts/` path — never re-derive from prose.
-- Start at the single entry procedure: **`prompts/entry.md`**.
-- Build order follows `orchestration/`; contracts live in `contracts/`; capabilities in `status/`.
 # DUMBY — Master Build Prompt
 
-## Execution Brief: From Specification to Deployable Application — From Any State of Completion
+## 1. Identity
 
----
+- **Chain role:** *build* — the build protocol of the trigger chain.
+- **Preceded by:** `prompts/meta-prompt.md` (activation), which hands off here on **State A (greenfield)**; it may also be invoked directly as a build request.
+- **Hands off to:** `upgradation/change-log.md` (every phase and remediation records itself there), then returns to `prompts/meta-prompt.md`.
+- **Authority:** `spec/` is the sole architectural authority. The precedence order is stated once, in `spec/governance/directive-charter-how-to-use-this-document.md`, and is cited, never restated. The `adr/` series binds the choices it governs; the frozen request records in `upgradation/` are provenance, never build specifications.
+
+## 2. Purpose
+
+Take a greenfield workspace **or** any partially-complete codebase to a verified, deployable Dumby application at full specification compliance — detecting what exists, what is missing, what is faulty, and what is not working, then driving the codebase to full compliance. It handles both starting states: the phases below are the target sequence, and in State B the run enters that sequence at the phase matching the highest-complete subsystem and remediates everything below and around it.
+
+Context-window optimization governs the design: this document contains zero content from the source documents. Every technical specification lives in the document that owns it and is loaded on demand, per phase — never in bulk. Where a build choice is governed by a recorded decision, the governing ADR in `adr/` is read before the choice, never in bulk.
 
 **Document type:** Master Build Prompt — orchestration brief that takes an implementer from empty workspace OR any partially-complete codebase to a verified, deployable Dumby bot at 100% specification compliance.
 
 **Project:** Dumby — Discord Unified Modular Bot System
 
-**Version:** 5.0.0
-
-**Derived from:** The nine-document Dumby documentation set at version 5.0.0 (Consolidated Re-Baseline) in `docs/` — with `spec/` 5.0.0 (Consolidated Re-Baseline Edition) as the sole architectural authority — together with the ADR series in `adr/` and the frozen request records in `upgradation/`.
+**Derived from:** The Dumby documentation corpus at version 5.0.0 (Consolidated Re-Baseline) in `docs/` — with `spec/` 5.0.0 (Consolidated Re-Baseline Edition) as the sole architectural authority — together with the ADR series in `adr/` and the frozen request records in `upgradation/`.
 
 **Governing objective:** Following this prompt end-to-end MUST yield a finished, deployable, ready-to-use Dumby bot — regardless of whether the starting point is an empty workspace or a partially-built codebase. The prompt detects what exists, what is missing, what is faulty, and what is not working — then drives the codebase to full compliance with the specification.
 
-**Output location:** The main project is built inside `workspace/apps/main/`; the `swastik` module-authoring package is built inside `workspace/packages/swastik/`. All source documents remain in `docs/` — the nine-document set plus the `adr/` decision records and the frozen `ur/` request records — as the permanent reference set.
+**Output location:** The main project is built inside `apps/main/`; the `swastik` module-authoring package is built inside `packages/swastik/`. All source documents remain in `docs/` — the document set plus the `adr/` decision records and the frozen `ur/` request records — as the permanent reference set.
 
 **First priority:** Context window optimization. This prompt contains zero content from the source documents. It is pure orchestration — detection logic, remediation protocol, and phase sequencing. Every technical specification lives in the document that owns it. Source documents are loaded on demand, per phase, never in bulk. Where a build choice is governed by a recorded decision, the governing ADR in `adr/` is one of those on-demand sources — read it before making the choice it governs, never in bulk.
 
----
+## 3. Preconditions
 
-## TABLE OF CONTENTS
+- Invoked by `prompts/meta-prompt.md` with State A, or directly as a build request.
+- The authority layer (`manifest.json`, `spec/`, `contracts/`, `status/`) is readable.
+- The state probe has been run per `prompts/entry.md`; `apps/main/` is empty or absent for a pure greenfield run.
 
-- [0. How to Use This Prompt](#0-how-to-use-this-prompt)
-- [1. Mission & Scope](#1-mission--scope)
-- [2. Source Document Authority](#2-source-document-authority)
-- [3. Codebase State Detection & Audit Protocol](#3-codebase-state-detection--audit-protocol)
-- [4. Remediation Protocol](#4-remediation-protocol)
-- [5. Phased Build Plan](#5-phased-build-plan)
-- [6. Completion Enforcement & Definition of Done](#6-completion-enforcement--definition-of-done)
+## 4. Inputs
 
----
+| Input | Path | Use |
+|-------|------|-----|
+| Corpus manifest | `manifest.json` | the normative artifact set |
+| Governance precedence | `spec/governance/directive-charter-how-to-use-this-document.md` | the authority order |
+| Department specs | `spec/<department>/` | behavioural source, loaded per phase |
+| Wiring | `blueprint/` | how subsystems connect, coordinate, and stay compatible |
+| Wiki / API book | `documentation/` | what each part is and how to use it |
+| Contracts | `contracts/` | machine-readable interfaces |
+| Capability ledger | `status/capabilities.json` | build / defer / do-not-re-implement |
+| Decisions | `adr/` | binding decisions |
+| Change log | `upgradation/change-log.md` | history, defect lifecycle, records |
+| Archived legacy | `archive/v4.5.1/documentation.md` | inherited decisions only |
 
-## 0. HOW TO USE THIS PROMPT
+## 5. Ordered Steps
 
-### 0.1 Entry Point: Detect Your Starting State
+The protocol executes as the ordered sections below; their internal numbering (0–6) is retained so the cross-references within the protocol resolve.
+
+### 0. HOW TO USE THIS PROMPT
+
+#### 0.1 Entry Point: Detect Your Starting State
 
 Before doing anything else, determine which of these two states applies:
 
-**State A — Greenfield:** `workspace/apps/main/` does not exist or is empty. Begin at Phase 0 of the build plan (§5). Build from scratch following the phased sequence.
+**State A — Greenfield:** `apps/main/` does not exist or is empty. Begin at Phase 0 of the build plan (§5). Build from scratch following the phased sequence.
 
-**State B — Existing codebase:** `workspace/apps/main/` contains code at any stage of completion. Do NOT start at Phase 0. Instead, execute the Codebase State Detection & Audit Protocol (§3) first. This produces a Gap Manifest that maps every specification requirement to the codebase's actual state. Then use the Remediation Protocol (§4) to drive every gap to closure.
+**State B — Existing codebase:** `apps/main/` contains code at any stage of completion. Do NOT start at Phase 0. Instead, execute the Codebase State Detection & Audit Protocol (§3) first. This produces a Gap Manifest that maps every specification requirement to the codebase's actual state. Then use the Remediation Protocol (§4) to drive every gap to closure.
 
 This prompt handles both states. The phases in §5 are the target sequence — in State B you enter the sequence at the phase matching your highest-complete subsystem and use the audit results to remediate everything below and around it.
 
-### 0.2 Core Principle
+#### 0.2 Core Principle
 
 This prompt does not reproduce, summarize, or paraphrase specifications from the source documents. Every technical detail — architecture, schemas, stage sequences, middleware orderings, permission layers, database tables, interface layouts, defect descriptions, engineering rules, environment variables, error taxonomies, acceptance criteria — lives in the document that owns it.
 
 This prompt provides three things the source documents do not: (1) a method for auditing any codebase state against the specification, (2) a remediation protocol for driving gaps to closure, and (3) a phased execution sequence that works from any starting point.
 
-### 0.3 Precedence Order
+#### 0.3 Precedence Order
 
 The canonical document-precedence order is stated once, in `spec/governance/` (§0.2); this prompt cites it rather than restating it. When any two source documents appear to conflict, the higher-precedence document wins, the conflict is recorded in `upgradation/change-log.md`, and the higher-precedence reading is taken. The ADRs in `adr/` are binding on the build choices they govern — where an ADR covers a choice you are about to make, the recorded decision wins over any contrary reading of prose elsewhere in the set. The frozen request records in `upgradation/` are provenance — they explain why the documentation reads as it does; they are never build specifications.
 
-### 0.4 Build Discipline
+#### 0.4 Build Discipline
 
 - Read the named source sections *before* implementing or remediating a subsystem. Never work from assumption — work from the specification.
 - Where an ADR in `adr/` governs a build choice, read it before implementing that choice. A deviation from a recorded decision is a defect to fix or a judgment to record in `upgradation/change-log.md` — never a silent override.
@@ -99,15 +97,15 @@ The canonical document-precedence order is stated once, in `spec/governance/` (�
 
 ---
 
-## 1. MISSION & SCOPE
+### 1. MISSION & SCOPE
 
-### 1.1 What You Are Building
+#### 1.1 What You Are Building
 
 A production-ready, deployable Dumby bot application — a single TypeScript process that connects to the Discord gateway, serves a defined set of slash commands through the module system, presents every user-facing surface through the core Renderer, persists state to PostgreSQL and Redis, and passes its own acceptance gate.
 
-The application is built as a pnpm monorepo workspace member at `workspace/apps/main/`, alongside the `swastik` module-authoring package at `workspace/packages/swastik/`.
+The application is built as a pnpm monorepo workspace member at `apps/main/`, alongside the `swastik` module-authoring package at `packages/swastik/`.
 
-### 1.2 Three-Tier Build Scope
+#### 1.2 Three-Tier Build Scope
 
 | Tier | What It Means | Delivered? |
 |------|---------------|------------|
@@ -115,19 +113,19 @@ The application is built as a pnpm monorepo workspace member at `workspace/apps/
 | **Shipped Modules** | The modules that constitute the user-facing surface on delivery | YES — the Core Command Surface specified in `spec/request-layer/` |
 | **Control-Plane Services** | Power Engine, CLAI, Swastik, Credentials Service, Personas (Twill) | SCAFFOLD ONLY — typed interfaces and entry points; no operational implementation |
 
-### 1.3 Non-Goals
+#### 1.3 Non-Goals
 
 The framework's non-goals are specified in full in `spec/foundations/non-goals-explicit-boundaries.md` and `spec/governance/` (rule D-1.4). The build MUST NOT recreate any of those outcomes. Read those sections before starting or remediating.
 
-### 1.4 Inherited Open Items
+#### 1.4 Inherited Open Items
 
 Known gaps from the specification's history are documented in `upgradation/change-log.md` (Cross-Version Defect Lifecycle and Open Items sections). The build must address them honestly, not paper over them. Read those sections before starting or remediating.
 
 ---
 
-## 2. SOURCE DOCUMENT AUTHORITY
+### 2. SOURCE DOCUMENT AUTHORITY
 
-### 2.1 Document Map
+#### 2.1 Document Map
 
 | Document (new home) | Role |
 |----------|------|
@@ -143,54 +141,58 @@ Known gaps from the specification's history are documented in `upgradation/chang
 | `adr/` | ADR series — recorded decisions, binding on the build choices they govern |
 | `upgradation/` | Frozen request records — provenance for the v5.0.0 re-baseline |
 
-### 2.2 Subsystem-to-Document Loading Guide
+#### 2.2 Subsystem-to-Document Loading Guide
 
-When implementing, auditing, or remediating a specific subsystem, read the source-document sections listed below. The `archive/v4.5.1/documentation.md` column is the frozen legacy record: consult it for inherited decisions only — `spec/` 5.0.0 governs on any conflict. Where a row's build choice is governed by an ADR, read that ADR from `adr/` before implementing.
+When implementing, auditing, or remediating a specific subsystem, read the department spec(s) listed below. The frozen legacy record is `archive/v4.5.1/documentation.md` — consult it for inherited decisions only; `spec/` governs on any conflict. Where a row's build choice is governed by an ADR, read that ADR from `adr/` before implementing.
 
-| Subsystem | Blueprint § | Documentation § | Directive Part |
-|-----------|-------------|-----------------|----------------|
-| Bootstrap | §8 | §8 | Part 3 |
-| Shutdown | §9 | — | D-3.7 |
-| DI Container | §10 | §9 | D-3.5, D-3.6 |
-| Module System | §11, §13, §14 | §10, §11, §12 | Part 4 |
-| Tier Volumes & Blind Discovery | §7.3, §15.9 | — | Part 4 |
-| Swastik (staging, promotion, hot reload) | §15 | §13 | D-4.10 to D-4.12 |
-| Marketplace / MDIS | §16 | §14 | D-4.13 |
-| Command Framework | §17 | §15 | D-3.9, D-3.10 |
-| Event Architecture | §18 | §16 | D-4.8 |
-| Middleware Pipeline | §19 | §17 | D-5.1 |
-| Interaction Handling | §20 | §18 | D-5.3 |
-| Renderer & Presentation Grammar | §10.2, §16.5, §20 | — | ban registry (embed ban) |
-| Buffer Embed & Formal Notice Frame | §17.11, §19.2, §20, §28.6 | — | — |
-| Permission Engine | §21 | §19 | D-5.2 |
-| Power Engine / CLAI / Credentials | §22 | — | Part 6 |
-| Configuration | §23 | §20 | D-5.4 |
-| Database | §24 | §21 | D-5.5 |
-| Caching | §25 | §22 | D-5.6 |
-| State Externalization | §26 | §23 | D-5.7 |
-| Observability | §27 | §24 | D-7.1 |
-| Error Management | §28 | §25 | D-7.2, D-7.3 |
-| Job Queue | §29 | §26 | D-5.8 |
-| Localization | §30 | §27 | D-5.9 |
-| Security | §32 | §29 | D-7.5 |
-| Performance | §33 | §30 | D-7.6 |
-| Privacy / GDPR | §34 | §31 | D-7.7 |
-| Personas (Twill) | §35 | — | D-6.6 |
-| Testing | §37 | §40 | D-8.1 to D-8.3 |
-| CI/CD | §40 | §43 | D-8.4 to D-8.5 |
-| Infrastructure | §41 | §44 | D-8.6 to D-8.7 |
-| Versioning & Release | §42 | §45 | D-8.5, D-8.9 |
-| Troubleshooting | §43 | §46 | — |
+| Subsystem | Spec home |
+|-----------|-----------|
+| Bootstrap | `spec/architecture/application-bootstrap-lifecycle.md` |
+| Shutdown | `spec/architecture/graceful-shutdown-signal-handling.md` |
+| DI Container | `spec/architecture/dependency-injection-service-container.md` |
+| System architecture | `spec/architecture/system-architecture.md` |
+| Technology stack | `spec/architecture/technology-stack-decision-matrix.md` |
+| Module System | `spec/modules/module-anatomy-manifest.md`, `spec/modules/module-tiers-lifecycle.md`, `spec/modules/inter-module-communication-and-contracts.md` |
+| Tier Volumes & Blind Discovery | `spec/modules/module-tiers-lifecycle.md` |
+| Swastik (staging, promotion, hot reload) | `spec/modules/swastik-hot-reload-dynamic-module-management.md` |
+| Marketplace / MDIS | `spec/modules/marketplace-and-mdis.md` |
+| Command Framework | `spec/request-layer/command-framework-routing-engine.md` |
+| Event Architecture | `spec/request-layer/event-architecture-bus-system.md` |
+| Middleware Pipeline | `spec/request-layer/middleware-pipeline-interceptors.md` |
+| Interaction Handling | `spec/request-layer/interaction-component-handling.md` |
+| Renderer & Presentation Grammar | `spec/request-layer/division-1-the-renderer-presentation-authority.md` |
+| Buffer Embed & Formal Notice Frame | `spec/request-layer/division-2-interaction-lifecycle-buffer-notices-components.md` |
+| Permission Engine | `spec/request-layer/permission-authorization-engine.md` |
+| Power Engine / CLAI / Credentials | `spec/request-layer/control-plane-services.md` |
+| Configuration | `spec/data/configuration-management.md` |
+| Database | `spec/data/database-architecture.md` |
+| Caching | `spec/data/caching-architecture.md` |
+| State Externalization | `spec/data/state-externalization-horizontal-scaling.md` |
+| Observability | `spec/operations/observability-logging-metrics-tracing.md` |
+| Error Management | `spec/operations/error-management-fault-tolerance.md` |
+| Job Queue | `spec/operations/job-queue-scheduling.md` |
+| Localization | `spec/operations/localization-internationalization.md` |
+| Security | `spec/operations/security-architecture-threat-model.md` |
+| Performance | `spec/operations/performance-scalability-engineering.md` |
+| Privacy / GDPR | `spec/operations/privacy-gdpr-compliance.md` |
+| Personas (Twill) | `spec/operations/multi-identity-operation-twill-personas.md` |
+| Testing | `spec/lifecycle/testing-architecture-qa.md` |
+| CI/CD | `spec/lifecycle/ci-cd-pipeline.md` |
+| Infrastructure | `spec/lifecycle/infrastructure-deployment.md` |
+| Versioning & Release | `spec/lifecycle/versioning-release-migration.md` |
+| Troubleshooting | `spec/lifecycle/troubleshooting-operational-runbooks.md` |
+| Governance rules | `spec/governance/` |
+| Non-goals | `spec/foundations/non-goals-explicit-boundaries.md` |
 
 The renderer grammar itself — the static Components v2 frame, dynamic slots, Modes D/M/C, the buffer embed, the formal notice frame, the title and attribution grammar, and the accent token — is owned by `spec/request-layer/`; read its renderer and interaction-lifecycle sections alongside the rows above whenever presentation behavior is in scope.
 
 ---
 
-## 3. CODEBASE STATE DETECTION & AUDIT PROTOCOL
+### 3. CODEBASE STATE DETECTION & AUDIT PROTOCOL
 
 **Execute this section when the codebase already exists.** The output is a Gap Manifest — a classified inventory of every subsystem's actual state against the specification.
 
-### 3.1 The Four-State Classification
+#### 3.1 The Four-State Classification
 
 Every subsystem, file, behavior, and deliverable in the codebase is classified into exactly one of four states:
 
@@ -201,7 +203,7 @@ Every subsystem, file, behavior, and deliverable in the codebase is classified i
 | `PARTIAL` | Exists but is incomplete — some specified elements are missing | Complete — fill the gap |
 | `MISSING` | Does not exist in the codebase at all | Build — implement from specification |
 
-### 3.2 Structural vs Behavioral Detection
+#### 3.2 Structural vs Behavioral Detection
 
 For every subsystem, check two independent dimensions:
 
@@ -228,7 +230,7 @@ For every subsystem, check two independent dimensions:
 
 **A subsystem that is structurally present but behaviorally absent is `FAULTY`, not `COMPLETE`.** This is the most common and most dangerous gap in a partially-complete codebase: files exist, but the wiring that makes them live is missing.
 
-### 3.3 The Audit Procedure
+#### 3.3 The Audit Procedure
 
 Execute in this order:
 
@@ -279,7 +281,7 @@ Subsystem: Permission Engine
 
 The Gap Manifest is the working document for the Remediation Protocol (§4).
 
-### 3.4 Severity Ordering for Remediation
+#### 3.4 Severity Ordering for Remediation
 
 When the Gap Manifest contains multiple items, remediate in this order:
 
@@ -293,11 +295,11 @@ When the Gap Manifest contains multiple items, remediate in this order:
 
 ---
 
-## 4. REMEDIATION PROTOCOL
+### 4. REMEDIATION PROTOCOL
 
 For every item in the Gap Manifest, execute this loop:
 
-### 4.1 The Remediation Loop
+#### 4.1 The Remediation Loop
 
 **Step 1 — Read the specification.** Read the source-document sections named in §2.2 for the affected subsystem. Read the full specification, not a summary. For known-defect items, also read the corresponding entry in `upgradation/change-log.md`'s defect lifecycle for the documented resolution path. If an ADR in `adr/` governs the affected build choice, read it too — the remediation must land on the recorded decision.
 
@@ -317,7 +319,7 @@ For every item in the Gap Manifest, execute this loop:
 
 **Step 7 — Re-audit dependents.** If the remediated subsystem is a dependency of others (per the severity ordering in §3.4), re-verify the dependent subsystems against their behavioral criteria. A fix in the middleware pipeline, for example, may surface faults in every command that depended on the bypass.
 
-### 4.2 Remediation Rules
+#### 4.2 Remediation Rules
 
 - **Never preserve a fault for compatibility.** If existing code contradicts the specification, the specification wins.
 - **Never remove working code to rebuild from scratch unless the existing code is structurally unsalvageable.** Prefer targeted remediation over wholesale rebuild — the goal is 100% compliance, not 100% new code.
@@ -327,7 +329,7 @@ For every item in the Gap Manifest, execute this loop:
 
 ---
 
-## 5. PHASED BUILD PLAN
+### 5. PHASED BUILD PLAN
 
 Each phase specifies: its goal, source-document sections to read, deliverables, and verification criteria. The verification criteria are the same criteria used in the audit protocol (§3.2) — structural AND behavioral.
 
@@ -337,7 +339,7 @@ Each phase specifies: its goal, source-document sections to read, deliverables, 
 
 ---
 
-### Phase 0 — Workspace Scaffolding
+#### Phase 0 — Workspace Scaffolding
 
 **Goal:** Correct project skeleton.
 
@@ -364,7 +366,7 @@ Each phase specifies: its goal, source-document sections to read, deliverables, 
 
 ---
 
-### Phase 1 — Configuration, Observability & Error Foundation
+#### Phase 1 — Configuration, Observability & Error Foundation
 
 **Goal:** The process validates config, produces structured output, classifies errors.
 
@@ -384,7 +386,7 @@ Each phase specifies: its goal, source-document sections to read, deliverables, 
 
 ---
 
-### Phase 2 — Bootstrap, DI & Infrastructure
+#### Phase 2 — Bootstrap, DI & Infrastructure
 
 **Goal:** Bootstrap runs to completion against real PostgreSQL and Redis.
 
@@ -423,7 +425,7 @@ Each phase specifies: its goal, source-document sections to read, deliverables, 
 
 ---
 
-### Phase 3 — Module System Framework
+#### Phase 3 — Module System Framework
 
 **Goal:** The engine that discovers, validates, loads, isolates, and disposes of modules.
 
@@ -456,7 +458,7 @@ Each phase specifies: its goal, source-document sections to read, deliverables, 
 
 ---
 
-### Phase 4 — Discord Integration, Command Router & Renderer
+#### Phase 4 — Discord Integration, Command Router & Renderer
 
 **Goal:** The bot connects to Discord, serves slash commands through the canonical pipeline, and presents every user-facing surface through the core Renderer.
 
@@ -489,7 +491,7 @@ Each phase specifies: its goal, source-document sections to read, deliverables, 
 
 ---
 
-### Phase 5 — Control-Plane Service Stubs
+#### Phase 5 — Control-Plane Service Stubs
 
 **Goal:** Typed interfaces and entry points for the five control-plane services.
 
@@ -510,7 +512,7 @@ Each phase specifies: its goal, source-document sections to read, deliverables, 
 
 ---
 
-### Phase 6 — Shipped Modules
+#### Phase 6 — Shipped Modules
 
 **Goal:** All shipped commands are fully functional modules matching `spec/request-layer/` exactly.
 
@@ -540,7 +542,7 @@ First-party modules are seeded onto their tier volumes (`modules-core` for the C
 
 ---
 
-### Phase 7 — Testing, CI/CD & Infrastructure
+#### Phase 7 — Testing, CI/CD & Infrastructure
 
 **Goal:** The build passes its own acceptance gate.
 
@@ -566,7 +568,7 @@ First-party modules are seeded onto their tier volumes (`modules-core` for the C
 
 ---
 
-### Phase 8 — Documentation & Final Verification
+#### Phase 8 — Documentation & Final Verification
 
 **Goal:** The build is documented and passes the Definition of Done (§6).
 
@@ -578,9 +580,9 @@ First-party modules are seeded onto their tier volumes (`modules-core` for the C
 
 ---
 
-## 6. COMPLETION ENFORCEMENT & DEFINITION OF DONE
+### 6. COMPLETION ENFORCEMENT & DEFINITION OF DONE
 
-### 6.1 The Enforcement Pass
+#### 6.1 The Enforcement Pass
 
 Regardless of starting state (greenfield or existing codebase), the build is NOT complete until the Enforcement Pass succeeds. This is a full re-audit using the §3 protocol — every subsystem, every classification, every behavioral check.
 
@@ -594,7 +596,7 @@ Regardless of starting state (greenfield or existing codebase), the build is NOT
 4. **If any item is not `COMPLETE`:** return to the Remediation Protocol (§4), fix, and re-run the Enforcement Pass. Do not declare completion with an unresolved manifest.
 5. **Only when the manifest is all-`COMPLETE` and all five conditions are met** is the build finished
 
-### 6.2 Definition of Done — Five Conditions
+#### 6.2 Definition of Done — Five Conditions
 
 The acceptance gate is specified in `spec/governance/` (rule D-8.11) and the compliance self-audit checklist in `spec/governance/` Appendix B. Read those sections in full and confirm:
 
@@ -608,7 +610,7 @@ The acceptance gate is specified in `spec/governance/` (rule D-8.11) and the com
 
 5. **Every deviation from the directive is recorded in `upgradation/change-log.md`** per the directive's change-management rule.
 
-### 6.3 The Completion Standard
+#### 6.3 The Completion Standard
 
 When the Enforcement Pass produces an all-`COMPLETE` manifest and all five conditions are met, the result is the product this prompt exists to produce: a bot an operator can deploy once and run indefinitely — scaled, observed, secured, and upgradable without downtime.
 
@@ -617,3 +619,24 @@ When the Enforcement Pass produces an all-`COMPLETE` manifest and all five condi
 ---
 
 *End of Master Build Prompt. Version 5.0.0. Record all future revisions in `upgradation/change-log.md`.*
+
+## 6. Artefacts Produced
+
+| Artefact | Path | When |
+|----------|------|------|
+| Application | `apps/main/` | per phase |
+| Module-authoring SDK | `packages/swastik/` | per phase |
+| Gap Manifest | repository root | after the audit (State B) |
+| Build and verification records | `upgradation/change-log.md` | per phase and per remediation |
+
+## 7. Acceptance Criteria
+
+The build is complete only when a full re-audit yields an all-`COMPLETE` Gap Manifest **and** the Definition of Done holds (detailed under the enforcement step below): every subsystem `COMPLETE`; every acceptance test passing; every spec-governed ADR honoured; every known gap in `upgradation/change-log.md` addressed honestly; and every core concern implemented exactly once. Anything less than all-`COMPLETE` is not done.
+
+## 8. Change-Log Record
+
+Per the entry discipline in `upgradation/change-log.md` §1.5, this document writes a **Build** line per phase and a **Verified** line at completion:
+
+```
+- <date> · master-prompt 5.1.0 · phase=<n> · state=<A|B> · result=<COMPLETE|PARTIAL|BLOCKED>
+```
