@@ -1,8 +1,8 @@
 {
   "$id": "docs/status/code-reconciliation.json",
   "title": "Docs ↔ Code reconciliation",
-  "note": "Every row compares what the NEW documentation asserts against the actual source in master-ronix/Dumby-Suite (apps/main at e60ee66). Standing rule: the specification is authority; where the code is narrower, the code is the gap to close.",
-  "verified_commit": "e60ee66",
+  "note": "Every row compares what the NEW documentation asserts against the actual source in master-ronix/Dumby-Suite (apps/main at b6ae1a6d860902274cd3c237d68c1c886687ba8b). Standing rule: the specification is authority; where the code is narrower, the code is the gap to close.",
+  "verified_commit": "b6ae1a6d860902274cd3c237d68c1c886687ba8b",
   "verdicts": [
     "match",
     "doc-incomplete",
@@ -14,17 +14,19 @@
       "id": "REC-001",
       "area": "module manifest — releaseStatus",
       "doc_claim": "releaseStatus is required and is 'private' | 'public' (spec/modules/module-anatomy-manifest.md)",
-      "code_truth": "runtime schema: z.enum([alpha,beta,stable,deprecated]).optional() — spec requires private|public",
-      "code_ref": "apps/main/src/module-system/manifest.schema.ts",
-      "verdict": "code-gap"
+      "code_truth": "releaseStatus is required and is z.enum(['private','public'])",
+      "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
+      "verdict": "match",
+      "resolution": "Re-verified against HEAD b6ae1a6d860902274cd3c237d68c1c886687ba8b — the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
     },
     {
       "id": "REC-002",
       "area": "module manifest — visibility",
       "doc_claim": "the manifest carries a `visibility` enum (contracts/module-manifest.schema.json)",
-      "code_truth": "absent from the runtime schema; spec requires the field",
-      "code_ref": "apps/main/src/module-system/manifest.schema.ts ; apps/main/src/db/migrations/20260101000007_create_marketplace_listings.ts",
-      "verdict": "code-gap"
+      "code_truth": "the schema carries a required visibility enum (['public','unlisted','private'])",
+      "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
+      "verdict": "match",
+      "resolution": "Re-verified against HEAD b6ae1a6d860902274cd3c237d68c1c886687ba8b — the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
     },
     {
       "id": "REC-003",
@@ -48,9 +50,10 @@
       "id": "REC-005",
       "area": "module manifest — required fields",
       "doc_claim": "required = ['name','version','description','tier','hardcoded','devId','buildId','visibility']",
-      "code_truth": "runtime schema is .strict() with mandatory {name,version,description,tier,required}; spec lists {name,version,description,tier,hardcoded,devId,buildId,visibility}",
-      "code_ref": "apps/main/src/module-system/manifest.schema.ts",
-      "verdict": "code-gap"
+      "code_truth": "the schema requires name, version, description, tier, hardcoded, devId, buildId, visibility and releaseStatus — matching the contract's required list",
+      "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
+      "verdict": "match",
+      "resolution": "Re-verified against HEAD b6ae1a6d860902274cd3c237d68c1c886687ba8b — the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
     },
     {
       "id": "REC-006",
@@ -163,39 +166,43 @@
       "id": "REC-019",
       "area": "module manifest — marketplaceCategory",
       "doc_claim": "a closed five-value enum ('audio'|'community'|'security'|'integrations'|'utility')",
-      "code_truth": "runtime schema: z.string().optional() — spec requires the closed five-value enum",
-      "code_ref": "apps/main/src/module-system/manifest.schema.ts",
-      "verdict": "code-gap"
+      "code_truth": "marketplaceCategory is a closed five-value enum ('audio'|'community'|'security'|'integrations'|'utility')",
+      "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
+      "verdict": "match",
+      "resolution": "Re-verified against HEAD b6ae1a6d860902274cd3c237d68c1c886687ba8b — the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
     },
     {
       "id": "REC-020",
       "area": "module manifest — depends/provides/services shapes",
       "doc_claim": "arrays of structured objects ({token,version} / {token,contract} / {token,class,lifetime,deps})",
-      "code_truth": "runtime schema: z.array(z.string()) — spec requires arrays of structured objects",
-      "code_ref": "apps/main/src/module-system/manifest.schema.ts",
-      "verdict": "code-gap"
+      "code_truth": "depends: array of {token,version}; provides: array of {token,contract}; services: array of {token,class,lifetime,deps}",
+      "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
+      "verdict": "match",
+      "resolution": "Re-verified against HEAD b6ae1a6d860902274cd3c237d68c1c886687ba8b — the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
     },
     {
       "id": "REC-021",
       "area": "module manifest — devId / buildId",
       "doc_claim": "required",
-      "code_truth": "runtime schema: both optional — spec requires both",
-      "code_ref": "apps/main/src/module-system/manifest.schema.ts",
-      "verdict": "code-gap"
+      "code_truth": "devId and buildId are both required",
+      "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
+      "verdict": "match",
+      "resolution": "Re-verified against HEAD b6ae1a6d860902274cd3c237d68c1c886687ba8b — the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
     },
     {
       "id": "REC-022",
       "area": "module manifest — required flag",
       "doc_claim": "default: false (two conflicting entries in one section)",
-      "code_truth": "runtime schema: z.boolean() mandatory — spec gives default false",
-      "code_ref": "apps/main/src/module-system/manifest.schema.ts",
-      "verdict": "code-gap"
+      "code_truth": "required: z.boolean().default(false)",
+      "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
+      "verdict": "match",
+      "resolution": "Re-verified against HEAD b6ae1a6d860902274cd3c237d68c1c886687ba8b — the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
     }
   ],
   "counts": {
-    "code-gap": 7,
+    "match": 22,
     "doc-incomplete": 0,
-    "match": 15,
+    "code-gap": 0,
     "code-anchor-broken": 0,
     "total": 22
   }

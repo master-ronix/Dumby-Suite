@@ -175,6 +175,18 @@ authority_scope: [history]
 
 ### v5.0.0 (addendum) — Ecosystem Flow Suite (spec/lifecycle §37.8–§37.13)
 
+### v5.3.0 — Enforcement Run + One-Shot Remediation (State C) — 2026-10-06
+
+- 2026-10-06 · meta-prompt 5.2.0 · state=Enforcement · handoff=master-prompt:enforce · return=unmet
+- 2026-10-06 · master-prompt 5.2.0 · enforce · subsystem=corpus-wide · verdict=PARTIAL
+- Remediation (one-shot, per master-prompt §4; change-management per directive D-0.6/D-1.6):
+  - **F1 (fixed)** — `status/code-reconciliation.json` re-verified against HEAD `b6ae1a6d`; the seven module-manifest rows (REC-001/002/005/019/020/021/022) flipped from `code-gap` to `match`; counts updated to 22 match / 0 gap. Gate: `check-code-reconciliation`.
+  - **F2 (fixed)** — `apps/main/tests/unit/tier-rules.test.ts` duplicate `marketplaceCategory` key removed; an out-of-enum rejection case added to `tests/modules/tier-co-constraints.spec.ts`. Gates: unit suite + modules contract suite.
+  - **F3 (fixed)** — `status/capabilities.json` CAP-004 and CAP-005 corrected from `partial`/`dead` to `implemented` (the canonical router is live and wired); derived `status/compliance.json` regenerated. Gates: `check-status-evidence` + `check-compliance`.
+- **F5 (open) — coverage floors unmet; a defect against directive D-8.2.** `vitest run --coverage` measures 55.8% statements / 52.4% branches against the configured 70/65 blended floor, so CI Gate 4 (`test:coverage`) fails. The config also enforces a single *blended* threshold, which D-8.2 prohibits ("per layer — never as a blended repository-wide average"). Including the acceptance `.spec` suites barely moves the number, so the shortfall is genuine untested code. Closing F5 needs new subsystem tests plus a per-layer threshold config — not landable as a one-shot.
+- Directive enforcement — local gates green: typecheck · ESLint (`--max-warnings=0`) · Prettier · 757 unit tests (66 files) · 41 modules contract tests (16 files) · 25 documentation gates. **Coverage gate red (F5).**
+- 2026-10-06 · master-prompt 5.2.0 · verified · subsystem=corpus-wide · verdict=PARTIAL (F5 open; F4 flow/integration/Docker/K8s surfaces require live services — tracked in `GAP_MANIFEST.md`).
+
 ---
 
 ### 4. Cross-Version Defect Lifecycle

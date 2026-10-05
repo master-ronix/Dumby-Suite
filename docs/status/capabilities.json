@@ -1,10 +1,10 @@
 {
   "_note": "Derived from the audit register (spec/reference/appendix-implementation-status-audit-register.md). Status: implemented|partial|specified|dead|deferred.",
   "counts": {
-    "implemented": 4,
-    "partial": 1,
+    "implemented": 6,
+    "partial": 0,
     "specified": 1,
-    "dead": 1,
+    "dead": 0,
     "deferred": 10
   },
   "capabilities": [
@@ -40,23 +40,31 @@
     },
     {
       "id": "CAP-004",
-      "name": "Live CommandRouter (thinner than spec) — Partially Implemented — wired to bootstrap, bypasses middleware, no collision resolution/cosmetics/hot-swap.",
-      "status": "partial",
+      "name": "Live CommandRouter — Fully Implemented — the single canonical router at src/commands/command-router.ts, constructed in bootstrap, registered as CORE_TOKENS.CommandRouter, and dispatched through the full middleware pipeline with the permission resolver and collision resolution.",
+      "status": "implemented",
       "spec_ref": null,
-      "evidence": [],
+      "evidence": [
+        "apps/main/src/commands/command-router.ts",
+        "apps/main/src/bootstrap/bootstrap.ts",
+        "apps/main/tests/unit/command-tree-structure.test.ts"
+      ],
       "source": "spec/reference/appendix-implementation-status-audit-register.md#L163",
       "owner": "framework-maintainers",
-      "title": "Live CommandRouter (thinner than spec)"
+      "title": "Live CommandRouter (single canonical router)"
     },
     {
       "id": "CAP-005",
-      "name": "Spec-complete CommandRouter / registry (`src/commands/ (the canonical command system)`) — Dead Code — zero external importers; 3 migrations Knex never sees.",
-      "status": "dead",
+      "name": "Spec-complete CommandRouter / registry (`src/commands/`) — Fully Implemented — the canonical command system is live (zero dead code); the router is wired to bootstrap and is the only CommandRouter implementation in the tree.",
+      "status": "implemented",
       "spec_ref": null,
-      "evidence": [],
+      "evidence": [
+        "apps/main/src/commands/",
+        "apps/main/tests/unit/command-tree-structure.test.ts",
+        "apps/main/tests/integration/command-trace.spec.ts"
+      ],
       "source": "spec/reference/appendix-implementation-status-audit-register.md#L169",
       "owner": "framework-maintainers",
-      "title": "Spec-complete CommandRouter / registry (`src/commands/ (the canonical command system)`)"
+      "title": "Spec-complete CommandRouter / registry (`src/commands/` — the canonical command system)"
     },
     {
       "id": "CAP-006",

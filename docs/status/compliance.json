@@ -66,9 +66,7 @@
   "capability_count": 17,
   "capability_status_counts": {
     "deferred": 10,
-    "partial": 1,
-    "dead": 1,
-    "implemented": 4,
+    "implemented": 6,
     "specified": 1
   },
   "capabilities": [
@@ -89,13 +87,13 @@
     },
     {
       "id": "CAP-004",
-      "title": "Live CommandRouter (thinner than spec)",
-      "status": "partial"
+      "title": "Live CommandRouter (single canonical router)",
+      "status": "implemented"
     },
     {
       "id": "CAP-005",
-      "title": "Spec-complete CommandRouter / registry (`src/commands/ (the canonical command system)`)",
-      "status": "dead"
+      "title": "Spec-complete CommandRouter / registry (`src/commands/` — the canonical command system)",
+      "status": "implemented"
     },
     {
       "id": "CAP-006",

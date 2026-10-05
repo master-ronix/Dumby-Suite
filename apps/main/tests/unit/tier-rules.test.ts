@@ -34,7 +34,6 @@ test('marketplace-tier module with a category is valid', () => {
       buildId: 'build_test_1_0_0',
       visibility: 'public',
       releaseStatus: 'public',
-      marketplaceCategory: 'entertainment',
     }),
   ).toBe(true);
 });

@@ -38,6 +38,13 @@ describe('ACC-MOD-0011-4 — tier co-constraints', () => {
     ).toBe(true);
   });
 
+  it('an out-of-enum marketplaceCategory is rejected', () => {
+    expect(
+      validateManifest({ ...base, tier: 'marketplace', marketplaceCategory: 'entertainment' })
+        .valid,
+    ).toBe(false);
+  });
+
   it('a non-marketplace tier may not declare a marketplaceCategory', () => {
     expect(
       validateTierRules({ ...base, tier: 'core', marketplaceCategory: 'utility' }).map(
