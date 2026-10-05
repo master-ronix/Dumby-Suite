@@ -16,3 +16,9 @@ export type {
   CommandRbacRequirement,
 } from "./commands.js";
 export { defineCommand } from "./commands.js";
+export {
+  assertCatalogCoversEvents,
+  defineEvent,
+  EventCatalogError,
+  type EventCatalogEntry,
+} from "./events.js";

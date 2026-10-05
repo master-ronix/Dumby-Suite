@@ -108,6 +108,9 @@ function writeVolumeModule(
     JSON.stringify(fakeManifest({ name: moduleName, ...manifestOverrides })),
   );
   writeFileSync(join(moduleRoot, 'index.js'), 'export const onLoad = () => undefined;\n');
+  // §30 — en-US.json is mandatory; Stage 11 fails without it.
+  mkdirSync(join(moduleRoot, 'locales'), { recursive: true });
+  writeFileSync(join(moduleRoot, 'locales', 'en-US.json'), '{}');
 }
 
 test('loadModulesFromTierVolumes blindly discovers modules from all configured tier volumes', async () => {

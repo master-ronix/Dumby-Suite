@@ -62,11 +62,15 @@ describe('CLAI -> Power Engine route bridge (§22.7)', () => {
     const fetchImpl = vi.fn().mockRejectedValue(new Error('ECONNREFUSED'));
     const client = new PowerEngineClient({ ...config, fetchImpl: fetchImpl as never });
 
-    const result = await client.call('suspendGuild', {}, {
-      actorId: 'op-1',
-      reason: 'r',
-      correlationId: 'c1',
-    });
+    const result = await client.call(
+      'suspendGuild',
+      {},
+      {
+        actorId: 'op-1',
+        reason: 'r',
+        correlationId: 'c1',
+      },
+    );
 
     expect(result.ok).toBe(false);
     expect(result.status).toBe(0);

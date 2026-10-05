@@ -112,7 +112,10 @@ test('an indirect three-module cycle reports the full chain', () => {
 
 test('a module depending on itself is a self-cycle', () => {
   const modules: ModuleNode[] = [
-    node('selfish', { depends: [{ token: 'selfish:t', version: '^1.0.0' }], provides: ['selfish:t'] }),
+    node('selfish', {
+      depends: [{ token: 'selfish:t', version: '^1.0.0' }],
+      provides: ['selfish:t'],
+    }),
   ];
   expect(() => topologicalLoadOrder(modules)).toThrow(ModuleDependencyCycleError);
 });

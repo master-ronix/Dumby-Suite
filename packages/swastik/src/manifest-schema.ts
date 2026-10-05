@@ -58,6 +58,8 @@ export const eventCatalogEntrySchema = z.object({
       'event name must be {domain}.{entity}.{action}',
     ),
   description: z.string().min(1),
+  // §18 — every catalog entry declares a payload schema; a change to it is a breaking change.
+  payload: z.record(z.string(), z.unknown()),
 });
 
 export const crossModuleReadSchema = z.object({

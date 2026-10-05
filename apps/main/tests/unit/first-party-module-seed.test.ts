@@ -84,6 +84,8 @@ function installArtifact(buildDir: string, targetDir: string): void {
   mkdirSync(targetDir, { recursive: true });
   cpSync(join(buildDir, 'manifest.json'), join(targetDir, 'manifest.json'));
   cpSync(join(buildDir, 'index.js'), join(targetDir, 'index.js'));
+  // §30 — en-US.json is mandatory; Stage 11 fails without it.
+  cpSync(join(buildDir, 'locales'), join(targetDir, 'locales'), { recursive: true });
 }
 
 afterAll(() => {

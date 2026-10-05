@@ -13,7 +13,7 @@ import {
   isSnowflake,
   shardIdFromSnowflake,
 } from '../../src/shared/utils/snowflake.js';
-import { COLORS, EMBED_COLORS } from '../../src/shared/constants/colors.js';
+import { DEFAULT_ACCENT_COLOR } from '../../src/shared/utils/components-v2.js';
 import { DURATIONS, BOOTSTRAP_TIMEOUTS } from '../../src/shared/constants/durations.js';
 import { RATE_LIMIT_DEFAULTS } from '../../src/shared/constants/limits.js';
 
@@ -177,11 +177,10 @@ describe('snowflake helpers', () => {
 });
 
 describe('shared constants', () => {
-  test('color and embed palettes are consistent', () => {
-    expect(COLORS.GREEN).toBe(0x2ecc71);
-    expect(EMBED_COLORS.SUCCESS).toBe(COLORS.GREEN);
-    expect(EMBED_COLORS.ERROR).toBe(COLORS.RED);
-    expect(EMBED_COLORS.ADMIN).toBe(COLORS.RED);
+  test('the single official accent token is the canonical blurple', () => {
+    // ADR-001 / renderer grammar: one accent token (#5865F2) everywhere. The legacy
+    // multi-colour palette and EMBED_COLORS were removed (Appendix C #21).
+    expect(DEFAULT_ACCENT_COLOR).toBe(0x5865f2);
   });
 
   test('durations are internally consistent', () => {

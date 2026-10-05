@@ -63,7 +63,17 @@ describe('parseManifest — the contract', () => {
 });
 
 describe('required fields (ACC-MOD-0011-3)', () => {
-  for (const field of ['name', 'version', 'description', 'tier', 'hardcoded', 'devId', 'buildId', 'visibility', 'releaseStatus']) {
+  for (const field of [
+    'name',
+    'version',
+    'description',
+    'tier',
+    'hardcoded',
+    'devId',
+    'buildId',
+    'visibility',
+    'releaseStatus',
+  ]) {
     test(`omitting ${field} fails validation`, () => {
       const without: Record<string, unknown> = { ...base };
       delete without[field];
@@ -131,7 +141,9 @@ describe('the visibility triad (one error, naming the conflict)', () => {
 
 describe('tier co-constraints', () => {
   test('tier admin without devGuildOnly is refused', () => {
-    expect(() => parseManifest({ ...base, tier: 'admin' })).toThrow(/tier 'admin' requires devGuildOnly: true/);
+    expect(() => parseManifest({ ...base, tier: 'admin' })).toThrow(
+      /tier 'admin' requires devGuildOnly: true/,
+    );
   });
 
   test('a non-admin tier may not set devGuildOnly', () => {

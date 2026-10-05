@@ -11,7 +11,8 @@
     "./entrypoints/admin": "./src/entrypoints/admin.ts",
     "./entrypoints/standard": "./src/entrypoints/standard.ts",
     "./entrypoints/marketplace": "./src/entrypoints/marketplace.ts",
-    "./validate": "./src/validate.ts"
+    "./validate": "./src/validate.ts",
+    "./events": "./src/events.ts"
   },
   "files": [
     "src",

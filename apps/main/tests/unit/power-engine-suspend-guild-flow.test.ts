@@ -62,17 +62,29 @@ function lastEditText(interaction: { editReply: ReturnType<typeof vi.fn> }): str
 function buildHarness() {
   const suspensions = new InMemoryGuildSuspensionStore();
   const audit = new InMemoryAuditWriter();
-  const dispatcher = new PowerEngineDispatcher({ trustedSources: ['clai', 'power-engine-internal'] }, audit);
+  const dispatcher = new PowerEngineDispatcher(
+    { trustedSources: ['clai', 'power-engine-internal'] },
+    audit,
+  );
   const catalog = createPowerEngineCatalog({ guildSuspensions: suspensions, logger });
   const registry = new CommandRegistry();
   const handler = vi.fn().mockResolvedValue({ ok: true });
   registry.registerModule('core', 'core');
-  registry.register({ data: { name: 'health', description: 'H' }, execute: handler, moduleId: 'core' });
+  registry.register({
+    data: { name: 'health', description: 'H' },
+    execute: handler,
+    moduleId: 'core',
+  });
   const router = new CommandRouter(registry, logger, { guildSuspensions: suspensions });
   return { suspensions, audit, dispatcher, catalog, registry, handler, router };
 }
 
-const operator = { actorId: 'op-1', source: 'clai', reason: 'abuse report', correlationId: 'corr-1' };
+const operator = {
+  actorId: 'op-1',
+  source: 'clai',
+  reason: 'abuse report',
+  correlationId: 'corr-1',
+};
 
 describe('Power Engine suspendGuild — the end-to-end control flow (§22.2)', () => {
   test('suspendGuild writes the state and audits the true outcome, joined by correlationId', async () => {
@@ -127,12 +139,22 @@ describe('Power Engine suspendGuild — the end-to-end control flow (§22.2)', (
 
   test('unsuspendGuild restores dispatch', async () => {
     const { dispatcher, catalog, handler, router } = buildHarness();
-    await dispatcher.dispatchFunction('suspendGuild', { guildId: 'g1', reason: 'r', confirm: true }, operator, catalog);
+    await dispatcher.dispatchFunction(
+      'suspendGuild',
+      { guildId: 'g1', reason: 'r', confirm: true },
+      operator,
+      catalog,
+    );
     const blocked = makeInteraction('health');
     await router.dispatch(blocked);
     expect(handler).not.toHaveBeenCalled();
 
-    await dispatcher.dispatchFunction('unsuspendGuild', { guildId: 'g1', reason: 'resolved' }, operator, catalog);
+    await dispatcher.dispatchFunction(
+      'unsuspendGuild',
+      { guildId: 'g1', reason: 'resolved' },
+      operator,
+      catalog,
+    );
     const restored = makeInteraction('health');
     await router.dispatch(restored);
 
@@ -144,7 +166,12 @@ describe('Power Engine suspendGuild — the end-to-end control flow (§22.2)', (
     const { suspensions, audit, dispatcher, catalog } = buildHarness();
 
     await expect(
-      dispatcher.dispatchFunction('suspendGuild', { guildId: 'g1', reason: 'r' }, operator, catalog),
+      dispatcher.dispatchFunction(
+        'suspendGuild',
+        { guildId: 'g1', reason: 'r' },
+        operator,
+        catalog,
+      ),
     ).rejects.toThrow(/confirm/);
 
     expect(await suspensions.isSuspended('g1')).toBe(false);
@@ -187,6 +214,8 @@ describe('Power Engine suspendGuild — the end-to-end control flow (§22.2)', (
 
     expect(outcome.ok).toBe(false);
     expect(await suspensions.isSuspended('g1')).toBe(false);
-    expect((audit.entries.at(-1) as PowerEngineAuditEntry).rejectionReason).toBe('UNTRUSTED_SOURCE');
+    expect((audit.entries.at(-1) as PowerEngineAuditEntry).rejectionReason).toBe(
+      'UNTRUSTED_SOURCE',
+    );
   });
 });
