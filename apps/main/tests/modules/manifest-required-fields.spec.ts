@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { validateManifest } from '@workspace/swastik/validate';
-
 /**
  * ACC-MOD-0011-3 — "Omitting `tier` (or any required field) fails validation and the process does
  * not start."
@@ -20,7 +19,17 @@ const valid = {
   releaseStatus: 'public',
 };
 
-const REQUIRED = ['name', 'version', 'description', 'tier', 'hardcoded', 'devId', 'buildId', 'visibility', 'releaseStatus'] as const;
+const REQUIRED = [
+  'name',
+  'version',
+  'description',
+  'tier',
+  'hardcoded',
+  'devId',
+  'buildId',
+  'visibility',
+  'releaseStatus',
+] as const;
 
 describe('ACC-MOD-0011-3 — required fields', () => {
   it('the complete manifest is valid', () => {

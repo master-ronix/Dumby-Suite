@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { moduleManifestSchema as fromSwastik } from '@workspace/swastik/manifest';
 import { moduleManifestSchema as fromBot } from '../../src/module-system/manifest.schema.js';
 import { validateManifest, parseManifest } from '@workspace/swastik/validate';
-
 /**
  * ACC-MOD-0011-2 — "The same manifest schema is imported by both Swastik upload validation and the
  * bot Stage 11 validator (no drift)."

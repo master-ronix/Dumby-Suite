@@ -1,15 +1,16 @@
+import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import Fastify from 'fastify';
-import { describe, expect, it } from 'vitest';
 import { registerAdminRoutes } from '../../src/http/routes/admin.routes.js';
+import { createPowerEngineCatalog } from '../../src/http/power-engine-catalog.js';
+import { InMemoryGuildSuspensionStore } from '../../src/governance/guild-suspension.js';
+import { createLogger } from '../../src/logging/logger.js';
+import { repoRoot } from '../spec-utils.js';
 import {
   InMemoryAuditWriter,
   PowerEngineDispatcher,
 } from '../../src/http/power-engine-dispatcher.js';
-import { createPowerEngineCatalog } from '../../src/http/power-engine-catalog.js';
-import { InMemoryGuildSuspensionStore } from '../../src/governance/guild-suspension.js';
-import { createLogger } from '../../src/logging/logger.js';
 
 /**
  * ACC-REQ-0022-1 — "Every Power Engine route resolves to a real domain handler or returns an honest
@@ -25,7 +26,8 @@ const repoRoot = fileURLToPath(new URL('../../../../', import.meta.url));
 /** A chainable, awaitable stub for the Knex surface the db-touching routes use. */
 function stubKnex(): unknown {
   const chain: unknown = new Proxy(function () {} as unknown as object, {
-    get: (_t, prop) => (prop === 'then' ? (resolve: (v: unknown) => void) => resolve(undefined) : chain),
+    get: (_t, prop) =>
+      prop === 'then' ? (resolve: (v: unknown) => void) => resolve(undefined) : chain,
     apply: () => chain,
   });
   return chain;
@@ -35,10 +37,14 @@ function stubKnex(): unknown {
 function powerEngineRoutes(): Array<{ method: string; path: string }> {
   const src = readFileSync(`${repoRoot}apps/main/src/http/routes/admin.routes.ts`, 'utf8');
   const seen = new Map<string, { method: string; path: string }>();
-  for (const m of src.matchAll(/app\.(get|post|put|delete|patch)<[^>]*>?\(\s*['"`](\/admin\/power-engine\/[^'"`]+)['"`]/g)) {
+  for (const m of src.matchAll(
+    /app\.(get|post|put|delete|patch)<[^>]*>?\(\s*['"`](\/admin\/power-engine\/[^'"`]+)['"`]/g,
+  )) {
     seen.set(`${m[1]!.toUpperCase()} ${m[2]!}`, { method: m[1]!.toUpperCase(), path: m[2]! });
   }
-  for (const m of src.matchAll(/app\.(get|post|put|delete|patch)\(\s*['"`](\/admin\/power-engine\/[^'"`]+)['"`]/g)) {
+  for (const m of src.matchAll(
+    /app\.(get|post|put|delete|patch)\(\s*['"`](\/admin\/power-engine\/[^'"`]+)['"`]/g,
+  )) {
     seen.set(`${m[1]!.toUpperCase()} ${m[2]!}`, { method: m[1]!.toUpperCase(), path: m[2]! });
   }
   return [...seen.values()].sort((a, b) => a.path.localeCompare(b.path));
@@ -46,7 +52,10 @@ function powerEngineRoutes(): Array<{ method: string; path: string }> {
 
 async function buildApp(catalogFunctions: readonly string[]) {
   const suspensions = new InMemoryGuildSuspensionStore();
-  const catalog = createPowerEngineCatalog({ guildSuspensions: suspensions, logger: createLogger('error') });
+  const catalog = createPowerEngineCatalog({
+    guildSuspensions: suspensions,
+    logger: createLogger('error'),
+  });
   // Only the declared subset is wired, mirroring the real bootstrap: the rest fall to 501.
   const wired = new Map([...catalog].filter(([name]) => catalogFunctions.includes(name)));
   const dispatcher = new PowerEngineDispatcher(
