@@ -585,9 +585,6 @@ dumby-suite/
 ├── design/   ← reserved (README only)
 │   └── README.md
 ├── docs/   ← the documentation corpus (spec/ · blueprint/ · documentation/ · contracts/ · status/ · upgradation/ · adr/ · the prompt set)
-│   ├── .github/
-│   │   └── workflows/
-│   │       └── docs-gates.yml
 │   ├── _generated/
 │   │   ├── index.md
 │   │   └── tree.md

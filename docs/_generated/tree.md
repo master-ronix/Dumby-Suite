@@ -1,6 +1,5 @@
 # Generated docs tree
 
-- .github/workflows/docs-gates.yml
 - README.md
 - _generated/index.md
 - _generated/tree.md

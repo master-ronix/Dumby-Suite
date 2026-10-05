@@ -36,6 +36,9 @@ present in its target (`status/coverage-ledger.json`, 2,246 rows). Run all gates
 for g in scripts/docs/check-*.mjs; do node "$g"; done
 ```
 
+CI runs the same loop: `.github/workflows/docs-gates.yml` at the **repository root** executes
+every gate on any change under `docs/` (a `.github/` nested under `docs/` would be inert).
+
 Gates: manifest · coverage · **ledger-content** · frontmatter · contracts · counts ·
 no-restatement · archive-guard · status-evidence · anchors · anchor-paths · acceptance ·
 reconciliation · code-reconciliation · **entities** · **terminology** · **authority** ·
