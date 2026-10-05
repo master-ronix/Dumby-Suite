@@ -1,9 +1,9 @@
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { describe, expect, it } from 'vitest';
+import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
 import { DeveloperCredentialService } from '../../src/credentials/developer-credential.service.js';
-
+import { repoRoot } from '../spec-utils.js';
 /**
  * ACC-REQ-0022-3 — "Credentials Service hashes with Argon2id and binds to the internal network only;
  * one issuance path".
@@ -78,7 +78,9 @@ describe('ACC-REQ-0022-3 — the Credentials Service', () => {
 
   it('binds to the internal network only', () => {
     const schema = read('src/config/env.schema.ts');
-    expect(schema).toMatch(/CREDENTIALS_SERVICE_BIND_HOST: z\.string\(\)\.default\('127\.0\.0\.1'\)/);
+    expect(schema).toMatch(
+      /CREDENTIALS_SERVICE_BIND_HOST: z\.string\(\)\.default\('127\.0\.0\.1'\)/,
+    );
     const entry = read('src/entry/credentials.ts');
     expect(entry).toContain('host: env.CREDENTIALS_SERVICE_BIND_HOST');
     // It must never default to all interfaces.
