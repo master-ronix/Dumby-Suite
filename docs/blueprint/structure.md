@@ -584,7 +584,22 @@ dumby-suite/
 │   └── README.md
 ├── design/   ← reserved (README only)
 │   └── README.md
-├── docs/   ← the documentation corpus (blueprint.md · directive.md · interface.md · concept.md · directory.md · definitions.md · change-log.md · the prompt set · adr/ · upgradation/)
+├── docs/   ← the documentation corpus (spec/ · blueprint/ · documentation/ · contracts/ · status/ · upgradation/ · adr/ · the prompt set)
+│   ├── .github/
+│   │   └── workflows/
+│   │       └── docs-gates.yml
+│   ├── _generated/
+│   │   ├── index.md
+│   │   └── tree.md
+│   ├── _inbox/
+│   │   ├── blueprint.md
+│   │   ├── concept.md
+│   │   ├── definitions.md
+│   │   ├── directive.md
+│   │   ├── directory.md
+│   │   └── interface.md
+│   ├── _meta/
+│   │   └── frontmatter.schema.json
 │   ├── adr/
 │   │   ├── ADR-001.md
 │   │   ├── ADR-002.md
@@ -597,21 +612,224 @@ dumby-suite/
 │   │   ├── ADR-009.md
 │   │   ├── ADR-010.md
 │   │   └── ADR-011.md
+│   ├── archive/
+│   │   └── v4.5.1/
+│   │       ├── documentation.md
+│   │       └── README.md
+│   ├── blueprint/
+│   │   ├── architecture-edges.md
+│   │   ├── data-edges.md
+│   │   ├── foundations-edges.md
+│   │   ├── lifecycle-edges.md
+│   │   ├── modules-edges.md
+│   │   ├── operations-edges.md
+│   │   ├── reference-edges.md
+│   │   ├── request-layer-edges.md
+│   │   ├── structure.md
+│   │   └── system-map.md
+│   ├── contracts/
+│   │   ├── commands.json
+│   │   ├── config.schema.json
+│   │   ├── errors.json
+│   │   ├── events.catalog.json
+│   │   ├── flow-suite.json
+│   │   ├── module-manifest.schema.json
+│   │   ├── openapi.yaml
+│   │   ├── rbac.enums.json
+│   │   └── ui-renderer.schema.json
+│   ├── documentation/
+│   │   ├── api/
+│   │   │   ├── commands.md
+│   │   │   ├── endpoints.md
+│   │   │   ├── errors.md
+│   │   │   ├── events.md
+│   │   │   └── README.md
+│   │   ├── features/
+│   │   │   ├── core-command-surface.md
+│   │   │   ├── data-and-state.md
+│   │   │   ├── module-system.md
+│   │   │   ├── observability.md
+│   │   │   ├── permissions-rbac.md
+│   │   │   ├── renderer-presentation.md
+│   │   │   └── testing-and-flow.md
+│   │   ├── guides/
+│   │   │   ├── building-a-module.md
+│   │   │   └── getting-started.md
+│   │   ├── overview/
+│   │   │   ├── closing.md
+│   │   │   ├── concept-documentation.md
+│   │   │   ├── core-ideology-the-seven-pillars.md
+│   │   │   ├── engineering-philosophy.md
+│   │   │   ├── introduction.md
+│   │   │   ├── mission-statement.md
+│   │   │   ├── table-of-contents.md
+│   │   │   ├── the-competitive-landscape.md
+│   │   │   ├── the-developer-model.md
+│   │   │   ├── the-philosophy.md
+│   │   │   ├── the-problem-why-dumby-exists.md
+│   │   │   ├── the-unified-modular-doctrine.md
+│   │   │   ├── trust-security-reliability.md
+│   │   │   ├── vision-statement.md
+│   │   │   ├── what-dumby-is-not.md
+│   │   │   ├── what-dumby-is.md
+│   │   │   └── who-dumby-is-for.md
+│   │   └── index.md
+│   ├── migration/
+│   │   ├── ledger-template.md
+│   │   └── migration-prompt.md
+│   ├── orchestration/
+│   │   └── master-prompt.md
+│   ├── prompts/
+│   │   ├── entry.md
+│   │   └── meta-prompt.md
+│   ├── scripts/
+│   │   └── docs/
+│   │       ├── check-acceptance.mjs
+│   │       ├── check-anchor-paths.mjs
+│   │       ├── check-anchors.mjs
+│   │       ├── check-archive-guard.mjs
+│   │       ├── check-asset-adaptation.mjs
+│   │       ├── check-authority.mjs
+│   │       ├── check-chain.mjs
+│   │       ├── check-code-reconciliation.mjs
+│   │       ├── check-contracts.mjs
+│   │       ├── check-counts.mjs
+│   │       ├── check-coverage.mjs
+│   │       ├── check-entities.mjs
+│   │       ├── check-facts.mjs
+│   │       ├── check-frontmatter.mjs
+│   │       ├── check-ledger-content.mjs
+│   │       ├── check-manifest.mjs
+│   │       ├── check-no-restatement.mjs
+│   │       ├── check-normative-markers.mjs
+│   │       ├── check-reconciliation.mjs
+│   │       ├── check-status-evidence.mjs
+│   │       └── check-terminology.mjs
+│   ├── spec/
+│   │   ├── architecture/
+│   │   │   ├── application-bootstrap-lifecycle.md
+│   │   │   ├── dependency-injection-service-container.md
+│   │   │   ├── directory-file-structure.md
+│   │   │   ├── graceful-shutdown-signal-handling.md
+│   │   │   ├── system-architecture.md
+│   │   │   └── technology-stack-decision-matrix.md
+│   │   ├── data/
+│   │   │   ├── caching-architecture.md
+│   │   │   ├── configuration-management.md
+│   │   │   ├── database-architecture.md
+│   │   │   └── state-externalization-horizontal-scaling.md
+│   │   ├── foundations/
+│   │   │   ├── engineering-principles-p1-p14.md
+│   │   │   ├── non-goals-explicit-boundaries.md
+│   │   │   ├── the-unified-modular-doctrine.md
+│   │   │   └── what-is-dumby.md
+│   │   ├── governance/
+│   │   │   ├── appendix-a-directive-to-blueprint-traceability.md
+│   │   │   ├── appendix-b-compliance-self-audit-checklist.md
+│   │   │   ├── appendix-c-logged-deviations-and-open-items.md
+│   │   │   ├── directive-charter-how-to-use-this-document.md
+│   │   │   ├── dumby-development-directive-rules.md
+│   │   │   ├── part-1-foundations-doctrine.md
+│   │   │   ├── part-2-technology-stack-runtime-boundaries.md
+│   │   │   ├── part-3-application-core-bootstrap-lifecycle-di.md
+│   │   │   ├── part-4-module-system-framework.md
+│   │   │   ├── part-5-request-permission-data-architecture.md
+│   │   │   ├── part-6-control-plane-services.md
+│   │   │   ├── part-7-reliability-security-performance.md
+│   │   │   └── part-8-quality-delivery-acceptance.md
+│   │   ├── lifecycle/
+│   │   │   ├── ci-cd-pipeline.md
+│   │   │   ├── developer-experience-tooling.md
+│   │   │   ├── development-workflow.md
+│   │   │   ├── infrastructure-deployment.md
+│   │   │   ├── testing-architecture-qa.md
+│   │   │   ├── troubleshooting-operational-runbooks.md
+│   │   │   └── versioning-release-migration.md
+│   │   ├── modules/
+│   │   │   ├── catalog/
+│   │   │   │   └── catalog-conventions-illustrative-module-index.md
+│   │   │   ├── building-a-module-a-complete-worked-example.md
+│   │   │   ├── inter-module-communication-and-contracts.md
+│   │   │   ├── marketplace-and-mdis.md
+│   │   │   ├── module-anatomy-manifest.md
+│   │   │   ├── module-tiers-lifecycle.md
+│   │   │   └── swastik-hot-reload-dynamic-module-management.md
+│   │   ├── operations/
+│   │   │   ├── analytics-telemetry-mtp.md
+│   │   │   ├── error-management-fault-tolerance.md
+│   │   │   ├── job-queue-scheduling.md
+│   │   │   ├── localization-internationalization.md
+│   │   │   ├── multi-identity-operation-twill-personas.md
+│   │   │   ├── observability-logging-metrics-tracing.md
+│   │   │   ├── performance-scalability-engineering.md
+│   │   │   ├── privacy-gdpr-compliance.md
+│   │   │   └── security-architecture-threat-model.md
+│   │   ├── orientation/
+│   │   │   ├── complete-engineering-implementation-reference.md
+│   │   │   ├── definitions.md
+│   │   │   ├── front-matter.md
+│   │   │   ├── how-to-read-this-reference.md
+│   │   │   ├── rosetta-stone-conceptual-map.md
+│   │   │   ├── system-at-a-glance.md
+│   │   │   ├── table-of-contents.md
+│   │   │   └── what-this-document-is.md
+│   │   ├── reference/
+│   │   │   ├── inline-status-entries/
+│   │   │   │   ├── architecture.md
+│   │   │   │   ├── lifecycle.md
+│   │   │   │   ├── modules.md
+│   │   │   │   ├── reference.md
+│   │   │   │   └── request-layer.md
+│   │   │   ├── appendices.md
+│   │   │   ├── appendix-a-extended-reference-discord-api-surface.md
+│   │   │   ├── appendix-b-extended-reference-interface-hub.md
+│   │   │   ├── appendix-c-extended-reference-operational-excellence.md
+│   │   │   ├── appendix-implementation-status-audit-register.md
+│   │   │   ├── colophon.md
+│   │   │   ├── dumby-vs-multipurpose-bots-capability-comparison.md
+│   │   │   ├── glossary-topic-index.md
+│   │   │   ├── mandatory-feature-compliance-matrix.md
+│   │   │   └── rest-api-webhooks-mdis-reference.md
+│   │   └── request-layer/
+│   │       ├── command-framework-routing-engine.md
+│   │       ├── control-plane-services.md
+│   │       ├── discord-facing-interface-frontend-surfaces.md
+│   │       ├── division-0-system-overview-the-core-command-surface.md
+│   │       ├── division-1-the-renderer-presentation-authority.md
+│   │       ├── division-10-hello-world-standard-tier-module.md
+│   │       ├── division-11-cross-cutting-ui-specifications.md
+│   │       ├── division-2-interaction-lifecycle-buffer-notices-components.md
+│   │       ├── division-3-dashboard-home-page-core-commands.md
+│   │       ├── division-4-health-command-health-module.md
+│   │       ├── division-5-browse-command-marketplace-module.md
+│   │       ├── division-6-queue-command-bccm-queue-module.md
+│   │       ├── division-7-persona-command-persona-module-twill.md
+│   │       ├── division-8-permit-command-rbac-permission-module.md
+│   │       ├── division-9-modules-command-module-management-module.md
+│   │       ├── event-architecture-bus-system.md
+│   │       ├── front-matter.md
+│   │       ├── interaction-component-handling.md
+│   │       ├── middleware-pipeline-interceptors.md
+│   │       ├── permission-authorization-engine.md
+│   │       └── table-of-contents.md
+│   ├── status/
+│   │   ├── authority.json
+│   │   ├── capabilities.json
+│   │   ├── classification.json
+│   │   ├── code-reconciliation.json
+│   │   ├── counts.json
+│   │   ├── coverage-ledger.json
+│   │   ├── entities.json
+│   │   ├── facts.json
+│   │   ├── reconciliation.json
+│   │   ├── section-order.json
+│   │   └── terminology.json
 │   ├── upgradation/
-│   │   ├── README.md
-│   │   └── change-log.md
-│   ├── blueprint.md
-│   ├── change-log.md
-│   ├── concept.md
-│   ├── definitions.md
-│   ├── directive.md
-│   ├── directory.md
-│   ├── documentation.md
-│   ├── interface.md
-│   ├── master-prompt.md
-│   ├── meta-prompt.md
-│   ├── migration-ledger-template.md
-│   └── migration-prompt.md
+│   │   ├── change-log.md
+│   │   └── README.md
+│   ├── glossary.md
+│   ├── manifest.json
+│   └── README.md
 ├── lib/   ← Replit scaffold — NOT the bot (Drizzle/Orval/React)
 │   ├── api-client-react/
 │   │   ├── src/
