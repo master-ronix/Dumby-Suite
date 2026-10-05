@@ -14,7 +14,7 @@ authority_scope: [history]
 
 > **One project. One continuous history.**
 > Archive lineage: v1.0.0 → FINAL (13 drafts) · Living reference pair: v4.5.1 · Restructured corpus: v5.0.0 (`blueprint/` · `documentation/` · `spec/<department>/` · `adr/` · `upgradation/`)
-> Last recorded: 2026-10-05 (trigger-chain revision 5.1.0 — meta-prompt, master-prompt, migration-prompt, entry and this log re-based onto one shared chain skeleton with explicit handoff/return conditions)
+> Last recorded: 2026-10-05 (trigger-chain revision 5.1.0 — meta-prompt, master-prompt, migration-prompt, entry and this log re-based onto one shared chain skeleton with explicit handoff/return conditions; addendum — Ecosystem Flow Suite specified in `spec/lifecycle/testing-architecture-qa.md` §37.8–§37.13)
 
 ---
 
@@ -1021,6 +1021,16 @@ recorded as documentation impact under the UR; their implementation executes und
 **Verified** — Every cross-reference in the four documents resolves to a current path; the handoff order is meta → (master | migration) → change-log; each document carries the shared skeleton; a `check-chain` gate fails the build on a broken reference, a broken handoff order, or a missing skeleton section.
 
 _locations · size · basis: chain documents under `docs/` · structural diff against the prior chain · direct reference resolution_
+
+---
+
+### v5.0.0 (addendum) — Ecosystem Flow Suite (spec/lifecycle §37.8–§37.13)
+
+**Added** — The Ecosystem Flow Suite, specified in `spec/lifecycle/testing-architecture-qa.md` as the corpus's second test axis: a bootstrap→shutdown coordination spine that boots the real wiring (embedded PostgreSQL + in-memory Redis + mock gateway) and asserts coordination, compatibility, integration, and environment. Its canonical flow registry is the new contract `contracts/flow-suite.json`; the reader-facing summary is `documentation/features/testing-and-flow.md`.
+**Changed** — §37 now presents two axes — the unchanged four-tier isolation pyramid and the new coordination spine — and the wiring edge `SPEC-07-LIFECYCLE#ECOSYSTEM_FLOW_SUITE -> SPEC-02-ARCHITECTURE` was added to `blueprint/lifecycle-edges.md`. `status/counts.json` gains `test_tiers` and `flow_threads`; `status/capabilities.json` gains CAP-017 (specified); `status/authority.json`, `status/facts.json`, and `status/terminology.json` register the new canonical term and its single authority; the coverage ledger maps the six new headings.
+**Verified** — All documentation gates pass with the addition in place; the six flow threads are grounded in the shipped harness under `apps/main/tests/flow/`.
+
+_locations · size · basis: spec/lifecycle/testing-architecture-qa.md, contracts/flow-suite.json, status ledgers · added sections and ledgers · direct gate run_
 
 ---
 

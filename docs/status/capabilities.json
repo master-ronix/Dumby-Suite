@@ -3,6 +3,7 @@
   "counts": {
     "implemented": 4,
     "partial": 1,
+    "specified": 1,
     "dead": 1,
     "deferred": 10
   },
@@ -149,6 +150,17 @@
       "spec_ref": null,
       "evidence": [],
       "source": "spec/reference/0009#L1009",
+      "owner": "framework-maintainers"
+    },
+    {
+      "id": "CAP-017",
+      "name": "Ecosystem Flow Suite \u2014 the bootstrap\u2192shutdown coordination spine (\u00a737.8\u2013\u00a737.13)",
+      "status": "specified",
+      "spec_ref": "\u00a737.8",
+      "evidence": [
+        "apps/main/tests/flow/"
+      ],
+      "source": "spec/lifecycle/testing-architecture-qa.md#37.8",
       "owner": "framework-maintainers"
     }
   ]

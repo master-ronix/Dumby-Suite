@@ -32,6 +32,7 @@
 - contracts/config.schema.json
 - contracts/errors.json
 - contracts/events.catalog.json
+- contracts/flow-suite.json
 - contracts/module-manifest.schema.json
 - contracts/openapi.yaml
 - contracts/rbac.enums.json
@@ -47,6 +48,7 @@
 - documentation/features/observability.md
 - documentation/features/permissions-rbac.md
 - documentation/features/renderer-presentation.md
+- documentation/features/testing-and-flow.md
 - documentation/guides/building-a-module.md
 - documentation/guides/getting-started.md
 - documentation/index.md

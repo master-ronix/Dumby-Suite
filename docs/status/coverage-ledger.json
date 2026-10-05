@@ -1,8 +1,8 @@
 {
  "schema": "coverage-ledger/v2",
  "note": "Every source heading -> exact target FILE. CI: 100% mapped, 0 orphans.",
- "total_rows": 2363,
- "mapped": 2363,
+ "total_rows": 2369,
+ "mapped": 2369,
  "targets": [
   "README.md",
   "adr/ADR-001.md",
@@ -16672,6 +16672,48 @@
    "source_line": 1006,
    "heading": "Appendix D \u2014 Notes & Attachments",
    "target": "upgradation/UR-20260918-001_Consolidated_Re-Baseline_Request.md",
+   "status": "mapped"
+  },
+  {
+   "source_file": "spec/lifecycle/testing-architecture-qa.md",
+   "source_line": 0,
+   "heading": "37.8 The Ecosystem Flow Suite \u2014 the Coordination Spine",
+   "target": "spec/lifecycle/testing-architecture-qa.md",
+   "status": "mapped"
+  },
+  {
+   "source_file": "spec/lifecycle/testing-architecture-qa.md",
+   "source_line": 0,
+   "heading": "37.9 The Flow Thread \u2014 bootstrap \u2192 shutdown",
+   "target": "spec/lifecycle/testing-architecture-qa.md",
+   "status": "mapped"
+  },
+  {
+   "source_file": "spec/lifecycle/testing-architecture-qa.md",
+   "source_line": 0,
+   "heading": "37.10 The Canonical Flows",
+   "target": "spec/lifecycle/testing-architecture-qa.md",
+   "status": "mapped"
+  },
+  {
+   "source_file": "spec/lifecycle/testing-architecture-qa.md",
+   "source_line": 0,
+   "heading": "37.11 What the Flow Suite Asserts",
+   "target": "spec/lifecycle/testing-architecture-qa.md",
+   "status": "mapped"
+  },
+  {
+   "source_file": "spec/lifecycle/testing-architecture-qa.md",
+   "source_line": 0,
+   "heading": "37.12 Test-Suite Composition Policy",
+   "target": "spec/lifecycle/testing-architecture-qa.md",
+   "status": "mapped"
+  },
+  {
+   "source_file": "spec/lifecycle/testing-architecture-qa.md",
+   "source_line": 0,
+   "heading": "37.13 How To Verify This Section Against the Code",
+   "target": "spec/lifecycle/testing-architecture-qa.md",
    "status": "mapped"
   }
  ]

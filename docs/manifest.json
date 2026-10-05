@@ -122,7 +122,8 @@
     "contracts/commands.json",
     "contracts/rbac.enums.json",
     "contracts/ui-renderer.schema.json",
-    "contracts/openapi.yaml"
+    "contracts/openapi.yaml",
+    "contracts/flow-suite.json"
   ],
   "archive": [
     {

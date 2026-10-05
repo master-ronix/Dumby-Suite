@@ -29,7 +29,8 @@
       "module-system.md",
       "observability.md",
       "permissions-rbac.md",
-      "renderer-presentation.md"
+      "renderer-presentation.md",
+      "testing-and-flow.md"
     ],
     "documentation/guides": [
       "building-a-module.md",

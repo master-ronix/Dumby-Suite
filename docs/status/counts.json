@@ -21,5 +21,7 @@
   "engineering_principles": 14,
   "compliance_rows_blueprint": 60,
   "directive_rules": 81,
-  "logged_deviations": 24
+  "logged_deviations": 24,
+  "test_tiers": 4,
+  "flow_threads": 6
 }

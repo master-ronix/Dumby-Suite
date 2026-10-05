@@ -9,6 +9,10 @@
     {
       "phrase": "single normative statement of precedence",
       "owner": "spec/governance/directive-charter-how-to-use-this-document.md"
+    },
+    {
+      "phrase": "single normative statement of the ecosystem flow suite",
+      "owner": "spec/lifecycle/testing-architecture-qa.md"
     }
   ]
 }

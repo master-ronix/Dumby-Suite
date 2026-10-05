@@ -13,3 +13,4 @@ How the lifecycle department connects to the rest of the system. These are the *
 
 - SPEC-07-LIFECYCLE -> orchestration/ (build pipeline)
 - SPEC-07-LIFECYCLE -> SPEC-06-OPERATIONS (runbooks + SLOs)
+- SPEC-07-LIFECYCLE#ECOSYSTEM_FLOW_SUITE -> SPEC-02-ARCHITECTURE (the flow spine traverses bootstrap → shutdown over the real wiring)

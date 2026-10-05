@@ -11,6 +11,11 @@
       "literal": "OWNER > ADMIN > MOD > HELPER",
       "canonical": "OWNER > ADMINISTRATOR > MODERATOR > HELPER",
       "reason": "canonical rank names are ADMINISTRATOR and MODERATOR"
+    },
+    {
+      "literal": "Ecosystem E2E Suite",
+      "canonical": "Ecosystem Flow Suite",
+      "reason": "the coordination spine has one canonical name"
     }
   ],
   "alias_allowlist": [
@@ -54,6 +59,10 @@
     {
       "literal": "**layer** — two senses",
       "file": "glossary.md"
+    },
+    {
+      "literal": "**flow thread** — one sense",
+      "file": "spec/lifecycle/testing-architecture-qa.md"
     }
   ]
 }

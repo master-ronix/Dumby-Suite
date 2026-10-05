@@ -40,6 +40,10 @@
     {
       "literal": "fixed sequence **1 → 2 → 3 → 7 → 4 → 5 → 6**",
       "reason": "canonical permission resolution order"
+    },
+    {
+      "literal": "Ecosystem Flow Suite",
+      "reason": "canonical name of the coordination test spine (spec/lifecycle §37.8)"
     }
   ]
 }
