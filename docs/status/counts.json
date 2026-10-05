@@ -23,5 +23,6 @@
   "directive_rules": 81,
   "logged_deviations": 24,
   "test_tiers": 4,
-  "flow_threads": 6
+  "flow_threads": 6,
+  "coverage_rows": 2246
 }

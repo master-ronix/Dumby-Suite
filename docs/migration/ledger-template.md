@@ -3,7 +3,7 @@ id: MIGRATION-LEDGER-TEMPLATE-MD
 title: Migration Ledger Template
 kind: engine
 status: engine
-version: 5.1.0
+version: 5.2.0
 chain_role: ledger
 preceded_by: migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -15,6 +15,12 @@ change_log: upgradation/change-log.md
 > It is a record-shape reference only — **never a ledger to copy**. The live, authoritative
 > ledger is `migration-ledger.md` at the **repository root**; from it you resume, and never
 > copy this file over it, re-initialize it, or rebuild it.
+
+**When this template is used.** A live ledger is constructed only for a **State B (migration)**
+run — that is, only when an active work order exists (at least one `upgradation/UR-*.md`, or
+open items in the live ledger). With no work order, no ledger is built: the run is
+**State C (enforcement)** and its artifact is the Gap Manifest at the repository root, not
+this ledger.
 
 ---
 

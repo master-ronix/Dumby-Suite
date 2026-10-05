@@ -3,7 +3,7 @@ id: MIGRATION-MIGRATION-PROMPT-MD
 title: Re-Baseline Migration Prompt
 kind: engine
 status: engine
-version: 5.1.0
+version: 5.2.0
 chain_role: migrate
 preceded_by: prompts/meta-prompt.md (State B)
 handoff_to: upgradation/change-log.md
@@ -22,6 +22,8 @@ change_log: upgradation/change-log.md
 ## 2. Purpose
 
 Bring an existing codebase — or an existing corpus — up to the current specification, one item at a time, in a fixed order. It does **not** audit the whole codebase and does **not** drive everything to 100% compliance: it lands the re-baseline deltas into the code, with a ledger that survives across sessions and a change-log line for every request row it closes. It is the correct protocol when the code and the specification are at different versions; the master prompt is the wrong protocol then, because it would mark nearly every subsystem faulty at once and produce wandering.
+
+**This protocol fires only when an active work order exists.** An active work order means at least one `upgradation/UR-*.md` is present (discovered dynamically — there is no static list) or the live ledger carries an item not `DONE`. With no work order there is nothing to migrate: this protocol does not run, and the chain hands to **State C (enforcement)** — `orchestration/master-prompt.md` §3 audit and §6 enforcement govern instead.
 
 **Document type:** Migration Prompt — a scoped, delta-driven execution protocol. This is NOT the Master Build Prompt (`orchestration/master-prompt.md`, triggered via `prompts/meta-prompt.md`). It does not audit the whole codebase and it does not drive everything to 100% spec compliance. It does exactly one thing: lands the re-baseline deltas into the code, one item at a time, in a fixed order, with a ledger that survives across sessions and a change-log line for every request row it closes.
 
@@ -43,6 +45,7 @@ Bring an existing codebase — or an existing corpus — up to the current speci
 ## 3. Preconditions
 
 - Invoked by `prompts/meta-prompt.md` with State B, or directly as a migration request.
+- **An active work order exists** (§2): at least one `upgradation/UR-*.md`, or open items in the live `migration-ledger.md`. If neither holds, STOP — return to `prompts/meta-prompt.md`; the run is State C (enforcement), not migration.
 - `apps/main/` contains code built against a specification older than the current one.
 - The state of record has been reconciled before any item executes: the ledger is rebuilt from `migration/ledger-template.md`, and all request rows are re-triaged against the tree, not the snapshot.
 
@@ -53,14 +56,20 @@ Bring an existing codebase — or an existing corpus — up to the current speci
 | Corpus manifest | `manifest.json` | the normative artifact set |
 | Governance precedence | `spec/governance/directive-charter-how-to-use-this-document.md` | the authority order |
 | Department specs | `spec/<department>/` | the current specification to migrate to |
-| Frozen request records | <path> | the request work order |
-| Change log | <path> | the state of record and the record sink |
+| Frozen request records | `upgradation/UR-*.md` (dynamic) | the request work order |
+| Change log | `upgradation/change-log.md` | the state of record and the record sink |
 | Ledger template | `migration/ledger-template.md` | the ledger record shapes |
 | Capability ledger | `status/capabilities.json` | build / defer decisions |
 
 ## 5. Ordered Steps
 
 The protocol executes as the ordered sections below; their internal numbering is retained so the cross-references within the protocol resolve.
+
+### 0.0 THE WORK-ORDER GUARD (run first)
+
+**If no active work order exists, this protocol does not run.** An active work order means at least one `upgradation/UR-*.md` is present (discovered dynamically — there is no static list) or the live ledger `migration-ledger.md` carries an item not `DONE`. When neither holds, STOP: do not construct a ledger, do not invent work-order items, do not execute this protocol. Return to `prompts/meta-prompt.md`; the run is **State C (enforcement)**, and `orchestration/master-prompt.md` §3 audit and §6 enforcement govern. A migration with an empty work order is the exact failure this guard exists to prevent.
+
+---
 
 ### 0. THE ONE-SENTENCE CONTRACT
 

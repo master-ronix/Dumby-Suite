@@ -3,7 +3,7 @@ id: ORCHESTRATION-MASTER-PROMPT-MD
 title: Master Build Prompt
 kind: engine
 status: engine
-version: 5.1.0
+version: 5.2.0
 chain_role: build
 preceded_by: prompts/meta-prompt.md (State A)
 handoff_to: upgradation/change-log.md
@@ -21,7 +21,7 @@ change_log: upgradation/change-log.md
 
 ## 2. Purpose
 
-Take a greenfield workspace **or** any partially-complete codebase to a verified, deployable Dumby application at full specification compliance — detecting what exists, what is missing, what is faulty, and what is not working, then driving the codebase to full compliance. It handles both starting states: the phases below are the target sequence, and in State B the run enters that sequence at the phase matching the highest-complete subsystem and remediates everything below and around it.
+Take a greenfield workspace **or** any partially-complete codebase to a verified, deployable Dumby application at full specification compliance — detecting what exists, what is missing, what is faulty, and what is not working, then driving the codebase to full compliance. It handles all three starting states: the phases below are the target sequence, and in State B the run enters that sequence at the phase matching the highest-complete subsystem and remediates everything below and around it. In State C there is no delta to land: the run is pure enforcement — the corpus is verified against the codebase from start to end, one file at a time, at a paced rate, and every deviation is remediated or recorded.
 
 Context-window optimization governs the design: this document contains zero content from the source documents. Every technical specification lives in the document that owns it and is loaded on demand, per phase — never in bulk. Where a build choice is governed by a recorded decision, the governing ADR in `adr/` is read before the choice, never in bulk.
 
@@ -66,13 +66,15 @@ The protocol executes as the ordered sections below; their internal numbering (0
 
 #### 0.1 Entry Point: Detect Your Starting State
 
-Before doing anything else, determine which of these two states applies:
+Before doing anything else, determine which of these three states applies (the deterministic procedure is `prompts/entry.md`):
 
 **State A — Greenfield:** `apps/main/` does not exist or is empty. Begin at Phase 0 of the build plan (§5). Build from scratch following the phased sequence.
 
-**State B — Existing codebase:** `apps/main/` contains code at any stage of completion. Do NOT start at Phase 0. Instead, execute the Codebase State Detection & Audit Protocol (§3) first. This produces a Gap Manifest that maps every specification requirement to the codebase's actual state. Then use the Remediation Protocol (§4) to drive every gap to closure.
+**State B — Migration (an active work order exists):** `apps/main/` contains code **and** a request work order is active — at least one `upgradation/UR-*.md`, or open items in the live `migration-ledger.md`. Do **not** run this prompt's build or enforcement protocol yet: the delta protocol in `migration/migration-prompt.md` governs until every work-order item is `DONE`. This prompt's audit and enforcement become the governing protocol again only then.
 
-This prompt handles both states. The phases in §5 are the target sequence — in State B you enter the sequence at the phase matching your highest-complete subsystem and use the audit results to remediate everything below and around it.
+**State C — Enforcement (code present, no active work order):** `apps/main/` contains code **and** no work order is active. Do NOT start at Phase 0 and do NOT run the migration protocol. Enter directly at the Codebase State Detection & Audit Protocol (§3), remediate the gaps (§4), and close with the Enforcement Pass (§6) — the whole codebase verified against `spec/`, `blueprint/`, and `documentation/`, file by file, at a paced rate that checkpoints and resumes. This is the steady state of a mature repository, and the route the chain falls through to when there is nothing to build and nothing to migrate.
+
+This prompt handles all three states. The phases in §5 are the target sequence — in State B and State C you do not enter at Phase 0; you use the audit results to drive everything to compliance, and every phase's verification criteria are still checked in the final enforcement pass (§6).
 
 #### 0.2 Core Principle
 
@@ -337,6 +339,8 @@ Each phase specifies: its goal, source-document sections to read, deliverables, 
 
 **For State B (existing codebase):** after the audit (§3) and before entering the phases, use the Gap Manifest to determine your entry point. Enter at the phase containing your highest-severity gap, remediate per §4, then proceed through the remaining phases. Phases whose subsystems are all `COMPLETE` in the manifest are skipped — but their verification criteria are still checked in the final enforcement pass (§6).
 
+**For State C (enforcement):** skip the build phases entirely — there is nothing to build and no delta to land. Run the audit (§3) → the remediation protocol (§4) → the Enforcement Pass (§6) against the whole codebase, corpus-wide.
+
 ---
 
 #### Phase 0 — Workspace Scaffolding
@@ -596,6 +600,8 @@ Regardless of starting state (greenfield or existing codebase), the build is NOT
 4. **If any item is not `COMPLETE`:** return to the Remediation Protocol (§4), fix, and re-run the Enforcement Pass. Do not declare completion with an unresolved manifest.
 5. **Only when the manifest is all-`COMPLETE` and all five conditions are met** is the build finished
 
+**Pacing and resumability (State C).** Verification is exhaustive but paced: process the codebase in the §3.4 severity order, a bounded number of subsystems — and, within a subsystem, files — per session, writing each subsystem's verdict into the Gap Manifest as it is verified. A pass that cannot finish in one session checkpoints and resumes from the manifest; it never skips a file and never declares completion while any subsystem is unverified.
+
 #### 6.2 Definition of Done — Five Conditions
 
 The acceptance gate is specified in `spec/governance/` (rule D-8.11) and the compliance self-audit checklist in `spec/governance/` Appendix B. Read those sections in full and confirm:
@@ -618,7 +624,7 @@ When the Enforcement Pass produces an all-`COMPLETE` manifest and all five condi
 
 ---
 
-*End of Master Build Prompt. Version 5.0.0. Record all future revisions in `upgradation/change-log.md`.*
+*End of Master Build Prompt. Version 5.2.0. Record all future revisions in `upgradation/change-log.md`.*
 
 ## 6. Artefacts Produced
 
@@ -635,8 +641,9 @@ The build is complete only when a full re-audit yields an all-`COMPLETE` Gap Man
 
 ## 8. Change-Log Record
 
-Per the entry discipline in `upgradation/change-log.md` §1.5, this document writes a **Build** line per phase and a **Verified** line at completion:
+Per the entry discipline in `upgradation/change-log.md` §1.5, this document writes a **Build** line per phase, an **Enforcement** line per verification pass (State C), and a **Verified** line at completion:
 
 ```
-- <date> · master-prompt 5.1.0 · phase=<n> · state=<A|B> · result=<COMPLETE|PARTIAL|BLOCKED>
+- <date> · master-prompt 5.2.0 · phase=<n> · state=<A|B|C> · result=<COMPLETE|PARTIAL|BLOCKED>
+- <date> · master-prompt 5.2.0 · enforce · subsystem=<name> · verdict=<COMPLETE|FAULTY|PARTIAL|MISSING>
 ```

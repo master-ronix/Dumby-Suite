@@ -1,5 +1,5 @@
 {
-  "_note": "Generated from the audit register (spec/reference/0009). Status: implemented|partial|specified|dead|deferred.",
+  "_note": "Derived from the audit register (spec/reference/appendix-implementation-status-audit-register.md). Status: implemented|partial|specified|dead|deferred.",
   "counts": {
     "implemented": 4,
     "partial": 1,
@@ -10,153 +10,169 @@
   "capabilities": [
     {
       "id": "CAP-001",
-      "name": "only the narrower `rbac_grants` (role/group/set-scoped) exists; the st",
+      "name": "Standalone `grants` DB table + migration — ABSENT — only the narrower `rbac_grants` (role/group/set-scoped) exists; the standalone `grants` table was never created.",
       "status": "deferred",
       "spec_ref": null,
       "evidence": [],
-      "source": "spec/reference/0009#L45",
-      "owner": "framework-maintainers"
+      "source": "spec/reference/appendix-implementation-status-audit-register.md#L45",
+      "owner": "framework-maintainers",
+      "title": "Standalone `grants` DB table + migration"
     },
     {
       "id": "CAP-002",
-      "name": "No `AnonymizationService` found anywhere.",
+      "name": "`AnonymizationService` (production data anonymization) — ABSENT. No `AnonymizationService` found anywhere.",
       "status": "deferred",
       "spec_ref": null,
       "evidence": [],
-      "source": "spec/reference/0009#L75",
-      "owner": "framework-maintainers"
+      "source": "spec/reference/appendix-implementation-status-audit-register.md#L75",
+      "owner": "framework-maintainers",
+      "title": "`AnonymizationService` (production data anonymization)"
     },
     {
       "id": "CAP-003",
-      "name": "",
+      "name": "/health slash command — Missing.",
       "status": "deferred",
       "spec_ref": null,
       "evidence": [],
-      "source": "spec/reference/0009#L157",
-      "owner": "framework-maintainers"
+      "source": "spec/reference/appendix-implementation-status-audit-register.md#L157",
+      "owner": "framework-maintainers",
+      "title": "/health slash command"
     },
     {
       "id": "CAP-004",
-      "name": "wired to bootstrap, bypasses middleware, no collision resolution/cosme",
+      "name": "Live CommandRouter (thinner than spec) — Partially Implemented — wired to bootstrap, bypasses middleware, no collision resolution/cosmetics/hot-swap.",
       "status": "partial",
       "spec_ref": null,
       "evidence": [],
-      "source": "spec/reference/0009#L163",
-      "owner": "framework-maintainers"
+      "source": "spec/reference/appendix-implementation-status-audit-register.md#L163",
+      "owner": "framework-maintainers",
+      "title": "Live CommandRouter (thinner than spec)"
     },
     {
       "id": "CAP-005",
-      "name": "zero external importers; 3 migrations Knex never sees.",
+      "name": "Spec-complete CommandRouter / registry (`src/commands/ (the canonical command system)`) — Dead Code — zero external importers; 3 migrations Knex never sees.",
       "status": "dead",
       "spec_ref": null,
       "evidence": [],
-      "source": "spec/reference/0009#L169",
-      "owner": "framework-maintainers"
+      "source": "spec/reference/appendix-implementation-status-audit-register.md#L169",
+      "owner": "framework-maintainers",
+      "title": "Spec-complete CommandRouter / registry (`src/commands/ (the canonical command system)`)"
     },
     {
       "id": "CAP-006",
-      "name": "The 18-stage bootstrap starts a health server before module loading,",
+      "name": "18-Stage Bootstrap (Delivered, Spec-Match) — Fully Implemented. The 18-stage bootstrap starts a health server before module loading, separates queue Redis from cache Redis, creates a frozen root container before spawning a child container for modules. Wired with real Redis, PostgreSQL (Knex), discord.js, and Fastify.",
       "status": "implemented",
       "spec_ref": null,
       "evidence": [],
-      "source": "spec/reference/0009#L207",
-      "owner": "framework-maintainers"
+      "source": "spec/reference/appendix-implementation-status-audit-register.md#L207",
+      "owner": "framework-maintainers",
+      "title": "18-Stage Bootstrap (Delivered, Spec-Match)"
     },
     {
       "id": "CAP-007",
-      "name": "only the generic dispatcher wrapper exists; no `PowerEngineService` cl",
+      "name": "`PowerEngineService` class missing — ABSENT — only the generic dispatcher wrapper exists; no `PowerEngineService` class.",
       "status": "deferred",
       "spec_ref": null,
       "evidence": [],
-      "source": "spec/reference/0009#L276",
-      "owner": "framework-maintainers"
+      "source": "spec/reference/appendix-implementation-status-audit-register.md#L276",
+      "owner": "framework-maintainers",
+      "title": "`PowerEngineService` class missing"
     },
     {
       "id": "CAP-008",
-      "name": "proposed; justified by rigid module structure (\u00a710.3) letting the lint",
+      "name": "ESLint Rule dumby/no-orphaned-closures (Static Leak Guard) — ABSENT — proposed; justified by rigid module structure (§10.3) letting the linter know where onUnload lives.",
       "status": "deferred",
-      "spec_ref": "\u00a710.3",
+      "spec_ref": "§10.3",
       "evidence": [],
-      "source": "spec/reference/0009#L281",
-      "owner": "framework-maintainers"
+      "source": "spec/reference/appendix-implementation-status-audit-register.md#L281",
+      "owner": "framework-maintainers",
+      "title": "ESLint Rule dumby/no-orphaned-closures (Static Leak Guard)"
     },
     {
       "id": "CAP-009",
-      "name": "proposed.",
+      "name": "ITimerService DI Token (Forbid Raw setTimeout/setInterval in Modules) — ABSENT — proposed.",
       "status": "deferred",
       "spec_ref": null,
       "evidence": [],
-      "source": "spec/reference/0009#L286",
-      "owner": "framework-maintainers"
+      "source": "spec/reference/appendix-implementation-status-audit-register.md#L286",
+      "owner": "framework-maintainers",
+      "title": "ITimerService DI Token (Forbid Raw setTimeout/setInterval in Modules)"
     },
     {
       "id": "CAP-010",
-      "name": "(per docs) \u2014 28+ required/optional fields; compile-time provides-contr",
+      "name": "Manifest Contract (hardcoded/hardcodeGuildId/visibility triad) — Fully Implemented (per docs) — 28+ required/optional fields; compile-time provides-contract checking via TS types.",
       "status": "implemented",
       "spec_ref": null,
       "evidence": [],
-      "source": "spec/reference/0009#L297",
-      "owner": "framework-maintainers"
+      "source": "spec/reference/appendix-implementation-status-audit-register.md#L297",
+      "owner": "framework-maintainers",
+      "title": "Manifest Contract (hardcoded/hardcodeGuildId/visibility triad)"
     },
     {
       "id": "CAP-011",
-      "name": "proposed; document currently gives modules total freedom over interact",
+      "name": "Server-Driven UI (SDUI) — UIResponse Schema Replacing interaction.reply — ABSENT — proposed; document currently gives modules total freedom over interaction.reply (§12.4 RemindCommand builds custom embed).",
       "status": "deferred",
-      "spec_ref": "\u00a712.4",
+      "spec_ref": "§12.4",
       "evidence": [],
-      "source": "spec/reference/0009#L374",
-      "owner": "framework-maintainers"
+      "source": "spec/reference/appendix-implementation-status-audit-register.md#L374",
+      "owner": "framework-maintainers",
+      "title": "Server-Driven UI (SDUI) — UIResponse Schema Replacing interaction.reply"
     },
     {
       "id": "CAP-012",
-      "name": "and wired into every command dispatch through the middleware pipeline.",
+      "name": "Seven-Layer Permission Engine (PermissionResolver) — Fully Implemented and wired into every command dispatch through the middleware pipeline.",
       "status": "implemented",
       "spec_ref": null,
       "evidence": [],
-      "source": "spec/reference/0009#L422",
-      "owner": "framework-maintainers"
+      "source": "spec/reference/appendix-implementation-status-audit-register.md#L422",
+      "owner": "framework-maintainers",
+      "title": "Seven-Layer Permission Engine (PermissionResolver)"
     },
     {
       "id": "CAP-013",
-      "name": "proposed alongside SDUI.",
+      "name": "Core-Owned InteractionRegistry with Action ID Prefixing — ABSENT — proposed alongside SDUI.",
       "status": "deferred",
       "spec_ref": null,
       "evidence": [],
-      "source": "spec/reference/0009#L623",
-      "owner": "framework-maintainers"
+      "source": "spec/reference/appendix-implementation-status-audit-register.md#L623",
+      "owner": "framework-maintainers",
+      "title": "Core-Owned InteractionRegistry with Action ID Prefixing"
     },
     {
       "id": "CAP-014",
-      "name": "(per docs) \u2014 logger-level redaction; unconditional sampling of error t",
+      "name": "Observability (Pino + prom-client + OpenTelemetry, one correlationId) — Fully Implemented (per docs) — logger-level redaction; unconditional sampling of error traces.",
       "status": "implemented",
       "spec_ref": null,
       "evidence": [],
-      "source": "spec/reference/0009#L702",
-      "owner": "framework-maintainers"
+      "source": "spec/reference/appendix-implementation-status-audit-register.md#L702",
+      "owner": "framework-maintainers",
+      "title": "Observability (Pino + prom-client + OpenTelemetry, one correlationId)"
     },
     {
       "id": "CAP-015",
-      "name": "(V2/deferred).",
+      "name": "Worker-Thread Sandboxing for Untrusted Marketplace Modules — ABSENT (V2/deferred).",
       "status": "deferred",
       "spec_ref": null,
       "evidence": [],
-      "source": "spec/reference/0009#L837",
-      "owner": "framework-maintainers"
+      "source": "spec/reference/appendix-implementation-status-audit-register.md#L837",
+      "owner": "framework-maintainers",
+      "title": "Worker-Thread Sandboxing for Untrusted Marketplace Modules"
     },
     {
       "id": "CAP-016",
-      "name": "no documented `securityContext`/`fsGroup` tuning for the module volume",
+      "name": "Container securityContext / fsGroup for non-root access — ABSENT — no documented `securityContext`/`fsGroup` tuning for the module volume.",
       "status": "deferred",
       "spec_ref": null,
       "evidence": [],
-      "source": "spec/reference/0009#L1009",
-      "owner": "framework-maintainers"
+      "source": "spec/reference/appendix-implementation-status-audit-register.md#L1009",
+      "owner": "framework-maintainers",
+      "title": "Container securityContext / fsGroup for non-root access"
     },
     {
       "id": "CAP-017",
-      "name": "Ecosystem Flow Suite \u2014 the bootstrap\u2192shutdown coordination spine (\u00a737.8\u2013\u00a737.13)",
+      "name": "Ecosystem Flow Suite — the bootstrap→shutdown coordination spine (§37.8–§37.13)",
       "status": "specified",
-      "spec_ref": "\u00a737.8",
+      "spec_ref": "§37.8",
       "evidence": [
         "apps/main/tests/flow/"
       ],

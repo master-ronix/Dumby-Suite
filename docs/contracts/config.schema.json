@@ -7,7 +7,7 @@
       "properties": {
         "HEALTH_PORT": {
           "type": "integer",
-          "default": 3000
+          "default": 8081
         },
         "DATABASE_URL": {
           "type": "string"
@@ -17,5 +17,6 @@
         }
       }
     }
-  }
+  },
+  "note": "Port defaults are canonical in status/facts.json (sourced from apps/main/src/config/env.schema.ts); this schema mirrors them."
 }

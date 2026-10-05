@@ -136,11 +136,11 @@
     "orchestration": "orchestration/",
     "migration": "migration/",
     "upgradation": "upgradation/",
-    "prompts": "prompts/"
+    "prompts": "prompts/",
+    "inbox": "_inbox/"
   },
   "generated": [
     "_generated/index.md",
-    "_generated/tree.md",
-    "status/compliance.json"
+    "_generated/tree.md"
   ]
 }

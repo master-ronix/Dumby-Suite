@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.1.0
+version: 5.2.0
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -27,7 +27,7 @@ authority_scope: [history]
 ## 1. Identity
 
 - **Chain role:** *record* — the terminal sink of the trigger chain.
-- **Preceded by:** any chain document that completes a step — `prompts/meta-prompt.md` (activation), `orchestration/master-prompt.md` (build), `migration/migration-prompt.md` (migration).
+- **Preceded by:** any chain document that completes a step — `prompts/meta-prompt.md` (activation), `orchestration/master-prompt.md` (build or enforcement), `migration/migration-prompt.md` (migration).
 - **Hands off to:** nothing — it is terminal. Its entries are the chain's audit trail and the state of record.
 - **Authority:** normative, `authority_scope: [history]`.
 
@@ -47,6 +47,7 @@ authority_scope: [history]
 |-------|--------|-----|
 | Activation line | `prompts/meta-prompt.md` §8 | one per run |
 | Build line | `orchestration/master-prompt.md` §8 | one per phase |
+| Enforcement line | `orchestration/master-prompt.md` §8 (enforcement mode) | one per verification pass |
 | Migration line | `migration/migration-prompt.md` §8 | one per closed request row |
 
 ## 5. Ordered Steps
@@ -148,6 +149,13 @@ authority_scope: [history]
 #### UR 2.0 — Post-Re-Baseline Conformance & Audit Evidence (recorded 2026-10-01)
 
 ### v5.1.0 (trigger chain) — Governed Trigger Chain
+
+### v5.2.0 (trigger chain) — Tri-State Trigger Chain & Finding Remediation
+
+- **Trigger chain (tri-state):** `prompts/entry.md` now classifies three states — Greenfield (build), Migration (delta), Enforcement (no delta). State C fires when the codebase exists and the work order is inactive, including when the live ledger is fully `DONE` and nothing is left to update. `migration/migration-prompt.md` refuses an empty work order and hands to State C, so the chain can no longer dead-end on an empty migration template.
+- **Dynamic work order:** the probe globs `upgradation/UR-*.md` and reads `migration-ledger.md`; there is no static work order. Updates are occasional and manually requested.
+- **Findings remediated:** the manifest no longer cites a non-existent generated file and now validates `generated`/`archive`/`assets`; the README row count is corrected and single-sourced (`counts.coverage_rows`); `status/capabilities.json` names are completed and its sources re-pointed to the audit register; duplicate frontmatter anchors are removed and now gated; `contracts/config.schema.json` port defaults reconcile with `status/facts.json`; `_inbox/` is declared in the manifest and the entity-inventory note is aligned.
+- **Gates:** `scripts/docs/check-chain-states.mjs` added; `check-manifest`, `check-counts`, `check-anchors`, `check-contracts` extended. 23 gates total, all green.
 
 ### v5.0.0 (addendum) — Ecosystem Flow Suite (spec/lifecycle §37.8–§37.13)
 

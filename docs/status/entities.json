@@ -1,6 +1,6 @@
 {
  "schema": "entities/v1",
- "note": "Frozen named-entity inventory from the authoritative sources. CI gate: every entity must appear in the reader-facing corpus (blueprint/ documentation/ spec/ adr/ upgradation/).",
+ "note": "Frozen named-entity inventory extracted from the authoritative source records under _inbox/ (the pre-restructure documents the corpus was derived from). CI gate: every entity must appear in the reader-facing corpus (blueprint/ documentation/ spec/ adr/ upgradation/).",
  "source_files": [
   "_inbox/blueprint.md",
   "_inbox/interface.md",

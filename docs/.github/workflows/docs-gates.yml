@@ -21,6 +21,7 @@ jobs:
       - run: node scripts/docs/check-asset-adaptation.mjs
       - run: node scripts/docs/check-authority.mjs
       - run: node scripts/docs/check-chain.mjs
+      - run: node scripts/docs/check-chain-states.mjs
       - run: node scripts/docs/check-code-reconciliation.mjs
       - run: node scripts/docs/check-contracts.mjs
       - run: node scripts/docs/check-counts.mjs
