@@ -584,7 +584,7 @@ dumby-suite/
 │   └── README.md
 ├── design/   ← reserved (README only)
 │   └── README.md
-├── docs/   ← the documentation corpus (blueprint.md · directive.md · interface.md · concept.md · directory.md · definitions.md · change-log.md · the prompt set · adr/ · ur/)
+├── docs/   ← the documentation corpus (blueprint.md · directive.md · interface.md · concept.md · directory.md · definitions.md · change-log.md · the prompt set · adr/ · upgradation/)
 │   ├── adr/
 │   │   ├── ADR-001.md
 │   │   ├── ADR-002.md
@@ -597,9 +597,9 @@ dumby-suite/
 │   │   ├── ADR-009.md
 │   │   ├── ADR-010.md
 │   │   └── ADR-011.md
-│   ├── ur/
+│   ├── upgradation/
 │   │   ├── README.md
-│   │   └── UR-20260918-001_Consolidated_Re-Baseline_Request.md
+│   │   └── change-log.md
 │   ├── blueprint.md
 │   ├── change-log.md
 │   ├── concept.md
