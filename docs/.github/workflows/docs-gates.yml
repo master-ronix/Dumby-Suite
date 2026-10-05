@@ -35,3 +35,4 @@ jobs:
       - run: node scripts/docs/check-reconciliation.mjs
       - run: node scripts/docs/check-status-evidence.mjs
       - run: node scripts/docs/check-terminology.mjs
+      - run: node scripts/docs/check-ur.mjs

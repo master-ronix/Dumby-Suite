@@ -1,6 +1,6 @@
 {
  "schema": "coverage-ledger/v2",
- "note": "Every source heading -> exact target FILE. CI: 100% mapped, 0 orphans.",
+ "note": "Every source heading -> exact target FILE. CI: 100% mapped, 0 orphans. UR records (upgradation/UR-*.md) are provenance and excluded from this ledger — detected dynamically by scripts/docs/check-ur.mjs; run scripts/docs/sync-ur.mjs to opt one in.",
  "total_rows": 2246,
  "mapped": 2246,
  "targets": [
@@ -91,6 +91,7 @@
   "spec/operations/privacy-gdpr-compliance.md",
   "spec/operations/security-architecture-threat-model.md",
   "spec/orientation/complete-engineering-implementation-reference.md",
+  "spec/orientation/definitions.md",
   "spec/orientation/front-matter.md",
   "spec/orientation/how-to-read-this-reference.md",
   "spec/orientation/rosetta-stone-conceptual-map.md",
@@ -105,6 +106,11 @@
   "spec/reference/colophon.md",
   "spec/reference/dumby-vs-multipurpose-bots-capability-comparison.md",
   "spec/reference/glossary-topic-index.md",
+  "spec/reference/inline-status-entries/architecture.md",
+  "spec/reference/inline-status-entries/lifecycle.md",
+  "spec/reference/inline-status-entries/modules.md",
+  "spec/reference/inline-status-entries/reference.md",
+  "spec/reference/inline-status-entries/request-layer.md",
   "spec/reference/mandatory-feature-compliance-matrix.md",
   "spec/reference/rest-api-webhooks-mdis-reference.md",
   "spec/request-layer/command-framework-routing-engine.md",
@@ -129,6 +135,7 @@
   "spec/request-layer/permission-authorization-engine.md",
   "spec/request-layer/table-of-contents.md",
   "upgradation/README.md",
+  "upgradation/UR-20261005-002_New_Request.md",
   "upgradation/change-log.md"
  ],
  "rows": [

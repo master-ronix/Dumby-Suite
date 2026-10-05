@@ -84,3 +84,14 @@ sovereignty over a command's Discord-bit gate.
 **Closing note.** The three source records (5.0-UR-1, the Suite request @ `be39a52`, and
 the RBAC requirements) must not be modified. Changes to the program are new request
 records raised under their own IDs — never edits to frozen ones.
+
+---
+
+## UR detection (dynamic)
+
+UR records are discovered at run time by `scripts/docs/check-ur.mjs`: any `upgradation/UR-*.md`
+is detected and validated automatically (front-matter complete, `kind: ur`, every cited corpus
+path resolving) — there is no registry to update, so adding or editing a record is a single-file
+operation. URs are provenance and are deliberately **excluded** from `status/coverage-ledger.json`
+and `status/entities.json`. To opt a UR's headings into the coverage ledger, run
+`node scripts/docs/sync-ur.mjs` (and `node scripts/docs/sync-ur.mjs --clear` to revert).
