@@ -1,8 +1,8 @@
+import { describe, expect, it } from 'vitest';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { join, relative } from 'node:path';
-import { describe, expect, it } from 'vitest';
-
+import { repoRoot } from '../spec-utils.js';
 /**
  * ACC-MOD-0011-5 — "The three-layer rule (command->service->repository) holds and no cross-module
  * imports/writes exist."

@@ -2,6 +2,7 @@ import type { Container } from '../di/container.js';
 import type { Logger } from '../logging/logger.js';
 import { topologicalLoadOrder, classifyLoadFailures, type ModuleNode } from './topo-sort.js';
 import { validateTierRules } from './tier-rules.js';
+import { checkModuleAgainstPolicy, type SecurityPolicy } from './policy-lockfile.js';
 import type { ModuleRegistry } from './registry.js';
 import { CORE_TOKENS } from '../di/tokens.js';
 import type { CommandRegistry } from '../commands/command-registry.js';
@@ -44,22 +45,33 @@ export class ModuleLoader {
     private readonly registry: ModuleRegistry,
     private readonly container: Container,
     private readonly logger: Logger,
+    private readonly policy?: SecurityPolicy,
   ) {}
 
   validateAll(): void {
     for (const mod of this.registry.all()) {
-      const violations = validateTierRules({
+      const tierViolations = validateTierRules({
         name: mod.manifest.name,
         tier: mod.manifest.tier,
         devGuildOnly: mod.manifest.devGuildOnly,
         marketplaceCategory: mod.manifest.marketplaceCategory,
         commands: mod.manifest.commands,
-      });
+      }).map((v) => v.message);
+      // D-7.5.5 — the Stage 11 security-policy lockfile check.
+      const policyViolations =
+        this.policy === undefined
+          ? []
+          : checkModuleAgainstPolicy(
+              {
+                name: mod.manifest.name,
+                intents: mod.manifest.intents,
+                commands: mod.manifest.commands,
+              },
+              this.policy,
+            );
+      const violations = [...tierViolations, ...policyViolations];
       if (violations.length > 0) {
-        throw new ModuleValidationFailedError(
-          mod.manifest.name,
-          violations.map((v) => v.message),
-        );
+        throw new ModuleValidationFailedError(mod.manifest.name, violations);
       }
     }
   }
@@ -97,9 +109,7 @@ export class ModuleLoader {
                   moduleId: mod.manifest.name,
                   identity: {
                     surface: `Dumby | ${mod.manifest.name}`,
-                    ...(mod.manifest.devId !== undefined
-                      ? { developer: mod.manifest.devId }
-                      : {}),
+                    ...(mod.manifest.devId !== undefined ? { developer: mod.manifest.devId } : {}),
                     version: mod.manifest.version,
                   },
                   renderer,

@@ -111,7 +111,10 @@ export function satisfiesRange(range: string, version: string): boolean {
   if (parseSemver(version) === null) return false;
   const alternatives = range.split('||');
   return alternatives.some((alt) => {
-    const comparators = alt.trim().split(/\s+/).filter((c) => c.length > 0);
+    const comparators = alt
+      .trim()
+      .split(/\s+/)
+      .filter((c) => c.length > 0);
     if (comparators.length === 0) return true;
     return comparators.every((c) => satisfiesComparator(c, version));
   });

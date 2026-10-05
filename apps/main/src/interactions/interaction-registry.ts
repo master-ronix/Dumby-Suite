@@ -1,3 +1,5 @@
+import type { Redis } from 'ioredis';
+
 export interface ComponentInteraction {
   id?: string;
   customId: string;
@@ -25,6 +27,42 @@ export interface MintCustomIdInput {
 
 export interface InteractionRegistryOptions {
   acknowledge?: (interaction: ComponentInteraction) => Promise<void>;
+  /** Appendix C #19 — a shared idempotency store so dedup survives across pods/restarts. */
+  idempotency?: IdempotencyStore;
+  /**
+   * Appendix C #20 — the Renderer's read-only guard. When provided, component handlers receive a
+   * read-only interaction so the component path cannot bypass the Renderer and reply directly.
+   */
+  renderer?: { createReadOnlyInteraction<T extends object>(interaction: T): T };
+}
+
+/** Appendix C #19 — the idempotency contract, so the in-memory default can be swapped for Redis. */
+export interface IdempotencyStore {
+  has(key: string): Promise<boolean>;
+  add(key: string): Promise<void>;
+}
+
+export class InMemoryIdempotencyStore implements IdempotencyStore {
+  private readonly seen = new Set<string>();
+  async has(key: string): Promise<boolean> {
+    return this.seen.has(key);
+  }
+  async add(key: string): Promise<void> {
+    this.seen.add(key);
+  }
+}
+
+export class RedisIdempotencyStore implements IdempotencyStore {
+  constructor(
+    private readonly redis: Redis,
+    private readonly ttlSeconds = 15 * 60,
+  ) {}
+  async has(key: string): Promise<boolean> {
+    return (await this.redis.get(`dumby:idem:${key}`)) !== null;
+  }
+  async add(key: string): Promise<void> {
+    await this.redis.set(`dumby:idem:${key}`, '1', 'EX', this.ttlSeconds);
+  }
 }
 
 const CUSTOM_ID_SEPARATOR = ':';
@@ -34,11 +72,15 @@ export const AUTOCOMPLETE_BUDGET_MS = 800;
 export class InteractionRegistry {
   private readonly handlers = new Map<string, IComponentHandler>();
   private readonly inFlight = new Map<string, Promise<boolean>>();
-  private readonly completed = new Set<string>();
+  private readonly idempotency: IdempotencyStore;
   private readonly acknowledge: ((interaction: ComponentInteraction) => Promise<void>) | undefined;
+  private readonly renderer:
+    { createReadOnlyInteraction<T extends object>(interaction: T): T } | undefined;
 
   constructor(options: InteractionRegistryOptions = {}) {
     this.acknowledge = options.acknowledge;
+    this.idempotency = options.idempotency ?? new InMemoryIdempotencyStore();
+    this.renderer = options.renderer;
   }
 
   register(handler: IComponentHandler): void {
@@ -74,7 +116,7 @@ export class InteractionRegistry {
 
     const key =
       handler.idempotencyKey?.(interaction, context) ?? interaction.id ?? interaction.customId;
-    if (this.completed.has(key)) return true;
+    if (await this.idempotency.has(key)) return true;
 
     if (this.acknowledge !== undefined) {
       await this.acknowledge(interaction);
@@ -83,10 +125,14 @@ export class InteractionRegistry {
     const existing = this.inFlight.get(key);
     if (existing) return existing;
 
+    const safeInteraction =
+      this.renderer === undefined
+        ? interaction
+        : this.renderer.createReadOnlyInteraction(interaction);
     const pending = handler
-      .execute(interaction, context)
-      .then(() => {
-        this.completed.add(key);
+      .execute(safeInteraction, context)
+      .then(async () => {
+        await this.idempotency.add(key);
         return true;
       })
       .finally(() => {
@@ -125,10 +171,10 @@ export class InteractionRegistry {
 
   private invokerMatches(interaction: ComponentInteraction): boolean {
     const parts = interaction.customId.split(CUSTOM_ID_SEPARATOR);
-    if (parts.length >= 4) {
-      const invokerId = parts[2];
-      return invokerId !== undefined && invokerId === interaction.user.id;
-    }
-    return true;
+    // Appendix C #20 — a customId that was not minted by this registry (fewer than four parts)
+    // carries no invoker binding, so it fails closed rather than bypassing the re-check.
+    if (parts.length < 4) return false;
+    const invokerId = parts[2];
+    return invokerId !== undefined && invokerId === interaction.user.id;
   }
 }

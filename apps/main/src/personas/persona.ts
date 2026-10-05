@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { open, seal, type EnvelopeRootKey, type SealedEnvelope } from '../crypto/envelope.js';
 
 export const DM_BEHAVIORS = ['prohibited', 'allowed'] as const;
@@ -247,8 +247,7 @@ export function openPersonaBotToken(persona: PersonaIdentity, rootKey: EnvelopeR
   return Buffer.from(open(persona.botTokenSealed, rootKey)).toString('utf8');
 }
 
-let personIdCounter = 0;
 function nextPersonaId(): string {
-  personIdCounter += 1;
-  return `persona-${personIdCounter}`;
+  // Appendix C #23 — ids must not come from a process-local counter (they collide across replicas).
+  return `persona-${randomUUID()}`;
 }

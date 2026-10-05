@@ -1,7 +1,7 @@
+import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
-
+import { repoRoot } from '../spec-utils.js';
 /**
  * ACC-REQ-0022-2 — "CLAI uses the ssh2 public-key server; no plaintext TCP REPL exists".
  *

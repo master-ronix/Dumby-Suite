@@ -326,6 +326,13 @@ export async function loadModulesFromTierVolumes(
           );
         }
 
+        // §30 — `en-US.json` is mandatory; Stage 11 fails without it.
+        if (!existsSync(join(moduleDir, 'locales', 'en-US.json'))) {
+          throw new ModuleValidationFailedError(manifest.name, [
+            'locales/en-US.json is mandatory (spec §30): Stage 11 fails without it',
+          ]);
+        }
+
         const indexPath = join(moduleDir, 'index.js');
         if (!existsSync(indexPath)) {
           throw new Error(`index.js is missing from live module "${entry}"`);
@@ -362,8 +369,9 @@ export async function loadModulesFromTierVolumes(
           buildId = verdict.buildId;
         }
 
-        const pkg = (await import(/* @vite-ignore */ cacheBustedImportUrl(indexPath, buildId))) as
-          Partial<LoadedModule>;
+        const pkg = (await import(
+          /* @vite-ignore */ cacheBustedImportUrl(indexPath, buildId)
+        )) as Partial<LoadedModule>;
         const loadedModule: LoadedModule = { manifest };
         if (pkg.commands) loadedModule.commands = pkg.commands;
         if (pkg.jobs) loadedModule.jobs = pkg.jobs;
