@@ -39,10 +39,7 @@ import {
   verifyStagedBuild,
   type PromotionOutcome,
 } from '../module-system/promotion.js';
-import {
-  buildDeploymentRecord,
-  type PromotionResult,
-} from '../licensing/deployment-records.js';
+import { buildDeploymentRecord, type PromotionResult } from '../licensing/deployment-records.js';
 import { PostgresDeploymentRecordStore } from '../db/repositories/deployment-record.repository.js';
 import { HttpCredentialClient, type CredentialClient } from '../credentials/credential-client.js';
 import {

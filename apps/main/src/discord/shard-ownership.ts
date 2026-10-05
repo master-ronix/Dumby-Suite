@@ -51,7 +51,10 @@ export class ShardOwnershipManager {
   constructor(private readonly deps: ShardOwnershipDeps) {}
 
   /** Claim each shard, retrying every `SHARD_LOCK_RETRY_MS` until owned or attempts run out. */
-  async claim(shardIds: readonly number[], maxAttempts = Number.POSITIVE_INFINITY): Promise<number[]> {
+  async claim(
+    shardIds: readonly number[],
+    maxAttempts = Number.POSITIVE_INFINITY,
+  ): Promise<number[]> {
     const acquired: number[] = [];
     for (const shardId of shardIds) {
       const key = shardLockKey(shardId);

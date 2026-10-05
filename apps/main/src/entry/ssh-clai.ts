@@ -158,7 +158,9 @@ async function handleLine(channel: ServerChannel, line: string, operator: Operat
     const spaceIdx = rest.indexOf(' ');
     const functionName = spaceIdx > 0 ? rest.slice(0, spaceIdx) : rest;
     const argsStr = spaceIdx > 0 ? rest.slice(spaceIdx + 1) : '{}';
-    channel.write(`${await handlePowerEngineCommand(functionName, argsStr, operator.operatorId)}\n$ `);
+    channel.write(
+      `${await handlePowerEngineCommand(functionName, argsStr, operator.operatorId)}\n$ `,
+    );
     return;
   }
   if (line.length > 0) channel.write(`Unknown command: ${line}\n`);

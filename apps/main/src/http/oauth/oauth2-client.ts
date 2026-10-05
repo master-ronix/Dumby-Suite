@@ -42,7 +42,11 @@ export function validateOAuthState(expected: string, received: string | null | u
 }
 
 /** §19.7 — the Discord authorization URL the dashboard redirects to. */
-export function buildAuthorizeUrl(config: OAuth2Config, state: string, scopes: readonly string[]): string {
+export function buildAuthorizeUrl(
+  config: OAuth2Config,
+  state: string,
+  scopes: readonly string[],
+): string {
   const url = new URL(DISCORD_AUTHORIZE_URL);
   url.searchParams.set('client_id', config.clientId);
   url.searchParams.set('redirect_uri', config.redirectUri);

@@ -4,6 +4,9 @@ export interface EntityRow {
   id: string;
   createdAt?: Date | string;
   updatedAt?: Date | string;
+  /** §24.5 — snowflake or service-identity string; null ⇒ system-generated. */
+  createdBy?: string | null;
+  updatedBy?: string | null;
   deletedAt?: Date | string | null;
   deletedBy?: string | null;
 }

@@ -1,5 +1,8 @@
 import type { Knex } from 'knex';
-import type { ModuleOwnershipRecord, ModuleOwnershipStore } from '../../module-system/module-ownership.js';
+import type {
+  ModuleOwnershipRecord,
+  ModuleOwnershipStore,
+} from '../../module-system/module-ownership.js';
 
 interface ModuleRow {
   slug: string;

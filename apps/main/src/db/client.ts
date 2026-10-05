@@ -5,7 +5,7 @@ import { CircuitBreaker } from '../resilience/circuit-breaker.js';
 import type { Logger } from '../logging/logger.js';
 import { ReplicaRouter } from './replica-router.js';
 
-const migrationsDir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'migrations');
+const defaultMigrationsDir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'migrations');
 
 interface TimedQuery {
   __knexQueryUid?: string;
@@ -23,6 +23,10 @@ export interface DbClientOptions {
   replicaUrls?: readonly string[] | undefined;
   /** §24 — the replication-lag ceiling above which reads fall back to the primary. */
   replicaMaxLagMs?: number | undefined;
+  /** Override the migrations directory (the flow suite points this at pre-compiled JS). */
+  migrationsDir?: string | undefined;
+  /** Override the migration file extension (`ts` in dev, `js` once compiled). */
+  migrationsExtension?: string | undefined;
 }
 
 export class DbClient {
@@ -45,6 +49,16 @@ export class DbClient {
   }
 
   private buildPool(connectionString: string, withMigrations: boolean): Knex {
+    const migrationsDir =
+      this.options.migrationsDir !== undefined && this.options.migrationsDir !== ''
+        ? this.options.migrationsDir
+        : defaultMigrationsDir;
+    const migrationsExtension =
+      this.options.migrationsExtension !== undefined && this.options.migrationsExtension !== ''
+        ? this.options.migrationsExtension
+        : import.meta.url.endsWith('.ts')
+          ? 'ts'
+          : 'js';
     const pool = knexFactory({
       client: 'pg',
       connection: {
@@ -56,9 +70,9 @@ export class DbClient {
         ? {
             migrations: {
               directory: migrationsDir,
-              extension: import.meta.url.endsWith('.ts') ? 'ts' : 'js',
+              extension: migrationsExtension,
               tableName: 'knex_migrations',
-              loadExtensions: [import.meta.url.endsWith('.ts') ? '.ts' : '.js'],
+              loadExtensions: [`.${migrationsExtension}`],
             },
           }
         : {}),

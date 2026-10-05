@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "allowedIntents": [
+    "Guilds",
+    "GuildMembers",
+    "GuildMessages",
+    "GuildMessageReactions",
+    "DirectMessages"
+  ],
+  "maxCommandsPerModule": 25,
+  "bannedManifestFields": ["eval", "shell", "exec"]
+}

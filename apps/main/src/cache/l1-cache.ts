@@ -84,6 +84,21 @@ export class L1Cache<V = unknown> {
     this.totalBytes = 0;
   }
 
+  /** Removes every entry whose key starts with `prefix` (used by cross-process invalidation). */
+  clearPrefix(prefix: string): number {
+    let removed = 0;
+    for (const key of [...this.map.keys()]) {
+      if (key.startsWith(prefix)) {
+        const entry = this.map.get(key);
+        if (entry) {
+          this._remove(entry);
+          removed += 1;
+        }
+      }
+    }
+    return removed;
+  }
+
   size(): number {
     return this.map.size;
   }

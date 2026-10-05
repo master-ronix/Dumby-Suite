@@ -1,7 +1,4 @@
-import type {
-  PowerEngineFunction,
-  PowerEngineContext,
-} from './power-engine-catalog.js';
+import type { PowerEngineFunction, PowerEngineContext } from './power-engine-catalog.js';
 
 export interface PowerEngineRequest {
   actorId: string;
@@ -17,10 +14,7 @@ export interface TrustedSourcesConfig {
 }
 
 export type RejectionReason =
-  | 'MISSING_ACTOR_ID'
-  | 'EMPTY_REASON'
-  | 'UNTRUSTED_SOURCE'
-  | 'UNKNOWN_FUNCTION';
+  'MISSING_ACTOR_ID' | 'EMPTY_REASON' | 'UNTRUSTED_SOURCE' | 'UNKNOWN_FUNCTION';
 
 export type PowerEngineValidationResult =
   { valid: true } | { valid: false; rejectionReason: RejectionReason };

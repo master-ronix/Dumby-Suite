@@ -44,7 +44,10 @@ export interface PowerEngineFunction {
   readonly params: readonly PowerEngineParam[];
   /** blueprint.md §22.6 — `suspendGuild` is one of the two functions requiring confirmation. */
   readonly requiresConfirmation?: boolean;
-  handler(args: Record<string, unknown>, ctx: PowerEngineContext): Promise<PowerEngineFunctionResult>;
+  handler(
+    args: Record<string, unknown>,
+    ctx: PowerEngineContext,
+  ): Promise<PowerEngineFunctionResult>;
 }
 
 /** A function the catalog declares but has no backing primitive for — audited as `failed`. */
@@ -113,10 +116,15 @@ export function createPowerEngineCatalog(
     name: 'suspendGuild',
     description:
       'Immediately blocks the bot from responding to ANY interaction originating in the named ' +
-      'guild, fleet-wide, regardless of that guild\'s own configuration.',
+      "guild, fleet-wide, regardless of that guild's own configuration.",
     params: [
       param('guildId', 'string', true, 'The Discord guild snowflake to suspend.'),
-      param('reason', 'string', true, 'Why the guild is being suspended (recorded in the audit log).'),
+      param(
+        'reason',
+        'string',
+        true,
+        'Why the guild is being suspended (recorded in the audit log).',
+      ),
       param('confirm', 'boolean', true, 'Confirmation flag — §22.6 requires it for this action.'),
     ],
     requiresConfirmation: true,

@@ -10,6 +10,12 @@ export function addSoftDelete(table: Knex.CreateTableBuilder): void {
   table.string('deletedBy').nullable();
 }
 
+/** §24.5 — the standard audit columns: snowflake or service-identity string, nullable. */
+export function addAuditColumns(table: Knex.CreateTableBuilder): void {
+  table.string('createdBy').nullable();
+  table.string('updatedBy').nullable();
+}
+
 export async function createPartialUniqueNotDeleted(
   knex: Knex,
   tableName: string,

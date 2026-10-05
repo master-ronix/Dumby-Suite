@@ -1,5 +1,13 @@
 import { build } from 'esbuild';
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parseManifest, type ModuleManifest } from '../src/module-system/manifest.schema.js';
@@ -97,6 +105,11 @@ export async function buildFirstPartyModulePackage(
   const builtManifestPath = join(buildDir, MANIFEST_FILE);
   const builtIndexPath = join(buildDir, BUNDLE_FILE);
   writeFileSync(builtManifestPath, readFileSync(pkg.manifestPath), 'utf8');
+  // §30 — ship the module's locales so the promoted module satisfies the mandatory en-US.json.
+  const localesSrc = join(pkg.packageDir, 'locales');
+  if (existsSync(localesSrc)) {
+    cpSync(localesSrc, join(buildDir, 'locales'), { recursive: true });
+  }
   const indexBytes = readFileSync(builtIndexPath).byteLength;
   if (indexBytes === 0) {
     throw new FirstPartyModulePackageError(pkg.slug, 'the bundled index.js is empty');

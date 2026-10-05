@@ -1,20 +1,9 @@
-import type { DbClient } from '../db/client.js';
-import { tryParseJson } from '../shared/utils/index.js';
+import type { GuildConfigStore } from '../db/repositories/guild-config.repository.js';
+import { guildConfigSchema, type GuildConfig } from './guild-config.schema.js';
 import type { CacheManager } from '../cache/cache-manager.js';
 import type { Logger } from '../logging/logger.js';
 
-export interface GuildConfig {
-  locale?: string;
-  timezone?: string;
-  prefix?: string;
-  moderation?: {
-    logChannelId?: string;
-    muteRoleId?: string;
-  };
-  channelRestrictions?: Record<string, { type: 'allow' | 'deny'; channelIds: string[] }>;
-  premiumEnabled?: boolean;
-  [moduleKey: string]: unknown;
-}
+export type { GuildConfig };
 
 const DEFAULT_CONFIG: GuildConfig = {
   locale: 'en-US',
@@ -25,9 +14,13 @@ const DEFAULT_CONFIG: GuildConfig = {
 const CONFIG_CACHE_KEY_PREFIX = 'guild:config:';
 const CONFIG_CACHE_TTL = 120_000;
 
+/**
+ * §23.3 — per-guild configuration. Reads/writes flow through the `GuildConfigStore` repository
+ * (never raw Knex), and every value is validated against `guildConfigSchema`.
+ */
 export class GuildConfigService {
   constructor(
-    private readonly db: DbClient,
+    private readonly store: GuildConfigStore,
     private readonly cache: CacheManager,
     private readonly logger: Logger,
   ) {}
@@ -36,14 +29,8 @@ export class GuildConfigService {
     return this.cache.get<GuildConfig>(
       `${CONFIG_CACHE_KEY_PREFIX}${guildId}`,
       async () => {
-        const row = await this.db.knex('guild_configs').where({ guildId }).first<{
-          settings?: string;
-        }>();
-        if (row?.settings) {
-          const parsed = tryParseJson<Record<string, unknown>>(row.settings);
-          return { ...DEFAULT_CONFIG, ...(parsed ?? {}) };
-        }
-        return { ...DEFAULT_CONFIG };
+        const stored = await this.store.findByGuildId(guildId);
+        return { ...DEFAULT_CONFIG, ...(stored ?? {}) };
       },
       { ttlMs: CONFIG_CACHE_TTL },
     ) as Promise<GuildConfig>;
@@ -51,13 +38,8 @@ export class GuildConfigService {
 
   async set(guildId: string, config: Partial<GuildConfig>): Promise<void> {
     const existing = await this.get(guildId);
-    const merged = { ...existing, ...config };
-    await this.db
-      .knex('guild_configs')
-      .insert({ guildId, settings: JSON.stringify(merged), updatedAt: new Date() })
-      .onConflict('guildId')
-      .merge({ settings: JSON.stringify(merged), updatedAt: new Date() });
-
+    const merged = guildConfigSchema.parse({ ...existing, ...config });
+    await this.store.upsert(guildId, merged);
     await this.cache.invalidate(`${CONFIG_CACHE_KEY_PREFIX}${guildId}`);
     this.logger.info('guild-config-updated', { guildId, keys: Object.keys(config) });
   }

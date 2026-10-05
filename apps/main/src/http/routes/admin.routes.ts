@@ -1,9 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { PowerEngineDispatcher, AuditWriter } from '../power-engine-dispatcher.js';
-import {
-  PowerEngineParamError,
-  type PowerEngineFunction,
-} from '../power-engine-catalog.js';
+import { PowerEngineParamError, type PowerEngineFunction } from '../power-engine-catalog.js';
 import type { ConfigService } from '../../config/config.service.js';
 import type { DbClient } from '../../db/client.js';
 import type { CommandCeilingService } from '../../commands/command-ceiling.js';
@@ -350,11 +347,13 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
     return sendDispatchResult(reply, outcome);
   };
 
-  app.post('/admin/governance/developers/:devId/approve', (req: FastifyRequest, reply: FastifyReply) =>
-    decideDeveloper(req, reply, 'approve'),
+  app.post(
+    '/admin/governance/developers/:devId/approve',
+    (req: FastifyRequest, reply: FastifyReply) => decideDeveloper(req, reply, 'approve'),
   );
-  app.post('/admin/governance/developers/:devId/decline', (req: FastifyRequest, reply: FastifyReply) =>
-    decideDeveloper(req, reply, 'decline'),
+  app.post(
+    '/admin/governance/developers/:devId/decline',
+    (req: FastifyRequest, reply: FastifyReply) => decideDeveloper(req, reply, 'decline'),
   );
 
   app.post(
@@ -406,7 +405,12 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
     const body = extractRequest(req);
     const args = (req.body ?? {}) as Record<string, unknown>;
     try {
-      const outcome = await deps.dispatcher.dispatchFunction(name, args, body, deps.powerEngineCatalog);
+      const outcome = await deps.dispatcher.dispatchFunction(
+        name,
+        args,
+        body,
+        deps.powerEngineCatalog,
+      );
       return sendDispatchResult(reply, outcome);
     } catch (err) {
       if (err instanceof PowerEngineParamError) {

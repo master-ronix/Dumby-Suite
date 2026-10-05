@@ -69,9 +69,7 @@ export class PostgresApprovalStore implements ApprovalStore {
   ): Promise<void> {
     await this.knex('approvals')
       .insert({ subjectType, subjectId, requestedBy: requestedBy ?? null, status: 'pending' })
-      .onConflict(
-        this.knex.raw('("subjectType", "subjectId") where "status" = \'pending\''),
-      )
+      .onConflict(this.knex.raw('("subjectType", "subjectId") where "status" = \'pending\''))
       .ignore();
   }
 
@@ -117,7 +115,11 @@ export class InMemoryApprovalStore implements ApprovalStore {
     subjectId: string,
     requestedBy?: string,
   ): Promise<void> {
-    if (this.#rows.some((r) => r.subjectType === subjectType && r.subjectId === subjectId && r.status === 'pending')) {
+    if (
+      this.#rows.some(
+        (r) => r.subjectType === subjectType && r.subjectId === subjectId && r.status === 'pending',
+      )
+    ) {
       return;
     }
     this.#rows.push({

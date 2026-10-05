@@ -35,7 +35,8 @@ export interface CredentialActivator {
   activate(keyId: string): Promise<boolean>;
 }
 
-export interface CredentialClient extends CredentialVerifier, CredentialIssuer, CredentialActivator {}
+export interface CredentialClient
+  extends CredentialVerifier, CredentialIssuer, CredentialActivator {}
 
 interface IssueResponseBody {
   readonly keyId?: unknown;

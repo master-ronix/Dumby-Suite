@@ -14,6 +14,9 @@ const csvIds = () =>
 const baseEnvSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'staging', 'production']).default('development'),
+    // §8.4 — runtime role: 'main' opens the gateway + HTTP surfaces; 'worker' runs the truncated
+    // bootstrap and must never hold a Discord client or an HTTP listener.
+    ROLE: z.enum(['main', 'worker']).default('main'),
     LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
 
     API_BIND_HOST: z.string().default('127.0.0.1'),
@@ -60,10 +63,12 @@ const baseEnvSchema = z
     DATABASE_POOL_MAX: z.coerce.number().int().positive().default(10),
     DATABASE_STATEMENT_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
     DATABASE_REPLICA_MAX_LAG_MS: z.coerce.number().int().nonnegative().default(1000),
+    DATABASE_SSL: z.coerce.boolean().default(false),
     SLOW_QUERY_THRESHOLD_MS: z.coerce.number().int().positive().default(500),
     CRITICAL_QUERY_THRESHOLD_MS: z.coerce.number().int().positive().default(2000),
 
     REDIS_URL: z.string().min(1, 'REDIS_URL is required'),
+    REDIS_TLS: z.coerce.boolean().default(false),
     CACHE_L1_MAX_ENTRIES: z.coerce.number().int().positive().default(5000),
     CACHE_L1_MAX_BYTES: z.coerce.number().int().positive().default(52_428_800),
 
@@ -106,6 +111,15 @@ const baseEnvSchema = z
     CLAI_AUTHKEY_STORAGE_URL: z.string().default(''),
 
     MODULES_DIR: z.string().default('/mnt/modules'),
+    // D-7.5.5 — the operator-authored security policy lockfile checked at Stage 11.
+    SECURITY_POLICY_LOCKFILE: z.string().default('security-policy.lock.json'),
+    // Appendix C #11 — the bundled OpenAPI contract, published at `/openapi.yaml`.
+    OPENAPI_CONTRACT_PATH: z.string().default('docs/contracts/openapi.yaml'),
+    // The flow suite pre-compiles migrations to JS and points these seams at the output.
+    KNEX_MIGRATIONS_DIR: z.string().default(''),
+    KNEX_MIGRATIONS_EXT: z.string().default(''),
+    // Appendix C #18 — the operational runbooks directory surfaced by the operational tooling.
+    OPERATIONAL_RUNBOOKS_DIR: z.string().default('apps/main/docs/runbooks'),
     SWASTIK_STAGING_VOLUME_PATH: z.string().default('/mnt/modules/swastik-staging'),
     SWASTIK_LIVE_VOLUME_PATH: z.string().default('/mnt/modules/modules-core'),
     // §15.8 build provenance: the in-process Ed25519 signer's key id and PKCS#8 private key. The

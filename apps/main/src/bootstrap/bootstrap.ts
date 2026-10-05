@@ -1,13 +1,17 @@
 import 'dotenv/config';
+import { existsSync } from 'node:fs';
 import { Container } from '../di/container.js';
 import { CORE_TOKENS } from '../di/tokens.js';
 import { parseEnv, pickEnvKeys, ConfigValidationError } from '../config/env.schema.js';
+import { ConfigurationError } from '../errors/taxonomy.js';
 import { ConfigService } from '../config/config.service.js';
 import { HttpCredentialClient } from '../credentials/credential-client.js';
 import { createLogger, type Logger } from '../logging/logger.js';
+import { I18nManager } from '../i18n/i18n-manager.js';
 import { MetricsRegistry } from '../metrics/registry.js';
 import { initTracing } from '../tracing/tracing.js';
 import { DbClient } from '../db/client.js';
+import { ensureMonthlyPartitions, dropExpiredPartitions } from '../db/audit-partition-manager.js';
 import { InternalEventBus } from '../events/event-bus.js';
 import { EventRouter } from '../events/event-router.js';
 import { EventLoopLagMonitor } from '../events/event-loop-lag.js';
@@ -18,6 +22,7 @@ import { CacheManager } from '../cache/cache-manager.js';
 import { RedisLockStore } from '../cache/redis-lock-store.js';
 import { QueueManager } from '../queue/queue-manager.js';
 import { ModuleRegistry } from '../module-system/registry.js';
+import { loadPolicyLockfile } from '../module-system/policy-lockfile.js';
 import { ModuleLoader } from '../module-system/loader.js';
 import { defaultEnabledForTier } from '../module-system/tier-rules.js';
 import { PermissionResolver } from '../permissions/resolver.js';
@@ -28,6 +33,9 @@ import { DiscordOAuth2Client } from '../http/oauth/oauth2-client.js';
 import { MtpTokenCalculator } from '../analytics/mtp-token-calculator.js';
 import { BootstrapProgress } from './stages.js';
 import { buildApiServer, buildHealthServer, buildMetricsServer } from '../http/server.js';
+import { MdisService } from '../mdis/mdis.service.js';
+import { PostgresModuleInstallStore } from '../mdis/mdis.repository.js';
+import { OperationalService } from '../operational/operational.service.js';
 import { PowerEngineDispatcher } from '../http/power-engine-dispatcher.js';
 import { loadModulesFromTierVolumes } from '../module-system/swastik-loader.js';
 import { PostgresBuildStore } from '../db/repositories/build.repository.js';
@@ -55,7 +63,7 @@ import { TraceMiddleware } from '../middleware/built-in/trace.js';
 import { AnalyticsMiddleware } from '../middleware/built-in/analytics.js';
 import {
   MaintenanceModeMiddleware,
-  InMemoryMaintenanceModeState,
+  RedisMaintenanceModeState,
 } from '../middleware/built-in/maintenance-mode.js';
 import { AdminTierGateMiddleware } from '../middleware/built-in/admin-tier-gate.js';
 import { AuthMiddleware } from '../middleware/built-in/auth.js';
@@ -68,6 +76,7 @@ import { RBACMiddleware } from '../middleware/built-in/rbac.js';
 import { DeferMiddleware } from '../middleware/built-in/defer.js';
 import { SlidingWindowRateLimiter } from '../ratelimit/sliding-window.js';
 import { GuildConfigService } from '../config/guild-config.service.js';
+import { PostgresGuildConfigStore } from '../db/repositories/guild-config.repository.js';
 import { Events, REST, type Client } from 'discord.js';
 import {
   buildDiscordClient,
@@ -77,19 +86,171 @@ import {
 import { LiveGatewayAdapter } from '../discord/gateway.live-adapter.js';
 import { CommandDeployer } from '../commands/command-deployer.js';
 import { CoreRenderer } from '../rendering/core-renderer.js';
-import { InteractionRegistry } from '../interactions/interaction-registry.js';
+import {
+  InteractionRegistry,
+  RedisIdempotencyStore,
+} from '../interactions/interaction-registry.js';
 
 /** The resolver's `Rank` is the long form; the RBAC middleware's ladder is the short form. */
-const RANK_TO_RBAC: Record<string, 'RESTRICTED' | 'MEMBER' | 'HELPER' | 'MOD' | 'ADMIN' | 'OWNER'> = {
-  RESTRICTED: 'RESTRICTED',
-  MEMBER: 'MEMBER',
-  HELPER: 'HELPER',
-  MODERATOR: 'MOD',
-  ADMINISTRATOR: 'ADMIN',
-  OWNER: 'OWNER',
-};
+const RANK_TO_RBAC: Record<string, 'RESTRICTED' | 'MEMBER' | 'HELPER' | 'MOD' | 'ADMIN' | 'OWNER'> =
+  {
+    RESTRICTED: 'RESTRICTED',
+    MEMBER: 'MEMBER',
+    HELPER: 'HELPER',
+    MODERATOR: 'MOD',
+    ADMINISTRATOR: 'ADMIN',
+    OWNER: 'OWNER',
+  };
 
-export async function bootstrap(): Promise<void> {
+export type RuntimeRole = 'main' | 'worker';
+
+/**
+ * §8.4 — the Worker-Only Bootstrap Path. A worker runs the infrastructure stages, then module
+ * discovery and job-processor registration, and skips the gateway login, the client-ready stage,
+ * and the API/health/metrics servers entirely. A worker never opens a gateway connection and never
+ * serves HTTP; the role assertion keeps the two paths from silently converging.
+ */
+export async function bootstrapWorker(): Promise<void> {
+  const progress = new BootstrapProgress();
+  progress.advanceTo('PROCESS_SETUP');
+  process.title = 'dumby-worker';
+
+  const env = parseEnv(pickEnvKeys(process.env));
+  if (env.ROLE !== 'worker') {
+    throw new ConfigurationError(`bootstrapWorker() requires ROLE=worker (got "${env.ROLE}")`);
+  }
+  progress.advanceTo('CONFIG_LOAD');
+  const config = new ConfigService(env);
+  const container = new Container();
+  container.registerValue(CORE_TOKENS.Config, config);
+
+  progress.advanceTo('OBSERVABILITY_INIT');
+  const securityHooks: { onTokenLeak?: (d: { where: string }) => void } = {};
+  const logger = createLogger(config.get('LOG_LEVEL'), (d) => securityHooks.onTokenLeak?.(d));
+  const metrics = new MetricsRegistry();
+  container.registerValue(CORE_TOKENS.Logger, logger);
+  container.registerValue(CORE_TOKENS.Metrics, metrics);
+
+  progress.advanceTo('DATABASE_CONNECT');
+  const db = new DbClient({
+    connectionString: config.get('DATABASE_URL'),
+    poolMax: config.get('DATABASE_POOL_MAX'),
+    statementTimeoutMs: config.get('DATABASE_STATEMENT_TIMEOUT_MS'),
+    slowQueryThresholdMs: config.get('SLOW_QUERY_THRESHOLD_MS'),
+    criticalQueryThresholdMs: config.get('CRITICAL_QUERY_THRESHOLD_MS'),
+    replicaUrls: config.get('DATABASE_REPLICA_URLS'),
+    replicaMaxLagMs: config.get('DATABASE_REPLICA_MAX_LAG_MS'),
+    migrationsDir: config.get('KNEX_MIGRATIONS_DIR'),
+    migrationsExtension: config.get('KNEX_MIGRATIONS_EXT'),
+    logger,
+  });
+  container.registerValue(CORE_TOKENS.Db, db);
+
+  progress.advanceTo('CACHE_CONNECT');
+  const redis = new Redis(config.get('REDIS_URL'));
+  const lockStore = new RedisLockStore(redis);
+  const scheduler = new Scheduler({ logger, lockStore });
+  scheduler.register({
+    name: 'audit-partition-maintenance',
+    cron: '0 3 1 * *',
+    execute: async () => {
+      await ensureMonthlyPartitions(db.knex);
+      await dropExpiredPartitions(db.knex);
+    },
+  });
+  const cache = new CacheManager({
+    redis,
+    lockStore,
+    logger,
+    l1MaxEntries: config.get('CACHE_L1_MAX_ENTRIES'),
+    l1MaxBytes: config.get('CACHE_L1_MAX_BYTES'),
+  });
+  container.registerValue(CORE_TOKENS.Cache, cache);
+  await cache.startInvalidationSubscription();
+
+  progress.advanceTo('QUEUE_INIT');
+  const queueRedis = new Redis(config.get('QUEUE_REDIS_URL'));
+  const queue = new QueueManager({
+    connection: queueRedis,
+    logger,
+    defaultConcurrency: config.get('QUEUE_CONCURRENCY_DEFAULT'),
+  });
+  container.registerValue(CORE_TOKENS.Queue, queue);
+
+  progress.advanceTo('DI_BOOTSTRAP');
+  const eventBus = new InternalEventBus({ maxEmitDepth: config.get('EVENT_BUS_MAX_EMIT_DEPTH') });
+  const i18n = new I18nManager();
+  container.registerValue(CORE_TOKENS.I18n, i18n);
+  securityHooks.onTokenLeak = (detail) => {
+    logger.fatal('security-token-leak-detected', { ...detail });
+    void eventBus.emit('dumby.security.token-leak', detail);
+  };
+  container.registerValue(CORE_TOKENS.EventBus, eventBus);
+  container.freeze();
+  const moduleContainer = container.createChild();
+
+  progress.advanceTo('MODULE_DISCOVER');
+  const moduleRegistry = new ModuleRegistry();
+  const buildStore = new PostgresBuildStore(db.knex);
+  const verifier = new BuildSignatureVerifier();
+  const buildSigningKeyId = config.get('BUILD_SIGNING_KEY_ID');
+  const buildSigningPrivateKey = config.get('BUILD_SIGNING_PRIVATE_KEY');
+  let provenanceGuardArmed = buildSigningKeyId !== '' && buildSigningPrivateKey !== '';
+  if (provenanceGuardArmed) {
+    try {
+      verifier.registerKey(buildSigningKeyId, createPublicKey(buildSigningPrivateKey));
+    } catch (err) {
+      provenanceGuardArmed = false;
+      logger.warn('build-signing-key-invalid', { error: String(err) });
+    }
+  }
+  await loadModulesFromTierVolumes({
+    modulesDir: config.get('MODULES_DIR'),
+    registry: moduleRegistry,
+    logger,
+    ...(provenanceGuardArmed ? { buildStore, verifier } : {}),
+  });
+
+  progress.advanceTo('MODULE_VALIDATE');
+  const policyPath = config.get('SECURITY_POLICY_LOCKFILE');
+  const securityPolicy = existsSync(policyPath) ? loadPolicyLockfile(policyPath) : undefined;
+  const moduleLoader = new ModuleLoader(moduleRegistry, moduleContainer, logger, securityPolicy);
+  moduleLoader.validateAll();
+
+  progress.advanceTo('MODULE_LOAD');
+  const loadReport = await moduleLoader.loadAll();
+  scheduler.start();
+
+  progress.advanceTo('MODULE_READY');
+  const readyReport = await moduleLoader.readyAll(loadReport.order);
+  progress.setRequiredModulesHealthy(readyReport.requiredFailed.length === 0);
+
+  progress.advanceTo('STARTUP_COMPLETE');
+  await eventBus.emit('dumby.system.ready', { role: 'worker' });
+  logger.info('worker-bootstrap-complete', { modules: loadReport.order.length });
+}
+
+export interface BootstrapOverrides {
+  /** Inject a Redis instance (cache/queue/locks/pub-sub) — used by the flow suite. */
+  readonly redis?: Redis;
+  readonly queueRedis?: Redis;
+}
+
+/** The live wiring a booted process exposes, so a flow test can assert and drive shutdown. */
+export interface BootstrapHandle {
+  readonly container: Container;
+  readonly moduleRegistry: ModuleRegistry;
+  readonly commandRegistry: CommandRegistry;
+  readonly commandRouter: CommandRouter;
+  readonly renderer: CoreRenderer;
+  readonly eventBus: InternalEventBus;
+  readonly interactionRegistry: InteractionRegistry;
+  readonly apiServer: ReturnType<typeof buildApiServer>;
+  readonly moduleOrder: readonly string[];
+  readonly shutdown: (signal?: string) => Promise<void>;
+}
+
+export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<BootstrapHandle> {
   const progress = new BootstrapProgress();
   const container = new Container();
 
@@ -114,6 +275,12 @@ export async function bootstrap(): Promise<void> {
     }
     throw err;
   }
+  // §8.4 — the full bootstrap refuses to start in the worker role, so the two paths cannot
+  // silently converge (a worker must use bootstrapWorker()).
+  if (env.ROLE === 'worker') {
+    fatalHooks.logger.fatal('bootstrap-refuses-worker-role', {});
+    process.exit(1);
+  }
   const config = new ConfigService(env);
   container.registerValue(CORE_TOKENS.Config, config);
 
@@ -125,7 +292,8 @@ export async function bootstrap(): Promise<void> {
   });
 
   progress.advanceTo('OBSERVABILITY_INIT');
-  const logger = createLogger(config.get('LOG_LEVEL'));
+  const securityHooks: { onTokenLeak?: (d: { where: string }) => void } = {};
+  const logger = createLogger(config.get('LOG_LEVEL'), (d) => securityHooks.onTokenLeak?.(d));
   fatalHooks.logger = logger;
   const metrics = new MetricsRegistry();
   container.registerValue(CORE_TOKENS.Logger, logger);
@@ -155,18 +323,31 @@ export async function bootstrap(): Promise<void> {
     // to the primary. Both keys were previously declared and read by no code.
     replicaUrls: config.get('DATABASE_REPLICA_URLS'),
     replicaMaxLagMs: config.get('DATABASE_REPLICA_MAX_LAG_MS'),
+    migrationsDir: config.get('KNEX_MIGRATIONS_DIR'),
+    migrationsExtension: config.get('KNEX_MIGRATIONS_EXT'),
     logger,
   });
   container.registerValue(CORE_TOKENS.Db, db);
 
   progress.advanceTo('MIGRATION_RUN');
   await db.knex.migrate.latest();
+  // §24.2.1 — ensure the current and next month's audit partitions exist after migrating.
+  await ensureMonthlyPartitions(db.knex);
 
   progress.advanceTo('CACHE_CONNECT');
-  const redis = new Redis(config.get('REDIS_URL'));
+  const redis = overrides.redis ?? new Redis(config.get('REDIS_URL'));
   const lockStore = new RedisLockStore(redis);
   // §29.6 — the cron scheduler: module-declared tasks, lock-guarded so one shard runs each tick.
   const scheduler = new Scheduler({ logger, lockStore });
+  // §24.2.1 — the monthly audit-partition lifecycle (create next month's, drop expired by drop-only).
+  scheduler.register({
+    name: 'audit-partition-maintenance',
+    cron: '0 3 1 * *',
+    execute: async () => {
+      await ensureMonthlyPartitions(db.knex);
+      await dropExpiredPartitions(db.knex);
+    },
+  });
   const cache = new CacheManager({
     redis,
     lockStore,
@@ -175,9 +356,11 @@ export async function bootstrap(): Promise<void> {
     l1MaxBytes: config.get('CACHE_L1_MAX_BYTES'),
   });
   container.registerValue(CORE_TOKENS.Cache, cache);
+  // §25 — subscribe to the cross-process L1 invalidation broadcast.
+  await cache.startInvalidationSubscription();
 
   progress.advanceTo('QUEUE_INIT');
-  const queueRedis = new Redis(config.get('QUEUE_REDIS_URL'));
+  const queueRedis = overrides.queueRedis ?? new Redis(config.get('QUEUE_REDIS_URL'));
   const queue = new QueueManager({
     connection: queueRedis,
     logger,
@@ -187,6 +370,14 @@ export async function bootstrap(): Promise<void> {
 
   progress.advanceTo('DI_BOOTSTRAP');
   const eventBus = new InternalEventBus({ maxEmitDepth: config.get('EVENT_BUS_MAX_EMIT_DEPTH') });
+  // §30 — the i18n manager is a core service (guild -> user -> en-US resolution).
+  const i18n = new I18nManager();
+  container.registerValue(CORE_TOKENS.I18n, i18n);
+  // §32.8 — the token-leak owner alert travels the event bus (a fatal log + a security event).
+  securityHooks.onTokenLeak = (detail) => {
+    logger.fatal('security-token-leak-detected', { ...detail });
+    void eventBus.emit('dumby.security.token-leak', detail);
+  };
   // §15.1 — the gateway event router: module-declared handlers, dispatched from the client.
   // §16 (UR-C-19) — sample event-loop lag so the router can shed sheddable events under pressure.
   const eventLoopLagMonitor = new EventLoopLagMonitor({
@@ -207,6 +398,10 @@ export async function bootstrap(): Promise<void> {
   const commandRegistry = new CommandRegistry();
   const renderer = new CoreRenderer();
   const interactionRegistry = new InteractionRegistry({
+    // Appendix C #19 — shared idempotency, so a double-click is deduped across pods.
+    idempotency: new RedisIdempotencyStore(redis),
+    // Appendix C #20 — component handlers get a read-only interaction (no Renderer bypass).
+    renderer,
     acknowledge: async (component) => {
       if (typeof component.deferUpdate === 'function') {
         await component.deferUpdate();
@@ -233,8 +428,14 @@ export async function bootstrap(): Promise<void> {
     logger,
   );
 
-  const guildConfigService = new GuildConfigService(db, cache, logger);
-  const maintenanceMode = new InMemoryMaintenanceModeState();
+  const guildConfigService = new GuildConfigService(
+    new PostgresGuildConfigStore(db.knex),
+    cache,
+    logger,
+  );
+  const maintenanceMode = new RedisMaintenanceModeState(redis, logger);
+  // Appendix C #19 — the shared maintenance state (no split brain across pods).
+  await maintenanceMode.start();
 
   const commandMiddleware = new MiddlewarePipeline()
     .add(new TraceMiddleware())
@@ -446,7 +647,9 @@ export async function bootstrap(): Promise<void> {
   });
 
   progress.advanceTo('MODULE_VALIDATE');
-  const moduleLoader = new ModuleLoader(moduleRegistry, moduleContainer, logger);
+  const policyPath = config.get('SECURITY_POLICY_LOCKFILE');
+  const securityPolicy = existsSync(policyPath) ? loadPolicyLockfile(policyPath) : undefined;
+  const moduleLoader = new ModuleLoader(moduleRegistry, moduleContainer, logger, securityPolicy);
   moduleLoader.validateAll();
 
   progress.advanceTo('MODULE_LOAD');
@@ -690,6 +893,11 @@ export async function bootstrap(): Promise<void> {
     metrics,
     config,
     oauth2Client: oauth2Client.isConfigured() ? oauth2Client : undefined,
+    // Appendix C #18 — the MDIS module-delivery and operational-tooling surfaces.
+    mdisDeps: { service: new MdisService(moduleRegistry, new PostgresModuleInstallStore(db.knex)) },
+    operationalDeps: {
+      service: new OperationalService(moduleRegistry, config.get('OPERATIONAL_RUNBOOKS_DIR')),
+    },
     adminDeps: {
       dispatcher: powerEngineDispatcher,
       db,
@@ -749,4 +957,36 @@ export async function bootstrap(): Promise<void> {
     );
 
   logger.info('bootstrap-complete', { degradedModules: loadReport.degraded });
+
+  return {
+    container,
+    moduleRegistry,
+    commandRegistry,
+    commandRouter,
+    renderer,
+    eventBus,
+    interactionRegistry,
+    apiServer,
+    moduleOrder: loadReport.order,
+    shutdown: (signal = 'SIGTERM') =>
+      gracefulShutdown(
+        {
+          logger,
+          apiServer,
+          healthServer,
+          metricsServer,
+          moduleLoader,
+          moduleOrder: loadReport.order,
+          queue,
+          redis,
+          queueRedis,
+          db,
+          discordClient,
+          stopEventLoopMonitor: () => eventLoopLagMonitor.stop(),
+          releaseShardLocks: () => shardOwnership?.releaseAll() ?? Promise.resolve(),
+          drainInFlightCommands: (timeoutMs) => inFlightTracker.waitForDrain(timeoutMs),
+        },
+        signal,
+      ),
+  };
 }

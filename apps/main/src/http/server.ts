@@ -12,6 +12,11 @@ import { registerMetricsRoutes } from './routes/metrics.routes.js';
 import { registerInfoRoutes } from './routes/info.routes.js';
 import { registerAdminRoutes, type AdminRoutesDeps } from './routes/admin.routes.js';
 import { registerOAuthRoutes } from './routes/oauth.routes.js';
+import { registerMdisRoutes, type MdisRoutesDeps } from '../mdis/mdis.routes.js';
+import {
+  registerOperationalRoutes,
+  type OperationalRoutesDeps,
+} from '../operational/operational.routes.js';
 import type { DiscordOAuth2Client } from './oauth/oauth2-client.js';
 
 export interface BuildServerOptions {
@@ -22,6 +27,10 @@ export interface BuildServerOptions {
   adminDeps: AdminRoutesDeps;
   /** §19.7 — present only when the Discord OAuth2 dashboard credentials are configured. */
   oauth2Client?: DiscordOAuth2Client | undefined;
+  /** Appendix C #18 — the MDIS module-delivery surface. */
+  mdisDeps?: MdisRoutesDeps;
+  /** Appendix C #18 — the operational tooling surface. */
+  operationalDeps?: OperationalRoutesDeps;
 }
 
 const ADMIN_PATH_PREFIX = '/admin/';
@@ -42,7 +51,10 @@ export function buildApiServer(options: BuildServerOptions): FastifyInstance {
 
   registerInternalAuth(app, {
     expectedKey: options.config.get('INTERNAL_API_KEY'),
-    shouldProtect: (request) => request.url.startsWith(ADMIN_PATH_PREFIX),
+    shouldProtect: (request) =>
+      request.url.startsWith(ADMIN_PATH_PREFIX) ||
+      request.url.startsWith('/mdis/') ||
+      request.url.startsWith('/operational/'),
     audit: async (outcome, detail) => {
       if (outcome === 'rejected') {
         options.logger.warn('admin-auth-rejected', detail);
@@ -52,6 +64,12 @@ export function buildApiServer(options: BuildServerOptions): FastifyInstance {
 
   registerInfoRoutes(app, options.config);
   registerAdminRoutes(app, options.adminDeps);
+  if (options.mdisDeps !== undefined) {
+    registerMdisRoutes(app, options.mdisDeps);
+  }
+  if (options.operationalDeps !== undefined) {
+    registerOperationalRoutes(app, options.operationalDeps);
+  }
   if (options.oauth2Client !== undefined) {
     registerOAuthRoutes(app, options.oauth2Client);
   }

@@ -14,13 +14,7 @@ export const MTP_BANDWIDTH_TOKENS_PER_UNIT = 2;
 export const MTP_DISK_TOKENS_PER_WRITE = 5;
 export const MTP_EXTERNAL_API_TOKENS_PER_CALL = 10;
 
-export type MtpResource =
-  | 'compute'
-  | 'memory'
-  | 'disk'
-  | 'bandwidth'
-  | 'database'
-  | 'external_api';
+export type MtpResource = 'compute' | 'memory' | 'disk' | 'bandwidth' | 'database' | 'external_api';
 
 export interface MtpThresholds {
   memoryThresholdBytes: number;

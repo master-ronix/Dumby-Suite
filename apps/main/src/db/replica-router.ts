@@ -90,7 +90,11 @@ export class ReplicaRouter {
     for (let offset = 0; offset < replicas.length; offset += 1) {
       const replica = replicas[(this.cursor + offset) % replicas.length]!;
       const lagMs = await this.lagOf(replica);
-      const choice = chooseReadPool({ replicaAvailable: true, lagMs, maxLagMs: this.deps.maxLagMs });
+      const choice = chooseReadPool({
+        replicaAvailable: true,
+        lagMs,
+        maxLagMs: this.deps.maxLagMs,
+      });
       if (choice === 'replica') {
         this.cursor = (this.cursor + offset + 1) % replicas.length;
         return replica;

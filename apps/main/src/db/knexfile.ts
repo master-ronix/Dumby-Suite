@@ -2,7 +2,12 @@ import type { Knex } from 'knex';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
-const migrationsDir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'migrations');
+const migrationsDir =
+  process.env['KNEX_MIGRATIONS_DIR'] ??
+  path.join(path.dirname(fileURLToPath(import.meta.url)), 'migrations');
+// The flow suite pre-compiles migrations to JS (knex cannot import `.ts` under vitest).
+const migrationsExtension =
+  process.env['KNEX_MIGRATIONS_EXT'] ?? (import.meta.url.endsWith('.ts') ? 'ts' : 'js');
 
 function buildConfig(
   connectionString: string,
@@ -18,9 +23,9 @@ function buildConfig(
     pool: { min: 2, max: poolMax },
     migrations: {
       directory: migrationsDir,
-      extension: import.meta.url.endsWith('.ts') ? 'ts' : 'js',
+      extension: migrationsExtension,
       tableName: 'knex_migrations',
-      loadExtensions: [import.meta.url.endsWith('.ts') ? '.ts' : '.js'],
+      loadExtensions: [`.${migrationsExtension}`],
     },
   };
 }

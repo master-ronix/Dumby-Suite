@@ -20,6 +20,7 @@ import type { Scheduler } from '../queue/scheduler.js';
 import type { AdminEvalGate } from '../permissions/admin-eval-gate.js';
 import type { DiscordOAuth2Client } from '../http/oauth/oauth2-client.js';
 import type { MtpTokenCalculator } from '../analytics/mtp-token-calculator.js';
+import type { I18nManager } from '../i18n/i18n-manager.js';
 
 export const CORE_TOKENS = {
   Logger: createToken<Logger>('core.Logger'),
@@ -31,6 +32,7 @@ export const CORE_TOKENS = {
   ModuleRegistry: createToken<ModuleRegistry>('core.ModuleRegistry'),
   PermissionResolver: createToken<PermissionResolver>('core.PermissionResolver'),
   Metrics: createToken<MetricsRegistry>('core.Metrics'),
+  I18n: createToken<I18nManager>('core.I18n'),
   CommandRegistry: createToken<CommandRegistry>('core.CommandRegistry'),
   CommandRouter: createToken<CommandRouter>('core.CommandRouter'),
   Renderer: createToken<CoreRenderer>('core.Renderer'),

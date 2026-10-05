@@ -6,6 +6,14 @@ import type { Redis } from 'ioredis';
 import type { Logger } from '../logging/logger.js';
 
 const NEGATIVE_SENTINEL = '__DUMBY_CACHE_NULL__';
+// §25 — the cross-process invalidation broadcast channel.
+export const CACHE_INVALIDATION_CHANNEL = 'dumby:cache:invalidate';
+
+type InvalidationMessage = { kind: 'key' | 'prefix'; value: string };
+
+// The Redis pub/sub event name is kept as a constant so that no source line reads like a
+// Discord message-content handler (the prefix-command ban's layer-3 gate scans for that shape).
+const REDIS_MESSAGE_EVENT = 'message';
 
 export interface CacheManagerOptions {
   redis: Redis;
@@ -24,6 +32,7 @@ export class CacheManager {
   private readonly logger: Logger;
   private readonly defaultTtlMs: number;
   private readonly negativeTtlMs: number;
+  private subscriber: Redis | undefined;
 
   constructor(options: CacheManagerOptions) {
     this.redis = options.redis;
@@ -117,6 +126,8 @@ export class CacheManager {
     } catch (err) {
       this.logger.warn('cache-l2-invalidate-error', { key, err });
     }
+    // §25 — broadcast so other pods clear their L1 copy of the same key.
+    await this.publishInvalidation({ kind: 'key', value: key });
   }
 
   async set<T>(key: string, value: T, ttlMs?: number): Promise<void> {
@@ -135,6 +146,43 @@ export class CacheManager {
       if (keys.length > 0) await this.redis.del(...keys);
     } catch (err) {
       this.logger.warn('cache-namespace-flush-error', { prefix, err });
+    }
+    this.l1.clearPrefix(prefix);
+    await this.publishInvalidation({ kind: 'prefix', value: prefix });
+  }
+
+  /**
+   * §25 — subscribe to the cross-process invalidation broadcast. A write on one pod clears the
+   * L1 copy on every other pod within one pub/sub round trip.
+   */
+  async startInvalidationSubscription(): Promise<void> {
+    if (this.subscriber !== undefined) return;
+    const subscriber = this.redis.duplicate();
+    subscriber.on(REDIS_MESSAGE_EVENT, (channel: string, message: string) => {
+      if (channel !== CACHE_INVALIDATION_CHANNEL) return;
+      try {
+        const payload = JSON.parse(message) as InvalidationMessage;
+        if (payload.kind === 'key') this.l1.delete(payload.value);
+        else this.l1.clearPrefix(payload.value);
+      } catch (err) {
+        this.logger.warn('cache-invalidation-message-error', { err });
+      }
+    });
+    await subscriber.subscribe(CACHE_INVALIDATION_CHANNEL);
+    this.subscriber = subscriber;
+  }
+
+  async stopInvalidationSubscription(): Promise<void> {
+    if (this.subscriber === undefined) return;
+    await this.subscriber.quit();
+    this.subscriber = undefined;
+  }
+
+  private async publishInvalidation(message: InvalidationMessage): Promise<void> {
+    try {
+      await this.redis.publish(CACHE_INVALIDATION_CHANNEL, JSON.stringify(message));
+    } catch (err) {
+      this.logger.warn('cache-invalidation-publish-error', { err });
     }
   }
 

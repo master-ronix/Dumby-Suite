@@ -33,7 +33,10 @@ export class ClaiSessionLimiter {
   readonly #maxBytesPerSession: number;
   readonly #bytes = new Map<string, number>();
 
-  constructor(maxSessions: number = CLAI_DEFAULT_MAX_SESSIONS, maxBytesPerSession: number = CLAI_DEFAULT_MAX_BYTES_PER_SESSION) {
+  constructor(
+    maxSessions: number = CLAI_DEFAULT_MAX_SESSIONS,
+    maxBytesPerSession: number = CLAI_DEFAULT_MAX_BYTES_PER_SESSION,
+  ) {
     this.#maxSessions = maxSessions;
     this.#maxBytesPerSession = maxBytesPerSession;
   }

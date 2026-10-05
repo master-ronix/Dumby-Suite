@@ -69,6 +69,12 @@ jobs:
       - name: Gate 3 — format gate
         run: pnpm --filter @workspace/dumby format
 
+      - name: Gate 3b — ConfigMap ↔ ENV_KEYS drift guard
+        run: node apps/main/scripts/check-configmap-keys.mjs
+
+      - name: Flow suite — bootstrap → wiring → shutdown (embedded PostgreSQL)
+        run: pnpm --filter @workspace/dumby test:flow
+
       - name: Gate 4 — unit tests + coverage floors
         run: pnpm --filter @workspace/dumby test:coverage
 

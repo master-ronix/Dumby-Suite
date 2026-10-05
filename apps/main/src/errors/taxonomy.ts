@@ -1,6 +1,10 @@
 export interface DumbyErrorOptions {
   code: string;
   httpStatus: number;
+  /** §28 — the user-facing message rendered in the formal notice frame. */
+  userMessage?: string;
+  /** §28 — whether this is an operational (expected) error vs a programmer error. */
+  isOperational?: boolean;
   retryable?: boolean;
   cause?: unknown;
   metadata?: Record<string, unknown>;
@@ -9,6 +13,8 @@ export interface DumbyErrorOptions {
 export class DumbyError extends Error {
   readonly code: string;
   readonly httpStatus: number;
+  readonly userMessage: string;
+  readonly isOperational: boolean;
   readonly retryable: boolean;
   readonly metadata: Record<string, unknown>;
 
@@ -17,17 +23,28 @@ export class DumbyError extends Error {
     this.name = new.target.name;
     this.code = options.code;
     this.httpStatus = options.httpStatus;
+    this.userMessage = options.userMessage ?? message;
+    this.isOperational = options.isOperational ?? true;
     this.retryable = options.retryable ?? false;
     this.metadata = options.metadata ?? {};
   }
 
   toJSON(): {
-    error: { code: string; message: string; retryable: boolean; metadata: Record<string, unknown> };
+    error: {
+      code: string;
+      message: string;
+      userMessage: string;
+      isOperational: boolean;
+      retryable: boolean;
+      metadata: Record<string, unknown>;
+    };
   } {
     return {
       error: {
         code: this.code,
         message: this.message,
+        userMessage: this.userMessage,
+        isOperational: this.isOperational,
         retryable: this.retryable,
         metadata: this.metadata,
       },
@@ -168,6 +185,8 @@ export class InternalError extends DumbyError {
       code: 'DUMBY_INTERNAL_ERROR',
       httpStatus: 500,
       retryable: false,
+      isOperational: false,
+      userMessage: 'An unexpected error occurred. The incident has been recorded.',
     });
   }
 }
