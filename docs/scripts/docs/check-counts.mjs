@@ -31,6 +31,11 @@ if (existsSync('spec/foundations/engineering-principles-p1-p14.md')) {
   const t = readFileSync('spec/foundations/engineering-principles-p1-p14.md', 'utf8');
   checks.push(['engineering_principles', c.engineering_principles, new Set(t.match(/\bP[0-9]{1,2}\b/g) || []).size, 'principles spec']);
 }
+if (existsSync('spec/governance/appendix-c-logged-deviations-and-open-items.md')) {
+  const t = readFileSync('spec/governance/appendix-c-logged-deviations-and-open-items.md', 'utf8');
+  const n = (t.match(/^\| [0-9]+ \|/gm) || []).length;
+  if (n) checks.push(['logged_deviations', c.logged_deviations, n, 'appendix-c deviation table']);
+}
 if (existsSync('status/coverage-ledger.json') && 'coverage_rows' in c) {
   const l = JSON.parse(readFileSync('status/coverage-ledger.json', 'utf8'));
   checks.push(['coverage_rows', c.coverage_rows, l.total_rows, 'coverage-ledger.json']);

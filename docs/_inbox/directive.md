@@ -1660,12 +1660,12 @@ Each item below is specified nowhere and owned by no request row or migration wo
 
 ---
 
-Beyond these fifty-four, every capability specified in blueprint Parts V–IX
+Beyond these twenty-four, every capability specified in blueprint Parts V–IX
 — locale resolution, usage metering, the full security architecture, SLO
 alerting, privacy/erasure, persona governance, the testing pyramid, and the
 complete CI/CD and infrastructure reference — is load-bearing in its own
 right and governed by the corresponding part of this directive. The
-fifty-four above are the capabilities most load-bearing to get right
+twenty-four above are the capabilities most load-bearing to get right
 *first*, not an exhaustive restatement.
 
 ---

@@ -89,6 +89,13 @@ records raised under their own IDs — never edits to frozen ones.
 
 ## UR detection (dynamic)
 
+> **Note on `counts.ur_requests`.** `status/counts.json` records 121 UR requests (31 program URs,
+> 88 implementation-flaw corrections, 2 RBAC requirements) and `status/reconciliation.json` anchors
+> three UR rows. Those figures describe the **source program**, not files in this tree: the request
+> records themselves are archived with the program and are represented here only by this register.
+> Consequently `scripts/docs/check-ur.mjs` discovers zero `upgradation/UR-*.md` files by design — the
+> dynamic probe reads a record only when one is present.
+
 UR records are discovered at run time by `scripts/docs/check-ur.mjs`: any `upgradation/UR-*.md`
 is detected and validated automatically (front-matter complete, `kind: ur`, every cited corpus
 path resolving) — there is no registry to update, so adding or editing a record is a single-file

@@ -30,7 +30,7 @@ rollout will ship — the Renderer, the tier volumes, the license machine, the
 Compatibility Ledger, and the Layer 6/7 permission model — as normative
 specification, with implementation status carried honestly by the per-section
 badges and the Audit Register rather than by prose. The three source request
-records behind the re-baseline are registered frozen under docs/ur/, and the
+records behind the re-baseline are registered frozen under upgradation/, and the
 decisions that traded one good against another are recorded as ADR-001…ADR-011
 (docs/adr/).
 

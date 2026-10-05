@@ -132,7 +132,27 @@
     "commands": {
       "type": "array",
       "items": {
-        "type": "object"
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "rbacRequirement": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "RESTRICTED",
+              "MEMBER",
+              "HELPER",
+              "MOD",
+              "ADMIN",
+              "OWNER",
+              null
+            ]
+          }
+        }
       }
     },
     "events": {
@@ -200,6 +220,25 @@
     },
     "dashboardSchema": {
       "type": "object"
+    },
+    "crossModuleReads": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "targetModule",
+          "accessor"
+        ],
+        "properties": {
+          "targetModule": {
+            "type": "string"
+          },
+          "accessor": {
+            "type": "string",
+            "pattern": "ForCrossModuleRead$"
+          }
+        }
+      }
     }
   },
   "allOf": [

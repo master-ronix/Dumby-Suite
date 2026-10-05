@@ -47,7 +47,9 @@ The canonical document-precedence order for the whole set. When any two document
 9. master-prompt.md (v5.0.0)        — the build execution brief, derived from all preceding documents
 ````
 
-The ADR series in `docs/adr/` is binding on the choices it governs; the frozen request records in `docs/ur/` are provenance, never build specifications.
+> **Restructure note (v5.0.0 corpus).** The nine documents above are the pre-restructure v5.0 source records. They are preserved verbatim under `_inbox/` and distributed across the restructured corpus (`blueprint/`, `documentation/`, `spec/`); where this list names a source document, read it as the distributed section(s) it became. The ADR series and the other decision records cite these source names in the same historical sense.
+
+The ADR series in `docs/adr/` is binding on the choices it governs; the frozen request records in `upgradation/` are provenance, never build specifications.
 
 ### 0.3 Requirement Language (RFC 2119)
 

@@ -117,7 +117,7 @@ true` module MUST be `private`.
 > is mandatory; `marketplaceCategory` is a free string; `depends`/`provides`/`services`
 > are `z.array(z.string())`). Per the project's standing rule the specification is the
 > target state and these are implementation gaps, logged in
-> `status/code-reconciliation.json` (REC-001…REC-005, REC-019…REC-022).
+> `status/code-reconciliation.json` (REC-001, REC-002, REC-005, REC-019…REC-022).
 
 ### 11.3 Manifest vs. Database — What Lives Where
 

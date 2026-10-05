@@ -8,6 +8,8 @@ import { join } from 'node:path';
 
 const RETIRED = ['apps/main/src/modules/', 'apps/main/src/renderer/'];
 const PROHIBITED = ['src/modules/'];
+// Renamed/removed CORPUS paths (not code paths) that must not appear in reader-facing prose.
+const CORPUS_RETIRED = ['docs/ur/'];
 const NEG = /\b(no|not|never|without|forbid|forbids|block|blocks|prohibit|in-tree|MUST NOT|instead of)\b/i;
 
 let bad = 0, seen = 0;
@@ -42,6 +44,7 @@ for (const dir of ['spec', 'documentation', 'blueprint']) {
     readFileSync(p, 'utf8').split('\n').forEach((ln, i) => {
       for (const r of RETIRED) if (ln.includes(r)) { console.error(`FAIL: retired path "${r}" in ${p}:${i + 1}`); bad++; }
       for (const r of PROHIBITED) if (ln.includes(r) && !NEG.test(ln)) { console.error(`FAIL: prohibited path "${r}" used positively in ${p}:${i + 1}`); bad++; }
+      for (const r of CORPUS_RETIRED) if (ln.includes(r)) { console.error(`FAIL: renamed corpus path "${r}" in ${p}:${i + 1}`); bad++; }
     });
   }
 }

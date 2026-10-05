@@ -141,6 +141,7 @@
   },
   "generated": [
     "_generated/index.md",
-    "_generated/tree.md"
+    "_generated/tree.md",
+    "status/compliance.json"
   ]
 }
