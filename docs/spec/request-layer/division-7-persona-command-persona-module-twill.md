@@ -19,7 +19,7 @@ review_state: pending-evidence
 
 ### 7.1 Overview
 
-The `/persona` command lists all activated personas with their command inventory and other information. Personas are Dumby's **Twill** capability: a bring-your-own-identity model in which a guild administrator supplies their own bot token and application, Dumby hosts the instance, and each persona is bound to exactly one server — one persona, one server. Persona creation and configuration happen exclusively through the **Twill registration API** (`spec/operations/multi-identity-operation-twill-personas.md` §, §44); no Discord-facing command creates or reconfigures a persona. The `/persona` command is the read-only listing surface.
+The `/persona` command lists all activated personas with their command inventory and other information. Personas are Dumby's **Twill** capability: a bring-your-own-identity model in which a guild administrator supplies their own bot token and application, Dumby hosts the instance, and each persona is bound to exactly one server — one persona, one server. Persona creation and configuration happen exclusively through the **Twill registration API** (blueprint.md §35, §44); no Discord-facing command creates or reconfigures a persona. The `/persona` command is the read-only listing surface.
 
 ### 7.2 Command Specification
 
@@ -105,7 +105,7 @@ If no Twill personas are active (only the main bot exists), the listing shows on
 
 ### 7.5 Persona Creation & Configuration — Twill Registration API
 
-Persona creation, token binding, shard allocation, and module enablement profiles are handled exclusively through the **Twill registration API** — the administrative API surface for bring-your-own-identity hosting (`spec/operations/multi-identity-operation-twill-personas.md` §; the API family is specified in §44). Under the Twill model the guild administrator supplies their own bot token and application; Dumby hosts the running instance; and the registration binds the persona to exactly one server. None of these operations are performed through `/persona` or any other Discord-facing command. The listing includes an informational note stating where persona management is handled.
+Persona creation, token binding, shard allocation, and module enablement profiles are handled exclusively through the **Twill registration API** — the administrative API surface for bring-your-own-identity hosting (blueprint.md §35; the API family is specified in §44). Under the Twill model the guild administrator supplies their own bot token and application; Dumby hosts the running instance; and the registration binds the persona to exactly one server. None of these operations are performed through `/persona` or any other Discord-facing command. The listing includes an informational note stating where persona management is handled.
 
 ### 7.6 DM Behavior
 

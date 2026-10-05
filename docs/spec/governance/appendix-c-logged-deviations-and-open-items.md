@@ -56,7 +56,7 @@ fifty-four above are the capabilities most load-bearing to get right
 ---
 
 **End of directive.** Version 5.0.0 — record all future revisions in
-`upgradation/`upgradation/change-log.md`.
+`change-log.md`.
 
 ## Acceptance
 ```acceptance

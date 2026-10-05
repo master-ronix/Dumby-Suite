@@ -21,7 +21,7 @@ Dumby is a Unified Modular Bot System: a single TypeScript application runtime �
 
 The two design words carrying the whole system are **Unified** and **Modular**. Unified means there is exactly one bootstrap sequence, one dependency graph, one event bus, one permission engine, one configuration system, and one operational surface, shared without exception by every feature the framework runs. Modular means every unit of behavior is a self-contained, independently loadable, independently testable, independently disposable module with a declared contract for everything it needs and everything it exposes.
 
-### 0.2 The Blueprint (the blueprint)
+### 0.2 The Blueprint (blueprint.md)
 
 The blueprint is the complete engineering and implementation reference at version 5.0.0 (Consolidated Re-Baseline Edition). It spans 48 numbered sections across 9 parts, covering architecture, design, lifecycle, infrastructure, security, operations, module catalog, power engine panel, and administrative interfaces. Cross-cutting decisions are recorded as Architecture Decision Records under docs/adr/. The stack is TypeScript (strict mode), Node.js LTS ≥ 22, discord.js v14, PostgreSQL, Redis, BullMQ, Fastify, Pino/Prometheus/OpenTelemetry.
 
@@ -41,7 +41,7 @@ Key structural elements from the blueprint relevant to the end-user interface:
 
 ### 0.3 The Documentation Set
 
-The documentation set is anchored by the blueprint 5.0.0, the engineering authority this reference defers to throughout. Supporting documents: `documentation/overview/` carries the framework glossary (including the Renderer, buffer embed, formal notice frame, density Modes D/M/C, Core Command Surface, Twill, and Release Manager entries); `spec/governance/` carries the ban registry (prefix-command ban, classic-embed ban, DM prohibition) with their enforcement layers; documentation.md is the frozen legacy architecture record, retained for historical decisions that the blueprint supersedes; and docs/adr/ records the cross-cutting tension decisions. Version 5.0.0 is a consolidated re-baseline: every document in the set carries the same version and the same vocabulary.
+The documentation set is anchored by blueprint.md 5.0.0, the engineering authority this reference defers to throughout. Supporting documents: concept.md carries the framework glossary (including the Renderer, buffer embed, formal notice frame, density Modes D/M/C, Core Command Surface, Twill, and Release Manager entries); directive.md carries the ban registry (prefix-command ban, classic-embed ban, DM prohibition) with their enforcement layers; documentation.md is the frozen legacy architecture record, retained for historical decisions that the blueprint supersedes; and docs/adr/ records the cross-cutting tension decisions. Version 5.0.0 is a consolidated re-baseline: every document in the set carries the same version and the same vocabulary.
 
 ### 0.4 The Core Command Surface
 
@@ -58,7 +58,7 @@ The Core Command Surface is the Renderer's reference implementation set — the 
 | `/modules` | `modules` | Core | View, manage & uninstall installed modules |
 | `/hello` | `hello-world` | Standard | Hello-world test module (Division 10) |
 
-The Core Command Surface is the shipping user-facing surface. Every other capability specified in this reference — marketplace installation flows, Twill persona listings, Layer 7 grant management — is specified here as the target interface; its implementation status is tracked in the blueprint's audit register, not in this document.
+The Core Command Surface is the shipping user-facing surface. Every other capability specified in this reference — marketplace installation flows, Twill persona listings, Layer 7 grant management — is specified here as the target interface; its implementation status is tracked in blueprint.md's audit register, not in this document.
 
 ### 0.5 Scope of This Document
 
@@ -71,7 +71,7 @@ This document covers exclusively the end-user-facing interface surfaces:
 
 Surfaces explicitly excluded because they are not end-user Discord-facing interfaces:
 
-- Web dashboard / module configuration panels (`spec/modules/marketplace-and-mdis.md` §.4)
+- Web dashboard / module configuration panels (blueprint.md §16.4)
 - Developer Portal UI (Swastik developer portal)
 - CLAI SSH Terminal UI (§22.6) and its operator lifecycle
 - Bull Board UI (job queue monitoring)

@@ -25,24 +25,24 @@ this text. A rule that current tooling cannot check remains a standing review
 obligation until tooling catches up, and SHOULD be promoted into tooling the
 moment it becomes feasible.
 
-This directive is **derived from and subordinate to** the blueprint. It adds no
+This directive is **derived from and subordinate to** `blueprint.md`. It adds no
 architecture, invents no requirements, and overrides nothing. Where this
 directive and the blueprint appear to conflict, the blueprint wins, and the
-conflict MUST be recorded in `upgradation/`upgradation/change-log.md` and fixed here in the next
+conflict MUST be recorded in `change-log.md` and fixed here in the next
 directive revision.
 
 ### 0.2 Precedence Order
 
-The canonical document-precedence order for the whole set. When any two documents appear to conflict, the higher-precedence document wins; the conflict MUST be recorded in `upgradation/`upgradation/change-log.md` and resolved in favour of the higher-precedence reading. **This list is the single normative statement of precedence for the corpus — every other document cites it rather than restating it.**
+The canonical document-precedence order for the whole set. When any two documents appear to conflict, the higher-precedence document wins; the conflict MUST be recorded in `change-log.md` and resolved in favour of the higher-precedence reading. **This list is the single normative statement of precedence for the corpus — every other document cites it rather than restating it.**
 
 ````
-1. the blueprint (v5.0.0)            — sole source of architectural truth
-2. `spec/governance/` (v5.0.0)            — imperative translation of #1 into binding rules
+1. blueprint.md (v5.0.0)            — sole source of architectural truth
+2. directive.md (v5.0.0)            — imperative translation of #1 into binding rules
 3. documentation.md (v5.0.0, archived) — frozen legacy record, retained for the decisions the set inherits
-4. `spec/request-layer/` (v5.0.0)            — the end-user interface specification
-5. `spec/architecture/directory-file-structure.md` (v5.0.0)            — the canonical layout reference
-6. `documentation/overview/` (v5.0.0)              — ideological foundation and glossary
-7. `upgradation/`upgradation/change-log.md`                    — version history and defect lifecycle
+4. interface.md (v5.0.0)            — the end-user interface specification
+5. directory.md (v5.0.0)            — the canonical layout reference
+6. concept.md (v5.0.0)              — ideological foundation and glossary
+7. change-log.md                    — version history and defect lifecycle
 8. definitions.md                   — document intent and scope definitions
 9. master-prompt.md (v5.0.0)        — the build execution brief, derived from all preceding documents
 ````
@@ -78,7 +78,7 @@ Out of scope, without exception:
 ````
 ✗  Frontend / end-user interface: Discord embed layouts, Components V2
    presentation, banners, dropdown navigation, dashboards as experienced
-   by the end user (`spec/request-layer/` owns these).
+   by the end user (interface.md owns these).
 ✗  Module-authoring guidance: how to write a module, worked examples,
    and the illustrative module catalog. This directive governs the engine
    that loads modules, never the modules themselves.
@@ -121,7 +121,7 @@ honesty rule (D-1.6) until a future program delivers it.
 
 ### 0.6 Change Management
 
-Every revision of this directive MUST be recorded in `upgradation/`upgradation/change-log.md`, in the
+Every revision of this directive MUST be recorded in `change-log.md`, in the
 same lineage discipline the living reference pair already uses. A directive
 rule that is added, weakened, or retired without a change-log entry is
 defective by definition.

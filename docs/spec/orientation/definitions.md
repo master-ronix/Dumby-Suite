@@ -14,8 +14,6 @@ review_state: pending-evidence
 
 ## The Nine Documents — Intent, Impact, Purpose & Definition
 
-> **This index describes the ORIGINAL document set** — the nine canonical documents as they existed before the corpus was reorganised. Each entry below names the document's **new home** in the current corpus, so the index remains a true map: the original file no longer exists as a single file, but its content does, under the path given.
-
 Dumby Documentation — Intent, Impact, Purpose & Definition. For each canonical document the
 index gives its **definition**, **intent**, **impact**, and **purpose**, so a reader knows not
 only what a document contains but why it exists and what it is authoritative for.
@@ -30,8 +28,6 @@ and the three `ur/` records — twelve in total. Where "nine" and "twelve" appea
 resolve to this definition.
 
 ### 1. blueprint.md
-
-**New home:** `spec/<department>/` (behaviour) + `blueprint/` (wiring)
 **Definition.** A standalone developer-facing engineering reference — one coherent application
 outside, N independently-owned modules inside, with a hard tooling-enforced wall between
 "coherent" and "monolithic"; specifies architecture, behavior, and contracts to a behavioral
@@ -44,8 +40,6 @@ architecture without a second source. **Impact.** The complete technical contrac
 9 Parts, 48 sections, plus appendices. **Purpose.** The authoritative engineering reference.
 
 ### 2. change-log.md
-
-**New home:** `upgradation/change-log.md`
 **Definition.** A unified, evidence-verified change log of the complete documentation lineage —
 thirteen archive drafts from v1.0.0 through FINAL, the living reference pair from v4.5.1, and
 (from 2026-09-18) the full v5.0.0 set — cross-checked against independent evidence. **Intent.**
@@ -55,8 +49,6 @@ version-by-version changelog, a cross-version defect-lifecycle table, and honest
 unresolved open items. **Purpose.** The definitive historical record.
 
 ### 3. concept.md
-
-**New home:** `documentation/overview/`
 **Definition.** The foundational concept/philosophy document (why Dumby exists, its beliefs,
 who it serves, its positioning) and, since v5.0.0, the set's glossary of program terms and RBAC
 vocabulary. **Intent.** Articulate the core problem and the structural answer — a modular bot
@@ -66,8 +58,6 @@ aligned with incentive, governed quality. **Purpose.** So anyone evaluating, bui
 operating Dumby understands not just what it does but why.
 
 ### 4. directive.md
-
-**New home:** `spec/governance/`
 **Definition.** A prescriptive engineering directive mandating the backend, architecture, and
 infrastructure development rules for the core — stated as binding rules (MUST, MUST NOT, SHALL),
 across 8 parts with rule-numbered sections and two traceability appendices. **Intent.** Define
@@ -79,8 +69,6 @@ policy. **Purpose.** A single authoritative rulebook removing ambiguity about wh
 must do and how compliance is verified.
 
 ### 5. directory.md
-
-**New home:** `spec/architecture/directory-file-structure.md` + `blueprint/structure.md`
 **Definition.** A complete file/folder tree of the canonical project structure for the monorepo,
 top level down to subsystem folders, with repository governance at the root and annotations for
 each folder's role. **Intent.** A single unambiguous reference for where everything lives.
@@ -90,8 +78,6 @@ topology — feature modules no longer in-tree but on the four per-tier volumes 
 same canonical understanding of layout.
 
 ### 6. documentation.md
-
-**New home:** the archived legacy record (kept for inherited decisions only)
 **Definition.** The archived legacy architecture/lifecycle/operations reference (version 4.5.1
 lineage; set version 5.0.0 archived) — the frozen record of the decisions the current blueprint
 inherits, with superseded-decision markers pointing at their successors. **Intent.** Preserve
@@ -101,8 +87,6 @@ The trustworthy historical witness — consulted for inherited decisions and pro
 current behavior.
 
 ### 7. interface.md
-
-**New home:** `spec/request-layer/` (Divisions 0–11 + core sections)
 **Definition.** The complete end-user interface specification for Dumby's Discord-facing
 surfaces — every page of the Core Command Surface, under the single presentation authority of
 the core Renderer. **Intent.** Define with zero ambiguity everything a user can encounter — the
@@ -113,8 +97,6 @@ accent colour and the title/attribution grammar as the one grammar for every sur
 classic embeds. **Purpose.** The definitive contract-level description of what the user sees.
 
 ### 8. master-prompt.md
-
-**New home:** `orchestration/master-prompt.md`
 **Definition.** A complete execution brief for constructing the Dumby system — a structured
 build prompt taking an implementer from an empty workspace or any partially-complete codebase to
 a verified, deployable application. **Intent.** Give the builder everything to execute the

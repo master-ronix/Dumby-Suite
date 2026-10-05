@@ -584,7 +584,7 @@ dumby-suite/
 │   └── README.md
 ├── design/   ← reserved (README only)
 │   └── README.md
-├── docs/   ← the documentation corpus (the blueprint · `spec/governance/` · `spec/request-layer/` · `documentation/overview/` · `spec/architecture/directory-file-structure.md` · definitions.md · `upgradation/`upgradation/change-log.md` · the prompt set · adr/ · ur/)
+├── docs/   ← the documentation corpus (blueprint.md · directive.md · interface.md · concept.md · directory.md · definitions.md · change-log.md · the prompt set · adr/ · ur/)
 │   ├── adr/
 │   │   ├── ADR-001.md
 │   │   ├── ADR-002.md
@@ -600,14 +600,14 @@ dumby-suite/
 │   ├── ur/
 │   │   ├── README.md
 │   │   └── UR-20260918-001_Consolidated_Re-Baseline_Request.md
-│   ├── the blueprint
-│   ├── `upgradation/`upgradation/change-log.md`
-│   ├── `documentation/overview/`
+│   ├── blueprint.md
+│   ├── change-log.md
+│   ├── concept.md
 │   ├── definitions.md
-│   ├── `spec/governance/`
-│   ├── `spec/architecture/directory-file-structure.md`
+│   ├── directive.md
+│   ├── directory.md
 │   ├── documentation.md
-│   ├── `spec/request-layer/`
+│   ├── interface.md
 │   ├── master-prompt.md
 │   ├── meta-prompt.md
 │   ├── migration-ledger-template.md

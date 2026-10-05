@@ -894,7 +894,7 @@ Maintain local command set.
 - **Intent:** Encode architectural invariants in tooling (ESLint/tsc gates), not docs that can be ignored.
 - **Purpose:** "Constitution vs policy" — good architecture encodes invariants in tooling.
 - Five enforced rules: no cross-module imports (ESLint `no-cross-module-relative-import`); no direct DB access from commands (`no-repository-in-command`); no event emission from repositories (`no-event-emit-in-repository`); no unverifiable webhooks (registration-time validation); no unscrubbed secrets in logs (logger-level redaction).
-- Maintain all as MUST-level gates (RFC 2119) per `spec/governance/`.
+- Maintain all as MUST-level gates (RFC 2119) per `directive.md`.
 
 #### [From §41 (Infrastructure & Deployment)] Function reference — ESLint no-restricted-imports Forbids Cross-Module Core Imports:
 

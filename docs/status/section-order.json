@@ -1,0 +1,168 @@
+{
+  "_note": "Canonical reading order per directory, preserved after numeric prefixes were removed. Alphabetical listing is NOT the intended order.",
+  "departments": {
+    "blueprint": [
+      "system-map.md",
+      "modules-edges.md",
+      "request-layer-edges.md",
+      "structure.md",
+      "data-edges.md",
+      "operations-edges.md",
+      "lifecycle-edges.md",
+      "reference-edges.md",
+      "foundations-edges.md",
+      "architecture-edges.md"
+    ],
+    "documentation": [
+      "index.md"
+    ],
+    "documentation/api": [
+      "README.md",
+      "commands.md",
+      "endpoints.md",
+      "errors.md",
+      "events.md"
+    ],
+    "documentation/features": [
+      "core-command-surface.md",
+      "data-and-state.md",
+      "module-system.md",
+      "observability.md",
+      "permissions-rbac.md",
+      "renderer-presentation.md"
+    ],
+    "documentation/guides": [
+      "building-a-module.md",
+      "getting-started.md"
+    ],
+    "documentation/overview": [
+      "introduction.md",
+      "concept-documentation.md",
+      "the-problem-why-dumby-exists.md",
+      "table-of-contents.md",
+      "the-philosophy.md",
+      "what-dumby-is.md",
+      "what-dumby-is-not.md",
+      "the-unified-modular-doctrine.md",
+      "who-dumby-is-for.md",
+      "the-developer-model.md",
+      "core-ideology-the-seven-pillars.md",
+      "engineering-philosophy.md",
+      "trust-security-reliability.md",
+      "the-competitive-landscape.md",
+      "vision-statement.md",
+      "mission-statement.md",
+      "closing.md"
+    ],
+    "spec/architecture": [
+      "technology-stack-decision-matrix.md",
+      "system-architecture.md",
+      "directory-file-structure.md",
+      "application-bootstrap-lifecycle.md",
+      "graceful-shutdown-signal-handling.md",
+      "dependency-injection-service-container.md"
+    ],
+    "spec/data": [
+      "configuration-management.md",
+      "database-architecture.md",
+      "caching-architecture.md",
+      "state-externalization-horizontal-scaling.md"
+    ],
+    "spec/foundations": [
+      "what-is-dumby.md",
+      "the-unified-modular-doctrine.md",
+      "engineering-principles-p1-p14.md",
+      "non-goals-explicit-boundaries.md"
+    ],
+    "spec/governance": [
+      "dumby-development-directive-rules.md",
+      "directive-charter-how-to-use-this-document.md",
+      "part-1-foundations-doctrine.md",
+      "part-2-technology-stack-runtime-boundaries.md",
+      "part-3-application-core-bootstrap-lifecycle-di.md",
+      "part-4-module-system-framework.md",
+      "part-5-request-permission-data-architecture.md",
+      "part-6-control-plane-services.md",
+      "part-7-reliability-security-performance.md",
+      "part-8-quality-delivery-acceptance.md",
+      "appendix-a-directive-to-blueprint-traceability.md",
+      "appendix-b-compliance-self-audit-checklist.md",
+      "appendix-c-logged-deviations-and-open-items.md"
+    ],
+    "spec/lifecycle": [
+      "testing-architecture-qa.md",
+      "developer-experience-tooling.md",
+      "development-workflow.md",
+      "ci-cd-pipeline.md",
+      "infrastructure-deployment.md",
+      "versioning-release-migration.md",
+      "troubleshooting-operational-runbooks.md"
+    ],
+    "spec/modules": [
+      "module-anatomy-manifest.md",
+      "building-a-module-a-complete-worked-example.md",
+      "module-tiers-lifecycle.md",
+      "inter-module-communication-and-contracts.md",
+      "swastik-hot-reload-dynamic-module-management.md",
+      "marketplace-and-mdis.md"
+    ],
+    "spec/modules/catalog": [
+      "catalog-conventions-illustrative-module-index.md"
+    ],
+    "spec/operations": [
+      "observability-logging-metrics-tracing.md",
+      "error-management-fault-tolerance.md",
+      "job-queue-scheduling.md",
+      "localization-internationalization.md",
+      "analytics-telemetry-mtp.md",
+      "security-architecture-threat-model.md",
+      "performance-scalability-engineering.md",
+      "privacy-gdpr-compliance.md",
+      "multi-identity-operation-twill-personas.md"
+    ],
+    "spec/orientation": [
+      "what-this-document-is.md",
+      "how-to-read-this-reference.md",
+      "rosetta-stone-conceptual-map.md",
+      "system-at-a-glance.md",
+      "front-matter.md",
+      "complete-engineering-implementation-reference.md",
+      "table-of-contents.md"
+    ],
+    "spec/reference": [
+      "appendix-a-extended-reference-discord-api-surface.md",
+      "appendix-b-extended-reference-interface-hub.md",
+      "appendix-c-extended-reference-operational-excellence.md",
+      "appendix-implementation-status-audit-register.md",
+      "colophon.md",
+      "rest-api-webhooks-mdis-reference.md",
+      "mandatory-feature-compliance-matrix.md",
+      "dumby-vs-multipurpose-bots-capability-comparison.md",
+      "glossary-topic-index.md",
+      "appendices.md"
+    ],
+    "spec/request-layer": [
+      "front-matter.md",
+      "discord-facing-interface-frontend-surfaces.md",
+      "table-of-contents.md",
+      "division-0-system-overview-the-core-command-surface.md",
+      "division-1-the-renderer-presentation-authority.md",
+      "division-2-interaction-lifecycle-buffer-notices-components.md",
+      "division-3-dashboard-home-page-core-commands.md",
+      "division-4-health-command-health-module.md",
+      "division-5-browse-command-marketplace-module.md",
+      "division-6-queue-command-bccm-queue-module.md",
+      "division-7-persona-command-persona-module-twill.md",
+      "division-8-permit-command-rbac-permission-module.md",
+      "division-9-modules-command-module-management-module.md",
+      "division-10-hello-world-standard-tier-module.md",
+      "division-11-cross-cutting-ui-specifications.md",
+      "command-framework-routing-engine.md",
+      "event-architecture-bus-system.md",
+      "middleware-pipeline-interceptors.md",
+      "interaction-component-handling.md",
+      "permission-authorization-engine.md",
+      "control-plane-services.md"
+    ]
+  }
+}

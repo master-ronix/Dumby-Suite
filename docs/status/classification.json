@@ -1,0 +1,126 @@
+{
+  "_note": "P1 classification by statement-kind.",
+  "artifacts": [
+    {
+      "file": "blueprint.md",
+      "kind": "mixed (current authority)",
+      "disposition": "distribute",
+      "targets": [
+        "blueprint/",
+        "spec/<dept>/",
+        "contracts/",
+        "status/counts.json"
+      ]
+    },
+    {
+      "file": "documentation.md",
+      "kind": "legacy v4.5.1",
+      "disposition": "archive",
+      "targets": [
+        "archive/v4.5.1/documentation.md"
+      ]
+    },
+    {
+      "file": "directive.md",
+      "kind": "governance rules",
+      "disposition": "distribute",
+      "targets": [
+        "spec/governance/"
+      ]
+    },
+    {
+      "file": "directory.md",
+      "kind": "structure",
+      "disposition": "split",
+      "targets": [
+        "blueprint/structure.md",
+        "_generated/tree.md"
+      ]
+    },
+    {
+      "file": "concept.md",
+      "kind": "explanation+glossary+doctrine",
+      "disposition": "split",
+      "targets": [
+        "documentation/overview/",
+        "glossary.md",
+        "spec/foundations/"
+      ]
+    },
+    {
+      "file": "definitions.md",
+      "kind": "index",
+      "disposition": "replace",
+      "targets": [
+        "README.md",
+        "manifest.json"
+      ]
+    },
+    {
+      "file": "change-log.md",
+      "kind": "history",
+      "disposition": "move",
+      "targets": [
+        "upgradation/change-log.md"
+      ]
+    },
+    {
+      "file": "interface.md",
+      "kind": "user-surface spec",
+      "disposition": "distribute",
+      "targets": [
+        "spec/request-layer/",
+        "contracts/ui-renderer.schema.json",
+        "documentation/"
+      ]
+    },
+    {
+      "file": "master-prompt.md",
+      "kind": "engine build",
+      "disposition": "move+rewrite",
+      "targets": [
+        "orchestration/"
+      ]
+    },
+    {
+      "file": "meta-prompt.md",
+      "kind": "engine trigger",
+      "disposition": "move+rewrite",
+      "targets": [
+        "prompts/"
+      ]
+    },
+    {
+      "file": "migration-prompt.md",
+      "kind": "engine migration",
+      "disposition": "move+rewrite",
+      "targets": [
+        "migration/"
+      ]
+    },
+    {
+      "file": "migration-ledger-template.md",
+      "kind": "engine ledger",
+      "disposition": "move+rewrite",
+      "targets": [
+        "migration/ledger-template.md"
+      ]
+    },
+    {
+      "file": "adr/ADR-001..011.md",
+      "kind": "decisions",
+      "disposition": "move",
+      "targets": [
+        "adr/"
+      ]
+    },
+    {
+      "file": "ur/*",
+      "kind": "provenance",
+      "disposition": "move",
+      "targets": [
+        "upgradation/"
+      ]
+    }
+  ]
+}

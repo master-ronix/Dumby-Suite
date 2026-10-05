@@ -19,9 +19,9 @@ review_state: pending-evidence
 **Document type:** Development Directive — rules and guide (not a prompt, not an enforcement mechanism)
 **Project:** Dumby — Discord Unified Modular Bot System
 **Directive version:** 5.0.0
-**Derived from:** the blueprint 5.0.0 — Consolidated Re-Baseline Edition (sole architectural authority)
+**Derived from:** `blueprint.md` 5.0.0 — Consolidated Re-Baseline Edition (sole architectural authority)
 **Applicability:** Application Core, module-system framework (the engine, not module authorship), request/interaction/data backend, control-plane services, infrastructure, and engineering lifecycle
-**Explicitly excluded from scope:** frontend and end-user interface surfaces (Discord Components V2 embed layouts, dashboard navigation, banners, cosmetic specification — governed by `spec/request-layer/`), module-authoring guidance, worked module examples, and the illustrative module catalog
+**Explicitly excluded from scope:** frontend and end-user interface surfaces (Discord Components V2 embed layouts, dashboard navigation, banners, cosmetic specification — governed by `interface.md`), module-authoring guidance, worked module examples, and the illustrative module catalog
 **Governing objective:** Following this directive end-to-end MUST yield a finished, deployable, ready-to-use Dumby bot — a runtime that boots clean, serves traffic, degrades safely, observes itself, and passes its own acceptance gate (Part 8, Definition of Done)
 
 ---

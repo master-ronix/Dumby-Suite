@@ -203,7 +203,7 @@ BOOT & LIFECYCLE
 RUNTIME BEHAVIOR
 [ ] The deployed bot connects to the Discord gateway and serves its Core
     command surface — a deployed bot has at least the documented Core-tier
-    commands responding per the applicable contract (`spec/request-layer/` owns their
+    commands responding per the applicable contract (interface.md owns their
     presentation; this directive owns that they route, permission-check,
     persist, and observe correctly).
 [ ] Every interaction dispatches through the single canonical router and
@@ -251,7 +251,7 @@ DELIVERY & OPERATIONS
 [ ] Operational runbooks exist and match reality for: startup failure, high
     error rate, shard disconnect, memory growth, slow command (blueprint §43).
 [ ] Every deviation from this directive — past, current, or planned — is
-    recorded in `upgradation/`upgradation/change-log.md` (D-1.6, 0.6).
+    recorded in change-log.md (D-1.6, 0.6).
 ````
 
 When every box is checked, the result is the product this directive exists to

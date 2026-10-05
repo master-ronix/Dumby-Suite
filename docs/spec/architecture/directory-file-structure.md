@@ -37,9 +37,9 @@ dumby/                          (pnpm workspace)
 ├── tools/release_manager/      ← the Release Manager gate: release-gate.ts,
 │                                  compatibility-ledger.json
 ├── scripts/                    ← workspace scripts (post-merge.sh, src/)
-├── docs/                       ← the documentation corpus (the blueprint, `spec/governance/`,
-│                                  `spec/request-layer/`, `documentation/overview/`, `spec/architecture/directory-file-structure.md`, definitions.md,
-│                                  `upgradation/`upgradation/change-log.md`, master-prompt.md, meta-prompt.md,
+├── docs/                       ← the documentation corpus (blueprint.md, directive.md,
+│                                  interface.md, concept.md, directory.md, definitions.md,
+│                                  change-log.md, master-prompt.md, meta-prompt.md,
 │                                  migration-prompt.md, migration-ledger-template.md,
 │                                  documentation.md, adr/, ur/)
 ├── lib/                        ← Replit scaffold — NOT the bot (Drizzle/Orval/React)

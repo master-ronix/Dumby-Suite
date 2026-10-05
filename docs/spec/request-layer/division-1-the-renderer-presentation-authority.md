@@ -17,12 +17,12 @@ review_state: pending-evidence
 
 ### 1.1 Single Presentation Authority
 
-The core Renderer is the single presentation authority for every Discord-facing surface in Dumby. No module, no core subsystem, and no helper library constructs message payloads directly: every page, every buffer, every formal notice, and every interactive component the user sees is issued by the Renderer against the grammar defined in this division. The engineering contract for the Renderer service is specified in `spec/modules/marketplace-and-mdis.md` §.5 and §20.
+The core Renderer is the single presentation authority for every Discord-facing surface in Dumby. No module, no core subsystem, and no helper library constructs message payloads directly: every page, every buffer, every formal notice, and every interactive component the user sees is issued by the Renderer against the grammar defined in this division. The engineering contract for the Renderer service is specified in blueprint.md §16.5 and §20.
 
 Three consequences follow:
 
 - **Visual consistency.** One frame grammar, one accent colour, one typography hierarchy, and one failure voice across every surface — framework and third-party alike.
-- **Enforceability.** Bans hold because there is exactly one emission path. The classic-embed prohibition (§1.8) and the prefix-command prohibition (`spec/foundations/non-goals-explicit-boundaries.md` §) are terminal at the Renderer: no code path can route around them.
+- **Enforceability.** Bans hold because there is exactly one emission path. The classic-embed prohibition (§1.8) and the prefix-command prohibition (blueprint.md §4) are terminal at the Renderer: no code path can route around them.
 - **Author leverage.** A module author declares what a command offers — its schema and its data. The Renderer decides how it looks, how it paginates, how it confirms, and how it fails.
 
 ### 1.2 Static Frame Grammar (Components V2)
@@ -124,11 +124,11 @@ What the Renderer derives from a schema:
 - Confirmation and edit modals for destructive or multi-field actions.
 - The buffer lifecycle, the formal notice lifecycle, autocomplete budgeting, and idempotency protection.
 
-The authoring contract and the `swastik` package that carries it are specified in `spec/modules/building-a-module-a-complete-worked-example.md` § and §17.2. Division 10 contains a complete schema-authored example.
+The authoring contract and the `swastik` package that carries it are specified in blueprint.md §12 and §17.2. Division 10 contains a complete schema-authored example.
 
 ### 1.8 Embed Policy: Components V2 Only
 
-Classic embeds — the discord.js `EmbedBuilder` and `MessageEmbed` types — are banned from every Dumby surface. All presentation is Components V2 containers. The ban is enforced by four layers, mirroring the prefix-command ban (`spec/foundations/non-goals-explicit-boundaries.md` §):
+Classic embeds — the discord.js `EmbedBuilder` and `MessageEmbed` types — are banned from every Dumby surface. All presentation is Components V2 containers. The ban is enforced by four layers, mirroring the prefix-command ban (blueprint.md §4):
 
 1. **Authoring-time lint** — the lint set rejects `EmbedBuilder`/`MessageEmbed` imports and construction in module and core code.
 2. **Load-time validation** — manifest validation and module loading refuse any module whose declared render contract requires classic embeds.

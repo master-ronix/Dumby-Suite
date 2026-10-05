@@ -142,7 +142,7 @@ developer-only distribution is superseded — do not regress it.
 
 **Rule (MUST).** No technology in this part is substituted without a
 documented, justified decision recorded in the same style as the blueprint's
-stack decision matrix and logged in `upgradation/`upgradation/change-log.md`.
+stack decision matrix and logged in `change-log.md`.
 
 ---
 

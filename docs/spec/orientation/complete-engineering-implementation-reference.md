@@ -16,7 +16,7 @@ review_state: pending-evidence
 
 **Document type:** Framework Engineering Reference (no shipping source code — architecture, specification, and illustrative fragments only)
 **Project:** Dumby — Discord Unified Modular Bot System
-**Document Version:** 5.0.0 — Consolidated Re-Baseline Edition (record in `upgradation/`upgradation/change-log.md`)
+**Document Version:** 5.0.0 — Consolidated Re-Baseline Edition (record in change-log.md)
 **Stack:** TypeScript (strict mode) · Node.js LTS ≥ 22 · discord.js v14 · PostgreSQL · Redis · BullMQ · Fastify · Pino/Prometheus/OpenTelemetry
 **Scope:** Architecture · Design · Lifecycle · Infrastructure · Security · Operations · Module Catalog (Illustrative Examples) · Power Engine Panel · Administrative Interfaces
 **Classification:** Engineering Reference — implementation status is stated per section by the status badges and the Audit Register

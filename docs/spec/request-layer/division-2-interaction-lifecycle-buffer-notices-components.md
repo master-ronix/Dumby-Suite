@@ -67,7 +67,7 @@ The formal notice frame is the Renderer's unified presentation for failure, main
 
 - **Banner slot omitted.** Notices render in the minimal frame regardless of the page's density mode.
 - **Reason code.** A machine-readable, stable, uppercase token from the table below. Reason codes are part of the interface contract: tooling and support quote them verbatim.
-- **Trace correlation ID.** Minted per interaction. The trace joins the notice to the audit log and telemetry spans (`spec/operations/observability-logging-metrics-tracing.md` §), and is the reference a user quotes in a support request.
+- **Trace correlation ID.** Minted per interaction. The trace joins the notice to the audit log and telemetry spans (blueprint.md §27), and is the reference a user quotes in a support request.
 
 **Reason code table:**
 
@@ -88,7 +88,7 @@ The notice frame is the only failure presentation. Validation failures (§6.7), 
 
 ### 2.4 Interactive Component Dispatch
 
-All interactive components — buttons, select menus, modals, and autocomplete — are dispatched through the **InteractionRegistry** (`spec/request-layer/interaction-component-handling.md` §). The contract:
+All interactive components — buttons, select menus, modals, and autocomplete — are dispatched through the **InteractionRegistry** (blueprint.md §20). The contract:
 
 - **Minted customIds.** Every component carries a registry-minted customId encoding its origin, page, and action. Hand-written free-text customIds are not part of the authoring contract; the Renderer mints them when it derives a flow from a schema (§1.7).
 - **Invoker re-check.** On every component interaction, the registry re-checks that the interacting user is the invoker of the navigation message. A non-invoker's interaction is **silently rejected** — the 403-equivalent: no buffer, no notice frame, no edit, and no visible change for anyone. The navigation message belongs to the user who invoked it.
@@ -102,7 +102,7 @@ Autocomplete-enabled command options answer within an **800 ms budget**. If the 
 
 ### 2.6 Deferred Interactions & the Follow-Up Watchdog
 
-Interactions whose final render cannot be produced within the acknowledgement window are auto-deferred; the buffer is already visible to the user (§2.1). If an auto-deferred interaction would expire before its final render can land, a **13-minute follow-up watchdog** guarantees a logged overdue event: the buffer is edited into an `OVERDUE` formal notice frame for the user, and the overdue event is recorded with the interaction's trace correlation ID for operator review. The engineering contract (defer windows, the watchdog alarm, and the retry policy it consumes) is specified in `spec/request-layer/interaction-component-handling.md` § and §28.
+Interactions whose final render cannot be produced within the acknowledgement window are auto-deferred; the buffer is already visible to the user (§2.1). If an auto-deferred interaction would expire before its final render can land, a **13-minute follow-up watchdog** guarantees a logged overdue event: the buffer is edited into an `OVERDUE` formal notice frame for the user, and the overdue event is recorded with the interaction's trace correlation ID for operator review. The engineering contract (defer windows, the watchdog alarm, and the retry policy it consumes) is specified in blueprint.md §20 and §28.
 
 The user-visible guarantee is the complete failure UX: **buffer first, then either the final render or a formal notice — never silence.**
 

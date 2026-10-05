@@ -1,0 +1,155 @@
+{
+  "_note": "Generated from the audit register (spec/reference/0009). Status: implemented|partial|specified|dead|deferred.",
+  "counts": {
+    "implemented": 4,
+    "partial": 1,
+    "dead": 1,
+    "deferred": 10
+  },
+  "capabilities": [
+    {
+      "id": "CAP-001",
+      "name": "only the narrower `rbac_grants` (role/group/set-scoped) exists; the st",
+      "status": "deferred",
+      "spec_ref": null,
+      "evidence": [],
+      "source": "spec/reference/0009#L45",
+      "owner": "framework-maintainers"
+    },
+    {
+      "id": "CAP-002",
+      "name": "No `AnonymizationService` found anywhere.",
+      "status": "deferred",
+      "spec_ref": null,
+      "evidence": [],
+      "source": "spec/reference/0009#L75",
+      "owner": "framework-maintainers"
+    },
+    {
+      "id": "CAP-003",
+      "name": "",
+      "status": "deferred",
+      "spec_ref": null,
+      "evidence": [],
+      "source": "spec/reference/0009#L157",
+      "owner": "framework-maintainers"
+    },
+    {
+      "id": "CAP-004",
+      "name": "wired to bootstrap, bypasses middleware, no collision resolution/cosme",
+      "status": "partial",
+      "spec_ref": null,
+      "evidence": [],
+      "source": "spec/reference/0009#L163",
+      "owner": "framework-maintainers"
+    },
+    {
+      "id": "CAP-005",
+      "name": "zero external importers; 3 migrations Knex never sees.",
+      "status": "dead",
+      "spec_ref": null,
+      "evidence": [],
+      "source": "spec/reference/0009#L169",
+      "owner": "framework-maintainers"
+    },
+    {
+      "id": "CAP-006",
+      "name": "The 18-stage bootstrap starts a health server before module loading,",
+      "status": "implemented",
+      "spec_ref": null,
+      "evidence": [],
+      "source": "spec/reference/0009#L207",
+      "owner": "framework-maintainers"
+    },
+    {
+      "id": "CAP-007",
+      "name": "only the generic dispatcher wrapper exists; no `PowerEngineService` cl",
+      "status": "deferred",
+      "spec_ref": null,
+      "evidence": [],
+      "source": "spec/reference/0009#L276",
+      "owner": "framework-maintainers"
+    },
+    {
+      "id": "CAP-008",
+      "name": "proposed; justified by rigid module structure (\u00a710.3) letting the lint",
+      "status": "deferred",
+      "spec_ref": "\u00a710.3",
+      "evidence": [],
+      "source": "spec/reference/0009#L281",
+      "owner": "framework-maintainers"
+    },
+    {
+      "id": "CAP-009",
+      "name": "proposed.",
+      "status": "deferred",
+      "spec_ref": null,
+      "evidence": [],
+      "source": "spec/reference/0009#L286",
+      "owner": "framework-maintainers"
+    },
+    {
+      "id": "CAP-010",
+      "name": "(per docs) \u2014 28+ required/optional fields; compile-time provides-contr",
+      "status": "implemented",
+      "spec_ref": null,
+      "evidence": [],
+      "source": "spec/reference/0009#L297",
+      "owner": "framework-maintainers"
+    },
+    {
+      "id": "CAP-011",
+      "name": "proposed; document currently gives modules total freedom over interact",
+      "status": "deferred",
+      "spec_ref": "\u00a712.4",
+      "evidence": [],
+      "source": "spec/reference/0009#L374",
+      "owner": "framework-maintainers"
+    },
+    {
+      "id": "CAP-012",
+      "name": "and wired into every command dispatch through the middleware pipeline.",
+      "status": "implemented",
+      "spec_ref": null,
+      "evidence": [],
+      "source": "spec/reference/0009#L422",
+      "owner": "framework-maintainers"
+    },
+    {
+      "id": "CAP-013",
+      "name": "proposed alongside SDUI.",
+      "status": "deferred",
+      "spec_ref": null,
+      "evidence": [],
+      "source": "spec/reference/0009#L623",
+      "owner": "framework-maintainers"
+    },
+    {
+      "id": "CAP-014",
+      "name": "(per docs) \u2014 logger-level redaction; unconditional sampling of error t",
+      "status": "implemented",
+      "spec_ref": null,
+      "evidence": [],
+      "source": "spec/reference/0009#L702",
+      "owner": "framework-maintainers"
+    },
+    {
+      "id": "CAP-015",
+      "name": "(V2/deferred).",
+      "status": "deferred",
+      "spec_ref": null,
+      "evidence": [],
+      "source": "spec/reference/0009#L837",
+      "owner": "framework-maintainers"
+    },
+    {
+      "id": "CAP-016",
+      "name": "no documented `securityContext`/`fsGroup` tuning for the module volume",
+      "status": "deferred",
+      "spec_ref": null,
+      "evidence": [],
+      "source": "spec/reference/0009#L1009",
+      "owner": "framework-maintainers"
+    }
+  ]
+}

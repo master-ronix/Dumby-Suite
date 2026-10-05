@@ -181,15 +181,15 @@ The formal notice frame (§2.3) is the single failure, maintenance, and unknown-
 
 The following surfaces are not part of this end-user reference and are not Discord-facing:
 
-- **Web dashboard / module configuration panels** — schema-driven web configuration for modules (`spec/modules/marketplace-and-mdis.md` §.4). Modules declare a `dashboardSchema` in their manifest; the web renderer generates the UI. No web dashboard is documented here.
+- **Web dashboard / module configuration panels** — schema-driven web configuration for modules (blueprint.md §16.4). Modules declare a `dashboardSchema` in their manifest; the web renderer generates the UI. No web dashboard is documented here.
 - **Developer Portal UI** — the Swastik developer portal is backend infrastructure for module deployment, not an end-user interface.
-- **CLAI SSH Terminal UI** — the operator terminal and its lifecycle (operator authentication, idle disconnect, session model; `spec/request-layer/control-plane-services.md` §.6). An operator surface, not an end-user surface.
+- **CLAI SSH Terminal UI** — the operator terminal and its lifecycle (operator authentication, idle disconnect, session model; blueprint.md §22.6). An operator surface, not an end-user surface.
 - **Bull Board UI** — BullMQ job-queue monitoring dashboard.
 - **HTML generator** — no HTML generation or static site building is part of the Discord interface.
 - **Interactive Terminal UI (TUI)** — no terminal user interface.
-- **REST API / webhooks** — the API families (`spec/reference/rest-api-webhooks-mdis-reference.md` §) are machine surfaces, not end-user interfaces.
+- **REST API / webhooks** — the API families (blueprint.md §44) are machine surfaces, not end-user interfaces.
 - **Power Engine Panel web interface** — the Power Engine web interface is an administrative surface.
-- **Twill registration API** — persona creation and configuration (`spec/operations/multi-identity-operation-twill-personas.md` §, §44). `/persona` only lists.
+- **Twill registration API** — persona creation and configuration (blueprint.md §35, §44). `/persona` only lists.
 
 The end-user interface of Dumby is the Discord-facing Components V2 dashboard system specified in this reference: the Core Command Surface, its navigation, and the renderer grammar that issues every one of them.
 

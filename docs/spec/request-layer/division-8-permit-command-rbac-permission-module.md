@@ -21,7 +21,7 @@ review_state: pending-evidence
 
 The `/permit` command manages the guild-side of Dumby's permission system. It requires an argument to be specified, with only limited available options: `grant`, `whitelist`, `blacklist`, `cooldown`, `rate-limit`, and all other Layer 7 tools. Each argument triggers a different interactive flow for managing that specific aspect of the permission system.
 
-The permission engine has two layers that matter to this command (`spec/request-layer/permission-authorization-engine.md` §):
+The permission engine has two layers that matter to this command (blueprint.md §21):
 
 - **Layer 6 — rank function.** A pure backend function that evaluates a user's rank from live Discord state — it is evaluated, never written. It provides the six-rank ladder against which command requirements are checked.
 - **Layer 7 — guild-side grants.** The guild-managed override layer: permit, blacklist, whitelist, cooldown, and rate-limit grants, scoped and resolved per interaction.
@@ -53,7 +53,7 @@ If `/permit` is invoked without an argument, the frame shows an informational me
 
 ### 8.4 RBAC Vocabulary Reference
 
-The vocabulary below is the normative model the `/permit` flows operate on. The full engineering specification is `spec/request-layer/permission-authorization-engine.md` §.
+The vocabulary below is the normative model the `/permit` flows operate on. The full engineering specification is blueprint.md §21.
 
 **Layer 6 — the rank function.** A pure backend function, evaluated from live Discord state and never written anywhere. Six ranks, ordered:
 

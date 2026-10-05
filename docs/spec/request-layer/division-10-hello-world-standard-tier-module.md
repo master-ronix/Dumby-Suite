@@ -71,7 +71,7 @@ export const manifest = {
 };
 ```
 
-The module lives in the Standard-tier volume; the tier-volume layout and its mount points are specified in `spec/architecture/directory-file-structure.md` §.3 and `spec/architecture/directory-file-structure.md`.
+The module lives in the Standard-tier volume; the tier-volume layout and its mount points are specified in blueprint.md §7.3 and directory.md.
 
 ### 10.4 Module Structure
 

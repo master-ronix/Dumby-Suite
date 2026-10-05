@@ -47,7 +47,7 @@ Part 8           §37–§43, §45                     Testing, DX, workflow,
                                                    compliance, acceptance
 ````
 
-Excluded by charter: `spec/request-layer/` surfaces (Discord Components V2
+Excluded by charter: interface.md surfaces (Discord Components V2
 presentation, dashboard navigation, banners), module-authoring guidance,
 and the illustrative module catalog of blueprint Part VII.
 

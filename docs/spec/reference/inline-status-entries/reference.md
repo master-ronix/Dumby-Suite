@@ -235,9 +235,9 @@ Auto-rollback is specified, but its completion criteria are not. The specificati
 
 A proposed three-layer memory-leak detection architecture: (1) a Heap Diff Watcher that snapshots and diffs heap profiles between intervals; (2) a Managed Resource Registry for framework-enforced cleanup; (3) a graceful memory-pressure valve. Implemented together as core framework features, leak protection becomes a default property of the runtime rather than an operator's postmortem chore. Impact: High; Feasibility: Medium.
 
-### `spec/governance/` — Normative Engineering Rules (MUST/SHOULD/MAY)
+### directive.md — Normative Engineering Rules (MUST/SHOULD/MAY)
 
-`spec/governance/` is the imperative rule set translating the architecture into actionable gates: structured MUST/SHOULD/MAY requirements (RFC 2119) for the Application Core and control-plane services, in eight parts, explicitly excluding frontend and module-authoring guidance. It is non-enforcing but authoritative — enforcement is via tooling (ESLint rules, `tsc` gates), not the document itself — and it stays derived from and subordinate to the blueprint.
+`directive.md` is the imperative rule set translating the architecture into actionable gates: structured MUST/SHOULD/MAY requirements (RFC 2119) for the Application Core and control-plane services, in eight parts, explicitly excluding frontend and module-authoring guidance. It is non-enforcing but authoritative — enforcement is via tooling (ESLint rules, `tsc` gates), not the document itself — and it stays derived from and subordinate to blueprint.md.
 
 ### Design Consideration — Prioritized Subsystem Test Plan
 

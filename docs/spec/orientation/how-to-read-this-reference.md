@@ -47,7 +47,7 @@ defer the two-approver release gate (§40.4) and on-call assumptions (§43) unti
 ever — the deployment grows into needing them; §41.6's cloud-provider reference table
 states plainly which infrastructure tier corresponds to which audience.
 
-> **Note on `spec/architecture/directory-file-structure.md`:** The project structure document (`docs/`spec/architecture/directory-file-structure.md`) describes an aspirational target layout. Many directories it specifies (`_template/`, `src/http/middleware/`, `src/db/migrations/core/`, `tests/smoke/`, `tests/e2e/`, `tests/chaos/`, `deploy/terraform/modules/cache/`, `tools/release_manager/`) do not yet exist in the delivered repository subset. Reserved directories are honestly labeled as such.
+> **Note on `directory.md`:** The project structure document (`docs/directory.md`) describes an aspirational target layout. Many directories it specifies (`_template/`, `src/http/middleware/`, `src/db/migrations/core/`, `tests/smoke/`, `tests/e2e/`, `tests/chaos/`, `deploy/terraform/modules/cache/`, `tools/release_manager/`) do not yet exist in the delivered repository subset. Reserved directories are honestly labeled as such.
 
 ## Acceptance
 ```acceptance
