@@ -8,6 +8,7 @@ import type { ConfigService } from '../../config/config.service.js';
 import type { DbClient } from '../../db/client.js';
 import type { CommandCeilingService } from '../../commands/command-ceiling.js';
 import type { CollisionResolutionService } from '../../commands/collision-resolution.js';
+import { CORRELATION_ID_HEADER } from '../power-engine-client.js';
 import { PostgresApprovalStore } from '../../db/repositories/approval.repository.js';
 import { decideApproval } from '../../governance/approval.js';
 import { PostgresLicenseStore, approveLicenseRecord } from '../../licensing/license-store.js';
@@ -22,11 +23,20 @@ interface PowerEngineBody {
   actorId: string;
   source: string;
   reason: string;
+  /** §22.7 — travels from the caller (CLAI mints it) into the handler's audit row. */
+  correlationId?: string;
 }
 
 function extractRequest(request: FastifyRequest): PowerEngineBody {
   const b = (request.body ?? {}) as Partial<PowerEngineBody>;
-  return { actorId: b.actorId ?? '', source: request.ip, reason: b.reason ?? '' };
+  const header = request.headers[CORRELATION_ID_HEADER];
+  const correlationId = typeof header === 'string' && header.length > 0 ? header : undefined;
+  return {
+    actorId: b.actorId ?? '',
+    source: request.ip,
+    reason: b.reason ?? '',
+    ...(correlationId !== undefined ? { correlationId } : {}),
+  };
 }
 
 function sendDispatchResult(

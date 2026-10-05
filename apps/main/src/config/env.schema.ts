@@ -102,6 +102,7 @@ const baseEnvSchema = z
     // §22.5: the independently-configured Power Engine operator allow-list — the identities that may
     // decide governance approvals. Distinct from (but typically overlapping) BOT_OWNER_IDS.
     POWER_ENGINE_OPERATOR_IDS: csvIds(),
+    POWER_ENGINE_SERVICE_CREDENTIAL: z.string().default(''),
     CLAI_AUTHKEY_STORAGE_URL: z.string().default(''),
 
     MODULES_DIR: z.string().default('/mnt/modules'),

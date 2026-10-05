@@ -569,12 +569,17 @@ describe('M0 control plane reports no fake successes (UR-A-04, finding #7)', () 
     expect(source).not.toContain('reply.code(200).send(result)');
   });
 
-  test('CLAI no longer reports OK for an operation it does not perform', () => {
+  test('CLAI never reports OK for an operation it does not perform', () => {
     const source = readSource('src/entry/ssh-clai.ts');
-    expect(source).toContain('NOT IMPLEMENTED');
+    // No local fake success.
     expect(source).not.toContain('OK: ${functionName} completed');
     expect(source).not.toContain('async () => args');
-    expect(source).toContain('throw new PowerEngineActionNotImplementedError(functionName)');
+    // §22.7 — the terminal delegates to the real Power Engine route with a service credential and
+    // a correlation id, rather than injecting a local handler that throws. The route reports the
+    // true outcome (a real result, or an honest 501 NOT_IMPLEMENTED).
+    expect(source).toContain('powerEngineClient.call(');
+    expect(source).toContain('writeClaiAuditRow(');
+    expect(source).not.toContain('PowerEngineActionNotImplementedError');
   });
 
   test('a throwing Power Engine handler still records its true outcome', async () => {

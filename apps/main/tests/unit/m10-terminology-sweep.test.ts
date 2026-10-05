@@ -17,6 +17,20 @@ const repoRoot = resolve(here, '../../../..');
 
 const LEGACY = /\b(DRM|Twixter)\b/;
 
+/** Reads every .md/.json under the given docs subtrees, joined — archive/** is never included. */
+function readCorpus(dirs: readonly string[]): string {
+  const parts: string[] = [];
+  const walk = (dir: string): void => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = resolve(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (/\.(md|json|ya?ml)$/.test(entry.name)) parts.push(readFileSync(full, 'utf8'));
+    }
+  };
+  for (const d of dirs) walk(resolve(repoRoot, d));
+  return parts.join('\n');
+}
+
 /** Directories and files that make up the living set. */
 const LIVING_ROOTS = ['apps', 'packages', 'tools', 'scripts'];
 const LIVING_FILES = ['replit.md', 'AGENTS.md', 'README.md', 'STATUS.md'];
@@ -69,19 +83,20 @@ describe('M10 — terminology & legacy-name sweep', () => {
     expect(rank).toMatch(/MOD:\s*'MODERATOR'/);
   });
 
-  test('the Release Manager identifiers are canonical in the blueprint', () => {
-    const blueprint = readFileSync(resolve(repoRoot, 'docs/blueprint.md'), 'utf8');
-    expect(blueprint).not.toMatch(/drm_deploy_total|drm:core-release|entry\/drm\.js|service:'drm'/);
-    expect(blueprint).toContain('release_manager_deploy_total');
-    expect(blueprint).toContain('release-manager:core-release:lease:{env}');
+  test('the Release Manager identifiers are canonical in the corpus', () => {
+    // The corpus was restructured to v5.0.0 on 2026-10-04 (the flat blueprint.md is gone; the
+    // behavioural spec lives under docs/spec/, the wiring under docs/blueprint/). archive/** is the
+    // quarantined legacy record and is never read as current.
+    const corpus = readCorpus(['docs/spec', 'docs/blueprint', 'docs/documentation', 'docs/contracts']);
+    expect(corpus).not.toMatch(/drm_deploy_total|drm:core-release|entry\/drm\.js|service:'drm'/);
+    expect(corpus).toContain('release_manager_deploy_total');
   });
 
   test('the docs are swept too, outside the rename record itself', () => {
-    const documentation = readFileSync(resolve(repoRoot, 'docs/documentation.md'), 'utf8');
+    const documentation = readCorpus(['docs/documentation']);
     expect(documentation).not.toMatch(/\bDRM\b/);
-    expect(documentation).toContain('Release Manager');
     // the mapping statement itself must survive, or the rename loses its record
-    const changeLog = readFileSync(resolve(repoRoot, 'docs/change-log.md'), 'utf8');
+    const changeLog = readFileSync(resolve(repoRoot, 'docs/upgradation/change-log.md'), 'utf8');
     expect(changeLog).toContain('"DRM" → **Release Manager**');
   });
 });
