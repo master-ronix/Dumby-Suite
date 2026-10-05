@@ -182,5 +182,4 @@
 - status/reconciliation.json
 - status/section-order.json
 - upgradation/README.md
-- upgradation/UR-20260918-001_Consolidated_Re-Baseline_Request.md
 - upgradation/change-log.md
