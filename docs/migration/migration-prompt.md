@@ -16,7 +16,7 @@ change_log: upgradation/change-log.md
 
 - **Chain role:** *migrate* — the delta protocol of the trigger chain.
 - **Preceded by:** `prompts/meta-prompt.md` (activation), which hands off here on **State B (existing codebase)**.
-- **Hands off to:** `upgradation/change-log.md` (every closed request row records itself there), then returns to `prompts/meta-prompt.md`.
+- **Hands off to:** the change-log record sink (every closed request row records itself there), then returns to `prompts/meta-prompt.md`.
 - **Authority:** `spec/` is the sole architectural authority; the precedence order is stated once, in `spec/governance/directive-charter-how-to-use-this-document.md`. The frozen request records in `upgradation/` are provenance. This prompt is a scoped *predecessor* to `orchestration/master-prompt.md`: when every work-order item is DONE, the master prompt's audit and enforcement become the governing protocol again — not before.
 
 ## 2. Purpose
@@ -29,9 +29,9 @@ Bring an existing codebase — or an existing corpus — up to the current speci
 
 **Protocol revision:** <version> — <one-line description of this revision>.
 
-**Derived from:** `upgradation/change-log.md` (the v5.0.0 entry and its per-request record discipline), the frozen request record `upgradation/UR-20260918-001_Consolidated_Re-Baseline_Request.md`, and `spec/` 5.0.0 (sole architectural authority).
+**Derived from:** the change-log record sink, the frozen request record, and `spec/` (sole architectural authority).
 
-**When to use this prompt:** the codebase exists and was built against a spec version older than the documentation (typically v4.6.x). The docs have moved to v5.0.0. Your job is to migrate the code, not to re-audit or re-scaffold it.
+**When to use this prompt:** the codebase exists and was built against a spec version older than the documentation. Your job is to migrate the code, not to re-audit or re-scaffold it.
 
 **CURRENT STATE — read before anything else.**
 
@@ -53,8 +53,8 @@ Bring an existing codebase — or an existing corpus — up to the current speci
 | Corpus manifest | `manifest.json` | the normative artifact set |
 | Governance precedence | `spec/governance/directive-charter-how-to-use-this-document.md` | the authority order |
 | Department specs | `spec/<department>/` | the current specification to migrate to |
-| Frozen request records | `upgradation/UR-20260918-001_Consolidated_Re-Baseline_Request.md` | the 121-request work order |
-| Change log | `upgradation/change-log.md` | the state of record and the record sink |
+| Frozen request records | <path> | the request work order |
+| Change log | <path> | the state of record and the record sink |
 | Ledger template | `migration/ledger-template.md` | the ledger record shapes |
 | Capability ledger | `status/capabilities.json` | build / defer decisions |
 
@@ -74,7 +74,7 @@ If you ever find yourself doing something this sentence does not describe, stop 
 
 The master prompt is an audit-to-full-compliance protocol: it classifies every subsystem against the CURRENT spec and remediates everything that deviates. That is the correct protocol when code and docs are at the same version. It is the WRONG protocol when the docs just jumped a major version over the code:
 
-- Auditing a v4-era codebase against v5.0.0 marks nearly every subsystem FAULTY at once. "Remediate everything" is not a workable instruction — it produces wandering.
+- Auditing a v4-era codebase against the current spec marks nearly every subsystem FAULTY at once. "Remediate everything" is not a workable instruction — it produces wandering.
 - The master prompt's severity ordering puts compile-blocking faults first. On a re-baselined codebase almost everything fails to compile, so the agent spends its whole budget chasing typecheck errors across files the changelog never asked to change — and rewrites whatever stands in the way of a clean compile (e.g. bootstrap).
 - "Never stop until all-COMPLETE" with no finite work list gives the agent no natural stopping point.
 
@@ -117,21 +117,21 @@ These rules override every other instruction you may have read in the documentat
 
 **R3 — Log, don't fix.** When you encounter a compile error, failing test, or defect in a file OUTSIDE the current blast radius: record it in the ledger under `Out-of-scope findings`, note which work-order item (if any) it belongs to, and move on. Do not fix it now. The only exception is a one-line mechanical unblocking fix (e.g. an import path rename caused by an earlier item) — allowed, but must be logged.
 
-**R4 — No opportunistic rewrites.** Deleting a file, re-scaffolding a directory, or rewriting a working implementation from scratch is forbidden unless the current work-order item explicitly requires it (e.g. M1 requires removing `src/modules`). "The code is old" or "the spec is nicer than the code" is never a reason. Bootstrap, DI, shutdown, and every other core subsystem are READ-ONLY unless the current item names them in its blast radius.
+**R4 — No opportunistic rewrites.** Deleting a file, re-scaffolding a directory, or rewriting a working implementation from scratch is forbidden unless the current work-order item explicitly requires it. "The code is old" or "the spec is nicer than the code" is never a reason. Bootstrap, DI, shutdown, and every other core subsystem are READ-ONLY unless the current item names them in its blast radius.
 
 **R5 — Compile checks are per-item gates, not a global pre-pass.** You run `tsc --noEmit` (and the test suite for the affected subsystem) at the END of each item, on the paths in that item's blast radius. You do NOT run a full-project typecheck-first loop. Errors outside the blast radius are out-of-scope findings (R3). A full-project green build is only required at M11 — the convergence pass, the final item.
 
 **R6 — Checkpoint or it didn't happen.** After each item (and each slice) is verified: commit the work, and update the ledger entry to DONE with a one-paragraph record of what changed, which spec sections drove it, and which tests prove it. An item without a ledger record is not done. A checkpoint without its change-log line (R11) is not done either.
 
-**R7 — Stop at the fence line of your budget.** If your session budget is nearly exhausted mid-item, STOP, record the item as IN-PROGRESS with a precise resume note in the ledger ("done: X, Y; remaining: Z; next step: read blueprint §21.4 then implement the grant-resolution order"), and end. A clean handoff is worth more than a half-finished sprawl. NEVER start an item you can see you cannot finish.
+**R7 — Stop at the fence line of your budget.** If your session budget is nearly exhausted mid-item, STOP, record the item as IN-PROGRESS with a precise resume note in the ledger, and end. A clean handoff is worth more than a half-finished sprawl. NEVER start an item you can see you cannot finish.
 
-**R8 — The spec wins, but only where the delta reaches.** Inside the current blast radius, implement to the v5.0.0 spec exactly (precedence: `spec/` > `spec/governance/` > `spec/request-layer/` > `spec/architecture/directory-file-structure.md`; binding ADRs in `adr/`). Outside it, the codebase's current behavior stands until its own item says otherwise.
+**R8 — The spec wins, but only where the delta reaches.** Inside the current blast radius, implement to the spec exactly (precedence: `spec/` > `spec/governance/` > `spec/request-layer/` > `spec/architecture/directory-file-structure.md`; binding ADRs in `adr/`). Outside it, the codebase's current behavior stands until its own item says otherwise.
 
-**R9 — Canonical vocabulary from line one.** Every line you write or touch uses the v5.0.0 vocabulary: **Twill** (persona), **Release Manager**, **MODERATOR / ADMINISTRATOR**, buffer-then-render, formal notice frame, tier volumes. No legacy names in new code. (The full sweep of legacy names in UNTOUCHED files is its own final item, M10 — do not do it early.)
+**R9 — Canonical vocabulary from line one.** Every line you write or touch uses the canonical vocabulary: **Twill** (persona), **Release Manager**, **MODERATOR / ADMINISTRATOR**, buffer-then-render, formal notice frame, tier volumes. No legacy names in new code. (The full sweep of legacy names in UNTOUCHED files is its own final item — do not do it early.)
 
 **R10 — One item at a time, in order.** You do not interleave items, work ahead, or batch "quick wins" across items. The order in §3 is the order. Each item builds on the completed ones before it.
 
-**R11 — The change-log line is part of the done-gate.** When a work-order item (or slice) closes request rows in code, you append one line per closed row to `upgradation/change-log.md` under the **v5.0.0 implementation track — per-request record** (format in §6). An item is not DONE while any row it closed lacks its line. Rows that close PARTIAL get their line with the PARTIAL status and the routing; rows that stay OPEN get none until they close. Missed lines are backfilled at discovery, logged as a deviation — never skipped, never batched to "later" without a ledger record.
+**R11 — The change-log line is part of the done-gate.** When a work-order item (or slice) closes request rows in code, you append one line per closed row to the change-log record sink under the **implementation track — per-request record** (format in §6). An item is not DONE while any row it closed lacks its line. Rows that close PARTIAL get their line with the PARTIAL status and the routing; rows that stay OPEN get none until they close. Missed lines are backfilled at discovery, logged as a deviation — never skipped, never batched to "later" without a ledger record.
 
 **R12 — Reconcile the state of record before you execute.** Before claiming any M-item, run the state-of-record reconciliation (§3.0.2): rebuild the ledger from the template's shapes and re-triage every row the item owns against the TREE at working HEAD — never against the snapshot or the UR text, which are frozen and lag the tree. Following the work order verbatim without reconciling would redo landed work or reopen closed rows. Ahead-of-record work is recorded as **PRESENT IN TREE** with its evidence; whether it is credited as DONE/PARTIAL is governed by the open policy question and must not be decided unilaterally — until it is, such rows stay recorded-but-uncredited, never silently marked DONE and never marked NOT STARTED.
 
@@ -139,31 +139,34 @@ These rules override every other instruction you may have read in the documentat
 
 ### 3. THE MIGRATION WORK ORDER
 
-Twenty items in three blocks, executed strictly in order: the framework block (M0–M8), then the module-rewrite block (MR-1–MR-8), then the closing framework items (M9–M11). Each item names: its source of truth (read these BEFORE coding), its blast radius, the request rows it owns (§3.0), and its done-gate.
+<!-- The work order is authored here. Each item below names its source of truth, the rows it
+     owns (§3.0), its blast radius, and its done-gate. Populate each item before it is worked. -->
+
+Items are executed strictly in order, in three blocks: the framework block (M0–M8), the module-rewrite block (MR-1–MR-8), then the closing framework items (M9–M11).
 
 **The ledger relationship.** `migration-ledger.md` at the repository root is the live, authoritative progress record — once it exists. Construct a fresh ledger from `migration/ledger-template.md`'s record shapes, seeded with the template's §2 snapshot — built entry by entry, never by copying the template file wholesale. From then on: read the ledger at the start of every session; update it at the end of every item and slice; never overwrite or re-create it.
 
-The framework items are sequenced infrastructure-first: layout and plumbing before presentation, presentation before permissions, permissions before governance. The module-rewrite block follows the framework it depends on — command tree, Renderer, RBAC engine, license/compat gates, Swastik pipeline, persona model — and precedes the convergence pass so that M11 audits the live modules too. This ordering is deliberate — do not reorder it without recording the reason in the ledger.
+The framework items are sequenced infrastructure-first: layout and plumbing before presentation, presentation before permissions, permissions before governance. The module-rewrite block follows the framework it depends on, and precedes the convergence pass so that M11 audits the live modules too. This ordering is deliberate — do not reorder it without recording the reason in the ledger.
 
 #### 3.0 Request-Row Coverage Map (the traceability contract)
 
-The governing program record (UR-20260918-001) puts all 121 requests in one master table (its §8.1.2): rows 1–31 are the v5.0 program URs (`UR-01`…`UR-31`), rows 32–33 are the RBAC redesign requirements (`R1`, `R2`), and rows 34–121 are the 88 suite correction requests (`UR-A-nn`, `UR-B-nn`, `UR-C-nn`). Its severity vocabulary maps `Critical` → P0, `High` → P1, `Medium` → P2. Every row is owned by exactly ONE work-order item below. At item-claim time, copy your item's rows into the ledger's row-triage field; at M11 the counts must reconcile: **121 rows, 121 owners, 0 orphans.**
+The governing program record puts all requests in one master table (its §8.1.2). Every row is owned by exactly ONE work-order item below. At item-claim time, copy your item's rows into the ledger's row-triage field; at M11 the counts must reconcile: **<n> rows, <n> owners, 0 orphans.**
 
 | Item | Owns UR §8.1.2 rows (request IDs) | Count |
 |---|---|---|
-| M0 | the severity-Critical suite rows (= P0) | <n> |
-| M1 | | <n> |
-| M2 | | <n> |
-| M3 | | <n> |
-| M4 | | <n> |
-| M5 | | <n> |
-| M6 | | <n> |
-| M7 | | <n> |
-| M8 | | <n> |
-| MR-1…MR-8 | No source rows of their own — they implement UR-11's Core Command Surface reference set against the M1–M8 interfaces, and verify the suite module-behavior rows at their done-gates | 0 |
-| M9 | the program rows and every suite row not owned above, including the residual clauses of rows M0 closed PARTIAL | <n> |
-| M10 | the residual legacy-name sweep | <n> |
-| M11 | the honesty/measurement audits, plus the 121/121 reconciliation itself | <n> |
+| M0 | <rows> | <n> |
+| M1 | <rows> | <n> |
+| M2 | <rows> | <n> |
+| M3 | <rows> | <n> |
+| M4 | <rows> | <n> |
+| M5 | <rows> | <n> |
+| M6 | <rows> | <n> |
+| M7 | <rows> | <n> |
+| M8 | <rows> | <n> |
+| MR-1…MR-8 | <rows> | <n> |
+| M9 | <rows> | <n> |
+| M10 | <rows> | <n> |
+| M11 | <rows> | <n> |
 
 <!-- Coverage notes: rows named by no work-order item are assigned by a logged deviation,
      never silently. Shared-carrier rows record, per program row, which suite rows carried it. -->
@@ -173,11 +176,11 @@ The governing program record (UR-20260918-001) puts all 121 requests in one mast
 <!-- Accumulated evidence corpus: registered verification records, the classification matrix,
      and the executed verification result. Populate at reconciliation. -->
 
-#### 3.0.2 The State-of-Record Reconciliation Gate (R12) — run before M1
+#### 3.0.2 The State-of-Record Reconciliation Gate (R12) — run before the first item
 
 Before any M-item beyond an already-in-flight slice, perform, and record in the ledger:
 
-1. **Rebuild the ledger from the tree.** Construct the fresh ledger (template shapes), then re-triage **all 121 rows** against working HEAD — for each row: `DONE / PARTIAL / PRESENT-IN-TREE / ABSENT`, with the file/test evidence that proves it. This supersedes the template's §2 snapshot, which is a starting orientation only.
+1. **Rebuild the ledger from the tree.** Construct the fresh ledger (template shapes), then re-triage **all rows** against working HEAD — for each row: `DONE / PARTIAL / PRESENT-IN-TREE / ABSENT`, with the file/test evidence that proves it. This supersedes the template's §2 snapshot, which is a starting orientation only.
 2. **Correct the in-flight item's record** against the tree's true state.
 3. **Record ahead-of-record work.** For each implementation the triage finds already present, write the R11 change-log line the protocol owed — marked **PRESENT IN TREE (uncredited pending the open policy question)**. Do not credit it as DONE; do not leave it invisible.
 4. **Record state corrections** to line counts and legacy names discovered during reconciliation.
@@ -199,148 +202,147 @@ Until steps 1–3 are recorded, no item past the in-flight slice may be claimed.
 <!-- Findings with no owning work-order item. Each must receive an owner, a new row, or a
      logged deviation — they cannot simply stand. Populate at reconciliation. -->
 
-#### M0 — P0 Security Flaws (do first, smallest blast radius, highest stakes)
-
-**Request rows owned:** the severity-Critical suite rows (§3.0).
-**Source of truth:** the frozen request record §8.1.2 P0 rows — read the rows before touching anything.
-**Blast radius:** only the files named by P0 flaw rows (declared per slice in the ledger).
-**Done-gate:** each P0 flaw row has a test that fails before the fix and passes after; no control plane accepts unauthenticated connections; all path handling is contained. A row whose full remedy depends on a P1/P2 row closes PARTIAL with routing evidence, never force-fitted.
-**Current state:** <!-- in-flight slices and the reconciled tally. -->
-
-#### M1 — Tier Volumes & Blind Discovery (module relocation)
+#### M0 — <title>
 
 **Request rows owned:** <rows>.
-**Tree state (R12 reconciliation):** <!-- reconcile against working HEAD. -->
-**Source of truth:** `spec/architecture/technology-stack-decision-matrix.md`, §7.3, §15.9; `spec/architecture/directory-file-structure.md` (volume layout); ADR-005.
-**What changes:** remove `src/modules` (modules never live in the source tree); stand up the four per-tier volumes (`modules-admin`, `modules-core`, `modules-standard`, `modules-marketplace`) plus `swastik-staging` rooted at `MODULES_DIR`; replace any registry seed / hardcoded module list with blind discovery at bootstrap; make the volumes mountable; create the `packages/swastik` authoring package with types, manifest schemas, scoped entry points, and the `_template` module.
-**Blast radius:** module loader/registry/discovery code, `src/modules` (removal), `packages/swastik` (new), docker-compose and K8s volume mounts, the bootstrap stage that loads modules.
-**Done-gate:** a module placed on a volume is discovered and loaded with zero registry edits; a module anywhere else is not loaded; tier-at-rest is enforced by volume; no `src/modules` directory remains.
+**Source of truth:** <documents, sections, ADRs to read before coding>.
+**Tree state (R12 reconciliation):** <reconcile against working HEAD>.
+**What changes:** <the delta this item lands>.
+**Blast radius:** <exact files/directories this item may touch>.
+**Done-gate:** <the proving tests and conditions that close this item>.
 
-#### M2 — Unified Command Tree
-
-**Request rows owned:** <rows>.
-**Tree state (R12 reconciliation):** <!-- reconcile against working HEAD. -->
-**Source of truth:** `spec/architecture/directory-file-structure.md` (`src/commands/` unified tree); `spec/request-layer/command-framework-routing-engine.md`.
-**What changes:** merge the former `src/core/commands` split into the single canonical `src/commands/` tree; exactly one command router remains; remove any orphaned or duplicate router.
-**Blast radius:** `src/core/commands` (removal), `src/commands/` (merge target), the router, imports of the moved command files.
-**Done-gate:** one router, one tree, no remnant of the split; command registration and collision detection still work.
-
-#### M3 — Core Renderer, Buffer-Then-Render & the Embed Ban (the big one)
+#### M1 — <title>
 
 **Request rows owned:** <rows>.
-**Tree state (R12 reconciliation):** <!-- reconcile against working HEAD. -->
-**Source of truth:** `spec/architecture/dependency-injection-service-container.md`, §16.5, §20 (especially §20.8 renderer/presentation grammar and §20.9 buffer embed + formal notice frames), §17.11, §19.2, §28.6; `spec/request-layer/` — the renderer, interaction-lifecycle, and component-dispatch sections, read completely; ADR-001 (embed ban), ADR-002 (DM prohibition), ADR-009 (A4 title/attribution grammar), ADR-010 (accent colour).
-**What changes:** build the core Renderer as the single presentation authority — static Components v2 frame grammar with dynamic slots, Modes D/M/C; the buffer-then-render contract on every interaction; formal notice frames with reason codes and trace correlation IDs; the single official accent token `#5865F2` everywhere; the A4 title and attribution grammar; minted stateless customIds with click-time re-authorization, idempotency, the 800 ms autocomplete budget, the 13-minute follow-up watchdog; the absolute embed ban (enforced by a lint/grep gate) and the absolute DM prohibition.
-**Blast radius:** renderer, interaction handling, every shipped command's presentation code, the embed-ban lint gate, tests that asserted embed-based output.
-**Done-gate:** every user-facing surface is renderer-issued Components v2; the edit-sequence assertion (buffer → exactly one edit) passes on every interaction; a grep gate fails on any classic-embed import or instantiation; no DM path exists on any route including permission-denied and error paths.
+**Source of truth:** <documents, sections, ADRs to read before coding>.
+**Tree state (R12 reconciliation):** <reconcile against working HEAD>.
+**What changes:** <the delta this item lands>.
+**Blast radius:** <exact files/directories this item may touch>.
+**Done-gate:** <the proving tests and conditions that close this item>.
 
-#### M4 — RBAC Layer 6/7 Redesign
-
-**Request rows owned:** <rows>.
-**Tree state (R12 reconciliation):** <!-- reconcile against working HEAD. -->
-**Source of truth:** `spec/request-layer/permission-authorization-engine.md` (the Layer 6 pure-backend rank function and Layer 7 guild-side grants, the exhaustive non-configurable override boundary, Table 21-A); `documentation/overview/` §16.1 (six-rank ladder, grant scopes, RESTRICTED floor).
-**What changes:** implement the one normative seven-layer permission ordering; Layer 6 as a pure-backend rank function; Layer 7 as guild-side grants with the "Set" scope semantics; the six-rank ladder with canonical MODERATOR / ADMINISTRATOR names; "OWNER" = the guild's ownership account, distinct from the `BOT_OWNER_IDS` operator override; the `/permit` command surface; the RBAC persistence the suite rows require.
-**Blast radius:** `src/permissions/` (resolver, RBAC service), the `/permit` module, permission-related migrations, permission tests.
-**Done-gate:** deny-by-default holds; resolution order matches Table 21-A exactly; the override boundary is non-configurable as specified; the resolver is invoked on every dispatch (instrumented test).
-
-#### M5 — License Machine, Compatibility Ledger & Deployment Records
+#### M2 — <title>
 
 **Request rows owned:** <rows>.
-**Tree state (R12 reconciliation):** <!-- reconcile against working HEAD. -->
-**Source of truth:** `spec/modules/swastik-hot-reload-dynamic-module-management.md` (six-state license machine with devId binding), §14.4 (Compatibility Ledger gating releases), §15.12 (Deployment Records), §44.8 (versioned OpenAPI API families); `spec/governance/` (rule D-8.10).
-**What changes:** implement the six-state license machine with devId binding; stand up the machine-readable Compatibility Ledger of cross-boundary contract version windows; wire it as the release gate (core releases and module deployments); add Deployment Records and the repo-to-running OIDC deployment flow.
-**Blast radius:** license/compat subsystem, the release/deployment tooling under `tools/release_manager`, the Swastik promotion gate (integration point only — the pipeline itself is M6).
-**Done-gate:** the ledger exists and is enforced (a deployment that violates a contract window is refused); the license state machine transitions only along its six legal edges.
+**Source of truth:** <documents, sections, ADRs to read before coding>.
+**Tree state (R12 reconciliation):** <reconcile against working HEAD>.
+**What changes:** <the delta this item lands>.
+**Blast radius:** <exact files/directories this item may touch>.
+**Done-gate:** <the proving tests and conditions that close this item>.
 
-#### M6 — Swastik Promotion Pipeline (staging, atomic promotion, hot reload)
-
-**Request rows owned:** <rows>.
-**Tree state (R12 reconciliation):** <!-- reconcile against working HEAD. -->
-**Source of truth:** `spec/modules/building-a-module-a-complete-worked-example.md`, §15 (staging, promotion, verified loads), §11.2 (manifest contract); ADR-006 (reload automation boundary).
-**What changes:** staging on `swastik-staging`; atomic promotion onto tier volumes; path containment on all module file operations; verified loads (a module that fails validation never goes live); the hot-reload boundary exactly as ADR-006 records it; manifest reading via static extraction, not `import()` (D-4.9); the full manifest contract (visibility enum, hardcode toggle, `depends` pins, tarball upload, category enum, devId/buildId required at upload).
-**Blast radius:** the Swastik service and `packages/swastik` integration points, module loader hooks used by promotion, `manifest.schema.ts`.
-**Done-gate:** promotion is atomic (a failed promotion leaves the volume untouched); loads are verified; path traversal tests pass; hot reload stays inside ADR-006's boundary.
-
-#### M7 — Twill Persona Model
+#### M3 — <title>
 
 **Request rows owned:** <rows>.
-**Tree state (R12 reconciliation):** <!-- reconcile against working HEAD. -->
-**Source of truth:** `spec/operations/multi-identity-operation-twill-personas.md`; ADR-008 (free-charter sunset); ADR-011 (persona surface).
-**What changes:** the Twill typed interface and persona model — bring-your-own-identity, single-server-bound; the free-charter sunset behavior; persona surface per ADR-011; the persona bindings and dispatch gate the suite rows require (moduleSlug in the binding key, PERSONA_ID env, occupied-by-another-persona gate).
-**Blast radius:** persona subsystem, its migrations and tests.
-**Done-gate:** the persona model compiles, is wired to the spec'd surface, and the sunset rule is tested.
+**Source of truth:** <documents, sections, ADRs to read before coding>.
+**Tree state (R12 reconciliation):** <reconcile against working HEAD>.
+**What changes:** <the delta this item lands>.
+**Blast radius:** <exact files/directories this item may touch>.
+**Done-gate:** <the proving tests and conditions that close this item>.
 
-#### M8 — Envelope Encryption
+#### M4 — <title>
 
 **Request rows owned:** <rows>.
-**Tree state (R12 reconciliation):** <!-- reconcile against working HEAD. -->
-**Source of truth:** `spec/operations/security-architecture-threat-model.md`; ADR-003.
-**What changes:** envelope encryption scoped to in-process-readable credentials — exactly the scope ADR-003 records, no wider.
-**Blast radius:** the credentials/secrets handling path, its config, its tests.
-**Done-gate:** every in-process-readable credential is envelope-encrypted at rest; the scope boundary (what is and is not encrypted) matches ADR-003 exactly.
+**Source of truth:** <documents, sections, ADRs to read before coding>.
+**Tree state (R12 reconciliation):** <reconcile against working HEAD>.
+**What changes:** <the delta this item lands>.
+**Blast radius:** <exact files/directories this item may touch>.
+**Done-gate:** <the proving tests and conditions that close this item>.
+
+#### M5 — <title>
+
+**Request rows owned:** <rows>.
+**Source of truth:** <documents, sections, ADRs to read before coding>.
+**Tree state (R12 reconciliation):** <reconcile against working HEAD>.
+**What changes:** <the delta this item lands>.
+**Blast radius:** <exact files/directories this item may touch>.
+**Done-gate:** <the proving tests and conditions that close this item>.
+
+#### M6 — <title>
+
+**Request rows owned:** <rows>.
+**Source of truth:** <documents, sections, ADRs to read before coding>.
+**Tree state (R12 reconciliation):** <reconcile against working HEAD>.
+**What changes:** <the delta this item lands>.
+**Blast radius:** <exact files/directories this item may touch>.
+**Done-gate:** <the proving tests and conditions that close this item>.
+
+#### M7 — <title>
+
+**Request rows owned:** <rows>.
+**Source of truth:** <documents, sections, ADRs to read before coding>.
+**Tree state (R12 reconciliation):** <reconcile against working HEAD>.
+**What changes:** <the delta this item lands>.
+**Blast radius:** <exact files/directories this item may touch>.
+**Done-gate:** <the proving tests and conditions that close this item>.
+
+#### M8 — <title>
+
+**Request rows owned:** <rows>.
+**Source of truth:** <documents, sections, ADRs to read before coding>.
+**Tree state (R12 reconciliation):** <reconcile against working HEAD>.
+**What changes:** <the delta this item lands>.
+**Blast radius:** <exact files/directories this item may touch>.
+**Done-gate:** <the proving tests and conditions that close this item>.
 
 ---
 
-#### The Module Rewrite Block — MR-1 … MR-8 (first-party modules rewritten to v5.0.0 and made live via Swastik)
+#### The Module Rewrite Block — MR-1 … MR-8
 
-Runs after M8 and before M9. Prerequisites: every item M0–M8 DONE — the modules are rewritten against the command tree, Renderer, RBAC engine, license/compat gates, Swastik pipeline, persona model, and encryption scope delivered by those items. If any is not DONE when this block is reached, stop and report — never rewrite a module against an interface that does not exist.
+Runs after M8 and before M9. Prerequisites: every item M0–M8 DONE — the modules are rewritten against the interfaces delivered by those items. If any is not DONE when this block is reached, stop and report — never rewrite a module against an interface that does not exist.
 
 Each MR item follows the per-item execution loop (§4) with these bindings:
 
-**Source and target.** The current first-party module sources live in **`packages/modules/<module>/`**. Begin with a salvage audit: keep every behavior v5.0.0 still calls for, and record the kept-vs-superseded split in the ledger. The target is the `swastik` `_template` 11-folder layout with the full v5.0.0 manifest (tier, version, granular permissions, dependencies, configSchema, commands, events, assets), colocated tests, and the en-US base locale.
-
-**Presentation.** Exclusively through the Renderer: Components v2 Modes D/M/C, buffer-then-render (instant buffer embed, exactly one edit into the final render or the formal notice frame with reason code + trace correlation ID), the single official accent `#5865F2`, and the A4 title/attribution grammar — attribution in the footer slot, never the title (ADR-001, ADR-002, ADR-009, ADR-010). No classic `EmbedBuilder`/`MessageEmbed` anywhere in module code; the main bot never DMs.
-
-**Permissions.** Layer 6/7 vocabulary, deny-by-default: a command with no explicit declaration is unreachable by any non-owner user.
-
-**Deployment — the only road to live.** Build → stage on `swastik-staging` → the 19-step validation → staging smoke load + readiness checks → atomic promotion onto the volume matching the declared tier (tier-at-rest) → reload within the ADR-006 boundary. Never copy anything directly into `MODULES_DIR`. A failed validation is a module defect to fix, never a gate to bypass.
-
-**Fence.** Framework code (`src/module-system/`, `src/middleware/`, `src/permissions/`, the `src/commands/` router, renderer internals, `packages/swastik/`) is READ-ONLY for MR items. Framework defects found during live verification go to the out-of-scope findings register. `archive/v4.5.1/documentation.md` is the archived legacy record — never an implementation source.
-
-**Done means live-verified:** blind discovery picks the module up with zero registry edits; its commands register in a test guild; interactions follow buffer-then-render; permissions resolve through the engine; and the module's done-gate below passes against the running bot.
+**Source and target.** <module source home and target layout>.
+**Presentation.** <renderer rules>.
+**Permissions.** <permission vocabulary and deny-by-default>.
+**Deployment — the only road to live.** <build → stage → validate → atomic promotion → reload>.
+**Fence.** <framework paths that are read-only for MR items>.
+**Done means live-verified:** <the live-verification conditions>.
 
 | Item | Module | Tier | Read before coding | Done-gate |
 |---|---|---|---|---|
-| MR-1 | `hello-world` | Standard | `spec/request-layer/` hello-world division + the §10.10 testing checklist; blueprint §11, §12.21 | Every §10.10 checklist item passes live |
-| MR-2 | `health` | Core | `spec/request-layer/` `/health` card spec | Full card renders exactly; edit-in-place only, never a second message |
-| MR-3 | `browse` | Core | `spec/request-layer/` browse division | Install/uninstall round-trips through the Swastik pipeline |
-| MR-4 | `queue` | Core | `spec/request-layer/` queue division; blueprint §17.8 + §17.8.1 (BCCM, `guild_command_queue`) | Renames/aliases/disables queue in the 12–13h window, respect Discord's 200/day creation limit, honest pending UI |
-| MR-5 | `persona` | Core | `spec/request-layer/` persona division; blueprint §35; ADR-008, ADR-011 | Activated personas + command inventory per spec |
-| MR-6 | `permit` | Core | `spec/request-layer/` permit division; blueprint §21; `documentation/overview/` §16.1 | Grants resolve through the seven-layer engine with exact L6/7 vocabulary |
-| MR-7 | `modules` | Core | `spec/request-layer/` modules division | Uninstall removes a module's commands; disabled handlers stop firing |
-| MR-8 | `dashboard` | Core | `spec/request-layer/` dashboard division (§0.4, §3.4–§3.7) | Edit-in-place on every interaction; dropdown present on every page; navigates to every live module |
+| MR-1 | <module> | <tier> | <docs> | <done-gate> |
+| MR-2 | <module> | <tier> | <docs> | <done-gate> |
+| MR-3 | <module> | <tier> | <docs> | <done-gate> |
+| MR-4 | <module> | <tier> | <docs> | <done-gate> |
+| MR-5 | <module> | <tier> | <docs> | <done-gate> |
+| MR-6 | <module> | <tier> | <docs> | <done-gate> |
+| MR-7 | <module> | <tier> | <docs> | <done-gate> |
+| MR-8 | <module> | <tier> | <docs> | <done-gate> |
 
 **Ledger.** Add the MR-1…MR-8 rows to the ledger's summary table on the first MR session (if not already present), with per-item records in the standard M-item shape.
 
-#### M9 — Remaining Implementation-Flaw Corrections
+#### M9 — <title>
 
-**Request rows owned:** <rows> — the program rows and every suite row not owned by M0–M8, including the residual clauses of rows M0 closed PARTIAL.
-**Tree state (R12 reconciliation):** <!-- reconcile against working HEAD. -->
-**Source of truth:** the frozen request record §8.1.2 — the suite rows not owned elsewhere, EXCLUDING the P0 rows already closed in M0.
-**What changes:** work the rows one by one: the functional console, control-plane adapters and the shared 501 class in the error boundary, the credentials domain, Power Engine observe/read functions, the middleware/scheduler/tracing/analytics wiring, CI hygiene, env/config drift, and the rest of the table. Treat each row as a mini-item: read the row, fix it, test it, log it.
-**Blast radius:** per flaw row — declare it in the ledger before each fix.
-**Done-gate:** every row has a ledger record with its proving test, and every closed row has its change-log line (R11).
+**Request rows owned:** <rows>.
+**Source of truth:** <documents, sections, ADRs to read before coding>.
+**Tree state (R12 reconciliation):** <reconcile against working HEAD>.
+**What changes:** <the delta this item lands>.
+**Blast radius:** <exact files/directories this item may touch>.
+**Done-gate:** <the proving tests and conditions that close this item>.
 
-#### M10 — Terminology & Legacy-Name Sweep
+#### M10 — <title>
 
-**Request rows owned:** the residual legacy-name sweep.
-**Source of truth:** change-log "Changed — shared facts": "DRM" → **Release Manager** (with reverse GitHub sync), "Twixter" → **Twill**, canonical ranks **MODERATOR / ADMINISTRATOR**.
-**What changes:** sweep the remaining legacy names across code, tests, comments, config keys, and commit messages going forward. Text-level only — no behavior changes in this item.
-**Blast radius:** every file containing a legacy name (mechanical, textual).
-**Done-gate:** a grep for the legacy names returns nothing outside the frozen upgradation/ provenance records.
+**Request rows owned:** <rows>.
+**Source of truth:** <documents, sections, ADRs to read before coding>.
+**Tree state (R12 reconciliation):** <reconcile against working HEAD>.
+**What changes:** <the delta this item lands>.
+**Blast radius:** <exact files/directories this item may touch>.
+**Done-gate:** <the proving tests and conditions that close this item>.
 
-#### M11 — Convergence Pass (the only full-project gate)
+#### M11 — <title>
 
-**Request rows owned:** the honesty/measurement audits and the reconciliation.
-**Source of truth:** the master prompt §3 (audit protocol) and §6 (enforcement pass).
-**What changes:** NOW, and only now, run the full audit: `tsc --noEmit` across the project, the full test suite, the behavioral checks. Everything already migrated must be COMPLETE. Out-of-scope findings accumulated in the ledger are triaged: ones that belong to a v5.0.0 delta item go back to that item (reopened); ones that predate the re-baseline and are unrelated to it are recorded as regular backlog, NOT fixed under this prompt. Then the two reconciliations this prompt adds: (a) the coverage map — every one of the 121 UR rows is DONE or has a routed PARTIAL record, 0 orphans; (b) the change-log — every DONE and PARTIAL row in the ledger has its change-log line, and the counts match.
-**Done-gate:** the ledger is all-DONE; the audit is all-COMPLETE on the migrated subsystems, the live modules included; both reconciliations pass; the handoff note in the ledger says the master prompt is now the governing protocol again.
+**Request rows owned:** <rows>.
+**Source of truth:** <documents, sections, ADRs to read before coding>.
+**Tree state (R12 reconciliation):** <reconcile against working HEAD>.
+**What changes:** <the delta this item lands>.
+**Blast radius:** <exact files/directories this item may touch>.
+**Done-gate:** <the proving tests and conditions that close this item>.
 
 ---
 
 ### 4. THE PER-ITEM EXECUTION LOOP
 
-For every item M0–M11, execute exactly this loop, in this order:
+For every item in the work order, execute exactly this loop, in this order:
 
 1. **Claim the item.** Set its ledger entry to IN-PROGRESS with the date. If it is already IN-PROGRESS from an earlier session, read the resume note and continue from it — do NOT restart the item from scratch.
 2. **Read the sources of truth.** The sections named in the item. Full sections, not summaries. If an ADR is named, read it before making the choice it governs.
@@ -371,16 +373,16 @@ An item whose blast radius cannot land in one session is worked in **slices**: s
 
 ### 6. THE CHANGE-LOG PROTOCOL (R11 IN DETAIL)
 
-The v5.0.0 entry of `upgradation/change-log.md` adopts the per-request record discipline: *every subsequent change keyed to a request of the v5.0 program records its own change-log line citing the request ID; the master traceability index is the consolidated request's §8.1.2 table.* This protocol extends that discipline from documentation changes to the code migration:
+The implementation track of the change-log adopts the per-request record discipline: *every subsequent change keyed to a request of the program records its own change-log line citing the request ID; the master traceability index is the consolidated request's §8.1.2 table.* This protocol extends that discipline from documentation changes to the code migration:
 
-- **Where:** the "v5.0.0 implementation track — per-request record" section of `upgradation/change-log.md`.
+- **Where:** the "implementation track — per-request record" section of the change-log.
 - **When:** at slice/item close (loop step 9), for every row that reached DONE or PARTIAL in that pass. OPEN rows get no line yet.
 - **What each line records:** the request ID, its UR §8.1.2 row number, the ledger item/slice that landed it, a one-clause record of the change, the status (DONE / PARTIAL-routed), and the proof (test name or revert experiment).
 - **Protocol revisions of this prompt or the ledger template** are recorded as lines in the same section, citing their own version history (Appendix A) — this prompt is a governed document like any other in the set; its revisions are change-log events, not silent edits.
 - **Backfilling:** lines missed before R11 existed are recorded at discovery with their true landing dates. Backfills are logged as deviations in the ledger.
 - **Ahead-of-record work:** implementations the tree already contains before the protocol recorded them get their R11 lines written at reconciliation (§3.0.2), marked **PRESENT IN TREE (uncredited pending the open policy question)**. Crediting them as DONE/PARTIAL is the open policy question; record, never assume.
 - **Format:** the actual change-log table is five columns — `Request | Row | item/slice | Record | Status` — with the proof folded into the Record cell. That shape is compliant; M11's reconciliation must read it as the norm, not as a missing column.
-- **Reconciliation:** M11's done-gate includes a count match — ledger rows DONE/PARTIAL vs. change-log lines, and the 121/121 coverage map. Any mismatch fails the convergence pass.
+- **Reconciliation:** M11's done-gate includes a count match — ledger rows DONE/PARTIAL vs. change-log lines, and the full coverage map. Any mismatch fails the convergence pass.
 
 ---
 
@@ -391,11 +393,11 @@ You are explicitly forbidden, for the entire duration of this migration, from:
 - Overwriting, re-initializing, or re-creating `migration-ledger.md` (or copying `migration/ledger-template.md` over it) — the ONE exception being the first-session construction sanctioned by the CURRENT STATE section above. The live ledger is the source of truth; resume from it.
 - Following the work order verbatim without first reconciling the state of record (R12, §3.0.2) — the risk of redoing landed work or reopening closed rows.
 - Leaving a true-unknown finding (§3.0.4) unowned and unrecorded — each must be assigned an owner, a new row, or a logged deviation.
-- Running a full-project `tsc --noEmit` fix-loop before or between items (only at M11).
+- Running a full-project `tsc --noEmit` fix-loop before or between items (only at the convergence pass).
 - Fixing compile errors in files outside the current blast radius (log them, R3).
 - Deleting or rewriting bootstrap, DI, shutdown, or any core subsystem not named in the current item's blast radius.
 - Re-scaffolding the workspace, upgrading dependencies, changing the test framework, reformatting untouched files, or "improving" code you happen to be reading.
-- Re-doing the documentation audit of the whole system — the docs are DONE at 5.0.0; the code is catching up.
+- Re-doing the documentation audit of the whole system — the docs are DONE; the code is catching up.
 - Starting an item before the previous one is DONE in the ledger.
 - Declaring an item, slice, or the migration complete while any ledger item is not DONE, or while any closed request row lacks its change-log line (R11).
 
@@ -403,7 +405,7 @@ You are explicitly forbidden, for the entire duration of this migration, from:
 
 ### 8. COMPLETION
 
-The migration is complete when: the state-of-record reconciliation (R12) is recorded (every row re-triaged against the tree; ahead-of-record work credited or carried per the open policy question); every item in the work order — M0–M11 and MR-1–MR-8 — is DONE in the ledger; the convergence pass is green; the coverage map reconciles (121 rows, 121 owners, 0 orphans); every DONE and PARTIAL row has its change-log line; the completion criteria that touch the corpus are met; every §3.0.4 true unknown has an owner or a logged deviation; and the ledger's final entry hands control back to the Master Build Prompt as the governing protocol.
+The migration is complete when: the state-of-record reconciliation (R12) is recorded (every row re-triaged against the tree; ahead-of-record work credited or carried per the open policy question); every item in the work order — M0–M11 and MR-1–MR-8 — is DONE in the ledger; the convergence pass is green; the coverage map reconciles (all rows, all owners, 0 orphans); every DONE and PARTIAL row has its change-log line; the completion criteria that touch the corpus are met; every §3.0.4 true unknown has an owner or a logged deviation; and the ledger's final entry hands control back to the Master Build Prompt as the governing protocol.
 
 **Anything less is not done. Anything more (out-of-scope fixes smuggled in) is a defect of this protocol's execution and must be reverted or recorded in the ledger as a deviation.**
 
@@ -411,21 +413,21 @@ The migration is complete when: the state-of-record reconciliation (R12) is reco
 
 ### Appendix A — Revision History of This Prompt
 
-This prompt is a governed document: its revisions are change-log events (recorded in `upgradation/change-log.md`, v5.0.0 implementation track) and are never silent edits.
+This prompt is a governed document: its revisions are change-log events and are never silent edits.
 
 | Version | Date | Author | Change |
 |---|---|---|---|
 | — | — | — | — |
 
-*End of Re-Baseline Migration Prompt. Record all future revisions in `upgradation/change-log.md` (implementation track) and in Appendix A.*
+*End of Re-Baseline Migration Prompt. Record all future revisions in the change-log (implementation track) and in Appendix A.*
 
 ## 6. Artefacts Produced
 
 | Artefact | Path | When |
 |----------|------|------|
-| Migration ledger | repository root | rebuilt before M1, updated per item |
+| Migration ledger | repository root | rebuilt before the first item, updated per item |
 | Code deltas | inside each item's blast radius | per item |
-| Change-log lines | `upgradation/change-log.md` | one per closed request row |
+| Change-log lines | change-log record sink | one per closed request row |
 
 ## 7. Acceptance Criteria
 
@@ -433,7 +435,7 @@ The migration is complete only when every item in the Migration Work Order is DO
 
 ## 8. Change-Log Record
 
-Per the entry discipline in `upgradation/change-log.md` §1.5, this document writes one **Migration** line per closed request row:
+Per the entry discipline in the change-log, this document writes one **Migration** line per closed request row:
 
 ```
 - <date> · migration-prompt <version> · item=<ID> · rows=<UR-…> · status=<DONE|PARTIAL|BLOCKED>
