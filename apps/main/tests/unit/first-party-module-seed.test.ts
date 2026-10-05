@@ -91,10 +91,9 @@ afterAll(() => {
 });
 
 describe('first-party module packages', () => {
-  // MR-1…MR-8 rewrite the stubs into real modules; a rewritten module declares its developer
-  // (`devId`), which the re-seeded stubs do not.
-  const MR_REWRITTEN_SLUGS = new Set(['hello-world']);
-
+  // The manifest contract (spec/modules/module-anatomy-manifest.md) requires `devId`, `buildId`,
+  // `visibility` and `releaseStatus` on every manifest — the re-seeded stubs used to omit the first
+  // two, which is exactly what REC-021 flagged as a code-gap.
   test('every removed first-party module is re-seeded as a manifest-valid package', () => {
     const packages = discoverFirstPartyModulePackages();
     expect(packages.map((pkg) => pkg.slug).sort()).toStrictEqual([...SEEDED_SLUGS].sort());
@@ -105,10 +104,11 @@ describe('first-party module packages', () => {
       expect(validateTierRules(pkg.manifest)).toStrictEqual([]);
       expect(pkg.manifest.hardcoded).toBe(false);
       expect(pkg.manifest.hardcodeGuildId).toBeUndefined();
-      if (!MR_REWRITTEN_SLUGS.has(pkg.slug)) {
-        expect(pkg.manifest.devId).toBeUndefined();
-      }
-      expect(pkg.manifest.buildId).toBeUndefined();
+      // Required by the contract, so every first-party package must carry them.
+      expect(pkg.manifest.devId).toBe('dev_first_party');
+      expect(pkg.manifest.buildId).toMatch(/^build_/);
+      expect(['public', 'unlisted', 'private']).toContain(pkg.manifest.visibility);
+      expect(['private', 'public']).toContain(pkg.manifest.releaseStatus);
     }
   });
 

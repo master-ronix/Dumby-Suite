@@ -28,6 +28,12 @@ test('marketplace-tier module with a category is valid', () => {
     isTierValid({
       name: 'third-party-fun',
       tier: 'marketplace',
+      hardcoded: false,
+      marketplaceCategory: 'utility',
+      devId: 'dev_first_party',
+      buildId: 'build_test_1_0_0',
+      visibility: 'public',
+      releaseStatus: 'public',
       marketplaceCategory: 'entertainment',
     }),
   ).toBe(true);
@@ -37,6 +43,11 @@ test('core-tier commands may not declare an RBAC requirement', () => {
   const violations = validateTierRules({
     name: 'guild-settings',
     tier: 'core',
+    hardcoded: false,
+    devId: 'dev_first_party',
+    buildId: 'build_test_1_0_0',
+    visibility: 'public',
+    releaseStatus: 'public',
     commands: [{ name: 'set-prefix', rbacRequirement: 'ADMIN' }],
   });
   expect(violations.some((v) => v.rule === 'core.noRbac')).toBe(true);
@@ -47,6 +58,11 @@ test('core-tier commands with no RBAC requirement are fine', () => {
     isTierValid({
       name: 'guild-settings',
       tier: 'core',
+      hardcoded: false,
+      devId: 'dev_first_party',
+      buildId: 'build_test_1_0_0',
+      visibility: 'public',
+      releaseStatus: 'public',
       commands: [{ name: 'set-prefix', rbacRequirement: null }],
     }),
   ).toBe(true);

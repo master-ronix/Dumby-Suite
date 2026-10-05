@@ -35,6 +35,13 @@ export function validateTierRules(manifest: ModuleManifestForTierCheck): TierVio
     });
   }
 
+  if (manifest.tier !== 'marketplace' && manifest.marketplaceCategory != null) {
+    violations.push({
+      rule: 'marketplace.category.forbidden',
+      message: `marketplaceCategory is forbidden for tier "${manifest.tier}" (module "${manifest.name}") — only Marketplace-tier modules may declare one`,
+    });
+  }
+
   if (manifest.tier === 'core') {
     for (const cmd of manifest.commands ?? []) {
       if (cmd.rbacRequirement) {

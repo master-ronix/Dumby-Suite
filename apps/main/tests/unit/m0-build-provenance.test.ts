@@ -76,6 +76,11 @@ const MANIFEST = JSON.stringify({
   version: '1.0.0',
   description: 'a test module',
   tier: 'core',
+  hardcoded: false,
+  devId: 'dev_first_party',
+  buildId: 'build_test_1_0_0',
+  visibility: 'public',
+  releaseStatus: 'public',
   required: false,
 });
 

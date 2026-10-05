@@ -20,7 +20,10 @@ describe('MR-1 — hello-world module (Standard tier)', () => {
     const manifest = parseManifest(JSON.parse(readFileSync(manifestPath, 'utf8')));
     expect(manifest.name).toBe('hello-world');
     expect(manifest.tier).toBe('standard');
-    expect(manifest.marketplaceCategory).toBe('utility');
+    // hello-world is Standard tier, and marketplaceCategory is forbidden outside Marketplace.
+    expect(manifest.marketplaceCategory).toBeUndefined();
+    expect(manifest.visibility).toBe('public');
+    expect(manifest.releaseStatus).toBe('public');
     expect(manifest.commands.map((c) => c.name)).toEqual(['hello']);
     expect(manifest.config['greeting']).toBe('Hello, World!');
   });

@@ -5,7 +5,8 @@ export type {
   ModuleTier,
   SwastikModule,
 } from "./manifest.js";
-export { defineModule, moduleTiers } from "./manifest.js";
+export { defineModule, moduleTiers, moduleManifestSchema } from "./manifest.js";
+export { validateManifest } from "./validate.js";
 export type {
   CommandContext,
   CommandDeclaration,

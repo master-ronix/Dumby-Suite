@@ -67,7 +67,9 @@ export class ModuleLoader {
   private nodes(): ModuleNode[] {
     return this.registry.all().map((m) => ({
       name: m.manifest.name,
+      version: m.manifest.version,
       depends: m.manifest.depends,
+      provides: m.manifest.provides,
       required: m.manifest.required,
     }));
   }
