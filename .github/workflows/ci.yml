@@ -81,6 +81,13 @@ jobs:
       - name: Gate 5 — production build compiles
         run: pnpm --filter @workspace/dumby build
 
+      - name: Gate 5b — compiled artifact resolves workspace deps at runtime
+        # Guards the deploy regression: `apps/main` runs with plain `node`, so every
+        # workspace dependency it imports at runtime must resolve to compiled JS, not
+        # raw .ts source. A missing build step fails the deploy, not the build itself.
+        run: |
+          node --input-type=module -e "await import('@workspace/swastik'); await import('@workspace/swastik/manifest'); await import('@workspace/swastik/validate'); console.log('workspace runtime resolution OK')"
+
       - name: SBOM for provenance binding
         uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
         with:

@@ -5,20 +5,46 @@
   "description": "Dumby Swastik module authoring surface.",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts",
-    "./manifest": "./src/manifest.ts",
-    "./entrypoints/core": "./src/entrypoints/core.ts",
-    "./entrypoints/admin": "./src/entrypoints/admin.ts",
-    "./entrypoints/standard": "./src/entrypoints/standard.ts",
-    "./entrypoints/marketplace": "./src/entrypoints/marketplace.ts",
-    "./validate": "./src/validate.ts",
-    "./events": "./src/events.ts"
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./dist/index.js"
+    },
+    "./manifest": {
+      "types": "./src/manifest.ts",
+      "default": "./dist/manifest.js"
+    },
+    "./entrypoints/core": {
+      "types": "./src/entrypoints/core.ts",
+      "default": "./dist/entrypoints/core.js"
+    },
+    "./entrypoints/admin": {
+      "types": "./src/entrypoints/admin.ts",
+      "default": "./dist/entrypoints/admin.js"
+    },
+    "./entrypoints/standard": {
+      "types": "./src/entrypoints/standard.ts",
+      "default": "./dist/entrypoints/standard.js"
+    },
+    "./entrypoints/marketplace": {
+      "types": "./src/entrypoints/marketplace.ts",
+      "default": "./dist/entrypoints/marketplace.js"
+    },
+    "./validate": {
+      "types": "./src/validate.ts",
+      "default": "./dist/validate.js"
+    },
+    "./events": {
+      "types": "./src/events.ts",
+      "default": "./dist/events.js"
+    }
   },
   "files": [
     "src",
+    "dist",
     "_template"
   ],
   "scripts": {
+    "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

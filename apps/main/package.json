@@ -9,7 +9,9 @@
     "pnpm": ">=9.0.0"
   },
   "scripts": {
+    "prebuild": "pnpm --filter @workspace/swastik build",
     "build": "tsc -p tsconfig.json",
+    "predev": "pnpm --filter @workspace/swastik build",
     "dev": "tsx watch src/bootstrap/bootstrap.ts",
     "start": "node dist/entry/main.js",
     "start:dev": "tsx src/entry/main.ts",
