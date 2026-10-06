@@ -1,19 +1,39 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { PowerEngineDispatcher, AuditWriter } from '../power-engine-dispatcher.js';
+import { PowerEngineParamError, type PowerEngineFunction } from '../power-engine-catalog.js';
 import type { ConfigService } from '../../config/config.service.js';
 import type { DbClient } from '../../db/client.js';
 import type { CommandCeilingService } from '../../commands/command-ceiling.js';
 import type { CollisionResolutionService } from '../../commands/collision-resolution.js';
+import { CORRELATION_ID_HEADER } from '../power-engine-client.js';
+import { PostgresApprovalStore } from '../../db/repositories/approval.repository.js';
+import { decideApproval } from '../../governance/approval.js';
+import { PostgresLicenseStore, approveLicenseRecord } from '../../licensing/license-store.js';
+import { transitionLicense } from '../../licensing/license-machine.js';
+import { parseDeveloperCredential } from '../../credentials/developer-bearer.js';
+import {
+  CREDENTIAL_REFUSAL_BODY,
+  CREDENTIAL_REFUSAL_STATUS,
+} from '../../credentials/credential-refusal.js';
 
 interface PowerEngineBody {
   actorId: string;
   source: string;
   reason: string;
+  /** §22.7 — travels from the caller (CLAI mints it) into the handler's audit row. */
+  correlationId?: string;
 }
 
-function extractRequest(body: unknown): PowerEngineBody {
-  const b = (body ?? {}) as Partial<PowerEngineBody>;
-  return { actorId: b.actorId ?? '', source: b.source ?? '', reason: b.reason ?? '' };
+function extractRequest(request: FastifyRequest): PowerEngineBody {
+  const b = (request.body ?? {}) as Partial<PowerEngineBody>;
+  const header = request.headers[CORRELATION_ID_HEADER];
+  const correlationId = typeof header === 'string' && header.length > 0 ? header : undefined;
+  return {
+    actorId: b.actorId ?? '',
+    source: request.ip,
+    reason: b.reason ?? '',
+    ...(correlationId !== undefined ? { correlationId } : {}),
+  };
 }
 
 function sendDispatchResult(
@@ -28,17 +48,11 @@ function sendDispatchResult(
   return reply.code(200).send({ ok: true });
 }
 
-/**
- * Honest 501 for PEP actions whose backing primitive does not exist yet.
- * These must never fake a `200 {ok:true}` (UR-C-25): a route that has no
- * real implementation responds with NOT_IMPLEMENTED instead of claiming
- * success.
- */
 function sendNotImplemented(reply: FastifyReply, action: string): FastifyReply {
   return reply.code(501).send({
     error: {
       code: 'NOT_IMPLEMENTED',
-      message: `PEP action "${action}" has no backing primitive implemented yet`,
+      message: `Power Engine action "${action}" has no backing primitive implemented yet`,
     },
   });
 }
@@ -50,19 +64,25 @@ export interface AdminRoutesDeps {
   auditWriter: AuditWriter;
   ceilingService?: CommandCeilingService;
   collisionResolution?: CollisionResolutionService;
-  /** Counts the total active commands across all modules for a guild. Default: queries guild_module_states + manifest commands. */
   getGuildCommandCount?: (guildId: string) => Promise<number> | number;
+  /** §22.5: the independently-configured Power Engine operator allow-list — identities that may decide. */
+  operatorAllowList?: readonly string[];
+  /** §22.5: verifies a presented Power Engine operator credential (delegated to the Credentials Service). */
+  operatorVerifier?: {
+    verify(input: { keyId: string; secret: string; devId?: string }): Promise<unknown>;
+  };
+  /** §15.8: activates a developer credential on approval (delegated to the Credentials Service). */
+  credentialActivator?: { activate(keyId: string): Promise<boolean> };
+  /** Finding #15 — the queue manager behind the power-engine pause/resume routes. */
+  queueManager?: {
+    list(): readonly string[];
+    pause(queueName: string): Promise<void>;
+    resume(queueName: string): Promise<void>;
+  };
+  /** §22.6 — the function catalog. Present when the control plane is wired; absent otherwise. */
+  powerEngineCatalog?: ReadonlyMap<string, PowerEngineFunction>;
 }
 
-/**
- * A representative slice of the ~60-endpoint admin/Power-Engine-Panel
- * surface (spec section 21). Every mutating route follows the exact same
- * three lines: extract {actorId, source, reason} -> dispatcher.dispatch()
- * -> sendDispatchResult(). The remaining PEP domains (economy, RBAC,
- * marketplace review, backups, telemetry, sharding, ...) register with
- * this identical pattern; see STATUS_AND_VERIFICATION.md for the full
- * endpoint checklist and what is wired here vs. left as a follow-up.
- */
 export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps): void {
   app.get('/admin/config', async (_req: FastifyRequest, reply: FastifyReply) => {
     return reply.code(200).send(deps.config.redactedSnapshot());
@@ -74,7 +94,7 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
   });
 
   app.post('/admin/system/maintenance-mode', async (req: FastifyRequest, reply: FastifyReply) => {
-    const body = extractRequest(req.body);
+    const body = extractRequest(req);
     const { enabled, reason } = (req.body as { enabled?: boolean; reason?: string }) ?? {};
     const outcome = await deps.dispatcher.dispatch(
       'system.maintenance-mode.set',
@@ -96,7 +116,7 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
     '/admin/power-engine/guild/:guildId/suspend',
     async (req: FastifyRequest, reply: FastifyReply) => {
       const { guildId } = req.params as { guildId: string };
-      const body = extractRequest(req.body);
+      const body = extractRequest(req);
       const outcome = await deps.dispatcher.dispatch('guild.suspend', body, async () => {
         await deps.db
           .knex('guilds')
@@ -111,7 +131,7 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
     '/admin/power-engine/guild/:guildId/restore',
     async (req: FastifyRequest, reply: FastifyReply) => {
       const { guildId } = req.params as { guildId: string };
-      const body = extractRequest(req.body);
+      const body = extractRequest(req);
       const outcome = await deps.dispatcher.dispatch('guild.restore', body, async () => {
         await deps.db
           .knex('guilds')
@@ -127,7 +147,7 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
     async (req: FastifyRequest, reply: FastifyReply) => {
       const { slug } = req.params as { slug: string };
       const { guildId } = (req.body as { guildId?: string }) ?? {};
-      const body = extractRequest(req.body);
+      const body = extractRequest(req);
       const outcome = await deps.dispatcher.dispatch('module.suspend', body, async () => {
         if (!guildId) throw new Error('guildId is required');
 
@@ -136,7 +156,6 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
           .where({ guildId, moduleSlug: slug })
           .update({ enabled: false, state: 'disabled', updatedAt: new Date() });
 
-        // Re-evaluate collisions: if a winning module is disabled, its overrides are released
         if (deps.collisionResolution) {
           await deps.collisionResolution.handleModuleDisable(guildId, slug);
         }
@@ -150,16 +169,14 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
     async (req: FastifyRequest, reply: FastifyReply) => {
       const { slug } = req.params as { slug: string };
       const { guildId } = (req.body as { guildId?: string }) ?? {};
-      const body = extractRequest(req.body);
+      const body = extractRequest(req);
       const outcome = await deps.dispatcher.dispatch('module.restore', body, async () => {
         if (!guildId) throw new Error('guildId is required');
 
-        // 1. Enforce command ceiling before restoring
         if (deps.ceilingService) {
           await deps.ceilingService.guard(guildId);
         }
 
-        // 2. Detect collisions — if any exist, set install_pending_resolution instead of active
         let targetState = 'active';
         if (deps.collisionResolution) {
           const collisions = await deps.collisionResolution.pauseOnCollision(guildId, slug);
@@ -227,20 +244,15 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
 
   app.post(
     '/admin/power-engine/feature-flags/toggle',
-    async (req: FastifyRequest, reply: FastifyReply) => {
-      const body = extractRequest(req.body);
-      const outcome = await deps.dispatcher.dispatch('feature-flags.toggle', body, async () => {});
-      return sendDispatchResult(reply, outcome);
+    async (_req: FastifyRequest, reply: FastifyReply) => {
+      return sendNotImplemented(reply, 'feature-flags.toggle');
     },
   );
 
-  // ── Blueprint §22.3 — PEP 17 Control Domains ────────────────────────
-
-  // 3. suspendDeveloper — block every module by a devId from deploying
   app.post(
     '/admin/power-engine/suspendDeveloper',
     async (req: FastifyRequest, reply: FastifyReply) => {
-      const body = extractRequest(req.body);
+      const body = extractRequest(req);
       const { devId } = (req.body ?? {}) as {
         devId?: string;
       };
@@ -254,19 +266,105 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
     },
   );
 
-  // 4. suspendCommand — disable one specific command fleet-wide
+  // §15.8 "Owner Approval, Never Auto-Approval" + §22.5: the caller must present a Power Engine operator
+  // credential (validated by the Credentials Service) whose identity is in the independently-
+  // configured operator allow-list. Approval drives the developer's license to `approved` (§15.7,
+  // the authoritative state); `developers.approvalStatus` is derived from it.
+  const decideDeveloper = async (
+    req: FastifyRequest,
+    reply: FastifyReply,
+    decision: 'approve' | 'decline',
+  ): Promise<FastifyReply> => {
+    const { devId } = req.params as { devId: string };
+    const body = extractRequest(req);
+    const presented = parseDeveloperCredential(req.headers.authorization);
+    if (!presented || deps.operatorVerifier === undefined) {
+      return reply.code(CREDENTIAL_REFUSAL_STATUS).send(CREDENTIAL_REFUSAL_BODY);
+    }
+    try {
+      await deps.operatorVerifier.verify({
+        keyId: presented.keyId,
+        secret: presented.secret,
+        devId: body.actorId,
+      });
+    } catch {
+      return reply.code(CREDENTIAL_REFUSAL_STATUS).send(CREDENTIAL_REFUSAL_BODY);
+    }
+    const verdict = decideApproval({
+      actorId: body.actorId,
+      subjectType: 'developer',
+      subjectId: devId,
+      operatorAllowList: deps.operatorAllowList ?? [],
+      decision,
+    });
+    if (verdict.kind === 'refused') {
+      return reply
+        .code(403)
+        .send({ error: { code: 'DEVELOPER_APPROVAL_REFUSED', reason: verdict.reason } });
+    }
+    const status = verdict.kind === 'approved' ? 'approved' : 'declined';
+    const licenseStore = new PostgresLicenseStore(deps.db.knex);
+    const license = await licenseStore.findBySubjectDevId(devId);
+    const nextLicense =
+      license === undefined
+        ? undefined
+        : status === 'approved'
+          ? approveLicenseRecord(license, body.actorId, body.reason)
+          : license.state === 'revoked'
+            ? license
+            : transitionLicense(license, 'revoked', { actor: body.actorId, reason: body.reason });
+    if (status === 'approved' && (nextLicense === undefined || nextLicense.state !== 'approved')) {
+      return reply.code(409).send({
+        error: {
+          code: 'LICENSE_NOT_APPROVABLE',
+          reason: license === undefined ? 'no license row' : `license state "${license.state}"`,
+        },
+      });
+    }
+    const outcome = await deps.dispatcher.dispatch(`developer.${decision}`, body, async () => {
+      await new PostgresApprovalStore(deps.db.knex).decide(
+        'developer',
+        devId,
+        status,
+        body.actorId,
+        body.reason,
+      );
+      if (nextLicense !== undefined) await licenseStore.save(nextLicense);
+      await deps.db
+        .knex('developers')
+        .where({ devId })
+        .update({
+          approvalStatus: status,
+          approvedAt: status === 'approved' ? new Date() : null,
+          approvedBy: status === 'approved' ? body.actorId : null,
+          updatedAt: new Date(),
+        });
+      if (status === 'approved' && deps.credentialActivator) {
+        const dev = await deps.db.knex('developers').where({ devId }).first();
+        if (dev?.credentialKeyId) await deps.credentialActivator.activate(dev.credentialKeyId);
+      }
+    });
+    return sendDispatchResult(reply, outcome);
+  };
+
+  app.post(
+    '/admin/governance/developers/:devId/approve',
+    (req: FastifyRequest, reply: FastifyReply) => decideDeveloper(req, reply, 'approve'),
+  );
+  app.post(
+    '/admin/governance/developers/:devId/decline',
+    (req: FastifyRequest, reply: FastifyReply) => decideDeveloper(req, reply, 'decline'),
+  );
+
   app.post(
     '/admin/power-engine/suspendCommand',
     async (req: FastifyRequest, reply: FastifyReply) => {
-      const body = extractRequest(req.body);
+      const body = extractRequest(req);
       const { commandName } = (req.body ?? {}) as { commandName?: string };
       const outcome = await deps.dispatcher.dispatch('suspendCommand', body, async () => {
         await deps.db
           .knex('guild_command_overrides')
           .insert({
-            // NULL guildId = fleet-wide kill switch (UR-A-10 / UR-B-07).
-            // The migration 00036 partial unique index is what makes this a
-            // working upsert target.
             guildId: null,
             commandKey: commandName,
             overrideType: 'disabled',
@@ -279,11 +377,10 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
     },
   );
 
-  // 6. exitMaintenanceMode — clear maintenance flag
   app.post(
     '/admin/power-engine/exitMaintenanceMode',
     async (req: FastifyRequest, reply: FastifyReply) => {
-      const body = extractRequest(req.body);
+      const body = extractRequest(req);
       const outcome = await deps.dispatcher.dispatch('exitMaintenanceMode', body, async () => {
         await deps.db
           .knex('system_state')
@@ -297,148 +394,95 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
     },
   );
 
-  // 8. pauseQueue — pause a BullMQ queue
+  // §22.2 / Table 22-A — the flagship control action. It had no endpoint at all before this; the
+  // catalog supplies the handler, the dispatcher supplies the gate + the audit row.
+  const runCatalogFunction = async (
+    name: string,
+    req: FastifyRequest,
+    reply: FastifyReply,
+  ): Promise<FastifyReply> => {
+    if (deps.powerEngineCatalog === undefined) return sendNotImplemented(reply, name);
+    const body = extractRequest(req);
+    const args = (req.body ?? {}) as Record<string, unknown>;
+    try {
+      const outcome = await deps.dispatcher.dispatchFunction(
+        name,
+        args,
+        body,
+        deps.powerEngineCatalog,
+      );
+      return sendDispatchResult(reply, outcome);
+    } catch (err) {
+      if (err instanceof PowerEngineParamError) {
+        return reply.code(400).send({ error: { code: 'INVALID_ARGUMENTS', message: err.message } });
+      }
+      throw err;
+    }
+  };
+
+  app.post('/admin/power-engine/suspendGuild', (req: FastifyRequest, reply: FastifyReply) =>
+    runCatalogFunction('suspendGuild', req, reply),
+  );
+
+  app.post('/admin/power-engine/unsuspendGuild', (req: FastifyRequest, reply: FastifyReply) =>
+    runCatalogFunction('unsuspendGuild', req, reply),
+  );
+
   app.post('/admin/power-engine/pauseQueue', async (req: FastifyRequest, reply: FastifyReply) => {
-    const body = extractRequest(req.body);
-    const { queueName } = (req.body ?? {}) as { queueName?: string };
-    const outcome = await deps.dispatcher.dispatch('pauseQueue', body, async () => {
-      await deps.db
-        .knex('system_state')
-        .insert({
-          key: `queue_paused:${queueName}`,
-          value: JSON.stringify({ paused: true, at: new Date().toISOString() }),
-        })
-        .onConflict('key')
-        .merge({ value: JSON.stringify({ paused: true, at: new Date().toISOString() }) });
-    });
-    return sendDispatchResult(reply, outcome);
+    if (deps.queueManager === undefined) return sendNotImplemented(reply, 'pauseQueue');
+    const { queue } = (req.body as { queue?: string } | undefined) ?? {};
+    const names = queue === undefined ? [...deps.queueManager.list()] : [queue];
+    for (const name of names) {
+      await deps.queueManager.pause(name);
+    }
+    return reply.code(200).send({ paused: names });
   });
 
-  // 9. resumeQueue — resume a paused BullMQ queue
   app.post('/admin/power-engine/resumeQueue', async (req: FastifyRequest, reply: FastifyReply) => {
-    const body = extractRequest(req.body);
-    const { queueName } = (req.body ?? {}) as { queueName?: string };
-    const outcome = await deps.dispatcher.dispatch('resumeQueue', body, async () => {
-      await deps.db
-        .knex('system_state')
-        .where({ key: `queue_paused:${queueName}` })
-        .del();
-    });
-    return sendDispatchResult(reply, outcome);
+    if (deps.queueManager === undefined) return sendNotImplemented(reply, 'resumeQueue');
+    const { queue } = (req.body as { queue?: string } | undefined) ?? {};
+    const names = queue === undefined ? [...deps.queueManager.list()] : [queue];
+    for (const name of names) {
+      await deps.queueManager.resume(name);
+    }
+    return reply.code(200).send({ resumed: names });
   });
 
-  // 10. requeueDeadLetter — re-enqueue a dead-lettered job
   app.post(
     '/admin/power-engine/requeueDeadLetter',
-    async (req: FastifyRequest, reply: FastifyReply) => {
-      const body = extractRequest(req.body);
-      const { jobId, queueName } = (req.body ?? {}) as {
-        jobId?: string;
-        queueName?: string;
-      };
-      const outcome = await deps.dispatcher.dispatch('requeueDeadLetter', body, async () => {
-        await deps.db
-          .knex('system_state')
-          .insert({
-            key: `deadletter-requeue:${jobId}`,
-            value: JSON.stringify({ queueName, jobId, requeuedAt: new Date().toISOString() }),
-          })
-          .onConflict('key')
-          .merge({});
-      });
-      return sendDispatchResult(reply, outcome);
+    async (_req: FastifyRequest, reply: FastifyReply) => {
+      return sendNotImplemented(reply, 'requeueDeadLetter');
     },
   );
 
-  // 11. overrideRateLimit — temporarily bypass rate limit for a user/guild
   app.post(
     '/admin/power-engine/overrideRateLimit',
-    async (req: FastifyRequest, reply: FastifyReply) => {
-      const body = extractRequest(req.body);
-      const { targetType, targetId, expiresAt } = (req.body ?? {}) as {
-        targetType?: 'user' | 'guild';
-        targetId?: string;
-        expiresAt?: string;
-      };
-      const outcome = await deps.dispatcher.dispatch('overrideRateLimit', body, async () => {
-        await deps.db
-          .knex('system_state')
-          .insert({
-            key: `ratelimit-override:${targetType}:${targetId}`,
-            value: JSON.stringify({ expiresAt }),
-          })
-          .onConflict('key')
-          .merge({ value: JSON.stringify({ expiresAt }) });
-      });
-      return sendDispatchResult(reply, outcome);
+    async (_req: FastifyRequest, reply: FastifyReply) => {
+      return sendNotImplemented(reply, 'overrideRateLimit');
     },
   );
 
-  // 12. restartShardGroup — restart a shard group
   app.post(
     '/admin/power-engine/restartShardGroup',
-    async (req: FastifyRequest, reply: FastifyReply) => {
-      const body = extractRequest(req.body);
-      const { shardGroup } = (req.body ?? {}) as { shardGroup?: number };
-      const outcome = await deps.dispatcher.dispatch('restartShardGroup', body, async () => {
-        await deps.db
-          .knex('system_state')
-          .insert({
-            key: `restart-shard:${shardGroup}`,
-            value: JSON.stringify({ requestedAt: new Date().toISOString() }),
-          })
-          .onConflict('key')
-          .merge({ value: JSON.stringify({ requestedAt: new Date().toISOString() }) });
-      });
-      return sendDispatchResult(reply, outcome);
+    async (_req: FastifyRequest, reply: FastifyReply) => {
+      return sendNotImplemented(reply, 'restartShardGroup');
     },
   );
 
-  // 13. triggerCoreRestart — trigger a zero-downtime core restart
   app.post(
     '/admin/power-engine/triggerCoreRestart',
-    async (req: FastifyRequest, reply: FastifyReply) => {
-      const body = extractRequest(req.body);
-      const outcome = await deps.dispatcher.dispatch('triggerCoreRestart', body, async () => {
-        await deps.db
-          .knex('system_state')
-          .insert({
-            key: 'core-restart',
-            value: JSON.stringify({ requestedAt: new Date().toISOString() }),
-          })
-          .onConflict('key')
-          .merge({ value: JSON.stringify({ requestedAt: new Date().toISOString() }) });
-      });
-      return sendDispatchResult(reply, outcome);
+    async (_req: FastifyRequest, reply: FastifyReply) => {
+      return sendNotImplemented(reply, 'triggerCoreRestart');
     },
   );
 
-  // 14. rollbackModuleVersion — revert a module to its previous version
   app.post(
     '/admin/power-engine/rollbackModuleVersion',
-    async (req: FastifyRequest, reply: FastifyReply) => {
-      const body = extractRequest(req.body);
-      const { moduleSlug, targetVersion } = (req.body ?? {}) as {
-        moduleSlug?: string;
-        targetVersion?: string;
-      };
-      const outcome = await deps.dispatcher.dispatch('rollbackModuleVersion', body, async () => {
-        await deps.db
-          .knex('system_state')
-          .insert({
-            key: `rollback:${moduleSlug}`,
-            value: JSON.stringify({ targetVersion, requestedAt: new Date().toISOString() }),
-          })
-          .onConflict('key')
-          .merge({
-            value: JSON.stringify({ targetVersion, requestedAt: new Date().toISOString() }),
-          });
-      });
-      return sendDispatchResult(reply, outcome);
+    async (_req: FastifyRequest, reply: FastifyReply) => {
+      return sendNotImplemented(reply, 'rollbackModuleVersion');
     },
   );
 
-  // 16. queryAuditLog — query the audit log
   app.get('/admin/power-engine/queryAuditLog', async (req: FastifyRequest, reply: FastifyReply) => {
     const { source, actorId, action, outcome, limit } = (req.query ?? {}) as {
       source?: string;
@@ -447,8 +491,6 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
       outcome?: string;
       limit?: string;
     };
-    // Columns must match the real migration 00008 shape (UR-B-07): the
-    // legacy targetType/targetId/timestamp columns never existed.
     const query = deps.db.knex('audit_logs').orderBy('createdAt', 'desc');
     if (source) query.where({ source });
     if (actorId) query.where({ actorId });
@@ -459,11 +501,10 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
     return reply.code(200).send(rows);
   });
 
-  // 17. revokeModuleSignature — revoke a module's signing key
   app.post(
     '/admin/power-engine/revokeModuleSignature',
     async (req: FastifyRequest, reply: FastifyReply) => {
-      const body = extractRequest(req.body);
+      const body = extractRequest(req);
       const { moduleSlug, keyId } = (req.body ?? {}) as {
         moduleSlug?: string;
         keyId?: string;
@@ -472,9 +513,6 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
         'revokeModuleSignature',
         body,
         async () => {
-          // signing_keys has no moduleSlug column — key on the real keyId
-          // (UR-C-11: previously filtered a nonexistent column and always
-          // 500'd).
           return deps.db
             .knex('signing_keys')
             .where({ keyId })
@@ -517,7 +555,7 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
           .code(501)
           .send({ error: { code: 'NOT_IMPLEMENTED', message: 'Ceiling service not available' } });
       }
-      const body = extractRequest(req.body);
+      const body = extractRequest(req);
       const outcome = await deps.dispatcher.dispatch('command-ceiling.guard', body, async () => {
         return await deps.ceilingService!.guard(guildId);
       });
@@ -552,7 +590,7 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
           error: { code: 'NOT_IMPLEMENTED', message: 'Collision resolution not available' },
         });
       }
-      const body = extractRequest(req.body);
+      const body = extractRequest(req);
       const outcome = await deps.dispatcher.dispatch('collisions.resolve', body, async () => {
         if (!moduleSlug || !commandKey || !resolveInFavourOf) {
           throw new Error('moduleSlug, commandKey, and resolveInFavourOf are required');

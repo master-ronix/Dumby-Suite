@@ -1,17 +1,3 @@
-/**
- * CL-0045 / UR-A-07 — Layer 2 `BlacklistLookup` backed by the `blocked_users`
- * table with a TTL cache.
- *
- * The resolver interface (`BlacklistLookup`) is synchronous by design so the
- * seven-layer chain stays a pure function of its context; persistence happens
- * through this LOG slice. A full-table snapshot is loaded on demand and kept
- * for the `user:blacklist` TTL (120 s, see `cache/key-namespace.ts`), then
- * lazily refreshed the next time a stale read is requested.
- *
- * Reads are served from the in-memory snapshot — never from a synchronous
- * query — while `refreshIfStale()` is awaited by the dispatcher before the
- * permission chain is evaluated.
- */
 import type { BlacklistLookup } from './resolver.js';
 
 export interface BlockedUserRow {
@@ -22,9 +8,7 @@ export interface BlockedUserRow {
 export type BlockedUsersLoader = () => Promise<ReadonlyArray<BlockedUserRow>>;
 
 export interface DbBlacklistLookupOptions {
-  /** Reads all non-deleted `blocked_users` rows (guildId null = global). */
   loader: BlockedUsersLoader;
-  /** Cache lifetime in milliseconds; defaults to the 120 s `user:blacklist` TTL. */
   ttlMs?: number;
 }
 
@@ -51,7 +35,6 @@ export class DbBlacklistLookup implements BlacklistLookup {
     return this.guilds.get(guildId)?.has(userId) ?? false;
   }
 
-  /** Loads the snapshot immediately (called once at bootstrap). */
   async prime(): Promise<void> {
     await this.load();
   }

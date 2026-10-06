@@ -19,7 +19,7 @@ test('the 6th request within the window is rejected with a retryAfterMs', () => 
   for (let i = 0; i < 5; i += 1) limiter.checkAndIncrement('user-1');
   const sixth = limiter.checkAndIncrement('user-1');
   expect(sixth.allowed).toBe(false);
-  expect(sixth.retryAfterMs > 0).toBeTruthy();
+  expect(sixth.retryAfterMs).toBeGreaterThan(0);
 });
 
 test('a rejected attempt does not count toward the window (no increment after rejection)', () => {
@@ -27,9 +27,9 @@ test('a rejected attempt does not count toward the window (no increment after re
   const limiter = new SlidingWindowRateLimiter(2, 10_000, () => now);
   limiter.checkAndIncrement('user-1');
   limiter.checkAndIncrement('user-1');
-  limiter.checkAndIncrement('user-1'); // rejected
-  limiter.checkAndIncrement('user-1'); // also rejected
-  now += 10_001; // window fully elapses
+  limiter.checkAndIncrement('user-1');
+  limiter.checkAndIncrement('user-1');
+  now += 10_001;
   const afterWindow = limiter.checkAndIncrement('user-1');
   expect(afterWindow.allowed).toBe(true);
 });

@@ -6,10 +6,18 @@ import type { BootstrapProgress } from '../bootstrap/stages.js';
 import type { MetricsRegistry } from '../metrics/registry.js';
 import type { ConfigService } from '../config/config.service.js';
 import { toErrorResponse } from './error-boundary.js';
+import { registerInternalAuth } from './internal-auth.js';
 import { registerHealthRoutes } from './routes/health.routes.js';
 import { registerMetricsRoutes } from './routes/metrics.routes.js';
 import { registerInfoRoutes } from './routes/info.routes.js';
 import { registerAdminRoutes, type AdminRoutesDeps } from './routes/admin.routes.js';
+import { registerOAuthRoutes } from './routes/oauth.routes.js';
+import { registerMdisRoutes, type MdisRoutesDeps } from '../mdis/mdis.routes.js';
+import {
+  registerOperationalRoutes,
+  type OperationalRoutesDeps,
+} from '../operational/operational.routes.js';
+import type { DiscordOAuth2Client } from './oauth/oauth2-client.js';
 
 export interface BuildServerOptions {
   logger: Logger;
@@ -17,14 +25,16 @@ export interface BuildServerOptions {
   metrics: MetricsRegistry;
   config: ConfigService;
   adminDeps: AdminRoutesDeps;
+  /** §19.7 — present only when the Discord OAuth2 dashboard credentials are configured. */
+  oauth2Client?: DiscordOAuth2Client | undefined;
+  /** Appendix C #18 — the MDIS module-delivery surface. */
+  mdisDeps?: MdisRoutesDeps;
+  /** Appendix C #18 — the operational tooling surface. */
+  operationalDeps?: OperationalRoutesDeps;
 }
 
-/**
- * Three separate Fastify instances on three separate ports (API_PORT,
- * HEALTH_PORT, METRICS_PORT) per spec section 13 — health/metrics must
- * stay reachable even under API-port load-shedding or a misbehaving
- * admin client.
- */
+const ADMIN_PATH_PREFIX = '/admin/';
+
 export function buildApiServer(options: BuildServerOptions): FastifyInstance {
   const app = Fastify({ logger: false });
 
@@ -39,8 +49,30 @@ export function buildApiServer(options: BuildServerOptions): FastifyInstance {
     reply.code(statusCode).send(body);
   });
 
+  registerInternalAuth(app, {
+    expectedKey: options.config.get('INTERNAL_API_KEY'),
+    shouldProtect: (request) =>
+      request.url.startsWith(ADMIN_PATH_PREFIX) ||
+      request.url.startsWith('/mdis/') ||
+      request.url.startsWith('/operational/'),
+    audit: async (outcome, detail) => {
+      if (outcome === 'rejected') {
+        options.logger.warn('admin-auth-rejected', detail);
+      }
+    },
+  });
+
   registerInfoRoutes(app, options.config);
   registerAdminRoutes(app, options.adminDeps);
+  if (options.mdisDeps !== undefined) {
+    registerMdisRoutes(app, options.mdisDeps);
+  }
+  if (options.operationalDeps !== undefined) {
+    registerOperationalRoutes(app, options.operationalDeps);
+  }
+  if (options.oauth2Client !== undefined) {
+    registerOAuthRoutes(app, options.oauth2Client);
+  }
 
   return app;
 }

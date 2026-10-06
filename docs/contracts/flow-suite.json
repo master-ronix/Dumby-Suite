@@ -1,0 +1,128 @@
+{
+  "$id": "contracts/flow-suite.json",
+  "title": "Ecosystem Flow Suite — the canonical flow registry",
+  "note": "Single source for the flow threads specified in spec/lifecycle/testing-architecture-qa.md §37.8–§37.13. A flow thread boots the REAL application (embedded PostgreSQL + in-memory Redis + mock gateway), traverses the real wiring, and ends through the real shutdown. Grounded in apps/main/tests/flow/.",
+  "spine": {
+    "start": "bootstrap",
+    "end": "shutdown",
+    "harness": "apps/main/tests/flow/harness.ts",
+    "environment": "apps/main/tests/flow/flow-env.ts"
+  },
+  "assertions": [
+    "coordination",
+    "compatibility",
+    "integration",
+    "environment"
+  ],
+  "flow_threads": [
+    {
+      "id": "FLOW-BOOTSTRAP",
+      "name": "bootstrap",
+      "start": "process start",
+      "traverses": [
+        "bootstrap stages",
+        "DI container",
+        "module registry",
+        "command registry",
+        "renderer",
+        "event bus",
+        "HTTP server"
+      ],
+      "end": "serving",
+      "asserts": [
+        "coordination",
+        "integration",
+        "environment"
+      ],
+      "evidence": "apps/main/tests/flow/bootstrap.flow.test.ts"
+    },
+    {
+      "id": "FLOW-COMMAND",
+      "name": "command",
+      "start": "booted runtime",
+      "traverses": [
+        "gateway event",
+        "event router",
+        "command router",
+        "middleware pipeline",
+        "permission engine",
+        "renderer"
+      ],
+      "end": "rendered reply",
+      "asserts": [
+        "coordination",
+        "compatibility",
+        "integration"
+      ],
+      "evidence": "apps/main/tests/flow/command.flow.test.ts"
+    },
+    {
+      "id": "FLOW-COMPONENT",
+      "name": "component",
+      "start": "booted runtime",
+      "traverses": [
+        "interaction",
+        "component registry",
+        "re-authorization",
+        "renderer"
+      ],
+      "end": "rendered reply",
+      "asserts": [
+        "compatibility",
+        "integration"
+      ],
+      "evidence": "apps/main/tests/flow/component.flow.test.ts"
+    },
+    {
+      "id": "FLOW-MODULE",
+      "name": "module",
+      "start": "booted runtime",
+      "traverses": [
+        "tier-volume discovery",
+        "manifest validation",
+        "module registry",
+        "MDIS catalog",
+        "guild install"
+      ],
+      "end": "installed",
+      "asserts": [
+        "compatibility",
+        "integration"
+      ],
+      "evidence": "apps/main/tests/flow/module.flow.test.ts"
+    },
+    {
+      "id": "FLOW-SUBSYSTEMS",
+      "name": "subsystems",
+      "start": "booted runtime",
+      "traverses": [
+        "event bus",
+        "job queue",
+        "cache cascade",
+        "renderer",
+        "HTTP server"
+      ],
+      "end": "observed",
+      "asserts": [
+        "coordination",
+        "integration"
+      ],
+      "evidence": "apps/main/tests/flow/subsystems.flow.test.ts"
+    },
+    {
+      "id": "FLOW-SHUTDOWN",
+      "name": "shutdown",
+      "start": "booted runtime",
+      "traverses": [
+        "serving",
+        "9-step shutdown"
+      ],
+      "end": "not serving",
+      "asserts": [
+        "coordination",
+        "environment"
+      ],
+      "evidence": "apps/main/tests/flow/shutdown.flow.test.ts"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "$id": "contracts/config.schema.json",
+  "title": "Configuration (core|guild|process-module)",
+  "$defs": {
+    "bootstrap": {
+      "type": "object",
+      "properties": {
+        "HEALTH_PORT": {
+          "type": "integer",
+          "default": 8081
+        },
+        "DATABASE_URL": {
+          "type": "string"
+        },
+        "REDIS_URL": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "note": "Port defaults are canonical in status/facts.json (sourced from apps/main/src/config/env.schema.ts); this schema mirrors them."
+}

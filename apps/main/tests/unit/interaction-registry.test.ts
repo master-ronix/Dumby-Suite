@@ -56,12 +56,12 @@ describe('InteractionRegistry dispatch', () => {
       execute,
     });
 
-    const handled = await registry.dispatch(makeInteraction('modules:list'));
+    const handled = await registry.dispatch(makeInteraction('modules:list:user-1:list'));
 
     expect(handled).toBe(true);
     expect(execute).toHaveBeenCalledWith(
-      expect.objectContaining({ customId: 'modules:list' }),
-      'modules:list',
+      expect.objectContaining({ customId: 'modules:list:user-1:list' }),
+      'modules:list:user-1:list',
     );
   });
 

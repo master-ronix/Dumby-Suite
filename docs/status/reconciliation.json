@@ -1,0 +1,24 @@
+{
+  "schema": "reconciliation/v1",
+  "note": "frozen-UR rows -> current HEAD status. CI gate: every row carries a HEAD anchor.",
+  "rows": [
+    {
+      "ur_row": 64,
+      "request_id": "UR-A-01",
+      "status": "done",
+      "head_anchor": "apps/main/src/http/routes/admin.routes.ts"
+    },
+    {
+      "ur_row": 65,
+      "request_id": "UR-A-02",
+      "status": "done",
+      "head_anchor": "apps/main/src/module-system/loader.ts"
+    },
+    {
+      "ur_row": 111,
+      "request_id": "UR-C-20",
+      "status": "partial",
+      "head_anchor": "apps/main/src/rendering/core-renderer.ts"
+    }
+  ]
+}

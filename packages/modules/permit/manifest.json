@@ -1,0 +1,36 @@
+{
+  "name": "permit",
+  "version": "1.0.0",
+  "description": "Manage guild-side grants \u2014 permits, whitelists, blacklists, cooldowns, and rate limits.",
+  "tier": "core",
+  "hardcoded": false,
+  "visibility": "public",
+  "releaseStatus": "public",
+  "devId": "dev_first_party",
+  "buildId": "build_permit_1_0_0",
+  "required": false,
+  "depends": [],
+  "provides": [],
+  "intents": [],
+  "partials": [],
+  "commands": [
+    {
+      "name": "permit",
+      "description": "Manage guild-side grants \u2014 permits, whitelists, blacklists, cooldowns, and rate limits."
+    }
+  ],
+  "events": [],
+  "services": [],
+  "repositories": [],
+  "jobs": [],
+  "tasks": [],
+  "routes": [],
+  "middleware": [],
+  "migrations": [],
+  "locales": [
+    "en-US"
+  ],
+  "config": {},
+  "eventsCatalog": [],
+  "crossModuleReads": []
+}

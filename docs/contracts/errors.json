@@ -1,0 +1,83 @@
+{
+  "$id": "contracts/errors.json",
+  "title": "Error taxonomy",
+  "base": "DumbyError",
+  "classes": [
+    "ValidationError",
+    "PermissionDeniedError",
+    "NotFoundError",
+    "ConflictError",
+    "ExternalServiceError",
+    "ConfigurationError",
+    "InternalError",
+    "RateLimitedError",
+    "MaintenanceModeError",
+    "DependencyUnavailableError",
+    "EventCycleError",
+    "UnauthorizedError",
+    "CommandCeilingExceededError",
+    "CollisionPendingError"
+  ],
+  "fields": [
+    "httpStatus",
+    "retryable"
+  ],
+  "map": {
+    "ValidationError": {
+      "httpStatus": 400,
+      "retryable": false
+    },
+    "PermissionDeniedError": {
+      "httpStatus": 403,
+      "retryable": false
+    },
+    "NotFoundError": {
+      "httpStatus": 404,
+      "retryable": false
+    },
+    "ConflictError": {
+      "httpStatus": 409,
+      "retryable": false
+    },
+    "ExternalServiceError": {
+      "httpStatus": 502,
+      "retryable": true
+    },
+    "ConfigurationError": {
+      "httpStatus": 500,
+      "retryable": false
+    },
+    "InternalError": {
+      "httpStatus": 500,
+      "retryable": false
+    },
+    "RateLimitedError": {
+      "httpStatus": 429,
+      "retryable": true
+    },
+    "MaintenanceModeError": {
+      "httpStatus": 503,
+      "retryable": false
+    },
+    "DependencyUnavailableError": {
+      "httpStatus": 503,
+      "retryable": true
+    },
+    "EventCycleError": {
+      "httpStatus": 500,
+      "retryable": false
+    },
+    "UnauthorizedError": {
+      "httpStatus": 401,
+      "retryable": false
+    },
+    "CommandCeilingExceededError": {
+      "httpStatus": 409,
+      "retryable": false
+    },
+    "CollisionPendingError": {
+      "httpStatus": 409,
+      "retryable": false
+    }
+  }
+}

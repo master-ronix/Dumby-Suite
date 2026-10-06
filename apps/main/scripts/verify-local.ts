@@ -1,6 +1,3 @@
-/**
- * Local verification wrapper for checks that do not require live infrastructure.
- */
 import { execSync } from 'node:child_process';
 
 function section(title: string): void {

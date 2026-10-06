@@ -1,7 +1,3 @@
-/**
- * Environment schema (Cluster: Bonds). Strict parsing rejects unknown keys,
- * requires every mandatory key, and reports validation failures per field.
- */
 import { z } from 'zod';
 
 const csvIds = () =>
@@ -18,20 +14,36 @@ const csvIds = () =>
 const baseEnvSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'staging', 'production']).default('development'),
+    // §8.4 — runtime role: 'main' opens the gateway + HTTP surfaces; 'worker' runs the truncated
+    // bootstrap and must never hold a Discord client or an HTTP listener.
+    ROLE: z.enum(['main', 'worker']).default('main'),
     LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
 
+    API_BIND_HOST: z.string().default('127.0.0.1'),
     API_PORT: z.coerce.number().int().positive().default(8080),
+    HEALTH_BIND_HOST: z.string().default('127.0.0.1'),
     HEALTH_PORT: z.coerce.number().int().positive().default(8081),
+    METRICS_BIND_HOST: z.string().default('127.0.0.1'),
     METRICS_PORT: z.coerce.number().int().positive().default(8082),
-    PEP_PORT: z.coerce.number().int().positive().default(8083),
+    POWER_ENGINE_BIND_HOST: z.string().default('127.0.0.1'),
+    POWER_ENGINE_PORT: z.coerce.number().int().positive().default(8083),
+    CLAI_BIND_HOST: z.string().default('127.0.0.1'),
     CLAI_PORT: z.coerce.number().int().positive().default(8084),
+    // UR-C-06: CLAI session bounds.
+    CLAI_MAX_SESSIONS: z.coerce.number().int().positive().default(5),
+    CLAI_MAX_BYTES_PER_SESSION: z.coerce.number().int().positive().default(65_536),
+    SWASTIK_BIND_HOST: z.string().default('127.0.0.1'),
     SWASTIK_PORT: z.coerce.number().int().positive().default(8085),
     CREDENTIALS_SERVICE_BIND_HOST: z.string().default('127.0.0.1'),
     CREDENTIALS_SERVICE_PORT: z.coerce.number().int().positive().default(8086),
-    TWIXTER_PORT: z.coerce.number().int().positive().default(8090),
+    // Peer URL other surfaces call to reach the Credentials Service (§22.8 verification and
+    // issuance are delegated there alone). Hostname of the container/host running it.
+    CREDENTIALS_SERVICE_URL: z.string().url().default('http://127.0.0.1:8086'),
+    CREDENTIALS_SERVICE_TIMEOUT_MS: z.coerce.number().int().positive().default(2000),
+    TWILL_BIND_HOST: z.string().default('127.0.0.1'),
+    TWILL_PORT: z.coerce.number().int().positive().default(8090),
 
     BOT_TOKEN: z.string().default(''),
-    /** Set only in a persona process: the persona's own identity (§35.2). */
     PERSONA_ID: z.string().default(''),
     BOT_OWNER_IDS: csvIds(),
     DEV_GUILD_ID: z
@@ -51,10 +63,12 @@ const baseEnvSchema = z
     DATABASE_POOL_MAX: z.coerce.number().int().positive().default(10),
     DATABASE_STATEMENT_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
     DATABASE_REPLICA_MAX_LAG_MS: z.coerce.number().int().nonnegative().default(1000),
+    DATABASE_SSL: z.coerce.boolean().default(false),
     SLOW_QUERY_THRESHOLD_MS: z.coerce.number().int().positive().default(500),
     CRITICAL_QUERY_THRESHOLD_MS: z.coerce.number().int().positive().default(2000),
 
     REDIS_URL: z.string().min(1, 'REDIS_URL is required'),
+    REDIS_TLS: z.coerce.boolean().default(false),
     CACHE_L1_MAX_ENTRIES: z.coerce.number().int().positive().default(5000),
     CACHE_L1_MAX_BYTES: z.coerce.number().int().positive().default(52_428_800),
 
@@ -79,12 +93,6 @@ const baseEnvSchema = z
     OTEL_EXPORTER_OTLP_ENDPOINT: z.string().default(''),
 
     INTERNAL_API_KEY: z.string().min(32, 'INTERNAL_API_KEY must be at least 32 characters'),
-    // Envelope-encryption root key (ADR-003, blueprint §32.7 / §7504): the only
-    // key-bearing variable that exists. It is consumed exclusively by the
-    // envelope hierarchy — nothing else may read an ENCRYPTION_KEY_* variable —
-    // and there is deliberately NO JWT_SIGNING_KEY: the HTTP surface
-    // authenticates with Credentials-Service bearer tokens and HMAC shared
-    // secrets (§32.3), not JWTs.
     ENCRYPTION_ROOT_KEY: z
       .string()
       .min(1, 'ENCRYPTION_ROOT_KEY must be base64 of a 32-byte root key')
@@ -95,14 +103,31 @@ const baseEnvSchema = z
           return false;
         }
       }, 'ENCRYPTION_ROOT_KEY must decode to exactly 32 bytes'),
-    PEP_TRUSTED_SOURCES: csvIds(),
-    CLAI_MFA_ISSUER: z.string().default('DUMBY-CLAI'),
+    POWER_ENGINE_TRUSTED_SOURCES: csvIds(),
+    // §22.5: the independently-configured Power Engine operator allow-list — the identities that may
+    // decide governance approvals. Distinct from (but typically overlapping) BOT_OWNER_IDS.
+    POWER_ENGINE_OPERATOR_IDS: csvIds(),
+    POWER_ENGINE_SERVICE_CREDENTIAL: z.string().default(''),
     CLAI_AUTHKEY_STORAGE_URL: z.string().default(''),
-    CLAI_BREAK_GLASS_SCRIPT_URL: z.string().default(''),
 
     MODULES_DIR: z.string().default('/mnt/modules'),
+    // D-7.5.5 — the operator-authored security policy lockfile checked at Stage 11.
+    SECURITY_POLICY_LOCKFILE: z.string().default('security-policy.lock.json'),
+    // Appendix C #11 — the bundled OpenAPI contract, published at `/openapi.yaml`.
+    OPENAPI_CONTRACT_PATH: z.string().default('docs/contracts/openapi.yaml'),
+    // The flow suite pre-compiles migrations to JS and points these seams at the output.
+    KNEX_MIGRATIONS_DIR: z.string().default(''),
+    KNEX_MIGRATIONS_EXT: z.string().default(''),
+    // Appendix C #18 — the operational runbooks directory surfaced by the operational tooling.
+    OPERATIONAL_RUNBOOKS_DIR: z.string().default('apps/main/docs/runbooks'),
     SWASTIK_STAGING_VOLUME_PATH: z.string().default('/mnt/modules/swastik-staging'),
     SWASTIK_LIVE_VOLUME_PATH: z.string().default('/mnt/modules/modules-core'),
+    // §15.8 build provenance: the in-process Ed25519 signer's key id and PKCS#8 private key. The
+    // private key is never persisted; `signing_keys` holds only public keys (finding #21).
+    BUILD_SIGNING_KEY_ID: z.string().default(''),
+    BUILD_SIGNING_PRIVATE_KEY: z.string().default(''),
+    // §15.9 quarantine root for refused modules. Empty => `<MODULES_DIR>/quarantine`.
+    SWASTIK_QUARANTINE_PATH: z.string().default(''),
 
     MTP_BANDWIDTH_TOKEN_THRESHOLD_BYTES: z.coerce.number().int().positive().default(1_048_576),
     MTP_MEMORY_TOKEN_THRESHOLD_BYTES: z.coerce.number().int().positive().default(52_428_800),
@@ -122,19 +147,8 @@ export const envSchema = baseEnvSchema.refine(
 type RawEnv = z.infer<typeof envSchema>;
 export type Env = Omit<RawEnv, 'DEVELOPMENT_GUILD_ID'>;
 
-/** Every key this schema declares — the app's actual config surface. */
 export const ENV_KEYS: readonly string[] = Object.keys(baseEnvSchema.shape);
 
-/**
- * A real process.env always carries hundreds of OS/shell/tooling keys
- * (PATH, HOME, NIX_*, npm_*, REPLIT_*, ...) that were never part of this
- * app's config and were never meant to be. envSchema.strict() correctly
- * rejects genuinely-unexpected keys in a curated config object (see
- * env-schema.test.ts), but calling parseEnv(process.env) directly would
- * reject on that OS noise too. Pick only the declared keys first, then
- * validate — this preserves .strict()'s typo protection for the app's own
- * keys without requiring process.env to be an exact, closed set.
- */
 export function pickEnvKeys(raw: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   const picked: NodeJS.ProcessEnv = {};
   for (const key of ENV_KEYS) {
@@ -151,9 +165,6 @@ export class ConfigValidationError extends Error {
 }
 
 export function parseEnv(raw: NodeJS.ProcessEnv): Env {
-  // Resolve the documented legacy alias (DEVELOPMENT_GUILD_ID) into the
-  // canonical key BEFORE validation so DEV_GUILD_ID's required-snowflake
-  // rule (UR-B-17) applies to whichever key the operator actually set.
   const merged: NodeJS.ProcessEnv = { ...raw };
   if (!merged['DEV_GUILD_ID'] && merged['DEVELOPMENT_GUILD_ID']) {
     merged['DEV_GUILD_ID'] = merged['DEVELOPMENT_GUILD_ID'];

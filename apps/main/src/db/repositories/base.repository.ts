@@ -4,14 +4,13 @@ export interface EntityRow {
   id: string;
   createdAt?: Date | string;
   updatedAt?: Date | string;
+  /** §24.5 — snowflake or service-identity string; null ⇒ system-generated. */
+  createdBy?: string | null;
+  updatedBy?: string | null;
   deletedAt?: Date | string | null;
   deletedBy?: string | null;
 }
 
-/**
- * Base repository (Cluster: Driver). Soft-delete aware: findById/list
- * exclude soft-deleted rows unless includeDeleted is passed explicitly.
- */
 export abstract class BaseRepository<Row extends EntityRow> {
   protected constructor(
     protected readonly knex: Knex,
@@ -56,12 +55,6 @@ export abstract class BaseRepository<Row extends EntityRow> {
   }
 }
 
-/**
- * Marker base class for insert-only tables (audit_logs). update()/delete()
- * throw synchronously instead of ever reaching the database, so an
- * accidental call fails loudly in code review and in tests rather than
- * silently mutating history.
- */
 export abstract class InsertOnlyRepository<Row extends { id: string }> {
   protected constructor(
     protected readonly knex: Knex,

@@ -28,7 +28,12 @@ test('marketplace-tier module with a category is valid', () => {
     isTierValid({
       name: 'third-party-fun',
       tier: 'marketplace',
-      marketplaceCategory: 'entertainment',
+      hardcoded: false,
+      marketplaceCategory: 'utility',
+      devId: 'dev_first_party',
+      buildId: 'build_test_1_0_0',
+      visibility: 'public',
+      releaseStatus: 'public',
     }),
   ).toBe(true);
 });
@@ -37,6 +42,11 @@ test('core-tier commands may not declare an RBAC requirement', () => {
   const violations = validateTierRules({
     name: 'guild-settings',
     tier: 'core',
+    hardcoded: false,
+    devId: 'dev_first_party',
+    buildId: 'build_test_1_0_0',
+    visibility: 'public',
+    releaseStatus: 'public',
     commands: [{ name: 'set-prefix', rbacRequirement: 'ADMIN' }],
   });
   expect(violations.some((v) => v.rule === 'core.noRbac')).toBe(true);
@@ -47,6 +57,11 @@ test('core-tier commands with no RBAC requirement are fine', () => {
     isTierValid({
       name: 'guild-settings',
       tier: 'core',
+      hardcoded: false,
+      devId: 'dev_first_party',
+      buildId: 'build_test_1_0_0',
+      visibility: 'public',
+      releaseStatus: 'public',
       commands: [{ name: 'set-prefix', rbacRequirement: null }],
     }),
   ).toBe(true);
@@ -59,7 +74,7 @@ test('only admin-tier modules may set devGuildOnly', () => {
 
 test('a manifest can accumulate multiple simultaneous violations', () => {
   const violations = validateTierRules({ name: 'broken', tier: 'admin', devGuildOnly: false });
-  expect(violations.length >= 1).toBeTruthy();
+  expect(violations.length).toBeGreaterThanOrEqual(1);
 });
 
 test('defaultEnabledForTier enables everything except Marketplace', () => {

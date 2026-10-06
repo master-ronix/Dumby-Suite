@@ -1,8 +1,3 @@
-/**
- * Priority 90: AnalyticsMiddleware (Cluster: Ring).
- * Records invocation start for MTP (Metric Track Protocol) metering.
- * Never aborts.
- */
 import type { Middleware, MiddlewareContext, NextFn } from '../base-middleware.js';
 import type { Logger } from '../../logging/logger.js';
 

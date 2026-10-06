@@ -1,9 +1,3 @@
-/**
- * End-to-end test (Cluster: Clay). Exercises a full request path
- * through a live server: PowerEngineDispatcher validation, the guarded
- * handler's side effect, and — the part a unit test can't see — the
- * resulting audit_logs row landing in real Postgres. Targets docker-compose.yml.
- */
 import knexFactory from 'knex';
 import knexConfig from '../src/db/knexfile.js';
 
@@ -11,6 +5,14 @@ const API_PORT = process.env.API_PORT ?? '8080';
 const BASE = `http://localhost:${API_PORT}`;
 const TEST_GUILD_ID = process.env.DEVELOPMENT_GUILD_ID ?? '900000000000000001';
 const OWNER_ID = (process.env.BOT_OWNER_IDS ?? '100000000000000001').split(',')[0];
+const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY ?? '';
+
+function adminHeaders(): Record<string, string> {
+  return {
+    'Content-Type': 'application/json',
+    'x-internal-api-key': INTERNAL_API_KEY,
+  };
+}
 
 async function main(): Promise<void> {
   const knex = knexFactory(knexConfig.test ?? knexConfig.development);
@@ -18,8 +20,8 @@ async function main(): Promise<void> {
   console.log('1. Suspend the dev guild with a valid actor/source/reason...');
   const suspendRes = await fetch(`${BASE}/admin/power-engine/guild/${TEST_GUILD_ID}/suspend`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ actorId: OWNER_ID, source: 'dashboard', reason: 'e2e-test suspend' }),
+    headers: adminHeaders(),
+    body: JSON.stringify({ actorId: OWNER_ID, reason: 'e2e-test suspend' }),
   });
   if (suspendRes.status !== 200) throw new Error(`expected 200, got ${suspendRes.status}`);
 
@@ -35,8 +37,8 @@ async function main(): Promise<void> {
   console.log('3. Attempt the same action with an empty reason — must be rejected...');
   const rejectedRes = await fetch(`${BASE}/admin/power-engine/guild/${TEST_GUILD_ID}/restore`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ actorId: OWNER_ID, source: 'dashboard', reason: '' }),
+    headers: adminHeaders(),
+    body: JSON.stringify({ actorId: OWNER_ID, reason: '' }),
   });
   if (rejectedRes.status !== 403)
     throw new Error(`expected 403 for empty reason, got ${rejectedRes.status}`);
@@ -55,8 +57,8 @@ async function main(): Promise<void> {
   console.log('5. Restore the guild properly so the stack is left in a clean state...');
   const restoreRes = await fetch(`${BASE}/admin/power-engine/guild/${TEST_GUILD_ID}/restore`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ actorId: OWNER_ID, source: 'dashboard', reason: 'e2e-test cleanup' }),
+    headers: adminHeaders(),
+    body: JSON.stringify({ actorId: OWNER_ID, reason: 'e2e-test cleanup' }),
   });
   if (restoreRes.status !== 200)
     throw new Error(`expected 200 on cleanup restore, got ${restoreRes.status}`);

@@ -4,6 +4,11 @@ export interface RetryOptions {
   maxDelayMs?: number;
   jitterFactor?: number;
   retryOn?: (error: unknown) => boolean;
+  /**
+   * §28 — a server-supplied delay (e.g. `Retry-After` on a 429). When it returns a number that
+   * delay is used — still jittered — instead of the exponential backoff.
+   */
+  retryAfterMs?: (error: unknown) => number | undefined;
 }
 
 export async function withRetry<T>(fn: () => Promise<T>, options: RetryOptions = {}): Promise<T> {
@@ -13,6 +18,7 @@ export async function withRetry<T>(fn: () => Promise<T>, options: RetryOptions =
     maxDelayMs = 30_000,
     jitterFactor = 0.2,
     retryOn = () => true,
+    retryAfterMs,
   } = options;
 
   let lastError: unknown;
@@ -23,7 +29,11 @@ export async function withRetry<T>(fn: () => Promise<T>, options: RetryOptions =
       lastError = err;
       if (attempt === maxAttempts || !retryOn(err)) throw err;
 
-      const base = Math.min(baseDelayMs * 2 ** (attempt - 1), maxDelayMs);
+      const hinted = retryAfterMs?.(err);
+      const base =
+        hinted !== undefined
+          ? Math.min(hinted, maxDelayMs)
+          : Math.min(baseDelayMs * 2 ** (attempt - 1), maxDelayMs);
       const jitter = base * jitterFactor * (Math.random() * 2 - 1);
       await new Promise((r) => setTimeout(r, Math.max(0, base + jitter)));
     }

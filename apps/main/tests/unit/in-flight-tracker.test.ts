@@ -16,10 +16,10 @@ test('waitForDrain resolves as soon as the last in-flight request decrements to 
   tracker.increment();
   expect(tracker.getCount()).toBe(2);
 
-  const drainPromise = tracker.waitForDrain(5000, () => new Promise(() => {})); // sleep never resolves on its own
+  const drainPromise = tracker.waitForDrain(5000, () => new Promise(() => {}));
   tracker.decrement();
   tracker.decrement();
-  await drainPromise; // must resolve via the decrement path, not the (never-resolving) sleep
+  await drainPromise;
   expect(tracker.getCount()).toBe(0);
 });
 

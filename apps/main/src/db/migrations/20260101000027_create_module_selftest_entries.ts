@@ -1,12 +1,5 @@
 import type { Knex } from 'knex';
 
-/**
- * Shared aggregation table for module self-test runs (spec: "supporting
- * table ... per module or equivalent" — implemented as one shared table
- * keyed by moduleSlug rather than 22 near-identical tables). Each of the
- * 22 module skeletons ALSO owns its own dedicated table per the
- * per-module migration requirement; see src/modules/<name>/migrations.
- */
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable('module_selftest_entries', (table) => {
     table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));

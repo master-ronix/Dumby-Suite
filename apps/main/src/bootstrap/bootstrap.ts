@@ -1,23 +1,47 @@
 import 'dotenv/config';
+import { existsSync } from 'node:fs';
 import { Container } from '../di/container.js';
 import { CORE_TOKENS } from '../di/tokens.js';
 import { parseEnv, pickEnvKeys, ConfigValidationError } from '../config/env.schema.js';
+import { ConfigurationError } from '../errors/taxonomy.js';
 import { ConfigService } from '../config/config.service.js';
+import { HttpCredentialClient } from '../credentials/credential-client.js';
 import { createLogger, type Logger } from '../logging/logger.js';
+import { I18nManager } from '../i18n/i18n-manager.js';
 import { MetricsRegistry } from '../metrics/registry.js';
+import { initTracing } from '../tracing/tracing.js';
 import { DbClient } from '../db/client.js';
+import { ensureMonthlyPartitions, dropExpiredPartitions } from '../db/audit-partition-manager.js';
 import { InternalEventBus } from '../events/event-bus.js';
+import { EventRouter } from '../events/event-router.js';
+import { EventLoopLagMonitor } from '../events/event-loop-lag.js';
+import { ShardOwnershipManager, parseShardRange } from '../discord/shard-ownership.js';
+import { hostname } from 'node:os';
+import { Scheduler } from '../queue/scheduler.js';
 import { CacheManager } from '../cache/cache-manager.js';
 import { RedisLockStore } from '../cache/redis-lock-store.js';
 import { QueueManager } from '../queue/queue-manager.js';
 import { ModuleRegistry } from '../module-system/registry.js';
+import { loadPolicyLockfile } from '../module-system/policy-lockfile.js';
 import { ModuleLoader } from '../module-system/loader.js';
 import { defaultEnabledForTier } from '../module-system/tier-rules.js';
 import { PermissionResolver } from '../permissions/resolver.js';
+import { AdminEvalGate } from '../permissions/admin-eval-gate.js';
+import { PostgresGuildSuspensionStore } from '../governance/guild-suspension.js';
+import { createPowerEngineCatalog } from '../http/power-engine-catalog.js';
+import { DiscordOAuth2Client } from '../http/oauth/oauth2-client.js';
+import { MtpTokenCalculator } from '../analytics/mtp-token-calculator.js';
 import { BootstrapProgress } from './stages.js';
 import { buildApiServer, buildHealthServer, buildMetricsServer } from '../http/server.js';
+import { MdisService } from '../mdis/mdis.service.js';
+import { PostgresModuleInstallStore } from '../mdis/mdis.repository.js';
+import { OperationalService } from '../operational/operational.service.js';
 import { PowerEngineDispatcher } from '../http/power-engine-dispatcher.js';
 import { loadModulesFromTierVolumes } from '../module-system/swastik-loader.js';
+import { PostgresBuildStore } from '../db/repositories/build.repository.js';
+import { PostgresGrantWriter } from '../db/repositories/rbac-grant.repository.js';
+import { BuildSignatureVerifier } from '../module-system/build-signing.js';
+import { createPublicKey } from 'node:crypto';
 import { InFlightTracker } from '../shutdown/in-flight-tracker.js';
 import {
   registerShutdownSignalHandlers,
@@ -39,7 +63,7 @@ import { TraceMiddleware } from '../middleware/built-in/trace.js';
 import { AnalyticsMiddleware } from '../middleware/built-in/analytics.js';
 import {
   MaintenanceModeMiddleware,
-  InMemoryMaintenanceModeState,
+  RedisMaintenanceModeState,
 } from '../middleware/built-in/maintenance-mode.js';
 import { AdminTierGateMiddleware } from '../middleware/built-in/admin-tier-gate.js';
 import { AuthMiddleware } from '../middleware/built-in/auth.js';
@@ -52,6 +76,7 @@ import { RBACMiddleware } from '../middleware/built-in/rbac.js';
 import { DeferMiddleware } from '../middleware/built-in/defer.js';
 import { SlidingWindowRateLimiter } from '../ratelimit/sliding-window.js';
 import { GuildConfigService } from '../config/guild-config.service.js';
+import { PostgresGuildConfigStore } from '../db/repositories/guild-config.repository.js';
 import { Events, REST, type Client } from 'discord.js';
 import {
   buildDiscordClient,
@@ -61,24 +86,176 @@ import {
 import { LiveGatewayAdapter } from '../discord/gateway.live-adapter.js';
 import { CommandDeployer } from '../commands/command-deployer.js';
 import { CoreRenderer } from '../rendering/core-renderer.js';
-import { InteractionRegistry } from '../interactions/interaction-registry.js';
+import {
+  InteractionRegistry,
+  RedisIdempotencyStore,
+} from '../interactions/interaction-registry.js';
+
+/** The resolver's `Rank` is the long form; the RBAC middleware's ladder is the short form. */
+const RANK_TO_RBAC: Record<string, 'RESTRICTED' | 'MEMBER' | 'HELPER' | 'MOD' | 'ADMIN' | 'OWNER'> =
+  {
+    RESTRICTED: 'RESTRICTED',
+    MEMBER: 'MEMBER',
+    HELPER: 'HELPER',
+    MODERATOR: 'MOD',
+    ADMINISTRATOR: 'ADMIN',
+    OWNER: 'OWNER',
+  };
+
+export type RuntimeRole = 'main' | 'worker';
 
 /**
- * The 18-stage bootstrap sequence (Cluster: Grace). Each numbered comment
- * below is one stage; `progress.advanceTo(...)` is what the three health
- * probes read (src/bootstrap/stages.ts — already unit tested).
+ * §8.4 — the Worker-Only Bootstrap Path. A worker runs the infrastructure stages, then module
+ * discovery and job-processor registration, and skips the gateway login, the client-ready stage,
+ * and the API/health/metrics servers entirely. A worker never opens a gateway connection and never
+ * serves HTTP; the role assertion keeps the two paths from silently converging.
  */
-export async function bootstrap(): Promise<void> {
+export async function bootstrapWorker(): Promise<void> {
+  const progress = new BootstrapProgress();
+  progress.advanceTo('PROCESS_SETUP');
+  process.title = 'dumby-worker';
+
+  const env = parseEnv(pickEnvKeys(process.env));
+  if (env.ROLE !== 'worker') {
+    throw new ConfigurationError(`bootstrapWorker() requires ROLE=worker (got "${env.ROLE}")`);
+  }
+  progress.advanceTo('CONFIG_LOAD');
+  const config = new ConfigService(env);
+  const container = new Container();
+  container.registerValue(CORE_TOKENS.Config, config);
+
+  progress.advanceTo('OBSERVABILITY_INIT');
+  const securityHooks: { onTokenLeak?: (d: { where: string }) => void } = {};
+  const logger = createLogger(config.get('LOG_LEVEL'), (d) => securityHooks.onTokenLeak?.(d));
+  const metrics = new MetricsRegistry();
+  container.registerValue(CORE_TOKENS.Logger, logger);
+  container.registerValue(CORE_TOKENS.Metrics, metrics);
+
+  progress.advanceTo('DATABASE_CONNECT');
+  const db = new DbClient({
+    connectionString: config.get('DATABASE_URL'),
+    poolMax: config.get('DATABASE_POOL_MAX'),
+    statementTimeoutMs: config.get('DATABASE_STATEMENT_TIMEOUT_MS'),
+    slowQueryThresholdMs: config.get('SLOW_QUERY_THRESHOLD_MS'),
+    criticalQueryThresholdMs: config.get('CRITICAL_QUERY_THRESHOLD_MS'),
+    replicaUrls: config.get('DATABASE_REPLICA_URLS'),
+    replicaMaxLagMs: config.get('DATABASE_REPLICA_MAX_LAG_MS'),
+    migrationsDir: config.get('KNEX_MIGRATIONS_DIR'),
+    migrationsExtension: config.get('KNEX_MIGRATIONS_EXT'),
+    logger,
+  });
+  container.registerValue(CORE_TOKENS.Db, db);
+
+  progress.advanceTo('CACHE_CONNECT');
+  const redis = new Redis(config.get('REDIS_URL'));
+  const lockStore = new RedisLockStore(redis);
+  const scheduler = new Scheduler({ logger, lockStore });
+  scheduler.register({
+    name: 'audit-partition-maintenance',
+    cron: '0 3 1 * *',
+    execute: async () => {
+      await ensureMonthlyPartitions(db.knex);
+      await dropExpiredPartitions(db.knex);
+    },
+  });
+  const cache = new CacheManager({
+    redis,
+    lockStore,
+    logger,
+    l1MaxEntries: config.get('CACHE_L1_MAX_ENTRIES'),
+    l1MaxBytes: config.get('CACHE_L1_MAX_BYTES'),
+  });
+  container.registerValue(CORE_TOKENS.Cache, cache);
+  await cache.startInvalidationSubscription();
+
+  progress.advanceTo('QUEUE_INIT');
+  const queueRedis = new Redis(config.get('QUEUE_REDIS_URL'));
+  const queue = new QueueManager({
+    connection: queueRedis,
+    logger,
+    defaultConcurrency: config.get('QUEUE_CONCURRENCY_DEFAULT'),
+  });
+  container.registerValue(CORE_TOKENS.Queue, queue);
+
+  progress.advanceTo('DI_BOOTSTRAP');
+  const eventBus = new InternalEventBus({ maxEmitDepth: config.get('EVENT_BUS_MAX_EMIT_DEPTH') });
+  const i18n = new I18nManager();
+  container.registerValue(CORE_TOKENS.I18n, i18n);
+  securityHooks.onTokenLeak = (detail) => {
+    logger.fatal('security-token-leak-detected', { ...detail });
+    void eventBus.emit('dumby.security.token-leak', detail);
+  };
+  container.registerValue(CORE_TOKENS.EventBus, eventBus);
+  container.freeze();
+  const moduleContainer = container.createChild();
+
+  progress.advanceTo('MODULE_DISCOVER');
+  const moduleRegistry = new ModuleRegistry();
+  const buildStore = new PostgresBuildStore(db.knex);
+  const verifier = new BuildSignatureVerifier();
+  const buildSigningKeyId = config.get('BUILD_SIGNING_KEY_ID');
+  const buildSigningPrivateKey = config.get('BUILD_SIGNING_PRIVATE_KEY');
+  let provenanceGuardArmed = buildSigningKeyId !== '' && buildSigningPrivateKey !== '';
+  if (provenanceGuardArmed) {
+    try {
+      verifier.registerKey(buildSigningKeyId, createPublicKey(buildSigningPrivateKey));
+    } catch (err) {
+      provenanceGuardArmed = false;
+      logger.warn('build-signing-key-invalid', { error: String(err) });
+    }
+  }
+  await loadModulesFromTierVolumes({
+    modulesDir: config.get('MODULES_DIR'),
+    registry: moduleRegistry,
+    logger,
+    ...(provenanceGuardArmed ? { buildStore, verifier } : {}),
+  });
+
+  progress.advanceTo('MODULE_VALIDATE');
+  const policyPath = config.get('SECURITY_POLICY_LOCKFILE');
+  const securityPolicy = existsSync(policyPath) ? loadPolicyLockfile(policyPath) : undefined;
+  const moduleLoader = new ModuleLoader(moduleRegistry, moduleContainer, logger, securityPolicy);
+  moduleLoader.validateAll();
+
+  progress.advanceTo('MODULE_LOAD');
+  const loadReport = await moduleLoader.loadAll();
+  scheduler.start();
+
+  progress.advanceTo('MODULE_READY');
+  const readyReport = await moduleLoader.readyAll(loadReport.order);
+  progress.setRequiredModulesHealthy(readyReport.requiredFailed.length === 0);
+
+  progress.advanceTo('STARTUP_COMPLETE');
+  await eventBus.emit('dumby.system.ready', { role: 'worker' });
+  logger.info('worker-bootstrap-complete', { modules: loadReport.order.length });
+}
+
+export interface BootstrapOverrides {
+  /** Inject a Redis instance (cache/queue/locks/pub-sub) — used by the flow suite. */
+  readonly redis?: Redis;
+  readonly queueRedis?: Redis;
+}
+
+/** The live wiring a booted process exposes, so a flow test can assert and drive shutdown. */
+export interface BootstrapHandle {
+  readonly container: Container;
+  readonly moduleRegistry: ModuleRegistry;
+  readonly commandRegistry: CommandRegistry;
+  readonly commandRouter: CommandRouter;
+  readonly renderer: CoreRenderer;
+  readonly eventBus: InternalEventBus;
+  readonly interactionRegistry: InteractionRegistry;
+  readonly apiServer: ReturnType<typeof buildApiServer>;
+  readonly moduleOrder: readonly string[];
+  readonly shutdown: (signal?: string) => Promise<void>;
+}
+
+export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<BootstrapHandle> {
   const progress = new BootstrapProgress();
   const container = new Container();
 
-  // Stage 01: PROCESS_SETUP
   progress.advanceTo('PROCESS_SETUP');
   process.title = 'dumby-headless-backend';
-  // Fatal handlers (UR-C-18): structured fatal log with correlation ID, then
-  // `system.fatal-error` notification and a graceful shutdown bounded to 15s,
-  // then exit 1. The logger/shutdown/notifiers are upgraded in place once the
-  // later stages construct them.
   const fatalHooks: {
     logger: Logger;
     shutdown?: () => Promise<void>;
@@ -87,7 +264,6 @@ export async function bootstrap(): Promise<void> {
   const uninstallFatalHandlers = installFatalHandlers(fatalHooks);
   void uninstallFatalHandlers;
 
-  // Stage 02: CONFIG_LOAD
   progress.advanceTo('CONFIG_LOAD');
   let env;
   try {
@@ -99,26 +275,43 @@ export async function bootstrap(): Promise<void> {
     }
     throw err;
   }
+  // §8.4 — the full bootstrap refuses to start in the worker role, so the two paths cannot
+  // silently converge (a worker must use bootstrapWorker()).
+  if (env.ROLE === 'worker') {
+    fatalHooks.logger.fatal('bootstrap-refuses-worker-role', {});
+    process.exit(1);
+  }
   const config = new ConfigService(env);
   container.registerValue(CORE_TOKENS.Config, config);
 
-  // Stage 03: HEALTH_SERVER_INIT — must be listening before Stage 04 so
-  // liveness can start returning 200 as soon as Stage 04 completes.
   progress.advanceTo('HEALTH_SERVER_INIT');
   const healthServer = buildHealthServer(progress);
-  await healthServer.listen({ port: config.get('HEALTH_PORT'), host: '0.0.0.0' });
+  await healthServer.listen({
+    port: config.get('HEALTH_PORT'),
+    host: config.get('HEALTH_BIND_HOST'),
+  });
 
-  // Stage 04: OBSERVABILITY_INIT
   progress.advanceTo('OBSERVABILITY_INIT');
-  const logger = createLogger(config.get('LOG_LEVEL'));
+  const securityHooks: { onTokenLeak?: (d: { where: string }) => void } = {};
+  const logger = createLogger(config.get('LOG_LEVEL'), (d) => securityHooks.onTokenLeak?.(d));
   fatalHooks.logger = logger;
   const metrics = new MetricsRegistry();
   container.registerValue(CORE_TOKENS.Logger, logger);
   container.registerValue(CORE_TOKENS.Metrics, metrics);
+  // §5.10 — OpenTelemetry tracing. `initTracing` no-ops unless TELEMETRY_ENABLED, so this is
+  // inert by default; before this it was never called and the tracing SDK never started.
+  initTracing({
+    enabled: config.get('TELEMETRY_ENABLED'),
+    sampleRate: config.get('TRACE_SAMPLE_RATE'),
+    exporterEndpoint: config.get('OTEL_EXPORTER_OTLP_ENDPOINT'),
+    serviceName: 'dumby-main',
+  });
   const metricsServer = buildMetricsServer(metrics);
-  await metricsServer.listen({ port: config.get('METRICS_PORT'), host: '0.0.0.0' });
+  await metricsServer.listen({
+    port: config.get('METRICS_PORT'),
+    host: config.get('METRICS_BIND_HOST'),
+  });
 
-  // Stage 05: DATABASE_CONNECT
   progress.advanceTo('DATABASE_CONNECT');
   const db = new DbClient({
     connectionString: config.get('DATABASE_URL'),
@@ -126,18 +319,35 @@ export async function bootstrap(): Promise<void> {
     statementTimeoutMs: config.get('DATABASE_STATEMENT_TIMEOUT_MS'),
     slowQueryThresholdMs: config.get('SLOW_QUERY_THRESHOLD_MS'),
     criticalQueryThresholdMs: config.get('CRITICAL_QUERY_THRESHOLD_MS'),
+    // §24 — read-replica routing: reads go to a replica within DATABASE_REPLICA_MAX_LAG_MS, else
+    // to the primary. Both keys were previously declared and read by no code.
+    replicaUrls: config.get('DATABASE_REPLICA_URLS'),
+    replicaMaxLagMs: config.get('DATABASE_REPLICA_MAX_LAG_MS'),
+    migrationsDir: config.get('KNEX_MIGRATIONS_DIR'),
+    migrationsExtension: config.get('KNEX_MIGRATIONS_EXT'),
     logger,
   });
   container.registerValue(CORE_TOKENS.Db, db);
 
-  // Stage 06: MIGRATION_RUN
   progress.advanceTo('MIGRATION_RUN');
   await db.knex.migrate.latest();
+  // §24.2.1 — ensure the current and next month's audit partitions exist after migrating.
+  await ensureMonthlyPartitions(db.knex);
 
-  // Stage 07: CACHE_CONNECT
   progress.advanceTo('CACHE_CONNECT');
-  const redis = new Redis(config.get('REDIS_URL'));
+  const redis = overrides.redis ?? new Redis(config.get('REDIS_URL'));
   const lockStore = new RedisLockStore(redis);
+  // §29.6 — the cron scheduler: module-declared tasks, lock-guarded so one shard runs each tick.
+  const scheduler = new Scheduler({ logger, lockStore });
+  // §24.2.1 — the monthly audit-partition lifecycle (create next month's, drop expired by drop-only).
+  scheduler.register({
+    name: 'audit-partition-maintenance',
+    cron: '0 3 1 * *',
+    execute: async () => {
+      await ensureMonthlyPartitions(db.knex);
+      await dropExpiredPartitions(db.knex);
+    },
+  });
   const cache = new CacheManager({
     redis,
     lockStore,
@@ -146,10 +356,11 @@ export async function bootstrap(): Promise<void> {
     l1MaxBytes: config.get('CACHE_L1_MAX_BYTES'),
   });
   container.registerValue(CORE_TOKENS.Cache, cache);
+  // §25 — subscribe to the cross-process L1 invalidation broadcast.
+  await cache.startInvalidationSubscription();
 
-  // Stage 08: QUEUE_INIT
   progress.advanceTo('QUEUE_INIT');
-  const queueRedis = new Redis(config.get('QUEUE_REDIS_URL'));
+  const queueRedis = overrides.queueRedis ?? new Redis(config.get('QUEUE_REDIS_URL'));
   const queue = new QueueManager({
     connection: queueRedis,
     logger,
@@ -157,24 +368,40 @@ export async function bootstrap(): Promise<void> {
   });
   container.registerValue(CORE_TOKENS.Queue, queue);
 
-  // Stage 09: DI_BOOTSTRAP — register remaining core services, then freeze.
   progress.advanceTo('DI_BOOTSTRAP');
   const eventBus = new InternalEventBus({ maxEmitDepth: config.get('EVENT_BUS_MAX_EMIT_DEPTH') });
+  // §30 — the i18n manager is a core service (guild -> user -> en-US resolution).
+  const i18n = new I18nManager();
+  container.registerValue(CORE_TOKENS.I18n, i18n);
+  // §32.8 — the token-leak owner alert travels the event bus (a fatal log + a security event).
+  securityHooks.onTokenLeak = (detail) => {
+    logger.fatal('security-token-leak-detected', { ...detail });
+    void eventBus.emit('dumby.security.token-leak', detail);
+  };
+  // §15.1 — the gateway event router: module-declared handlers, dispatched from the client.
+  // §16 (UR-C-19) — sample event-loop lag so the router can shed sheddable events under pressure.
+  const eventLoopLagMonitor = new EventLoopLagMonitor({
+    thresholdMs: config.get('EVENT_LOOP_LAG_SHED_THRESHOLD_MS'),
+  });
+  eventLoopLagMonitor.start();
+  const eventRouter = new EventRouter({ logger, cache, lagMonitor: eventLoopLagMonitor, metrics });
   fatalHooks.notify = (correlationId, error) => {
     try {
       void eventBus.emit('dumby.system.fatal', {
         correlationId,
         error: error instanceof Error ? error.message : String(error),
       });
-    } catch {
-      // The fatal path must never throw while reporting its own fatal.
-    }
+    } catch {}
   };
   const moduleRegistry = new ModuleRegistry();
   const permissionResolver = new PermissionResolver();
   const commandRegistry = new CommandRegistry();
   const renderer = new CoreRenderer();
   const interactionRegistry = new InteractionRegistry({
+    // Appendix C #19 — shared idempotency, so a double-click is deduped across pods.
+    idempotency: new RedisIdempotencyStore(redis),
+    // Appendix C #20 — component handlers get a read-only interaction (no Renderer bypass).
+    renderer,
     acknowledge: async (component) => {
       if (typeof component.deferUpdate === 'function') {
         await component.deferUpdate();
@@ -186,9 +413,6 @@ export async function bootstrap(): Promise<void> {
     },
   });
 
-  // Command middleware sources resolve lazily against the registry, which is
-  // populated only during Stage 12 (MODULE_LOAD). Everything here runs once
-  // per dispatch, not at bootstrap time.
   const isAdminTierCommand = (name: string) => {
     const def = commandRegistry.get(name);
     return def !== undefined && commandRegistry.getModuleTier(def.moduleId) === 'admin';
@@ -198,17 +422,20 @@ export async function bootstrap(): Promise<void> {
     return def !== undefined && commandRegistry.getModuleTier(def.moduleId) === 'core';
   };
 
-  // Persona (Twixter) wiring (§18.5.1): the binding service is constructed at
-  // bootstrap alongside the personal stores and registered in DI so it is never
-  // zero-caller. Persona identities load per persona process against PERSONA_ID.
   const personaBindingService = new PersonaCommandBindingService(
     new PostgresPersonaIdentityStore(db.knex),
     new PostgresPersonaBindingStore(db.knex),
     logger,
   );
 
-  const guildConfigService = new GuildConfigService(db, cache, logger);
-  const maintenanceMode = new InMemoryMaintenanceModeState();
+  const guildConfigService = new GuildConfigService(
+    new PostgresGuildConfigStore(db.knex),
+    cache,
+    logger,
+  );
+  const maintenanceMode = new RedisMaintenanceModeState(redis, logger);
+  // Appendix C #19 — the shared maintenance state (no split brain across pods).
+  await maintenanceMode.start();
 
   const commandMiddleware = new MiddlewarePipeline()
     .add(new TraceMiddleware())
@@ -256,26 +483,47 @@ export async function bootstrap(): Promise<void> {
     )
     .add(
       new PermissionMiddleware({
-        getMemberPermissions: async () => [],
-        getRequiredPermissions: () => [],
+        // Finding #3: live sources — the member's permissions from Discord, the requirement from
+        // the command's declared Discord permissions.
+        getMemberPermissions: async (userId, guildId) => {
+          const guild = discordClient?.guilds.cache.get(guildId);
+          if (guild === undefined) return [];
+          const member = await guild.members.fetch(userId).catch(() => null);
+          return member === null ? [] : [...member.permissions.toArray()];
+        },
+        getRequiredPermissions: (commandName) =>
+          commandRegistry.get(commandName)?.permissions?.discord ?? [],
       }),
     )
     .add(
       new RBACMiddleware({
-        getHighestRole: async () => null,
-        getRequiredRole: () => null,
+        // Layer 6 (rank function): evaluated from live Discord state, never written.
+        getHighestRole: async (userId, guildId) => {
+          const guild = discordClient?.guilds.cache.get(guildId);
+          if (guild === undefined) return null;
+          if (guild.ownerId === userId) return 'OWNER';
+          const member = await guild.members.fetch(userId).catch(() => null);
+          if (member === null) return null;
+          if (member.permissions.has('Administrator')) return 'ADMIN';
+          if (member.permissions.has('ManageGuild')) return 'MOD';
+          return 'MEMBER';
+        },
+        getRequiredRole: (commandName) => {
+          const rank = commandRegistry.get(commandName)?.permissions?.rbac;
+          return rank === undefined ? null : (RANK_TO_RBAC[rank] ?? null);
+        },
         isCoreTierCommand,
       }),
     )
     .add(
       new CooldownMiddleware(new InMemoryCooldownStore(), {
-        getCooldownMs: () => 0,
+        getCooldownMs: (commandName) => commandRegistry.get(commandName)?.cooldownMs ?? 0,
       }),
     )
     .add(
       new DeferMiddleware({
-        requiresDefer: () => false,
-        isEphemeral: () => false,
+        requiresDefer: (commandName) => commandRegistry.get(commandName)?.requiresDefer ?? false,
+        isEphemeral: (commandName) => commandRegistry.get(commandName)?.ephemeral ?? false,
       }),
     )
     .add(new AnalyticsMiddleware(logger));
@@ -286,9 +534,6 @@ export async function bootstrap(): Promise<void> {
       .whereNull('deletedAt')
       .first<{ enabled: boolean; state: string }>();
 
-    // No row yet → tier default (change-log v4.1.0). Standard+ is active by
-    // default; the first interaction backfills a row so the admin surface
-    // sees a concrete state instead of an implicit gap.
     if (row === undefined) {
       const tier = moduleRegistry.get(moduleId)?.manifest.tier ?? 'marketplace';
       const enabled = defaultEnabledForTier(tier);
@@ -302,10 +547,11 @@ export async function bootstrap(): Promise<void> {
       return enabled;
     }
 
-    // An explicit row is authoritative: enabled + active means on; anything
-    // else (explicit disable, interrupted install, degraded) means off.
     return row.enabled === true && row.state === 'active';
   };
+  // §22.2 / Table 22-A — one store, shared by the dispatch path (enforcement) and the Power
+  // Engine catalog (the control action that writes it).
+  const guildSuspensions = new PostgresGuildSuspensionStore(db.knex);
   const commandRouter = new CommandRouter(commandRegistry, logger, {
     devGuildId: config.get('DEV_GUILD_ID'),
     isModuleEnabledInGuild,
@@ -313,13 +559,50 @@ export async function bootstrap(): Promise<void> {
     botOwnerIds: config.get('BOT_OWNER_IDS'),
     middlewarePipeline: commandMiddleware,
     renderer,
+    grantStore: new PostgresGrantWriter(db.knex),
+    // §22.2 / Table 22-A — the Power Engine `suspendGuild` state the dispatch path must consult.
+    guildSuspensions,
     resolveCommandOwner: (guildId, moduleSlug) =>
       personaBindingService.resolveCommandOwner(guildId, moduleSlug),
     ...(config.get('PERSONA_ID') !== '' ? { residentPersonaId: config.get('PERSONA_ID') } : {}),
   });
   container.registerValue(CORE_TOKENS.EventBus, eventBus);
+  container.registerValue(CORE_TOKENS.EventRouter, eventRouter);
+  container.registerValue(CORE_TOKENS.Scheduler, scheduler);
   container.registerValue(CORE_TOKENS.ModuleRegistry, moduleRegistry);
   container.registerValue(CORE_TOKENS.PermissionResolver, permissionResolver);
+  // §11 Layer 4 — the framework-provided gate for a deployment's most consequential Admin-tier
+  // capability (arbitrary code evaluation being the illustrative worst case). It needs the enable
+  // flag *and* a non-production environment; the framework ships the gate, not the capability.
+  const adminEvalGate = new AdminEvalGate(
+    config.get('CORE_ADMIN_EVAL_ENABLED'),
+    config.get('NODE_ENV'),
+  );
+  container.registerValue(CORE_TOKENS.AdminEvalGate, adminEvalGate);
+  const adminEvalGateState = adminEvalGate.check();
+  logger.info('admin-eval-gate-state', {
+    allowed: adminEvalGateState.allowed,
+    reason: adminEvalGateState.reason,
+  });
+  // §19.7 — the dashboard's Discord OAuth2 client. Both OAUTH_CLIENT_ID and OAUTH_REDIRECT_URI
+  // were previously declared and read by no code; the client is inert until they are configured.
+  const oauth2Client = new DiscordOAuth2Client({
+    config: {
+      clientId: config.get('OAUTH_CLIENT_ID'),
+      clientSecret: config.get('OAUTH_CLIENT_SECRET'),
+      redirectUri: config.get('OAUTH_REDIRECT_URI'),
+    },
+    logger,
+  });
+  container.registerValue(CORE_TOKENS.OAuth2, oauth2Client);
+  logger.info('oauth2-client-state', { configured: oauth2Client.isConfigured() });
+  // §28.5 — the MTP artificial-token cost model. Both MTP_*_TOKEN_THRESHOLD_BYTES keys were
+  // previously declared and read by no code; they are the memory/bandwidth charge thresholds.
+  const mtpTokens = new MtpTokenCalculator({
+    memoryThresholdBytes: config.get('MTP_MEMORY_TOKEN_THRESHOLD_BYTES'),
+    bandwidthThresholdBytes: config.get('MTP_BANDWIDTH_TOKEN_THRESHOLD_BYTES'),
+  });
+  container.registerValue(CORE_TOKENS.MtpTokens, mtpTokens);
   container.registerValue(CORE_TOKENS.CommandRegistry, commandRegistry);
   container.registerValue(CORE_TOKENS.CommandRouter, commandRouter);
   container.registerValue(CORE_TOKENS.Renderer, renderer);
@@ -327,19 +610,35 @@ export async function bootstrap(): Promise<void> {
   container.registerValue(CORE_TOKENS.Personas, personaBindingService);
   container.freeze();
 
-  // Modules load against a child of the frozen root container: they can
-  // resolve any CORE_TOKENS service through the parent chain, and freely
-  // register their own module.<name>.* tokens (di-container.test.ts:
-  // "freezing a parent does not freeze children") without ever being able
-  // to overwrite a CORE_TOKENS entry on the frozen root itself.
   const moduleContainer = container.createChild();
 
-  // Stage 10: MODULE_DISCOVER
   progress.advanceTo('MODULE_DISCOVER');
+  // §15.8/§15.9 (finding #23): arm the loader's load-time provenance guard. It verifies against a
+  // signing key, so it is armed exactly when one is configured; without a key the loader keeps its
+  // pre-6b behaviour (warn once, import unverified) rather than quarantining every module.
+  const buildStore = new PostgresBuildStore(db.knex);
+  const verifier = new BuildSignatureVerifier();
+  const buildSigningKeyId = config.get('BUILD_SIGNING_KEY_ID');
+  const buildSigningPrivateKey = config.get('BUILD_SIGNING_PRIVATE_KEY');
+  let provenanceGuardArmed = buildSigningKeyId !== '' && buildSigningPrivateKey !== '';
+  if (provenanceGuardArmed) {
+    try {
+      verifier.registerKey(buildSigningKeyId, createPublicKey(buildSigningPrivateKey));
+    } catch (err) {
+      provenanceGuardArmed = false;
+      logger.warn('build-signing-key-invalid', { error: String(err) });
+    }
+  }
   const discoveredModules = await loadModulesFromTierVolumes({
     modulesDir: config.get('MODULES_DIR'),
     registry: moduleRegistry,
     logger,
+    ...(provenanceGuardArmed ? { buildStore, verifier } : {}),
+    // UR-C-07: the operator-configured quarantine directory for a module that fails verification
+    // (the loader falls back to `<modulesDir>/quarantine` when it is unset).
+    ...(config.get('SWASTIK_QUARANTINE_PATH') !== ''
+      ? { quarantineDir: config.get('SWASTIK_QUARANTINE_PATH') }
+      : {}),
   });
   logger.info('module-discovery-complete', {
     source: 'tier-volumes',
@@ -347,36 +646,52 @@ export async function bootstrap(): Promise<void> {
     modules: discoveredModules.loaded,
   });
 
-  // Stage 11: MODULE_VALIDATE
   progress.advanceTo('MODULE_VALIDATE');
-  const moduleLoader = new ModuleLoader(moduleRegistry, moduleContainer, logger);
+  const policyPath = config.get('SECURITY_POLICY_LOCKFILE');
+  const securityPolicy = existsSync(policyPath) ? loadPolicyLockfile(policyPath) : undefined;
+  const moduleLoader = new ModuleLoader(moduleRegistry, moduleContainer, logger, securityPolicy);
   moduleLoader.validateAll();
 
-  // Stage 12: MODULE_LOAD
   progress.advanceTo('MODULE_LOAD');
   const loadReport = await moduleLoader.loadAll();
+  // §29.6 — start the scheduler now the modules have registered their tasks.
+  scheduler.start();
 
-  // Stage 13: COMMAND_REGISTER
-  // Modules registered their command handlers in onLoad (Stage 12).
-  // Log the inventory; actual Discord API bulk-registration happens in the
-  // live adapter path (src/discord/client-builder.ts + main.ts).
   progress.advanceTo('COMMAND_REGISTER');
   logger.info('command-registry-ready', { commandCount: commandRegistry.count() });
 
-  // Stage 14: EVENT_REGISTER
   progress.advanceTo('EVENT_REGISTER');
-  // Domain event subscriptions are wired inside each module's onLoad; nothing
-  // additional to register centrally in V1.
 
-  // Stage 15: DISCORD_LOGIN — live: real client.login(BOT_TOKEN); mock: MockGatewayAdapter
-  // never opens a real socket (see src/discord/gateway.mock-adapter.ts).
   progress.advanceTo('DISCORD_LOGIN');
   let discordClient: Client | undefined;
+  let shardOwnership: ShardOwnershipManager | undefined;
   if (config.get('DISCORD_ADAPTER') === 'live') {
+    // §23.2 — claim this pod's shard-ownership locks before the gateway identifies, so a rolling
+    // update's handover is safe: Discord invalidates a shard's prior session on a second identify.
+    shardOwnership = new ShardOwnershipManager({
+      lockStore,
+      logger,
+      ownerId: `${hostname()}:${process.pid}`,
+      heartbeatMs: config.get('SHARD_LOCK_HEARTBEAT_MS'),
+      retryMs: config.get('SHARD_LOCK_RETRY_MS'),
+    });
+    const configuredShards =
+      config.get('SHARD_COUNT') > 1 ? parseShardRange(config.get('SHARD_RANGE')) : [0];
+    const ownedShards = await shardOwnership.claim(configuredShards);
+    shardOwnership.startHeartbeat();
+    logger.info('shard-ownership-claimed', { shards: ownedShards, configured: configuredShards });
     const modules = moduleRegistry.all();
     const intents = computeIntentsBitfield(modules.map((m) => m.manifest.intents));
     const partials = computePartials(modules.map((m) => m.manifest.partials));
     discordClient = buildDiscordClient({ intents, partials, logger });
+    // §15.1 — subscribe the gateway client to every event a module declared a handler for.
+    const subscribedEvents = eventRouter.getRegisteredEvents();
+    for (const event of subscribedEvents) {
+      discordClient.on(event as never, (...args: unknown[]) => {
+        void eventRouter.dispatch(event, ...args);
+      });
+    }
+    logger.info('gateway-events-subscribed', { events: subscribedEvents });
 
     discordClient.on(Events.InteractionCreate, async (interaction) => {
       if (!isAcceptingGatewayEvents()) return;
@@ -471,7 +786,6 @@ export async function bootstrap(): Promise<void> {
     await liveAdapter.login();
   }
 
-  // Stage 16: CLIENT_READY
   progress.advanceTo('CLIENT_READY');
   if (discordClient) {
     const applicationId = discordClient.application?.id ?? '';
@@ -487,9 +801,6 @@ export async function bootstrap(): Promise<void> {
       },
       rest,
       enabledGuildResolver: async (moduleSlug) => {
-        // Match the router's defaulting: all guilds for default-enabled
-        // tiers minus explicitly-disabled rows; explicit-active rows only
-        // for Marketplace (opt-in).
         const tier = moduleRegistry.get(moduleSlug)?.manifest.tier ?? 'marketplace';
         const explicit = await db
           .knex('guild_module_states')
@@ -520,7 +831,6 @@ export async function bootstrap(): Promise<void> {
     });
   }
 
-  // Stage 17: MODULE_READY
   progress.advanceTo('MODULE_READY');
   const readyReport = await moduleLoader.readyAll(loadReport.order);
   progress.setRequiredModulesHealthy(readyReport.requiredFailed.length === 0);
@@ -531,55 +841,83 @@ export async function bootstrap(): Promise<void> {
     });
   }
 
-  // Stage 18: STARTUP_COMPLETE
   progress.advanceTo('STARTUP_COMPLETE');
   await eventBus.emit('dumby.system.ready', { degradedModules: loadReport.degraded });
 
   const inFlightTracker = new InFlightTracker();
+  const credentialsClient = new HttpCredentialClient({
+    baseUrl: config.get('CREDENTIALS_SERVICE_URL'),
+    internalApiKey: config.get('INTERNAL_API_KEY'),
+    timeoutMs: config.get('CREDENTIALS_SERVICE_TIMEOUT_MS'),
+  });
+  // §22.6 — the control plane's audit trail. One writer, carrying the correlation id and the true
+  // failure reason (the two rows this used to have silently dropped them).
+  const powerEngineAuditWriter = {
+    write: async (entry: {
+      actorId: string;
+      source: string;
+      action: string;
+      reason: string;
+      outcome: 'allowed' | 'rejected' | 'failed';
+      rejectionReason?: string;
+      failureReason?: string;
+      correlationId?: string;
+      metadata?: Record<string, string | number | boolean | null>;
+      at: number;
+    }): Promise<void> => {
+      await db.knex('audit_logs').insert({
+        actorId: entry.actorId,
+        source: entry.source,
+        action: entry.action,
+        reason: entry.reason,
+        outcome: entry.outcome,
+        rejectionReason: entry.rejectionReason ?? null,
+        metadata: JSON.stringify({
+          ...(entry.metadata ?? {}),
+          ...(entry.correlationId !== undefined ? { correlationId: entry.correlationId } : {}),
+          ...(entry.failureReason !== undefined ? { failureReason: entry.failureReason } : {}),
+        }),
+        createdAt: new Date(entry.at),
+      });
+    },
+  };
+  const powerEngineDispatcher = new PowerEngineDispatcher(
+    { trustedSources: config.get('POWER_ENGINE_TRUSTED_SOURCES') },
+    powerEngineAuditWriter,
+  );
+  const powerEngineCatalog = createPowerEngineCatalog({ guildSuspensions, logger });
+
   const apiServer = buildApiServer({
     logger,
     progress,
     metrics,
     config,
+    oauth2Client: oauth2Client.isConfigured() ? oauth2Client : undefined,
+    // Appendix C #18 — the MDIS module-delivery and operational-tooling surfaces.
+    mdisDeps: { service: new MdisService(moduleRegistry, new PostgresModuleInstallStore(db.knex)) },
+    operationalDeps: {
+      service: new OperationalService(moduleRegistry, config.get('OPERATIONAL_RUNBOOKS_DIR')),
+    },
     adminDeps: {
-      dispatcher: new PowerEngineDispatcher(
-        { trustedSources: config.get('PEP_TRUSTED_SOURCES') },
-        {
-          write: async (entry) => {
-            await db.knex('audit_logs').insert({
-              actorId: entry.actorId,
-              source: entry.source,
-              reason: entry.reason,
-              action: entry.action,
-              outcome: entry.outcome,
-              rejectionReason: entry.rejectionReason ?? null,
-              metadata: JSON.stringify({}),
-            });
-          },
-        },
-      ),
+      dispatcher: powerEngineDispatcher,
       db,
       config,
-      auditWriter: {
-        write: async (entry) => {
-          await db.knex('audit_logs').insert({
-            actorId: entry.actorId,
-            source: entry.source,
-            action: entry.action,
-            reason: entry.reason,
-            outcome: entry.outcome,
-            rejectionReason: entry.rejectionReason ?? null,
-            metadata: entry.metadata ?? {},
-            createdAt: new Date(entry.at),
-          });
-        },
-      },
+      auditWriter: powerEngineAuditWriter,
+      powerEngineCatalog,
+      // §22.5/§15.8: arm the governance surface — the Power Engine operator allow-list (identities that may
+      // decide approvals) and the Credentials Service client, used both to verify a presented
+      // operator credential and to activate a developer credential on approval (finding #24).
+      operatorAllowList: config.get('POWER_ENGINE_OPERATOR_IDS'),
+      operatorVerifier: credentialsClient,
+      credentialActivator: credentialsClient,
+      // Finding #15: arm the power-engine pause/resume routes with the queue manager.
+      queueManager: queue,
     },
   });
   apiServer.addHook('onRequest', async () => inFlightTracker.increment());
   apiServer.addHook('onResponse', async () => inFlightTracker.decrement());
   apiServer.addHook('onError', async () => inFlightTracker.decrement());
-  await apiServer.listen({ port: config.get('API_PORT'), host: '0.0.0.0' });
+  await apiServer.listen({ port: config.get('API_PORT'), host: config.get('API_BIND_HOST') });
 
   registerShutdownSignalHandlers({
     logger,
@@ -593,6 +931,8 @@ export async function bootstrap(): Promise<void> {
     queueRedis,
     db,
     discordClient,
+    stopEventLoopMonitor: () => eventLoopLagMonitor.stop(),
+    releaseShardLocks: () => shardOwnership?.releaseAll() ?? Promise.resolve(),
     drainInFlightCommands: (timeoutMs) => inFlightTracker.waitForDrain(timeoutMs),
   });
   fatalHooks.shutdown = () =>
@@ -609,10 +949,44 @@ export async function bootstrap(): Promise<void> {
         queueRedis,
         db,
         discordClient,
+        stopEventLoopMonitor: () => eventLoopLagMonitor.stop(),
+        releaseShardLocks: () => shardOwnership?.releaseAll() ?? Promise.resolve(),
         drainInFlightCommands: (timeoutMs) => inFlightTracker.waitForDrain(timeoutMs),
       },
       'FATAL',
     );
 
   logger.info('bootstrap-complete', { degradedModules: loadReport.degraded });
+
+  return {
+    container,
+    moduleRegistry,
+    commandRegistry,
+    commandRouter,
+    renderer,
+    eventBus,
+    interactionRegistry,
+    apiServer,
+    moduleOrder: loadReport.order,
+    shutdown: (signal = 'SIGTERM') =>
+      gracefulShutdown(
+        {
+          logger,
+          apiServer,
+          healthServer,
+          metricsServer,
+          moduleLoader,
+          moduleOrder: loadReport.order,
+          queue,
+          redis,
+          queueRedis,
+          db,
+          discordClient,
+          stopEventLoopMonitor: () => eventLoopLagMonitor.stop(),
+          releaseShardLocks: () => shardOwnership?.releaseAll() ?? Promise.resolve(),
+          drainInFlightCommands: (timeoutMs) => inFlightTracker.waitForDrain(timeoutMs),
+        },
+        signal,
+      ),
+  };
 }

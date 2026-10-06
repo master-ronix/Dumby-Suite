@@ -1,0 +1,48 @@
+{
+  "$id": "contracts/commands.json",
+  "title": "Core Command Surface (single source)",
+  "scope": "core",
+  "ceiling_per_guild": 100,
+  "commands": [
+    {
+      "name": "dashboard",
+      "tier": "core",
+      "role": "guild admin home"
+    },
+    {
+      "name": "health",
+      "tier": "core",
+      "role": "health/status"
+    },
+    {
+      "name": "browse",
+      "tier": "core",
+      "role": "marketplace discovery"
+    },
+    {
+      "name": "queue",
+      "tier": "core",
+      "role": "BCCM command-change queue"
+    },
+    {
+      "name": "persona",
+      "tier": "core",
+      "role": "Twill persona management"
+    },
+    {
+      "name": "permit",
+      "tier": "core",
+      "role": "RBAC Layer 6/7 grants"
+    },
+    {
+      "name": "modules",
+      "tier": "core",
+      "role": "module management"
+    },
+    {
+      "name": "hello",
+      "tier": "standard",
+      "role": "reference module"
+    }
+  ]
+}

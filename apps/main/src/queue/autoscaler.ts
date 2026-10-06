@@ -1,18 +1,9 @@
-/**
- * DLQ monitoring and queue autoscaling decisions (Cluster: Burg), kept as
- * pure functions of (counts/depths) -> decision so they can be unit tested
- * without a real BullMQ/Redis connection. The real QueueManager
- * (src/queue/queue-manager.ts) calls these every tick and only the actual
- * BullMQ API calls (pause/resume/retry, worker concurrency) touch I/O.
- */
-
 export interface DlqCheckResult {
   queue: string;
   failedCountLastHour: number;
   shouldAlert: boolean;
 }
 
-/** DLQMonitor runs every 15 minutes; alerts when more than 10 failed jobs landed in the trailing hour. */
 export class DlqMonitor {
   constructor(private readonly alertThreshold = 10) {}
 
@@ -28,16 +19,8 @@ export interface ScalingDecision {
   newConcurrency: number;
 }
 
-/**
- * WorkerManager autoscaling: +1 worker per 30s while depth is growing,
- * -1 worker after 5 consecutive near-zero-depth checks, and every scale
- * change (up or down) shares the same rate limit so the pool cannot
- * oscillate faster than once per interval.
- */
 export class QueueAutoscaler {
   private nearZeroChecks = 0;
-  // Starts at -Infinity (not 0) so the very first evaluate() call is never
-  // mistaken for "just scaled a moment ago" when now() also starts at 0.
   private lastScaleChangeAt = Number.NEGATIVE_INFINITY;
   private readonly now: () => number;
 

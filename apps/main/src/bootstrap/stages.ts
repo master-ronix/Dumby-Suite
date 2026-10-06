@@ -1,11 +1,3 @@
-/**
- * Bootstrap stages and shutdown steps (Cluster: Grace). The 18-stage
- * bootstrap and 9-step shutdown sequence are fixed, ordered lists — this
- * file is the single source of truth both bootstrap.ts (orchestration,
- * requires real infra) and the health server (pure gating logic, no infra
- * needed) build on.
- */
-
 export const BOOTSTRAP_STAGES = [
   'PROCESS_SETUP',
   'CONFIG_LOAD',
@@ -51,16 +43,6 @@ export function shutdownStepNumber(step: ShutdownStep): number {
   return SHUTDOWN_STEPS.indexOf(step) + 1;
 }
 
-/**
- * Pure gating state machine for the three health probes:
- *
- *   /health/liveness   200 once Stage 04 OBSERVABILITY_INIT is reached.
- *   /health/startup    200 once Stage 15 DISCORD_LOGIN is reached.
- *   /health/readiness  200 once Stage 18 STARTUP_COMPLETE is reached AND
- *                      every required module currently reports healthy.
- *
- * No I/O here — the HTTP layer just reads isLive()/isStarted()/isReady().
- */
 export class BootstrapProgress {
   private currentStageIndex = -1;
   private requiredModulesHealthy = false;

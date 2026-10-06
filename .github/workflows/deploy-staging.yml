@@ -1,0 +1,62 @@
+name: Deploy — Staging
+
+on:
+  push:
+    branches: [staging]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy to Staging
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    environment: staging
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+        with:
+          version: 9
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Typecheck
+        run: pnpm --filter @workspace/dumby typecheck
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@901a10e89ea615cf61f57ac05cecdf23e7de06d8 # v3
+        with:
+          version: v1.29.0
+      - name: Configure kubeconfig
+        # Secrets reach steps as env values, never interpolated into the command line (D-8.4).
+        env:
+          KUBECONFIG_STAGING: ${{ secrets.KUBECONFIG_STAGING }}
+        run: |
+          set -euo pipefail
+          trap 'rm -f /tmp/kubeconfig.yaml' EXIT
+          printf '%s' "$KUBECONFIG_STAGING" | base64 -d > /tmp/kubeconfig.yaml
+      - name: Run DB migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          kubectl --kubeconfig /tmp/kubeconfig.yaml -n dumby-staging \
+            run dumby-migrate-$(date +%s) \
+            --image=${{ vars.IMAGE_REGISTRY }}/dumby:${{ github.sha }} \
+            --restart=Never \
+            --env="DATABASE_URL=$DATABASE_URL" \
+            --command -- tsx src/entry/migrate.ts up
+      - name: Apply K8s manifests
+        run: |
+          kubectl --kubeconfig /tmp/kubeconfig.yaml apply \
+            -k deploy/k8s/overlays/staging
+      - name: Update image tag
+        run: |
+          kubectl --kubeconfig /tmp/kubeconfig.yaml -n dumby-staging \
+            set image deployment/dumby dumby=${{ vars.IMAGE_REGISTRY }}/dumby:${{ github.sha }}
+      - name: Wait for rollout
+        run: |
+          kubectl --kubeconfig /tmp/kubeconfig.yaml -n dumby-staging \
+            rollout status deployment/dumby --timeout=180s

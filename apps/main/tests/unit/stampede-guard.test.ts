@@ -22,7 +22,6 @@ test('a concurrent second caller is told the lock is held instead of also recomp
     return 'first-result';
   });
 
-  // Give the first call a chance to acquire before the second attempts.
   await new Promise((resolve) => setTimeout(resolve, 5));
   const second = await guard.withLock('hot-key', 'owner-b', async () => 'second-result');
   expect(second).toStrictEqual({ acquired: false });
@@ -53,7 +52,7 @@ test('the lock is released even if the guarded function throws', async () => {
 test('InMemoryLockStore.release is a no-op compare-and-delete: a non-owner cannot release', async () => {
   const store = new InMemoryLockStore();
   await store.setNX('k', 'owner-a', 10_000);
-  await store.release('k', 'owner-b'); // wrong owner, should not release
+  await store.release('k', 'owner-b');
   const stillLocked = await store.setNX('k', 'owner-c', 10_000);
   expect(stillLocked).toBe(false);
 });

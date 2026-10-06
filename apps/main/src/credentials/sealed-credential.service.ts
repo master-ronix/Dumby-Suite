@@ -21,26 +21,16 @@ export interface IssuedSealedCredential {
   readonly credentialId: string;
   readonly label: string;
   readonly registeredBy: string;
-  /** The plaintext value. Returned exactly once at issuance; never persisted. */
   readonly value: string;
   readonly envelope: SealedEnvelope;
 }
 
-/**
- * Owns envelope-encrypted in-process-readable credentials (ADR-003).
- *
- * Every value routed through this service is, by construction of the issuing
- * route, one the system must read back to present — the boundary check is
- * explicit on every write (`assertStorageTreatment`), mirroring the invariant
- * that a credential in this class is NEVER stored under a one-way hash.
- */
 export class SealedCredentialService {
   constructor(
     private readonly store: SealedCredentialStore,
     private readonly currentRootKey: EnvelopeRootKey,
   ) {}
 
-  /** Issue a sealed credential; the plaintext leaves the process exactly once. */
   async issue(label: string, registeredBy: string, value: string): Promise<IssuedSealedCredential> {
     assertStorageTreatment({ purpose: 'in-process-readable' }, CREDENTIAL_TREATMENTS.seal);
     const credentialId = randomUUID().replaceAll('-', '').slice(0, 24);
@@ -58,7 +48,6 @@ export class SealedCredentialService {
     return { credentialId, label, registeredBy, value, envelope };
   }
 
-  /** Read back a sealed credential as plaintext for presentation. */
   async read(credentialId: string): Promise<string> {
     const record = await this.store.findByCredentialId(credentialId);
     if (!record) throw new SealedCredentialNotFoundError(credentialId);
@@ -73,12 +62,6 @@ export class SealedCredentialService {
     return this.store.markRevoked(credentialId);
   }
 
-  /**
-   * Rotate the root key for every active sealed credential: each record's DEK
-   * is re-wrapped under the new root key and re-id'd. Record ciphertexts are
-   * never decrypted during rotation, so the plaintext credential values never
-   * enter the clear here.
-   */
   async rotateRootKey(nextRootKey: EnvelopeRootKey): Promise<number> {
     const active = await this.store.listActive();
     for (const record of active) {

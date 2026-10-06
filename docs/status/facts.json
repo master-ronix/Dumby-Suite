@@ -1,0 +1,49 @@
+{
+  "schema": "facts/v1",
+  "note": "Canonical facts, grounded in the code. CI gate: check-facts.mjs. A forbidden literal is a contradiction of a canonical fact; a required literal is a canonical fact that must be present. Ports are sourced from apps/main/src/config/env.schema.ts.",
+  "ports": {
+    "API_PORT": 8080,
+    "HEALTH_PORT": 8081,
+    "METRICS_PORT": 8082,
+    "POWER_ENGINE_PORT": 8083,
+    "CLAI_PORT": 8084,
+    "SWASTIK_PORT": 8085,
+    "CREDENTIALS_SERVICE_PORT": 8086,
+    "TWILL_PORT": 8090
+  },
+  "forbidden_literals": [
+    {
+      "literal": "(`PORT`, `HEALTH_PORT`)",
+      "canonical": "(`API_PORT`, `HEALTH_PORT`)",
+      "reason": "the API port env var is API_PORT (env.schema.ts)"
+    },
+    {
+      "literal": "canonical ordering of DIAGRAM 21-A in `blueprint.md` §21, and it resolves in that fixed sequence",
+      "canonical": "fixed sequence 1 → 2 → 3 → 7 → 4 → 5 → 6",
+      "reason": "Layer 7 is consulted immediately after Layer 3 (DIAGRAM 21-A; permissions/resolver.ts)"
+    },
+    {
+      "literal": "early-refresh mechanism MAY reduce",
+      "canonical": "early-refresh mechanism is required and reduces",
+      "reason": "probabilistic early refresh is implemented (cache/key-namespace.ts shouldEarlyRecompute)"
+    }
+  ],
+  "required_literals": [
+    {
+      "literal": "consulted immediately after Layer 3",
+      "reason": "permission layer order (DIAGRAM 21-A / permissions/resolver.ts)"
+    },
+    {
+      "literal": "Bot Command Cosmetics for Marketplace",
+      "reason": "canonical BCCM expansion"
+    },
+    {
+      "literal": "fixed sequence **1 → 2 → 3 → 7 → 4 → 5 → 6**",
+      "reason": "canonical permission resolution order"
+    },
+    {
+      "literal": "Ecosystem Flow Suite",
+      "reason": "canonical name of the coordination test spine (spec/lifecycle §37.8)"
+    }
+  ]
+}

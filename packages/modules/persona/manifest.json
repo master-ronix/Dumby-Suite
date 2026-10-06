@@ -1,0 +1,36 @@
+{
+  "name": "persona",
+  "version": "1.0.0",
+  "description": "View activated personas and their command inventory.",
+  "tier": "core",
+  "hardcoded": false,
+  "visibility": "public",
+  "releaseStatus": "public",
+  "devId": "dev_first_party",
+  "buildId": "build_persona_1_0_0",
+  "required": false,
+  "depends": [],
+  "provides": [],
+  "intents": [],
+  "partials": [],
+  "commands": [
+    {
+      "name": "persona",
+      "description": "View activated personas and their command inventory."
+    }
+  ],
+  "events": [],
+  "services": [],
+  "repositories": [],
+  "jobs": [],
+  "tasks": [],
+  "routes": [],
+  "middleware": [],
+  "migrations": [],
+  "locales": [
+    "en-US"
+  ],
+  "config": {},
+  "eventsCatalog": [],
+  "crossModuleReads": []
+}

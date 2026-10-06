@@ -7,6 +7,11 @@ const MOD_BITS = ['KickMembers', 'BanMembers', 'ModerateMembers', 'ManageMessage
 function baseContext(overrides: Partial<PermissionContext> = {}): PermissionContext {
   return {
     tier: 'standard',
+    hardcoded: false,
+    devId: 'dev_first_party',
+    buildId: 'build_test_1_0_0',
+    visibility: 'public',
+    releaseStatus: 'public',
     actorId: 'user-1',
     botOwnerIds: ['owner-1'],
     isDM: false,
@@ -194,13 +199,17 @@ test('layer 7: grants never reach core commands', () => {
   };
   const ctx = baseContext({
     tier: 'core',
+    hardcoded: false,
+    devId: 'dev_first_party',
+    buildId: 'build_test_1_0_0',
+    visibility: 'public',
+    releaseStatus: 'public',
     grants: {
       commandKey: 'core.health',
       membership: { roleIds: ['role-1'], groupIds: [], setIds: [] },
       guildGrants: [grant],
     },
   });
-  // The core command still has no permission declaration -> deny-by-default.
   const denied = resolvePermission({
     ...ctx,
     hasExplicitPermissionDeclaration: false,
@@ -229,7 +238,6 @@ test('layer 7: an active whitelist restricts a command to whitelisted targets on
     key: 'moderation.ban',
   };
 
-  // A whitelisted member is allowed regardless of rank grounds.
   const allowed = resolvePermission(
     baseContext({
       requiredRank: 'MODERATOR',
@@ -242,7 +250,6 @@ test('layer 7: an active whitelist restricts a command to whitelisted targets on
   );
   expect(allowed).toStrictEqual({ allowed: true });
 
-  // A member holding a whitelist for some OTHER target is not whitelisted here.
   const denied = resolvePermission(
     baseContext({
       grants: {
@@ -349,6 +356,11 @@ test('layer 6: ADMIN bundle satisfies an OWNER-gated command only for the guild 
 test('layer 6: Core tier is exempt from RBAC even without the required rank', () => {
   const ctx = baseContext({
     tier: 'core',
+    hardcoded: false,
+    devId: 'dev_first_party',
+    buildId: 'build_test_1_0_0',
+    visibility: 'public',
+    releaseStatus: 'public',
     requiredRank: 'MODERATOR',
     memberPermissions: [],
   });
@@ -375,6 +387,11 @@ test('layers short-circuit in order: a layer-2 failure never reaches layer 7 che
   };
   const ctx = baseContext({
     tier: 'standard',
+    hardcoded: false,
+    devId: 'dev_first_party',
+    buildId: 'build_test_1_0_0',
+    visibility: 'public',
+    releaseStatus: 'public',
     blacklist: { isGloballyBlacklisted: () => true, isGuildBlacklisted: () => false },
     requiredRank: 'OWNER',
     requiresNsfw: true,

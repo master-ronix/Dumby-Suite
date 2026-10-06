@@ -1,25 +1,14 @@
-/**
- * L1Cache — in-process LRU cache with byte-budget eviction.
- *
- * Blueprint §25 / directive Rule 26: L1 is sub-millisecond, per-pod,
- * with bounded entry count and approximate byte ceiling. We use a
- * doubly-linked list + Map for O(1) get/set/delete (classic LRU layout).
- * The byte ceiling is enforced on value serialization size, not physical
- * memory, which keeps the implementation dependency-free.
- */
-
 interface Entry<V> {
   key: string;
   value: V;
-  expiresAt: number; // epoch ms
-  byteSize: number; // approximate serialized size
+  expiresAt: number;
+  byteSize: number;
   prev: Entry<V> | null;
   next: Entry<V> | null;
 }
 
 export interface L1CacheOptions {
   maxEntries: number;
-  /** Approximate max byte budget for all stored values (default 50 MB) */
   maxBytes?: number;
 }
 
@@ -28,13 +17,12 @@ export class L1Cache<V = unknown> {
   private readonly maxBytes: number;
   private readonly map = new Map<string, Entry<V>>();
   private totalBytes = 0;
-  // Doubly-linked list: head is the oldest (LRU), tail is the newest (MRU).
   private head: Entry<V> | null = null;
   private tail: Entry<V> | null = null;
 
   constructor(options: L1CacheOptions) {
     this.maxEntries = options.maxEntries;
-    this.maxBytes = options.maxBytes ?? 50 * 1024 * 1024; // 50 MB default
+    this.maxBytes = options.maxBytes ?? 50 * 1024 * 1024;
   }
 
   get(key: string): V | undefined {
@@ -44,13 +32,11 @@ export class L1Cache<V = unknown> {
       this._remove(entry);
       return undefined;
     }
-    // Move to tail (most-recently-used)
     this._moveToTail(entry);
     return entry.value;
   }
 
   set(key: string, value: V, ttlMs: number): void {
-    // If an entry already exists for this key, remove it first.
     const existing = this.map.get(key);
     if (existing) this._remove(existing);
 
@@ -68,7 +54,6 @@ export class L1Cache<V = unknown> {
     this._appendToTail(entry);
     this.totalBytes += byteSize;
 
-    // Evict oldest entries until within bounds.
     while (
       this.head !== null &&
       (this.map.size > this.maxEntries || this.totalBytes > this.maxBytes)
@@ -99,6 +84,21 @@ export class L1Cache<V = unknown> {
     this.totalBytes = 0;
   }
 
+  /** Removes every entry whose key starts with `prefix` (used by cross-process invalidation). */
+  clearPrefix(prefix: string): number {
+    let removed = 0;
+    for (const key of [...this.map.keys()]) {
+      if (key.startsWith(prefix)) {
+        const entry = this.map.get(key);
+        if (entry) {
+          this._remove(entry);
+          removed += 1;
+        }
+      }
+    }
+    return removed;
+  }
+
   size(): number {
     return this.map.size;
   }
@@ -109,8 +109,6 @@ export class L1Cache<V = unknown> {
     const remaining = entry.expiresAt - Date.now();
     return remaining > 0 ? remaining : 0;
   }
-
-  // ── Private helpers ────────────────────────────────────────────────
 
   private _remove(entry: Entry<V>): void {
     if (entry.prev) entry.prev.next = entry.next;
@@ -135,12 +133,10 @@ export class L1Cache<V = unknown> {
 
   private _moveToTail(entry: Entry<V>): void {
     if (entry === this.tail) return;
-    // Detach
     if (entry.prev) entry.prev.next = entry.next;
     else this.head = entry.next;
     if (entry.next) entry.next.prev = entry.prev;
 
-    // Append to tail
     entry.prev = this.tail;
     entry.next = null;
     if (this.tail) this.tail.next = entry;
@@ -151,7 +147,7 @@ export class L1Cache<V = unknown> {
     try {
       return JSON.stringify(value)?.length ?? 0;
     } catch {
-      return 256; // fallback for non-serializable values
+      return 256;
     }
   }
 }

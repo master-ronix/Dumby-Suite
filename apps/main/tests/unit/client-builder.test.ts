@@ -10,7 +10,6 @@ describe('computeIntentsBitfield', () => {
   test('unions intents across modules and always includes Guilds', () => {
     const bits = computeIntentsBitfield([['GuildMessages'], ['DirectMessages']]);
     expect(bits).toBeGreaterThan(0);
-    // Guilds = 1 << 0, must always be present.
     expect(bits & 1).toBe(1);
   });
 

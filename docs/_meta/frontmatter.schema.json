@@ -1,0 +1,81 @@
+{
+  "$id": "docs/_meta/frontmatter.schema.json",
+  "type": "object",
+  "required": [
+    "id",
+    "title",
+    "kind",
+    "status",
+    "version"
+  ],
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "kind": {
+      "enum": [
+        "spec",
+        "contract",
+        "adr",
+        "ur",
+        "engine",
+        "archive",
+        "index",
+        "blueprint",
+        "documentation",
+        "governance"
+      ]
+    },
+    "status": {
+      "enum": [
+        "normative",
+        "archived",
+        "engine",
+        "index",
+        "derived"
+      ]
+    },
+    "version": {
+      "type": "string"
+    },
+    "authority_scope": {
+      "type": "array"
+    },
+    "supersedes": {
+      "type": "array"
+    },
+    "superseded_by": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "anchors": {
+      "type": "array"
+    },
+    "contracts": {
+      "type": "array"
+    },
+    "acceptance": {
+      "type": "array"
+    },
+    "owners": {
+      "type": "array"
+    },
+    "last_verified_commit": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "review_state": {
+      "enum": [
+        "pending-evidence",
+        "verified"
+      ]
+    }
+  }
+}

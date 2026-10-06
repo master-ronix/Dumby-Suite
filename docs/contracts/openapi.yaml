@@ -1,0 +1,36 @@
+openapi: 3.1.0
+info:
+  title: Dumby API
+  version: 5.0.0
+  description: Single source for REST/webhook/MDIS endpoints. Health + admin + modules + swastik.
+servers: [ { url: / } ]
+tags: [ {name: health}, {name: info}, {name: modules}, {name: swastik}, {name: admin}, {name: gateway} ]
+paths:
+  /health/liveness:  { get: { tags:[health], summary: liveness probe } }
+  /health/readiness: { get: { tags:[health], summary: readiness probe (200 only after stage 18) } }
+  /health/startup:   { get: { tags:[health], summary: startup probe } }
+  /info:             { get: { tags:[info],   summary: build/version info } }
+  /metrics:          { get: { tags:[info],   summary: Prometheus metrics } }
+  /api/modules/{name}/config:
+    get:  { tags:[modules], summary: read module config }
+    put:  { tags:[modules], summary: write module config }
+  /api/modules/{name}/state:
+    patch:{ tags:[modules], summary: enable/disable module }
+  /api/modules/{name}/{action}:
+    post: { tags:[modules], summary: Power Engine action dispatch (honest 501 if unhandled) }
+  /api/swastik/register:
+    post: { tags:[swastik], summary: register developer (token-based) }
+  /api/swastik/modules/{slug}/upload:
+    post: { tags:[swastik], summary: upload module tarball (multipart, <=64MiB, zip-slip-safe) }
+  /api/swastik/modules/{slug}/status:
+    get:  { tags:[swastik], summary: build/promotion status }
+  /admin/operators:
+    post: { tags:[admin], summary: manage CLAI operators }
+  /internal/reload:
+    post: { tags:[swastik], summary: "internal hot-swap signal (module=<name>); internal-only" }
+  /channels/:
+    post: { tags:[gateway], summary: Discord gateway webhook (HMAC-verified) }
+  /guilds/:
+    put:  { tags:[gateway], summary: Discord gateway webhook (HMAC-verified) }
+  /interactions/:
+    post: { tags:[gateway], summary: Discord interactions endpoint (HMAC-verified) }

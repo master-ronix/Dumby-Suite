@@ -1,33 +1,11 @@
-/**
- * ADR-003 scope boundary — envelope encryption vs Argon2id one-way hashing.
- *
- * Blueprint §32.7 and ADR-003 define exactly two at-rest schemes for
- * credential-shaped values and an invariant between them:
- *
- *   - verify-only secrets  → Argon2id one-way hashing ONLY (never reversible)
- *   - in-process-readable  → envelope encryption ONLY (root key → DEKs → AES-GCM)
- *
- * A value that the system only needs to verify must never be reversibly
- * encrypted; a value the system must present or read back must never be stored
- * under a one-way hash. This module is the single decision point that enforces
- * that invariant; callers route each stored value through
- * `resolveCredentialTreatment` rather than choosing a scheme ad hoc.
- *
- * The boundary is "exactly and only credentials whose verification requires
- * reading them back" (ADR-003). It must not widen without a superseding ADR.
- */
-
 export const CREDENTIAL_TREATMENTS = {
-  /** Validate-only secrets (passwords, developer tokens, authkeys): one-way hash. */
   hash: 'hash',
-  /** Credentials the system must present or read back: envelope encryption. */
   seal: 'seal',
 } as const;
 
 export type CredentialTreatment =
   (typeof CREDENTIAL_TREATMENTS)[keyof typeof CREDENTIAL_TREATMENTS];
 
-/** Justifications the boundary recognizes; any other purpose is rejected. */
 export type CredentialPurpose =
   { readonly purpose: 'verify-only' } | { readonly purpose: 'in-process-readable' };
 
@@ -35,12 +13,6 @@ export class BoundaryViolationError extends Error {
   override readonly name = 'BoundaryViolationError';
 }
 
-/**
- * Fail-closed boundary decision. Every at-rest credential storage site routes
- * through here. Unknown purposes and mismatched schemes are errors, never
- * silent fallbacks — a "safe-looking" default is exactly how the two schemes
- * get misapplied (ADR-003 context).
- */
 export function resolveCredentialTreatment(
   descriptor: CredentialPurpose,
   requested?: CredentialTreatment,
@@ -65,12 +37,6 @@ export function resolveCredentialTreatment(
   return resolved;
 }
 
-/**
- * Inverse check for storage sites that persist a value: given the purpose and
- * the directory/schema marker actually used, the stored marker must match the
- * resolved treatment. Keeps migrations and repositories honest about which
- * column carries which scheme.
- */
 export function assertStorageTreatment(
   descriptor: CredentialPurpose,
   storedWith: CredentialTreatment,
@@ -82,4 +48,57 @@ export function assertStorageTreatment(
         `but the invariant requires '${resolved}'`,
     );
   }
+}
+
+/**
+ * E6 GOV-13 — the scope-boundary verification ADR-003 asks for. The at-rest credential stores and
+ * the treatment each must carry, so the boundary can be checked rather than assumed.
+ */
+export interface CredentialStoreInventoryEntry {
+  readonly name: string;
+  readonly purpose: CredentialPurpose;
+  readonly storedWith: CredentialTreatment;
+}
+
+export const CREDENTIAL_STORE_INVENTORY: readonly CredentialStoreInventoryEntry[] = Object.freeze([
+  {
+    name: 'credentials.credentialHash',
+    purpose: { purpose: 'verify-only' },
+    storedWith: CREDENTIAL_TREATMENTS.hash,
+  },
+  {
+    name: 'credentials.devIdHash',
+    purpose: { purpose: 'verify-only' },
+    storedWith: CREDENTIAL_TREATMENTS.hash,
+  },
+  {
+    name: 'sealed_credentials.sealedValue',
+    purpose: { purpose: 'in-process-readable' },
+    storedWith: CREDENTIAL_TREATMENTS.seal,
+  },
+  {
+    name: 'persona_identities.botTokenSealed',
+    purpose: { purpose: 'in-process-readable' },
+    storedWith: CREDENTIAL_TREATMENTS.seal,
+  },
+]);
+
+/**
+ * Verifies the inventory against the ADR-003 boundary and returns one message per violation
+ * (empty means the boundary holds). A value the system never reads back may not be sealed, and a
+ * value the system must use may not be hashed.
+ */
+export function verifyEnvelopeScope(
+  inventory: readonly CredentialStoreInventoryEntry[],
+): readonly string[] {
+  const violations: string[] = [];
+  for (const entry of inventory) {
+    try {
+      assertStorageTreatment(entry.purpose, entry.storedWith);
+    } catch (err) {
+      if (err instanceof BoundaryViolationError) violations.push(`${entry.name}: ${err.message}`);
+      else throw err;
+    }
+  }
+  return violations;
 }

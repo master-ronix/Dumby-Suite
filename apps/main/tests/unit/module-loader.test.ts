@@ -52,6 +52,10 @@ function fakeManifest(overrides: Partial<ModuleManifest> = {}): ModuleManifest {
     description: 'test module',
     tier: 'standard',
     hardcoded: false,
+    devId: 'dev_first_party',
+    buildId: 'build_test_1_0_0',
+    visibility: 'public',
+    releaseStatus: 'public',
     required: false,
     depends: [],
     provides: [],
@@ -104,6 +108,9 @@ function writeVolumeModule(
     JSON.stringify(fakeManifest({ name: moduleName, ...manifestOverrides })),
   );
   writeFileSync(join(moduleRoot, 'index.js'), 'export const onLoad = () => undefined;\n');
+  // §30 — en-US.json is mandatory; Stage 11 fails without it.
+  mkdirSync(join(moduleRoot, 'locales'), { recursive: true });
+  writeFileSync(join(moduleRoot, 'locales', 'en-US.json'), '{}');
 }
 
 test('loadModulesFromTierVolumes blindly discovers modules from all configured tier volumes', async () => {
@@ -114,12 +121,23 @@ test('loadModulesFromTierVolumes blindly discovers modules from all configured t
   }
   writeVolumeModule(modulesDir, 'modules-admin', 'core-admin', {
     tier: 'admin',
+    hardcoded: false,
     devGuildOnly: true,
+    devId: 'dev_first_party',
+    buildId: 'build_test_1_0_0',
+    visibility: 'public',
+    releaseStatus: 'public',
   });
   writeVolumeModule(modulesDir, 'modules-core', 'utility', { tier: 'core' });
   writeVolumeModule(modulesDir, 'modules-standard', 'polls', { tier: 'standard' });
   writeVolumeModule(modulesDir, 'modules-marketplace', 'music', {
     tier: 'marketplace',
+    hardcoded: false,
+    marketplaceCategory: 'utility',
+    devId: 'dev_first_party',
+    buildId: 'build_test_1_0_0',
+    visibility: 'public',
+    releaseStatus: 'public',
     marketplaceCategory: 'audio',
   });
 
@@ -206,13 +224,21 @@ test('ModuleLoader.loadAll calls onLoad in dependency order', async () => {
   const registry = new ModuleRegistry();
   const calls: string[] = [];
   registry.register({
-    manifest: fakeManifest({ name: 'guild-settings', required: true }),
+    manifest: fakeManifest({
+      name: 'guild-settings',
+      required: true,
+      provides: [{ token: 'guild-settings:store', contract: 'GuildSettingsStore' }],
+    }),
     onLoad: () => {
       calls.push('guild-settings');
     },
   });
   registry.register({
-    manifest: fakeManifest({ name: 'economy', depends: ['guild-settings'], required: false }),
+    manifest: fakeManifest({
+      name: 'economy',
+      depends: [{ token: 'guild-settings:store', version: '^1.0.0' }],
+      required: false,
+    }),
     onLoad: () => {
       calls.push('economy');
     },
@@ -266,7 +292,7 @@ test('ModuleLoader.readyAll never throws and reports optional ready failures sep
   expect(report.requiredFailed).toStrictEqual([]);
   expect(
     logger.calls.some((c) => c.level === 'error' && c.msg === 'module-ready-failed-non-fatal'),
-  ).toBeTruthy();
+  ).toBe(true);
 });
 
 test('ModuleLoader.readyAll reports required ready failures for readiness gating', async () => {

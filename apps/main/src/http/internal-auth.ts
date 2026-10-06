@@ -4,32 +4,19 @@ import { constantTimeEqual, generateToken } from '../shared/utils/crypto.js';
 
 export const INTERNAL_API_HEADER = 'x-internal-api-key';
 
-/**
- * Shared constant-time internal-authentication preHandler used by the
- * control-plane HTTP services (PEP, CLAI, Swastik, credentials, admin).
- *
- * CL-0039 / CL-0070 / CL-0071: the shared secret is compared with
- * `crypto.timingSafeEqual` via {@link constantTimeEqual} — never with `===`
- * or string length short-circuiting — and every attempt (allowed or rejected)
- * is written to the audit log with the redacted key material.
- *
- * Fastify runs preHandler hooks *before* every registered route handler in the
- * same encapsulation scope; a single `app.addHook('preHandler', ...)` here
- * protects every route registered under it.
- */
-
 export interface InternalPreHandlerOptions {
-  /** Expected shared secret (unhashed). */
   expectedKey: string;
-  /** Optional: on failure, the hook short-circuits with this HTTP status. */
   onFailStatus?: number;
-  /** Failure message returned to the caller. */
   failMessage?: string;
-  /** Optional audit writer callback invoked for each attempt. */
+  /**
+   * Restricts the gate to a subset of routes. Returning true runs the key
+   * check; returning false lets the request through untouched. Omit to gate
+   * every route on the instance.
+   */
+  shouldProtect?: (request: FastifyRequest) => boolean;
   audit?: (outcome: 'allowed' | 'rejected', detail: Record<string, string>) => Promise<void> | void;
 }
 
-/** Registers a preHandler that protects every route registered under `app`. */
 export function registerInternalAuth(
   app: FastifyInstance,
   options: InternalPreHandlerOptions,
@@ -37,9 +24,11 @@ export function registerInternalAuth(
   const expected = options.expectedKey;
   const onFailStatus = options.onFailStatus ?? 401;
   const failMessage = options.failMessage ?? 'missing or invalid x-internal-api-key';
+  const shouldProtect = options.shouldProtect;
   const audit = options.audit;
 
   app.addHook('preHandler', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (shouldProtect && !shouldProtect(request)) return;
     const provided = request.headers[INTERNAL_API_HEADER];
     const supplied =
       typeof provided === 'string' ? provided : Array.isArray(provided) ? provided[0] : undefined;
@@ -48,8 +37,6 @@ export function registerInternalAuth(
         path: request.url,
         method: request.method,
         sourceIp: request.ip,
-        // Never log the secret itself, even redacted hashes are only the key's
-        // fingerprint, not reversible back to a usable credential.
         keyFingerprint: fingerprintKey(supplied),
       };
       await audit?.('rejected', detail);
@@ -63,7 +50,6 @@ export function registerInternalAuth(
   });
 }
 
-/** Deterministic, non-reversible fingerprint of a supplied key for audits. */
 export function fingerprintKey(key: string | undefined): string {
   if (!key) return '(none)';
   const d = createHash('sha256').update(key).digest('hex');
@@ -71,8 +57,35 @@ export function fingerprintKey(key: string | undefined): string {
 }
 
 /**
- * Timing-safe challenge used by internal endpoints that must also accept
- * per-developer Bearer tokens (Swastik). Verifies supplied == known true
- * values only when both are present.
+ * Swastik's route policy, kept here rather than inside the entry point so it is a pure,
+ * importable, testable function. `src/entry/swastik.ts` executes side effects at module scope
+ * and cannot be imported by a unit test, so a policy expressed there would be untestable.
+ *
+ * Fail-closed by construction: every route is protected unless it appears in the developer
+ * exemption list below, so a route added to Swastik later is authenticated unless somebody
+ * deliberately decides otherwise.
  */
+const SWASTIK_DEVELOPER_EXEMPT_ROUTES: readonly (readonly [string, RegExp])[] = [
+  // Developer self-service, authenticated by the caller's own bearer credential, not the
+  // service-to-service key. See UR-B-05 for the separate defect that devId is a plaintext token.
+  ['GET', /^\/swastik\/developers\/me$/],
+  ['POST', /^\/swastik\/modules\/upload$/],
+  ['GET', /^\/swastik\/modules\/[^/]+\/builds\/[^/]+$/],
+];
+
+/**
+ * True when a Swastik request must present the internal service key.
+ *
+ * Protected: all `/internal/*`, plus `POST /swastik/developers/register` and
+ * `GET /swastik/status` — the two routes that had no gate at all.
+ */
+export function shouldProtectSwastikRoute(request: { method: string; url: string }): boolean {
+  const { method, url } = request;
+  const path = url.split('?')[0] ?? url;
+  const isExempt = SWASTIK_DEVELOPER_EXEMPT_ROUTES.some(
+    ([exemptMethod, pattern]) => exemptMethod === method && pattern.test(path),
+  );
+  return !isExempt;
+}
+
 export { constantTimeEqual, generateToken };

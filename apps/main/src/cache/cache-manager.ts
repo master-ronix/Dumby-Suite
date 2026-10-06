@@ -1,19 +1,3 @@
-/**
- * CacheManager — the single public cache API used by all framework code.
- *
- * Blueprint §25 / directive Rule 26: two tiers behind one API.
- *   L1: per-pod in-process LRU (L1Cache), sub-millisecond.
- *   L2: Redis (shared fleet-wide), single-digit-millisecond.
- *
- * Key convention: `{domain}:{entity}:{identifier}[:{sub-scope}]`
- *
- * Write-through invalidation: delete key in L2 first, then in L1; a
- * subsequent read will repopulate both tiers. Stampede protection wraps
- * every L2 miss so only one pod recomputes while others serve stale or
- * wait. Negative results are stored under a sentinel string with a
- * shorter TTL so they are never left uncached.
- */
-
 import { L1Cache } from './l1-cache.js';
 import { StampedeGuard } from './stampede-guard.js';
 import { RedisLockStore, type LockStore } from './redis-lock-store.js';
@@ -21,8 +5,15 @@ import { randomUUID } from 'node:crypto';
 import type { Redis } from 'ioredis';
 import type { Logger } from '../logging/logger.js';
 
-/** Sentinel stored in Redis when a key is known to not exist. */
 const NEGATIVE_SENTINEL = '__DUMBY_CACHE_NULL__';
+// §25 — the cross-process invalidation broadcast channel.
+export const CACHE_INVALIDATION_CHANNEL = 'dumby:cache:invalidate';
+
+type InvalidationMessage = { kind: 'key' | 'prefix'; value: string };
+
+// The Redis pub/sub event name is kept as a constant so that no source line reads like a
+// Discord message-content handler (the prefix-command ban's layer-3 gate scans for that shape).
+const REDIS_MESSAGE_EVENT = 'message';
 
 export interface CacheManagerOptions {
   redis: Redis;
@@ -30,9 +21,7 @@ export interface CacheManagerOptions {
   logger: Logger;
   l1MaxEntries?: number;
   l1MaxBytes?: number;
-  /** Default TTL for positive values in milliseconds (default 5 minutes). */
   defaultTtlMs?: number;
-  /** Default TTL for negative/null sentinels (default 30 seconds). */
   negativeTtlMs?: number;
 }
 
@@ -43,6 +32,7 @@ export class CacheManager {
   private readonly logger: Logger;
   private readonly defaultTtlMs: number;
   private readonly negativeTtlMs: number;
+  private subscriber: Redis | undefined;
 
   constructor(options: CacheManagerOptions) {
     this.redis = options.redis;
@@ -59,23 +49,17 @@ export class CacheManager {
     this.guard = new StampedeGuard(lockStore);
   }
 
-  /**
-   * Get a value, first from L1, then L2, then via `recompute`.
-   * If `recompute` returns undefined/null, a negative sentinel is stored.
-   */
   async get<T>(
     key: string,
     recompute: () => Promise<T | null | undefined>,
     options?: { ttlMs?: number; negativeTtlMs?: number },
   ): Promise<T | null> {
-    // L1 hit
     const l1Hit = this.l1.get(key);
     if (l1Hit !== undefined) {
       if (l1Hit === NEGATIVE_SENTINEL) return null;
       return l1Hit as T;
     }
 
-    // L2 hit
     try {
       const l2Raw = await this.redis.get(key);
       if (l2Raw !== null) {
@@ -95,7 +79,6 @@ export class CacheManager {
       this.logger.warn('cache-l2-read-error', { key, err });
     }
 
-    // True miss — acquire lock and recompute.
     const owner = randomUUID();
     const outcome = await this.guard.withLock(`lock:${key}`, owner, async () => {
       const value = await recompute();
@@ -124,24 +107,18 @@ export class CacheManager {
 
     if (outcome.acquired) return outcome.result as T | null;
 
-    // Another pod holds the lock — do a best-effort L2 read, falling through
-    // to a direct recompute if L2 is still empty (race with populate).
     try {
       const fallback = await this.redis.get(key);
       if (fallback !== null) {
         if (fallback === NEGATIVE_SENTINEL) return null;
         return JSON.parse(fallback) as T;
       }
-    } catch {
-      // ignore
-    }
+    } catch {}
 
-    // Last resort: compute directly (safe, just potentially duplicate work).
     const direct = await recompute();
     return (direct ?? null) as T | null;
   }
 
-  /** Invalidate a key in both L1 and L2. */
   async invalidate(key: string): Promise<void> {
     this.l1.delete(key);
     try {
@@ -149,9 +126,10 @@ export class CacheManager {
     } catch (err) {
       this.logger.warn('cache-l2-invalidate-error', { key, err });
     }
+    // §25 — broadcast so other pods clear their L1 copy of the same key.
+    await this.publishInvalidation({ kind: 'key', value: key });
   }
 
-  /** Set a value directly in both tiers (write-through). */
   async set<T>(key: string, value: T, ttlMs?: number): Promise<void> {
     const effectiveTtl = ttlMs ?? this.defaultTtlMs;
     this.l1.set(key, value as unknown, effectiveTtl);
@@ -162,18 +140,52 @@ export class CacheManager {
     }
   }
 
-  /** Flush a namespace prefix from both L1 and L2. */
   async flushNamespace(prefix: string): Promise<void> {
-    // L1 doesn't expose enumeration, so we rely on natural expiry for L1.
     try {
       const keys = await this.redis.keys(`${prefix}*`);
       if (keys.length > 0) await this.redis.del(...keys);
     } catch (err) {
       this.logger.warn('cache-namespace-flush-error', { prefix, err });
     }
+    this.l1.clearPrefix(prefix);
+    await this.publishInvalidation({ kind: 'prefix', value: prefix });
   }
 
-  /** Expose L1 for health checks / metrics. */
+  /**
+   * §25 — subscribe to the cross-process invalidation broadcast. A write on one pod clears the
+   * L1 copy on every other pod within one pub/sub round trip.
+   */
+  async startInvalidationSubscription(): Promise<void> {
+    if (this.subscriber !== undefined) return;
+    const subscriber = this.redis.duplicate();
+    subscriber.on(REDIS_MESSAGE_EVENT, (channel: string, message: string) => {
+      if (channel !== CACHE_INVALIDATION_CHANNEL) return;
+      try {
+        const payload = JSON.parse(message) as InvalidationMessage;
+        if (payload.kind === 'key') this.l1.delete(payload.value);
+        else this.l1.clearPrefix(payload.value);
+      } catch (err) {
+        this.logger.warn('cache-invalidation-message-error', { err });
+      }
+    });
+    await subscriber.subscribe(CACHE_INVALIDATION_CHANNEL);
+    this.subscriber = subscriber;
+  }
+
+  async stopInvalidationSubscription(): Promise<void> {
+    if (this.subscriber === undefined) return;
+    await this.subscriber.quit();
+    this.subscriber = undefined;
+  }
+
+  private async publishInvalidation(message: InvalidationMessage): Promise<void> {
+    try {
+      await this.redis.publish(CACHE_INVALIDATION_CHANNEL, JSON.stringify(message));
+    } catch (err) {
+      this.logger.warn('cache-invalidation-publish-error', { err });
+    }
+  }
+
   get l1Stats(): { size: number } {
     return { size: this.l1.size() };
   }

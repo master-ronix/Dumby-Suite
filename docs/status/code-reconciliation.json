@@ -1,0 +1,209 @@
+{
+  "$id": "docs/status/code-reconciliation.json",
+  "title": "Docs ↔ Code reconciliation",
+  "note": "Every row compares what the NEW documentation asserts against the actual source in master-ronix/Dumby-Suite (apps/main at b6ae1a6d860902274cd3c237d68c1c886687ba8b). Standing rule: the specification is authority; where the code is narrower, the code is the gap to close.",
+  "verified_commit": "b6ae1a6d860902274cd3c237d68c1c886687ba8b",
+  "verdicts": [
+    "match",
+    "doc-incomplete",
+    "code-gap",
+    "code-anchor-broken"
+  ],
+  "facts": [
+    {
+      "id": "REC-001",
+      "area": "module manifest — releaseStatus",
+      "doc_claim": "releaseStatus is required and is 'private' | 'public' (spec/modules/module-anatomy-manifest.md)",
+      "code_truth": "releaseStatus is required and is z.enum(['private','public'])",
+      "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
+      "verdict": "match",
+      "resolution": "Re-verified against HEAD b6ae1a6d860902274cd3c237d68c1c886687ba8b — the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
+    },
+    {
+      "id": "REC-002",
+      "area": "module manifest — visibility",
+      "doc_claim": "the manifest carries a `visibility` enum (contracts/module-manifest.schema.json)",
+      "code_truth": "the schema carries a required visibility enum (['public','unlisted','private'])",
+      "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
+      "verdict": "match",
+      "resolution": "Re-verified against HEAD b6ae1a6d860902274cd3c237d68c1c886687ba8b — the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
+    },
+    {
+      "id": "REC-003",
+      "area": "module manifest — crossModuleReads",
+      "doc_claim": "contracts/module-manifest.schema.json declares crossModuleReads: array of { targetModule, accessor } (accessor must end 'ForCrossModuleRead')",
+      "code_truth": "the schema carries crossModuleReads: array of { targetModule, accessor } where accessor must end 'ForCrossModuleRead'",
+      "code_ref": "apps/main/src/module-system/manifest.schema.ts",
+      "verdict": "match",
+      "resolution": "Resolved in v5.3.0 (docs side completed); previously recorded as a doc-side gap."
+    },
+    {
+      "id": "REC-004",
+      "area": "module manifest — command rbacRequirement",
+      "doc_claim": "contracts/module-manifest.schema.json declares rbacRequirement on each command entry: enum ['RESTRICTED','MEMBER','HELPER','MOD','ADMIN','OWNER'] | null",
+      "code_truth": "each command entry carries rbacRequirement: enum ['RESTRICTED','MEMBER','HELPER','MOD','ADMIN','OWNER'] | null",
+      "code_ref": "apps/main/src/module-system/manifest.schema.ts",
+      "verdict": "match",
+      "resolution": "Resolved in v5.3.0 (docs side completed); previously recorded as a doc-side gap."
+    },
+    {
+      "id": "REC-005",
+      "area": "module manifest — required fields",
+      "doc_claim": "required = ['name','version','description','tier','hardcoded','devId','buildId','visibility']",
+      "code_truth": "the schema requires name, version, description, tier, hardcoded, devId, buildId, visibility and releaseStatus — matching the contract's required list",
+      "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
+      "verdict": "match",
+      "resolution": "Re-verified against HEAD b6ae1a6d860902274cd3c237d68c1c886687ba8b — the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
+    },
+    {
+      "id": "REC-006",
+      "area": "error taxonomy",
+      "doc_claim": "14 concrete error classes + base DumbyError (contracts/errors.json)",
+      "code_truth": "DumbyError base + 14 concrete subclasses, matching code names exactly",
+      "code_ref": "apps/main/src/errors/taxonomy.ts",
+      "verdict": "match"
+    },
+    {
+      "id": "REC-007",
+      "area": "bootstrap sequence",
+      "doc_claim": "18 stages (status/counts.json bootstrap_stages)",
+      "code_truth": "BOOTSTRAP_STAGES has exactly 18 entries in the same order",
+      "code_ref": "apps/main/src/bootstrap/stages.ts",
+      "verdict": "match"
+    },
+    {
+      "id": "REC-008",
+      "area": "shutdown sequence",
+      "doc_claim": "9 steps (status/counts.json shutdown_steps)",
+      "code_truth": "SHUTDOWN_STEPS has exactly 9 entries in the same order",
+      "code_ref": "apps/main/src/bootstrap/stages.ts",
+      "verdict": "match"
+    },
+    {
+      "id": "REC-009",
+      "area": "middleware pipeline",
+      "doc_claim": "12 built-in middleware stages",
+      "code_truth": "12 built-in files with explicit priorities: maintenance-mode -20, admin-tier-gate -10, trace 0, auth 10, guild-config 20, locale 30, rate-limit 40, permission 50, rbac 60, cooldown 70, defer 80, analytics 90",
+      "code_ref": "apps/main/src/middleware/built-in/*.ts",
+      "verdict": "match"
+    },
+    {
+      "id": "REC-010",
+      "area": "permission ranks",
+      "doc_claim": "six ranks; canonical names MODERATOR and ADMINISTRATOR",
+      "code_truth": "six ranks OWNER(6) ADMINISTRATOR(5) MODERATOR(4) HELPER(3) MEMBER(2) RESTRICTED(1); ADMIN/MOD accepted only as aliases",
+      "code_ref": "apps/main/src/permissions/rank.ts",
+      "verdict": "match"
+    },
+    {
+      "id": "REC-011",
+      "area": "service ports",
+      "doc_claim": "all eight ports are documented: 8080 API / 8081 HEALTH / 8082 METRICS / 8083 POWER_ENGINE / 8084 CLAI / 8085 SWASTIK / 8086 CREDENTIALS_SERVICE / 8090 TWILL (technology-stack-decision-matrix.md, configuration-management.md, blueprint/system-map.md)",
+      "code_truth": "API 8080, HEALTH 8081, METRICS 8082, POWER_ENGINE 8083, CLAI 8084, SWASTIK 8085, CREDENTIALS_SERVICE 8086, TWILL 8090",
+      "code_ref": "apps/main/src/config/env.schema.ts",
+      "verdict": "match",
+      "resolution": "Resolved in v5.3.0 (docs side completed); previously recorded as a doc-side gap."
+    },
+    {
+      "id": "REC-012",
+      "area": "module storage",
+      "doc_claim": "four per-tier volumes under MODULES_DIR plus swastik-staging",
+      "code_truth": "MODULES_DIR default /mnt/modules; SWASTIK_LIVE_VOLUME_PATH default /mnt/modules/modules-core; SWASTIK_STAGING_VOLUME_PATH default /mnt/modules/swastik-staging; tiers admin|core|standard|marketplace",
+      "code_ref": "apps/main/src/config/env.schema.ts",
+      "verdict": "match"
+    },
+    {
+      "id": "REC-013",
+      "area": "shipped first-party modules",
+      "doc_claim": "8 commands (status/counts.json core_commands)",
+      "code_truth": "8 first-party module packages: browse, dashboard, health, hello-world, modules, permit, persona, queue",
+      "code_ref": "packages/modules/",
+      "verdict": "match"
+    },
+    {
+      "id": "REC-014",
+      "area": "event bus depth guard",
+      "doc_claim": "bounded emit depth",
+      "code_truth": "InternalEventBus maxEmitDepth default 20; env EVENT_BUS_MAX_EMIT_DEPTH default 20; event name regex {domain}.{entity}.{action}",
+      "code_ref": "apps/main/src/events/event-bus.ts ; apps/main/src/config/env.schema.ts",
+      "verdict": "match"
+    },
+    {
+      "id": "REC-015",
+      "area": "renderer follow-up watchdog",
+      "doc_claim": "13-minute follow-up watchdog",
+      "code_truth": "FOLLOWUP_ALARM_MS = 13 * 60 * 1000",
+      "code_ref": "apps/main/src/rendering/core-renderer.ts",
+      "verdict": "match"
+    },
+    {
+      "id": "REC-016",
+      "area": "reconciliation anchors",
+      "doc_claim": "status/reconciliation.json head_anchor values (admin.routes.ts, module-system/loader.ts, rendering/core-renderer.ts)",
+      "code_truth": "all three anchors resolve on disk at HEAD",
+      "code_ref": "apps/main/src/module-system/loader.ts ; apps/main/src/rendering/core-renderer.ts",
+      "verdict": "match",
+      "resolution": "Resolved in v5.3.0 (docs side completed); previously recorded as a doc-side gap."
+    },
+    {
+      "id": "REC-017",
+      "area": "DI container",
+      "doc_claim": "typed Symbol tokens, frozen core; all 21 core tokens named in spec/architecture/dependency-injection-service-container.md §10.2",
+      "code_truth": "21 CORE_TOKENS declared (Logger, Config, Db, EventBus, Cache, Queue, ModuleRegistry, PermissionResolver, Metrics, CommandRegistry, CommandRouter, Renderer, InteractionRegistry, CommandCeilingService, CollisionResolutionService, Personas, EventRouter, Scheduler, AdminEvalGate, OAuth2, MtpTokens)",
+      "code_ref": "apps/main/src/di/tokens.ts",
+      "verdict": "match",
+      "resolution": "Resolved in v5.3.0 (docs side completed); previously recorded as a doc-side gap."
+    },
+    {
+      "id": "REC-018",
+      "area": "runtime",
+      "doc_claim": "Node.js LTS >= 22, ESM, pnpm",
+      "code_truth": "engines node >=22.0.0, pnpm >=9.0.0; type module; TypeScript strict/NodeNext",
+      "code_ref": "apps/main/package.json",
+      "verdict": "match"
+    },
+    {
+      "id": "REC-019",
+      "area": "module manifest — marketplaceCategory",
+      "doc_claim": "a closed five-value enum ('audio'|'community'|'security'|'integrations'|'utility')",
+      "code_truth": "marketplaceCategory is a closed five-value enum ('audio'|'community'|'security'|'integrations'|'utility')",
+      "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
+      "verdict": "match",
+      "resolution": "Re-verified against HEAD b6ae1a6d860902274cd3c237d68c1c886687ba8b — the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
+    },
+    {
+      "id": "REC-020",
+      "area": "module manifest — depends/provides/services shapes",
+      "doc_claim": "arrays of structured objects ({token,version} / {token,contract} / {token,class,lifetime,deps})",
+      "code_truth": "depends: array of {token,version}; provides: array of {token,contract}; services: array of {token,class,lifetime,deps}",
+      "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
+      "verdict": "match",
+      "resolution": "Re-verified against HEAD b6ae1a6d860902274cd3c237d68c1c886687ba8b — the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
+    },
+    {
+      "id": "REC-021",
+      "area": "module manifest — devId / buildId",
+      "doc_claim": "required",
+      "code_truth": "devId and buildId are both required",
+      "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
+      "verdict": "match",
+      "resolution": "Re-verified against HEAD b6ae1a6d860902274cd3c237d68c1c886687ba8b — the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
+    },
+    {
+      "id": "REC-022",
+      "area": "module manifest — required flag",
+      "doc_claim": "default: false (two conflicting entries in one section)",
+      "code_truth": "required: z.boolean().default(false)",
+      "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
+      "verdict": "match",
+      "resolution": "Re-verified against HEAD b6ae1a6d860902274cd3c237d68c1c886687ba8b — the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
+    }
+  ],
+  "counts": {
+    "match": 22,
+    "doc-incomplete": 0,
+    "code-gap": 0,
+    "code-anchor-broken": 0,
+    "total": 22
+  }
+}

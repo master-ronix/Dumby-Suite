@@ -1,5 +1,6 @@
 node_modules/
 dist/
+dist-modules/
 coverage/
 .env
 .env.local

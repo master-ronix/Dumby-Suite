@@ -1,18 +1,10 @@
-/**
- * Error taxonomy (Cluster: Keepy — feeds the root error boundary).
- *
- * Every application-thrown error extends DumbyError so the root error
- * boundary (see src/http/error-boundary.ts) can map it to a JSON response
- * deterministically instead of leaking stack traces or ad-hoc shapes.
- *
- * This file has ZERO external dependencies on purpose so it can be unit
- * tested directly in any environment, including one with no package
- * registry access.
- */
-
 export interface DumbyErrorOptions {
   code: string;
   httpStatus: number;
+  /** §28 — the user-facing message rendered in the formal notice frame. */
+  userMessage?: string;
+  /** §28 — whether this is an operational (expected) error vs a programmer error. */
+  isOperational?: boolean;
   retryable?: boolean;
   cause?: unknown;
   metadata?: Record<string, unknown>;
@@ -21,6 +13,8 @@ export interface DumbyErrorOptions {
 export class DumbyError extends Error {
   readonly code: string;
   readonly httpStatus: number;
+  readonly userMessage: string;
+  readonly isOperational: boolean;
   readonly retryable: boolean;
   readonly metadata: Record<string, unknown>;
 
@@ -29,18 +23,28 @@ export class DumbyError extends Error {
     this.name = new.target.name;
     this.code = options.code;
     this.httpStatus = options.httpStatus;
+    this.userMessage = options.userMessage ?? message;
+    this.isOperational = options.isOperational ?? true;
     this.retryable = options.retryable ?? false;
     this.metadata = options.metadata ?? {};
   }
 
-  /** Shape returned by every JSON API error response. */
   toJSON(): {
-    error: { code: string; message: string; retryable: boolean; metadata: Record<string, unknown> };
+    error: {
+      code: string;
+      message: string;
+      userMessage: string;
+      isOperational: boolean;
+      retryable: boolean;
+      metadata: Record<string, unknown>;
+    };
   } {
     return {
       error: {
         code: this.code,
         message: this.message,
+        userMessage: this.userMessage,
+        isOperational: this.isOperational,
         retryable: this.retryable,
         metadata: this.metadata,
       },
@@ -59,7 +63,6 @@ export class ValidationError extends DumbyError {
   }
 }
 
-/** Layer index is 1-7, matching the seven-layer permission resolver. */
 export class PermissionDeniedError extends DumbyError {
   readonly layerIndex: number;
   readonly reason: string;
@@ -110,7 +113,6 @@ export class RateLimitedError extends DumbyError {
   }
 }
 
-/** Blueprint §28.1 name alias — RateLimitExceededError is the canonical name. */
 export const RateLimitExceededError = RateLimitedError;
 
 export class MaintenanceModeError extends DumbyError {
@@ -183,6 +185,8 @@ export class InternalError extends DumbyError {
       code: 'DUMBY_INTERNAL_ERROR',
       httpStatus: 500,
       retryable: false,
+      isOperational: false,
+      userMessage: 'An unexpected error occurred. The incident has been recorded.',
     });
   }
 }
@@ -193,12 +197,6 @@ export class UnauthorizedError extends DumbyError {
   }
 }
 
-/**
- * Sentinel returned by a cross-module accessor when the *depended-on*
- * module is disabled for the current guild, instead of throwing. Consumers
- * pattern-match on `isModuleDisabledResult` and degrade gracefully
- * (Cluster: Bridge — soft-dependency degradation).
- */
 export const MODULE_DISABLED = Symbol('ModuleDisabledResult');
 
 export interface ModuleDisabledResult {

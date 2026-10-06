@@ -15,12 +15,13 @@ import type { CollisionResolutionService } from '../commands/collision-resolutio
 import type { CoreRenderer } from '../rendering/core-renderer.js';
 import type { InteractionRegistry } from '../interactions/interaction-registry.js';
 import type { PersonaCommandBindingService } from '../personas/persona-command-binding.service.js';
+import type { EventRouter } from '../events/event-router.js';
+import type { Scheduler } from '../queue/scheduler.js';
+import type { AdminEvalGate } from '../permissions/admin-eval-gate.js';
+import type { DiscordOAuth2Client } from '../http/oauth/oauth2-client.js';
+import type { MtpTokenCalculator } from '../analytics/mtp-token-calculator.js';
+import type { I18nManager } from '../i18n/i18n-manager.js';
 
-/**
- * CORE_TOKENS is the frozen namespace: after bootstrap Stage 09
- * (DI_BOOTSTRAP) the root container is frozen, so nothing — including a
- * misbehaving module — can re-register any of these.
- */
 export const CORE_TOKENS = {
   Logger: createToken<Logger>('core.Logger'),
   Config: createToken<ConfigService>('core.Config'),
@@ -31,6 +32,7 @@ export const CORE_TOKENS = {
   ModuleRegistry: createToken<ModuleRegistry>('core.ModuleRegistry'),
   PermissionResolver: createToken<PermissionResolver>('core.PermissionResolver'),
   Metrics: createToken<MetricsRegistry>('core.Metrics'),
+  I18n: createToken<I18nManager>('core.I18n'),
   CommandRegistry: createToken<CommandRegistry>('core.CommandRegistry'),
   CommandRouter: createToken<CommandRouter>('core.CommandRouter'),
   Renderer: createToken<CoreRenderer>('core.Renderer'),
@@ -40,14 +42,13 @@ export const CORE_TOKENS = {
     'core.CollisionResolutionService',
   ),
   Personas: createToken<PersonaCommandBindingService>('core.Personas'),
+  EventRouter: createToken<EventRouter>('core.EventRouter'),
+  Scheduler: createToken<Scheduler>('core.Scheduler'),
+  AdminEvalGate: createToken<AdminEvalGate>('core.AdminEvalGate'),
+  OAuth2: createToken<DiscordOAuth2Client>('core.OAuth2'),
+  MtpTokens: createToken<MtpTokenCalculator>('core.MtpTokens'),
 } as const;
 
-/**
- * Builds a module-scoped token namespace, e.g. `moduleTokens('utility')`
- * produces a factory for tokens whose description is prefixed
- * `module.utility.*`, preventing accidental collisions between two
- * modules that both want to call their service "Service".
- */
 export function moduleTokenNamespace(moduleId: string) {
   return {
     token<T>(name: string) {

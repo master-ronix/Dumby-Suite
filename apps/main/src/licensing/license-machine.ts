@@ -1,20 +1,3 @@
-/**
- * License machine (blueprint §15.7) — the six-state governance state machine
- * every module author's authority to publish and deploy passes through.
- *
- * Six states, five of which participate in the diagram's legal edges and one
- * (`revoked`) that is terminal:
- *
- *   pending ──► under-review ──► approved ──► suspended ⇄ restored
- *                                   │                        │
- *                                   └────────► revoked ◄─────┘
- *   (every non-terminal state can transition to revoked)
- *
- * The machine is a pure function over an immutable `LicenseRecord`; governance
- * actors call `transitionLicense` and the machine rejects any non-legal edge.
- * `approved` is the only state that permits deployment and promotion.
- */
-
 export const LICENSE_STATES = [
   'pending',
   'under-review',
@@ -32,7 +15,6 @@ export type LicenseTierClass = (typeof LICENSE_TIER_CLASSES)[number];
 
 export interface LicenseRecord {
   readonly licenseId: string;
-  /** The devId this license binds to — the manifest's devId must equal this. */
   readonly subjectDevId: string;
   readonly tierClass: LicenseTierClass;
   readonly state: LicenseState;
@@ -47,15 +29,12 @@ export interface LicenseRecord {
   readonly revokedBy?: string;
   readonly revokedAt?: string;
   readonly revocationReason?: string;
-  /** Public verifiable fingerprint for the paper certificate (blueprint §15.7). */
   readonly verifiedFingerprint?: string;
 }
 
 export interface LicenseTransitionInput {
   readonly actor: string;
-  /** Optional — required for suspension/revocation/restoration. */
   readonly reason?: string;
-  /** Suspension-only: force-disable the developer's already-live modules. */
   readonly forceDisable?: boolean;
 }
 
@@ -94,16 +73,10 @@ export class UnknownLicenseError extends Error {
   }
 }
 
-/** The only state that permits deployment and promotion (§15.7). */
 export function licensePermitsDeployment(state: LicenseState): boolean {
   return state === 'approved';
 }
 
-/**
- * Copies `fields` onto `base`, dropping keys whose value is `undefined`, so a
- * transition that stamps an optional field never writes an explicit
- * `undefined` (safe under `exactOptionalPropertyTypes`).
- */
 function withOptional<T extends object, F extends Record<string, string | boolean | undefined>>(
   base: T,
   fields: F,
@@ -115,7 +88,6 @@ function withOptional<T extends object, F extends Record<string, string | boolea
   return out as T & Partial<F>;
 }
 
-/** Drops keys from a clone of `obj` (used to clear intervention metadata). */
 function withoutKeys<T extends object, K extends keyof T>(
   obj: T,
   ...keys: readonly K[]
@@ -125,13 +97,6 @@ function withoutKeys<T extends object, K extends keyof T>(
   return out as Omit<T, K>;
 }
 
-/**
- * Transitions a license along one of its legal edges. On an illegal edge the
- * machine throws `IllegalLicenseTransitionError` and nothing changes.
- * Suspension stamps `suspendedAt/suspendedBy/suspensionReason[/forceDisable]`
- * and clears restoration metadata; restoration clears them again and stamps
- * `restoredAt/restoredBy`; revocation is terminal and stamps `revokedAt`.
- */
 export function transitionLicense(
   license: LicenseRecord,
   to: LicenseState,
@@ -189,11 +154,6 @@ export function transitionLicense(
   return { ...license, state: to };
 }
 
-/**
- * Automated trigger (governed, not inferred): a confirmed security finding
- * against a developer's module moves the license to `suspended` pending review
- * (blueprint §15.7). The operator may carry the force-disable flag.
- */
 export function suspendForSecurityFinding(
   license: LicenseRecord,
   input: LicenseTransitionInput,
@@ -201,11 +161,6 @@ export function suspendForSecurityFinding(
   return transitionLicense(license, 'suspended', input);
 }
 
-/**
- * Automated trigger: a confirmed malicious-artifact finding moves the license
- * to `revoked` — terminal, no administrative action short of a new registration
- * can reopen it.
- */
 export function revokeForMaliciousArtifact(
   license: LicenseRecord,
   input: LicenseTransitionInput,
@@ -213,7 +168,6 @@ export function revokeForMaliciousArtifact(
   return transitionLicense(license, 'revoked', input);
 }
 
-/** Authorized publication tier ranks, highest authority first. */
 const TIER_CLASS_RANK: Readonly<Record<LicenseTierClass, number>> = {
   admin: 4,
   core: 3,
@@ -221,21 +175,12 @@ const TIER_CLASS_RANK: Readonly<Record<LicenseTierClass, number>> = {
   marketplace: 1,
 };
 
-/**
- * A license authorizes publication at its own tier class and below
- * (blueprint §15.7: "a license authorizes publication at its own tier and
- * below"). An unknown declared tier fails closed.
- */
 export function licenseAuthorizesTier(license: LicenseRecord, declaredTier: string): boolean {
   const declaredRank = TIER_CLASS_RANK[declaredTier as LicenseTierClass];
   if (declaredRank === undefined) return false;
   return declaredRank <= TIER_CLASS_RANK[license.tierClass];
 }
 
-/**
- * devId–license binding (§15.7): the manifest's devId must equal the license's
- * subject. Fails closed — a manifest without a devId never binds.
- */
 export function licenseMatchesManifestDevId(
   license: LicenseRecord,
   manifestDevId: string | undefined,
@@ -247,12 +192,6 @@ export function licenseMatchesManifestDevId(
   );
 }
 
-/**
- * The full upload/deploy authorization check (§15.7, §15.8): the developer has
- * an `approved` license whose subject matches the manifest devId and whose tier
- * class covers the manifest's declared tier. Returns a list of violations;
- * empty means deployment is authorized.
- */
 export function licenseAuthorizesDeploy(
   license: LicenseRecord,
   declaration: {
@@ -275,7 +214,6 @@ export function licenseAuthorizesDeploy(
   return violations;
 }
 
-/** A new registration starts in `pending` — no upload proceeds (§15.7). */
 export function createPendingLicense(
   licenseId: string,
   subjectDevId: string,

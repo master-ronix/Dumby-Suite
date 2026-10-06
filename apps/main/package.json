@@ -2,7 +2,7 @@
   "name": "@workspace/dumby",
   "version": "1.0.0-v1",
   "private": true,
-  "description": "DUMBY Unified Modular Bot System — modular Discord bot framework.",
+  "description": "DUMBY Unified Modular Bot System \u2014 modular Discord bot framework.",
   "type": "module",
   "engines": {
     "node": ">=22.0.0",
@@ -13,6 +13,7 @@
     "dev": "tsx watch src/bootstrap/bootstrap.ts",
     "start": "node dist/entry/main.js",
     "start:dev": "tsx src/entry/main.ts",
+    "cli": "tsx src/cli/main.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint . --max-warnings=0",
     "lint:fix": "eslint . --fix",
@@ -30,7 +31,10 @@
     "seed": "tsx scripts/seed.ts",
     "verify:env": "tsx scripts/verify-env.ts",
     "verify:all": "tsx scripts/verify-all.ts",
-    "swastik:deploy": "tsx scripts/swastik-deploy.ts"
+    "swastik:deploy": "tsx scripts/swastik-deploy.ts",
+    "build:modules": "tsx scripts/build-first-party-modules.ts",
+    "seed:modules": "tsx scripts/seed-first-party-modules.ts",
+    "test:flow": "vitest run --config vitest.flow.config.ts"
   },
   "dependencies": {
     "@fastify/helmet": "^12.0.1",
@@ -40,6 +44,7 @@
     "@opentelemetry/exporter-trace-otlp-http": "^0.221.0",
     "@opentelemetry/sdk-node": "^0.221.0",
     "@opentelemetry/sdk-trace-base": "^2.10.0",
+    "@workspace/swastik": "workspace:*",
     "argon2": "^0.41.1",
     "bullmq": "^5.28.0",
     "discord.js": "^14.17.0",
@@ -64,9 +69,11 @@
     "@typescript-eslint/eslint-plugin": "^8.18.1",
     "@typescript-eslint/parser": "^8.18.1",
     "@vitest/coverage-v8": "^4.1.10",
+    "embedded-postgres": "18.4.0-beta.17",
     "esbuild": "0.27.3",
     "eslint": "^9.17.0",
     "eslint-plugin-import": "^2.32.0",
+    "ioredis-mock": "^8.13.1",
     "prettier": "^3.4.2",
     "tsx": "catalog:",
     "typescript": "^5.7.2",

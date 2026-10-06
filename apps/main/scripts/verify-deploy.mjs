@@ -21,7 +21,6 @@ console.log('│ Production Build: dist/entry/swastik.js             │');
 console.log('└─────────────────────────────────────────────────────┘');
 console.log();
 
-// ── Step 1: Verify production build exists ────────────────────────────
 console.log('Step 1: Verifying production build...');
 const swastikJs = join(REPO_ROOT, 'dist', 'entry', 'swastik.js');
 const mainJs = join(REPO_ROOT, 'dist', 'entry', 'main.js');
@@ -40,7 +39,6 @@ console.log(`  ✓ dist/entry/main.js (${mainSize} bytes)`);
 console.log(`  ✓ Production build compiled successfully`);
 console.log();
 
-// ── Step 2: Verify only health and hello modules exist ───────────────
 console.log('Step 2: Verifying module directories...');
 const modulesDir = join(REPO_ROOT, 'dist', 'modules');
 const moduleDirs = [];
@@ -59,7 +57,6 @@ if (illustrativeModules.length > 0) {
 console.log(`  ✓ No illustrative/example modules remain`);
 console.log();
 
-// ── Step 3: Verify command deployer logic ────────────────────────────
 console.log('Step 3: Verifying command deployer...');
 const deployerJs = readFileSync(join(REPO_ROOT, 'dist', 'commands', 'command-deployer.js'), 'utf8');
 if (
@@ -77,7 +74,6 @@ if (deployerJs.includes('Routes.applicationGuildCommands')) {
 }
 console.log();
 
-// ── Step 4: Simulate Swastik deployment flow ────────────────────────
 console.log('Step 4: Simulating module deployment flow...');
 
 function verifyManifest(moduleName) {
@@ -104,7 +100,6 @@ for (const mod of ['health', 'hello']) {
   console.log(`    ✓ ${isRequired ? 'Required: true' : 'Required check needed'}`);
 }
 
-// Simulate Swastik deploy logic (in-memory)
 console.log();
 console.log('Step 5: Simulating Swastik deploy/promote cycle...');
 
@@ -118,7 +113,6 @@ for (const mod of ['health', 'hello']) {
   const buildId = `build_${randomBytes(8).toString('hex')}`;
   const devId = `dumby-core`;
 
-  // Stage
   const stagingDir = join(stagingVolume, `${mod}__${version}`);
   if (!existsSync(stagingDir)) mkdirSync(stagingDir, { recursive: true });
   writeFileSync(
@@ -128,7 +122,6 @@ for (const mod of ['health', 'hello']) {
   );
   console.log(`  ${mod} staged: ${stagingDir}`);
 
-  // Promote (symlink swap)
   const liveLink = join(liveVolume, mod);
   const previous = existsSync(liveLink) ? readlinkSync(liveLink) : null;
   if (previous) {
@@ -141,7 +134,6 @@ for (const mod of ['health', 'hello']) {
   symlinkSync(stagingDir, liveLink);
   console.log(`  ${mod} promoted -> ${liveLink} -> ${stagingDir}`);
 
-  // Verify
   const deployedPath = readlinkSync(liveLink);
   const deployedManifest = JSON.parse(readFileSync(join(deployedPath, 'manifest.json'), 'utf8'));
   console.log(`  ${mod} verified: v${deployedManifest.version}, build=${deployedManifest.buildId}`);

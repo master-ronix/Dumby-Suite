@@ -48,17 +48,17 @@ test('stageNumber and shutdownStepNumber are 1-indexed', () => {
 
 test('liveness flips true exactly at Stage 04 OBSERVABILITY_INIT, not before', () => {
   const progress = new BootstrapProgress();
-  progress.advanceTo('HEALTH_SERVER_INIT'); // stage 3
+  progress.advanceTo('HEALTH_SERVER_INIT');
   expect(progress.isLive()).toBe(false);
-  progress.advanceTo('OBSERVABILITY_INIT'); // stage 4
+  progress.advanceTo('OBSERVABILITY_INIT');
   expect(progress.isLive()).toBe(true);
 });
 
 test('startup flips true exactly at Stage 15 DISCORD_LOGIN, not before', () => {
   const progress = new BootstrapProgress();
-  progress.advanceTo('EVENT_REGISTER'); // stage 14
+  progress.advanceTo('EVENT_REGISTER');
   expect(progress.isStarted()).toBe(false);
-  progress.advanceTo('DISCORD_LOGIN'); // stage 15
+  progress.advanceTo('DISCORD_LOGIN');
   expect(progress.isStarted()).toBe(true);
 });
 
@@ -94,7 +94,7 @@ test('currentStage reports null before any stage has been reached', () => {
 
 test('hasReached is monotonic: reaching a later stage implies every earlier stage was reached', () => {
   const progress = new BootstrapProgress();
-  progress.advanceTo('MODULE_READY'); // stage 17
+  progress.advanceTo('MODULE_READY');
   expect(progress.hasReached('PROCESS_SETUP')).toBe(true);
   expect(progress.hasReached('DI_BOOTSTRAP')).toBe(true);
   expect(progress.hasReached('STARTUP_COMPLETE')).toBe(false);

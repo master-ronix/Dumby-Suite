@@ -1,17 +1,3 @@
-/**
- * Dependency injection container (Cluster: Lens).
- *
- * - Symbol tokens (no string-keyed service locator).
- * - Three lifetimes: singleton, transient, scoped.
- * - Child containers inherit parent registrations; a child may shadow a
- *   parent registration by registering the same token again.
- * - Circular dependency detection via a shared resolution stack.
- * - Core token namespace can be frozen after bootstrap Stage 09
- *   (DI_BOOTSTRAP) so no module can silently overwrite a core service.
- *
- * Zero external dependencies — safe to unit test anywhere.
- */
-
 export type Token<T> = symbol & { readonly __tokenType?: T };
 
 export function createToken<T>(description: string): Token<T> {
@@ -79,14 +65,11 @@ export class Container {
       factory: factory as Factory<unknown>,
       lifetime: options.lifetime ?? 'singleton',
     });
-    // A fresh registration invalidates any previously cached instance for
-    // this token on this container (relevant for hot-swap / test isolation).
     this.singletonCache.delete(token);
     this.scopedCache.delete(token);
     return this;
   }
 
-  /** Register an already-constructed value as a singleton (common for config/logger). */
   registerValue<T>(token: Token<T>, value: T): this {
     return this.register(token, () => value, { lifetime: 'singleton' });
   }
@@ -95,7 +78,6 @@ export class Container {
     return this.findOwner(token) !== null;
   }
 
-  /** Freezes this container so no further register() calls succeed (core namespace after Stage 09). */
   freeze(): void {
     this.frozen = true;
   }
@@ -108,7 +90,6 @@ export class Container {
     return new Container(this);
   }
 
-  /** Alias for createChild — used at request/interaction scope boundaries. */
   createScope(): Container {
     return new Container(this);
   }

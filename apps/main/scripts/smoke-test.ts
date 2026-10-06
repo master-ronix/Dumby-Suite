@@ -1,8 +1,3 @@
-/**
- * Smoke test (Cluster: Clay — fastest tier of the test pyramid). Run
- * after `docker compose up` to get a pass/fail signal in a few seconds,
- * well before running the full integration suite. Targets a live server.
- */
 const API_PORT = process.env.API_PORT ?? '8080';
 const HEALTH_PORT = process.env.HEALTH_PORT ?? '8081';
 const METRICS_PORT = process.env.METRICS_PORT ?? '8082';

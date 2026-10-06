@@ -1,0 +1,45 @@
+# Dumby documentation gates — run every check under docs/scripts/docs/ on any change under docs/.
+#
+# Why this lives at the REPOSITORY ROOT: GitHub Actions only executes workflows from the
+# root .github/workflows/. A workflow nested under docs/.github/ is inert — the same trap
+# docs/orchestration/master-prompt.md Phase 7 warns about for apps/main/.github.
+#
+# The gate list is NOT restated here: the glob `scripts/docs/check-*.mjs` is the single
+# source (mirrored in docs/README.md), so adding or removing a gate is a one-file operation.
+name: docs-gates
+
+on:
+  push:
+    paths: ['docs/**']
+  pull_request:
+    paths: ['docs/**']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gates:
+    name: Documentation gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 22
+
+      - name: Run documentation gates
+        working-directory: docs
+        run: |
+          for g in scripts/docs/check-*.mjs; do
+            echo "::group::$g"
+            node "$g"
+            echo "::endgroup::"
+          done

@@ -6,7 +6,7 @@ export async function up(knex: Knex): Promise<void> {
     table.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
     table.string('ownerId').notNullable();
     table.string('label').notNullable();
-    table.text('hashedKey').notNullable(); // argon2id
+    table.text('hashedKey').notNullable();
     table.jsonb('scopes').notNullable().defaultTo('[]');
     table.timestamp('lastUsedAt', { useTz: true }).nullable();
     table.timestamp('revokedAt', { useTz: true }).nullable();

@@ -1,0 +1,147 @@
+{
+  "corpus_version": "5.0.0",
+  "counts_source": "status/counts.json",
+  "coverage_source": "status/coverage-ledger.json",
+  "entities_source": "status/entities.json",
+  "terminology_source": "status/terminology.json",
+  "authority_source": "status/authority.json",
+  "facts_source": "status/facts.json",
+  "documents": [
+    {
+      "id": "BLUEPRINT",
+      "path": "blueprint/",
+      "kind": "blueprint",
+      "status": "normative",
+      "role": "edges: integration, coordination, compatibility, workflows"
+    },
+    {
+      "id": "DOCUMENTATION",
+      "path": "documentation/",
+      "kind": "documentation",
+      "status": "derived",
+      "role": "nodes: wiki / API book"
+    },
+    {
+      "id": "SPEC-GOVERNANCE",
+      "path": "spec/governance/",
+      "kind": "spec",
+      "status": "normative",
+      "authority_scope": [
+        "governance"
+      ]
+    },
+    {
+      "id": "SPEC-ORIENTATION",
+      "path": "spec/orientation/",
+      "kind": "spec",
+      "status": "normative",
+      "authority_scope": [
+        "orientation"
+      ]
+    },
+    {
+      "id": "SPEC-FOUNDATIONS",
+      "path": "spec/foundations/",
+      "kind": "spec",
+      "status": "normative",
+      "authority_scope": [
+        "doctrine"
+      ]
+    },
+    {
+      "id": "SPEC-ARCHITECTURE",
+      "path": "spec/architecture/",
+      "kind": "spec",
+      "status": "normative",
+      "authority_scope": [
+        "behavior:lifecycle",
+        "contract:config"
+      ]
+    },
+    {
+      "id": "SPEC-MODULES",
+      "path": "spec/modules/",
+      "kind": "spec",
+      "status": "normative",
+      "authority_scope": [
+        "contract:manifest"
+      ]
+    },
+    {
+      "id": "SPEC-REQUEST",
+      "path": "spec/request-layer/",
+      "kind": "spec",
+      "status": "normative",
+      "authority_scope": [
+        "behavior:commands",
+        "contract:rbac"
+      ]
+    },
+    {
+      "id": "SPEC-DATA",
+      "path": "spec/data/",
+      "kind": "spec",
+      "status": "normative",
+      "authority_scope": [
+        "behavior:data"
+      ]
+    },
+    {
+      "id": "SPEC-OPERATIONS",
+      "path": "spec/operations/",
+      "kind": "spec",
+      "status": "normative",
+      "authority_scope": [
+        "behavior:ops"
+      ]
+    },
+    {
+      "id": "SPEC-LIFECYCLE",
+      "path": "spec/lifecycle/",
+      "kind": "spec",
+      "status": "normative",
+      "authority_scope": [
+        "behavior:delivery"
+      ]
+    },
+    {
+      "id": "SPEC-REFERENCE",
+      "path": "spec/reference/",
+      "kind": "spec",
+      "status": "normative",
+      "authority_scope": [
+        "reference"
+      ]
+    }
+  ],
+  "contracts": [
+    "contracts/module-manifest.schema.json",
+    "contracts/config.schema.json",
+    "contracts/events.catalog.json",
+    "contracts/errors.json",
+    "contracts/commands.json",
+    "contracts/rbac.enums.json",
+    "contracts/ui-renderer.schema.json",
+    "contracts/openapi.yaml",
+    "contracts/flow-suite.json"
+  ],
+  "archive": [
+    {
+      "path": "archive/v4.5.1/documentation.md",
+      "status": "archived",
+      "superseded_by": "spec/**"
+    }
+  ],
+  "assets": {
+    "orchestration": "orchestration/",
+    "migration": "migration/",
+    "upgradation": "upgradation/",
+    "prompts": "prompts/",
+    "inbox": "_inbox/"
+  },
+  "generated": [
+    "_generated/index.md",
+    "_generated/tree.md",
+    "status/compliance.json"
+  ]
+}

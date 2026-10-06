@@ -1,11 +1,3 @@
-/**
- * Event-loop lag monitor (Cluster: Bags / Kelp).
- *
- * Measures how far a periodic tick drifts from its expected interval — the
- * standard proxy for event-loop lag. Timer + clock are injectable so the
- * threshold logic can be unit tested without waiting on real timers.
- */
-
 export interface EventLoopLagMonitorOptions {
   thresholdMs?: number;
   intervalMs?: number;
@@ -49,7 +41,6 @@ export class EventLoopLagMonitor {
     this.sample(this.now());
   }
 
-  /** Exposed directly so tests can drive the monitor with synthetic timestamps. */
   sample(currentNow: number): number {
     const elapsed = currentNow - this.lastTick;
     this.lastLagMs = Math.max(0, elapsed - this.intervalMs);
@@ -65,7 +56,6 @@ export class EventLoopLagMonitor {
     return this.lastLagMs >= this.thresholdMs;
   }
 
-  /** Should this particular emission be shed given current lag? Protected domains are never shed. */
   shouldShed(
     eventName: string,
     sheddable: boolean,

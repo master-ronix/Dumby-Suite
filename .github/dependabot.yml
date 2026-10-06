@@ -1,0 +1,25 @@
+# Dumby — Dependabot configuration (UR-C-13 / UR-B-21 CI hygiene, E5 §31).
+#
+# Keeps the two supply-chain surfaces current: the GitHub Actions used by CI (pinned by commit
+# SHA in `.github/workflows/`, so Dependabot is how those pins move) and the pnpm workspace's
+# npm dependencies. Weekly, grouped, so review stays bounded.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      github-actions:
+        patterns: ['*']
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      npm-minor-patch:
+        applies-to: version-updates
+        update-types: ['minor', 'patch']

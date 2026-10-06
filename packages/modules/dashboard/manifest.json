@@ -1,0 +1,36 @@
+{
+  "name": "dashboard",
+  "version": "1.0.0",
+  "description": "Opens the Dumby dashboard \u2014 the central navigation hub for all core commands and module pages.",
+  "tier": "core",
+  "hardcoded": false,
+  "visibility": "public",
+  "releaseStatus": "public",
+  "devId": "dev_first_party",
+  "buildId": "build_dashboard_1_0_0",
+  "required": false,
+  "depends": [],
+  "provides": [],
+  "intents": [],
+  "partials": [],
+  "commands": [
+    {
+      "name": "dashboard",
+      "description": "Opens the Dumby dashboard \u2014 the central navigation hub for all core commands and module pages."
+    }
+  ],
+  "events": [],
+  "services": [],
+  "repositories": [],
+  "jobs": [],
+  "tasks": [],
+  "routes": [],
+  "middleware": [],
+  "migrations": [],
+  "locales": [
+    "en-US"
+  ],
+  "config": {},
+  "eventsCatalog": [],
+  "crossModuleReads": []
+}

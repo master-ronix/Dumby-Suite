@@ -1,11 +1,3 @@
-/**
- * Dynamically imports every migration file and every generated module
- * file to prove they are syntactically valid TypeScript, without
- * requiring knex/bullmq/pg to actually be installed (their imports in
- * these files are all `import type`, which tsx/esbuild erases). This is a
- * real check — a genuine syntax error anywhere in these files fails it —
- * not a placeholder.
- */
 import { readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';

@@ -1,13 +1,5 @@
 import type { Knex } from 'knex';
 
-/**
- * Align guild_command_overrides with the fleet-wide kill switch contract
- * (UR-A-10 / UR-B-07): guildId must be NULLABLE so a NULL row means
- * "disabled fleet-wide", and the unique target for the suspendCommand upsert
- * is a partial unique index over (guildId, commandKey) for live rows. The
- * original migration made guildId NOT NULL, so the suspendCommand insert
- * (which omits a guild) could never succeed.
- */
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.alterTable('guild_command_overrides', (table) => {
     table.string('guildId').nullable().alter();

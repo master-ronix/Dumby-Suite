@@ -1,0 +1,36 @@
+{
+  "name": "modules",
+  "version": "1.0.0",
+  "description": "View activated/installed/standard-tier modules and manage them.",
+  "tier": "core",
+  "hardcoded": false,
+  "visibility": "public",
+  "releaseStatus": "public",
+  "devId": "dev_first_party",
+  "buildId": "build_modules_1_0_0",
+  "required": false,
+  "depends": [],
+  "provides": [],
+  "intents": [],
+  "partials": [],
+  "commands": [
+    {
+      "name": "modules",
+      "description": "View activated/installed/standard-tier modules and manage them."
+    }
+  ],
+  "events": [],
+  "services": [],
+  "repositories": [],
+  "jobs": [],
+  "tasks": [],
+  "routes": [],
+  "middleware": [],
+  "migrations": [],
+  "locales": [
+    "en-US"
+  ],
+  "config": {},
+  "eventsCatalog": [],
+  "crossModuleReads": []
+}

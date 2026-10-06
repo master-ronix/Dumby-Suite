@@ -1,42 +1,24 @@
-/**
- * Command registry — holds all registered slash command definitions
- * (Cluster: Frame). Commands are registered by modules during their
- * onLoad lifecycle hook. CollisionDetection runs at Stage 13.
- *
- * Tiers are module-wide manifest configuration, never repeated on each
- * command. The registry records module tier metadata separately from
- * command handlers so deployment can still scope commands by their owner.
- */
 import type { RESTPostAPIChatInputApplicationCommandsJSONBody } from 'discord.js';
 import type { ModuleTier } from '../module-system/tier-rules.js';
 import type { Rank } from '../permissions/rank.js';
 
-/**
- * The command's permission declaration (§21.2). Layers 5 and 6 combine
- * conjunctively (AND) — both must hold for the command to run.
- */
 export interface CommandPermissions {
-  /** Layer 5 — Discord native permission bits the invoking member must hold. */
   discord?: readonly string[];
-  /** Layer 6 — the RBAC rank requirement; defaults to MEMBER when unset. */
   rbac?: Rank;
-  /** Layer 4 — the command only functions inside an NSFW-flagged channel. */
   nsfw?: boolean;
 }
 
 export interface CommandDefinition {
-  /** Slash command builder JSON — the source of truth for the API payload. */
   data: RESTPostAPIChatInputApplicationCommandsJSONBody;
-  /** Handler invoked when the interaction arrives. */
   execute: (interaction: unknown) => Promise<unknown>;
-  /** Module that owns this command — for isolation enforcement. */
   moduleId: string;
-  /** Commands are guild-only unless a future contract explicitly opts out. */
   guildOnly?: boolean;
-  /** Non-owner dispatch is denied unless the module explicitly declares permission policy. */
   permissionDeclared?: boolean;
-  /** The declared permission policy the resolver enforces (Layers 4–6). */
   permissions?: CommandPermissions;
+  /** UR-A-03 / finding #3 — the metadata the built-in middlewares read. */
+  requiresDefer?: boolean;
+  ephemeral?: boolean;
+  cooldownMs?: number;
 }
 
 export class CommandCollisionError extends Error {
@@ -49,6 +31,20 @@ export class CommandCollisionError extends Error {
   }
 }
 
+/**
+ * Finding #19 — `register` used to accept a command from a module that was never registered, so a
+ * command could exist with no module (and no tier) behind it. It now fails closed.
+ */
+export class CommandModuleNotRegisteredError extends Error {
+  constructor(moduleId: string, commandName: string) {
+    super(
+      `Command "${commandName}" is registered by module "${moduleId}", which was never ` +
+        `registered — call registerModule("${moduleId}", tier) first`,
+    );
+    this.name = 'CommandModuleNotRegisteredError';
+  }
+}
+
 export class CommandRegistry {
   private readonly commands = new Map<string, CommandDefinition>();
   private readonly moduleTiers = new Map<string, ModuleTier>();
@@ -58,6 +54,9 @@ export class CommandRegistry {
   }
 
   register(def: CommandDefinition): void {
+    if (!this.moduleTiers.has(def.moduleId)) {
+      throw new CommandModuleNotRegisteredError(def.moduleId, def.data.name);
+    }
     const existing = this.commands.get(def.data.name);
     if (existing) {
       throw new CommandCollisionError(def.data.name, existing.moduleId, def.moduleId);
@@ -89,7 +88,6 @@ export class CommandRegistry {
     return this.getModuleTier(def.moduleId);
   }
 
-  /** Returns all commands as REST-ready JSON payloads for bulk registration. */
   toApiPayloads(): RESTPostAPIChatInputApplicationCommandsJSONBody[] {
     return this.all().map((c) => c.data);
   }

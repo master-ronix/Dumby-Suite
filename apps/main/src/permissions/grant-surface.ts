@@ -1,25 +1,6 @@
-/**
- * Grant surface — the in-tree realization of interface.md Division 8
- * (/permit). The interactive Discord flows ship with the volume-delivered
- * `permit` module; this module provides the management vocabulary the flows
- * operate on: the canonical grant types, scopes, and the exhaustive,
- * NON-CONFIGURABLE override boundary (blueprint §21.6).
- *
- * Grant mutations are pure: they take a grant snapshot and return a new
- * one. This mirrors "resolved fresh per interaction, never cached" — the
- * snapshot a dispatch sees is re-read for every command, so an edit here
- * takes effect on the very next invocation.
- */
-
 import type { GrantLevel, GrantType, RbacGrant } from './rbac.js';
 import type { ModuleTier } from './resolver.js';
 
-/**
- * The override boundary — exhaustive and non-configurable. Layer 7 grants
- * can override exactly and only Layers 4–6, and module commands only.
- * This list is a property of the engine, never a policy: there is no
- * privileged grant type and no configuration flag that widens it.
- */
 export const OVERRIDE_BOUNDARY = Object.freeze({
   layer1BotOwnerOverride: 'the bot-owner override (Layer 1)',
   layer2Blacklist: 'the blacklist (Layer 2)',
@@ -28,7 +9,6 @@ export const OVERRIDE_BOUNDARY = Object.freeze({
   restrictedFloor: 'the RESTRICTED floor',
 } as const);
 
-/** The boundary-immune layers, as a stable list (identical to the object). */
 export const OVERRIDE_BOUNDARY_LAYERS: readonly string[] = Object.freeze([
   OVERRIDE_BOUNDARY.layer1BotOwnerOverride,
   OVERRIDE_BOUNDARY.layer2Blacklist,
@@ -39,16 +19,12 @@ export const OVERRIDE_BOUNDARY_LAYERS: readonly string[] = Object.freeze([
 
 export interface ModifyGrantInput {
   guildId: string;
-  /** Tier of the command's owning module — core commands are not grant-manageable. */
   tier: ModuleTier;
-  /** "<module>.<command>" or "<module>.*" (module-wide scope). */
   key: string;
   level: GrantLevel;
   refId: string;
   type: GrantType;
-  /** Required for cooldown (ms) and rate-limit (usage ceiling). */
   value?: number;
-  /** True when the target is at the RESTRICTED floor and must not be lifted. */
   restrictedTarget?: boolean;
 }
 
@@ -80,12 +56,6 @@ export function grantBoundaryViolation(input: ModifyGrantInput): string | null {
   return null;
 }
 
-/**
- * Applies a grant, upserting on (guildId, key, level, refId, type) so a
- * retried submission lands as the already-achieved result (idempotency,
- * interface.md §2.4). Refuses mutations that would breach the override
- * boundary.
- */
 export function applyGrant(
   grants: readonly RbacGrant[],
   input: ModifyGrantInput,
@@ -123,10 +93,6 @@ export interface RemoveGrantInput {
   type: GrantType;
 }
 
-/**
- * Removes a grant. Idempotent: removing an absent grant is a success, so a
- * double-submitted removal cannot error.
- */
 export function removeGrant(
   grants: readonly RbacGrant[],
   input: RemoveGrantInput,
@@ -152,11 +118,6 @@ export interface GrantSurface {
   remove(input: RemoveGrantInput): GrantMutationResult;
 }
 
-/**
- * A minimal in-memory grant store. Persistence lives in the knex-backed
- * RBAC repository over the four rbac_* tables (blueprint §21.4); read and
- * write character added here for the interactive flows to bind against.
- */
 export class InMemoryGrantSurface implements GrantSurface {
   private snapshot: readonly RbacGrant[];
 

@@ -1,7 +1,3 @@
-/**
- * Priority 10: AuthMiddleware (Cluster: Ring).
- * Resolves the user context. DMs to a guildOnly command are rejected here.
- */
 import type { Middleware, MiddlewareContext, NextFn } from '../base-middleware.js';
 import { MiddlewareRejectError } from '../base-middleware.js';
 

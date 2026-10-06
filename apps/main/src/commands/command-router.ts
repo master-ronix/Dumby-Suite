@@ -1,7 +1,3 @@
-/**
- * Command router — dispatches incoming command interactions through the
- * middleware pipeline and the core Renderer.
- */
 import type { CommandRegistry } from './command-registry.js';
 import type { CommandDefinition } from './command-registry.js';
 import type { Logger } from '../logging/logger.js';
@@ -10,6 +6,7 @@ import { MiddlewarePipeline, type PipelineResult } from '../middleware/middlewar
 import type { MiddlewareContext } from '../middleware/base-middleware.js';
 import type { PermissionResolver } from '../permissions/resolver.js';
 import type { RbacGrant } from '../permissions/rbac.js';
+import { type GuildSuspensionStore } from '../governance/guild-suspension.js';
 import {
   CoreRenderer,
   FOLLOWUP_ALARM_MS,
@@ -27,13 +24,9 @@ export interface CommandInteraction {
   editReply: (options: unknown) => Promise<void>;
   replied?: boolean;
   deferred?: boolean;
-  /** Present when the dispatch layer can resolve channel context (live gateway). */
   channel?: { id: string; categoryId: string | null; isNsfw: boolean };
-  /** Discord permission strings for the invoking member (live gateway). */
   memberPermissions?: readonly string[];
-  /** The invoking member's role IDs (live gateway), for Layer 7 grant scoping. */
   memberRoles?: readonly string[];
-  /** True when the invoking member is the guild's ownership account (Layer 6 OWNER). */
   isGuildOwner?: boolean;
 }
 
@@ -48,7 +41,7 @@ export class CommandScopeDeniedError extends Error {
   constructor(
     readonly commandName: string,
     readonly moduleId: string,
-    readonly tier: ModuleTier,
+    readonly tier: ModuleTier | 'unresolved',
     readonly guildId: string | null,
   ) {
     super(
@@ -66,17 +59,18 @@ export interface CommandRouterOptions {
   middlewarePipeline?: MiddlewarePipeline;
   permissionResolver?: PermissionResolver;
   botOwnerIds?: readonly string[];
-  /** This guild's Layer 7 grant rows, resolved fresh per interaction by the caller. */
   guildGrants?: readonly RbacGrant[];
+  /** §21 Layer 7 — loads a guild's grants at dispatch time (the runtime grant writer). */
+  grantStore?: { list(guildId: string): Promise<readonly RbacGrant[]> };
   renderer?: CoreRenderer;
-  /**
-   * Persona dispatch gate (ADR-011, §35.3): resolves which identity — main bot
-   * or a named persona — owns a command key in a guild. Undefined means the
-   * main-bot default. Wired when a persona binding service is running.
-   */
   resolveCommandOwner?: (guildId: string, moduleSlug: string) => Promise<string | undefined>;
-  /** This process's own persona identity (PERSONA_ID); absent for the main bot. */
   residentPersonaId?: string;
+  /**
+   * blueprint.md §22.2 / Table 22-A — the Power Engine `suspendGuild` state. When present, dispatch
+   * consults it before anything else in the guild: a suspension overrides the guild's own
+   * configuration rather than editing it.
+   */
+  guildSuspensions?: GuildSuspensionStore;
 }
 
 export class CommandRouter {
@@ -108,6 +102,27 @@ export class CommandRouter {
     const traceId = this.renderer.createTraceId();
     await this.renderer.sendBuffer(interaction, identity);
 
+    // §22.2 / Table 22-A: a suspended guild blocks dispatch fleet-wide, ahead of the guild's own
+    // configuration and ahead of the middleware pipeline — the broadest of the four primitives.
+    // Rendered inline like the not-found case, so the user sees the formal notice rather than a
+    // buffer that never resolves.
+    if (this.options.guildSuspensions !== undefined) {
+      const guildId = interaction.guildId;
+      if (await this.options.guildSuspensions.isSuspended(guildId)) {
+        this.logger.warn('guild-suspended-dispatch-blocked', {
+          command: name,
+          guildId,
+          userId: interaction.user.id,
+        });
+        await this.renderer.editNotice(interaction, {
+          ...identity,
+          reason: 'GUILD_UNAVAILABLE',
+          traceId,
+        });
+        return;
+      }
+    }
+
     const def = this.registry.get(name);
     if (!def) {
       this.logger.warn('command-not-found', { command: name, userId: interaction.user.id });
@@ -124,7 +139,7 @@ export class CommandRouter {
 
     try {
       await this.assertCommandInScope(def, interaction.guildId);
-      this.assertPermissionAllowed(def, interaction);
+      await this.assertPermissionAllowed(def, interaction);
       await this.assertPersonaOwnsCommand(def, interaction.guildId);
 
       let declaredResponse: unknown;
@@ -171,12 +186,18 @@ export class CommandRouter {
     }
   }
 
-  private assertPermissionAllowed(
+  private async assertPermissionAllowed(
     command: CommandDefinition,
     interaction: CommandInteraction,
-  ): void {
+  ): Promise<void> {
+    // Finding #25: Layer 7 grants are loaded from the runtime store at dispatch time, so a grant
+    // written through the app takes effect without a restart. Falls back to the static list.
+    const guildGrants =
+      interaction.guildId !== null && this.options.grantStore !== undefined
+        ? await this.options.grantStore.list(interaction.guildId)
+        : (this.options.guildGrants ?? []);
     const result = this.options.permissionResolver?.resolve({
-      tier: this.registry.tierForCommand(command) ?? 'standard',
+      tier: this.requireModuleTier(command, interaction.guildId),
       actorId: interaction.user.id,
       botOwnerIds: this.options.botOwnerIds ?? [],
       isDM: interaction.guildId === null,
@@ -206,7 +227,7 @@ export class CommandRouter {
           groupIds: [],
           setIds: [],
         },
-        guildGrants: this.options.guildGrants ?? [],
+        guildGrants,
       },
       hasExplicitPermissionDeclaration: command.permissionDeclared === true,
       channel: interaction.channel ?? { id: 'unknown', categoryId: null, isNsfw: false },
@@ -218,7 +239,7 @@ export class CommandRouter {
       throw new CommandScopeDeniedError(
         command.data.name,
         command.moduleId,
-        this.registry.tierForCommand(command) ?? 'standard',
+        this.requireModuleTier(command, interaction.guildId),
         interaction.guildId,
       );
     }
@@ -230,7 +251,9 @@ export class CommandRouter {
       guildId: interaction.guildId,
       commandName: interaction.commandName,
       correlationId: null,
-      meta: {},
+      // Finding #17 — `DeferMiddleware` reads the interaction from the context; an empty `meta`
+      // made the defer stage dead by construction.
+      meta: { interaction },
     };
   }
 
@@ -262,23 +285,29 @@ export class CommandRouter {
     throw result.error;
   }
 
+  private requireModuleTier(command: CommandDefinition, guildId: string | null): ModuleTier {
+    const tier = this.registry.tierForCommand(command);
+    if (tier === undefined) {
+      this.logger.error('command-tier-unresolved', {
+        command: command.data.name,
+        moduleId: command.moduleId,
+        guildId: guildId ?? 'DM',
+      });
+      throw new CommandScopeDeniedError(command.data.name, command.moduleId, 'unresolved', guildId);
+    }
+    return tier;
+  }
+
   private async assertCommandInScope(
     command: CommandDefinition,
     guildId: string | null,
   ): Promise<void> {
-    const tier = this.registry.tierForCommand(command);
+    const tier = this.requireModuleTier(command, guildId);
     const guildOnly = command.guildOnly ?? true;
 
     if (guildOnly && !guildId) {
-      throw new CommandScopeDeniedError(
-        command.data.name,
-        command.moduleId,
-        tier ?? 'standard',
-        guildId,
-      );
+      throw new CommandScopeDeniedError(command.data.name, command.moduleId, tier, guildId);
     }
-
-    if (!tier) return;
 
     if (tier === 'admin') {
       if (guildId !== this.devGuildId) {

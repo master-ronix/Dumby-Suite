@@ -1,8 +1,3 @@
-/**
- * Module tier rules (Cluster: Ring). Validated against a manifest at
- * bootstrap Stage 11 (MODULE_VALIDATE) before any module is loaded.
- */
-
 export type ModuleTier = 'admin' | 'core' | 'standard' | 'marketplace';
 
 export interface ManifestCommandLike {
@@ -40,6 +35,13 @@ export function validateTierRules(manifest: ModuleManifestForTierCheck): TierVio
     });
   }
 
+  if (manifest.tier !== 'marketplace' && manifest.marketplaceCategory != null) {
+    violations.push({
+      rule: 'marketplace.category.forbidden',
+      message: `marketplaceCategory is forbidden for tier "${manifest.tier}" (module "${manifest.name}") — only Marketplace-tier modules may declare one`,
+    });
+  }
+
   if (manifest.tier === 'core') {
     for (const cmd of manifest.commands ?? []) {
       if (cmd.rbacRequirement) {
@@ -65,12 +67,6 @@ export function isTierValid(manifest: ModuleManifestForTierCheck): boolean {
   return validateTierRules(manifest).length === 0;
 }
 
-/**
- * change-log v4.1.0 resolution: a guild with no row in guild_module_states
- * defaults to the module tier default — active for everything except
- * Marketplace (opt-in per guild, "never_installed" until explicitly enabled).
- * Unknown/missing tiers default to Marketplace to fail closed.
- */
 export function defaultEnabledForTier(tier: ModuleTier): boolean {
   return tier !== 'marketplace';
 }

@@ -1,9 +1,3 @@
-/**
- * Priority 80: DeferMiddleware (Cluster: Ring).
- * Calls deferReply() on the interaction if the command declares requiresDefer.
- * The health and hello commands do NOT defer (they resolve in <3s).
- * Never aborts.
- */
 import type { Middleware, MiddlewareContext, NextFn } from '../base-middleware.js';
 
 export interface DeferConfig {

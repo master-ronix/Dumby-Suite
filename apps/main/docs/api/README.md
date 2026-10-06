@@ -10,7 +10,7 @@ Dumby runs **three separate Fastify instances** on distinct ports, so health/met
 |---|---|---|
 | Health Server | `HEALTH_PORT` (default 8081) | Kubernetes/Docker health probes only |
 | Metrics Server | `METRICS_PORT` (default 8082) | Prometheus scrape endpoint |
-| API Server | `API_PORT` (default 8080) | Admin REST, PEP, module routes, webhooks |
+| API Server | `API_PORT` (default 8080) | Admin REST, Power Engine, module routes, webhooks |
 
 ## Health Endpoints
 
@@ -68,9 +68,9 @@ All admin routes require the `Authorization: Bearer <INTERNAL_API_KEY>` header. 
 
 Returns basic process info (non-sensitive: version, uptime, node version).
 
-### Power Engine Panel (PEP)
+### Power Engine Panel (Power Engine)
 
-Every PEP call requires `{ actorId, source, reason }` in the request body. An empty `reason` or an untrusted `source` (not in `PEP_TRUSTED_SOURCES`) is rejected with `400` and an audit row is written for the rejection.
+Every Power Engine call requires `{ actorId, source, reason }` in the request body. An empty `reason` or an untrusted `source` (not in `POWER_ENGINE_TRUSTED_SOURCES`) is rejected with `400` and an audit row is written for the rejection.
 
 **Base path:** `POST /api/admin/power-engine/{action}`
 

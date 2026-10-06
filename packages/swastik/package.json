@@ -10,10 +10,18 @@
     "./entrypoints/core": "./src/entrypoints/core.ts",
     "./entrypoints/admin": "./src/entrypoints/admin.ts",
     "./entrypoints/standard": "./src/entrypoints/standard.ts",
-    "./entrypoints/marketplace": "./src/entrypoints/marketplace.ts"
+    "./entrypoints/marketplace": "./src/entrypoints/marketplace.ts",
+    "./validate": "./src/validate.ts",
+    "./events": "./src/events.ts"
   },
   "files": [
     "src",
     "_template"
-  ]
+  ],
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "zod": "^3.23.8"
+  }
 }

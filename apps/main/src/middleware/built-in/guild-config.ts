@@ -1,7 +1,3 @@
-/**
- * Priority 20: GuildConfigMiddleware (Cluster: Ring).
- * Loads the guild config into meta. Load failure degrades to defaults — never aborts.
- */
 import type { Middleware, MiddlewareContext, NextFn } from '../base-middleware.js';
 import type { Logger } from '../../logging/logger.js';
 

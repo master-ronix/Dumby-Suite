@@ -98,7 +98,7 @@ test('indirect A -> B -> A circular dependency is detected with the full chain',
     container.resolve(tokenA);
     expect.fail('expected CircularDependencyError to be thrown');
   } catch (err) {
-    expect(err instanceof CircularDependencyError).toBeTruthy();
+    expect(err).toBeInstanceOf(CircularDependencyError);
     expect(err.chain).toStrictEqual(['A', 'B', 'A']);
   }
 });

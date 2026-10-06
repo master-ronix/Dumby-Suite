@@ -18,14 +18,6 @@ const INTERNAL_ERROR_BODY: ErrorResponseBody = {
   },
 };
 
-/**
- * Root error boundary (Cluster: Keepy). Every HTTP route funnels its
- * caught error through this. A DumbyError renders its own code/status/
- * metadata; anything else (a genuine bug, a third-party throw) is
- * flattened to a single generic 500 body so stack traces and internal
- * messages never reach a client — full detail still goes to the logger,
- * which is the caller's job, not this function's.
- */
 export function toErrorResponse(err: unknown): { statusCode: number; body: ErrorResponseBody } {
   if (isDumbyError(err)) {
     return { statusCode: err.httpStatus, body: err.toJSON() };

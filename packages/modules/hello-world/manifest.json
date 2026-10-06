@@ -1,0 +1,39 @@
+{
+  "name": "hello-world",
+  "version": "1.0.0",
+  "description": "A simple hello world module for testing the Dumby dashboard and module system.",
+  "tier": "standard",
+  "hardcoded": false,
+  "visibility": "public",
+  "releaseStatus": "public",
+  "devId": "dev_first_party",
+  "buildId": "build_hello-world_1_0_0",
+  "required": false,
+  "depends": [],
+  "provides": [],
+  "intents": [],
+  "partials": [],
+  "commands": [
+    {
+      "name": "hello",
+      "description": "Responds with a hello world greeting",
+      "rbacRequirement": "MEMBER"
+    }
+  ],
+  "events": [],
+  "services": [],
+  "repositories": [],
+  "jobs": [],
+  "tasks": [],
+  "routes": [],
+  "middleware": [],
+  "migrations": [],
+  "locales": [
+    "en-US"
+  ],
+  "config": {
+    "greeting": "Hello, World!"
+  },
+  "eventsCatalog": [],
+  "crossModuleReads": []
+}

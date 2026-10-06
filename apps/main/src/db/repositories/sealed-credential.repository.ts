@@ -18,7 +18,6 @@ export interface SealedCredentialStore {
   listByRegisteredBy(registeredBy: string): Promise<SealedCredentialRecord[]>;
   markRevoked(credentialId: string): Promise<boolean>;
   listActive(): Promise<SealedCredentialRecord[]>;
-  /** Replace the envelope material of an existing record (DEK re-wrap). */
   updateEnvelope(credentialId: string, envelope: SealedEnvelope): Promise<boolean>;
 }
 

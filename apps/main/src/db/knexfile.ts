@@ -2,11 +2,12 @@ import type { Knex } from 'knex';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
-// Resolved relative to this file's own location, not process.cwd() — knex's
-// string default ('./migrations') breaks depending on which directory a
-// script is launched from (e.g. `pnpm run migrate` from the package root
-// vs. bootstrap.ts's runtime knex instance in src/db/client.ts).
-const migrationsDir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'migrations');
+const migrationsDir =
+  process.env['KNEX_MIGRATIONS_DIR'] ??
+  path.join(path.dirname(fileURLToPath(import.meta.url)), 'migrations');
+// The flow suite pre-compiles migrations to JS (knex cannot import `.ts` under vitest).
+const migrationsExtension =
+  process.env['KNEX_MIGRATIONS_EXT'] ?? (import.meta.url.endsWith('.ts') ? 'ts' : 'js');
 
 function buildConfig(
   connectionString: string,
@@ -22,9 +23,9 @@ function buildConfig(
     pool: { min: 2, max: poolMax },
     migrations: {
       directory: migrationsDir,
-      extension: import.meta.url.endsWith('.ts') ? 'ts' : 'js',
+      extension: migrationsExtension,
       tableName: 'knex_migrations',
-      loadExtensions: [import.meta.url.endsWith('.ts') ? '.ts' : '.js'],
+      loadExtensions: [`.${migrationsExtension}`],
     },
   };
 }

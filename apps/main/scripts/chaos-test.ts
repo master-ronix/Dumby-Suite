@@ -1,10 +1,3 @@
-/**
- * Chaos test (Cluster: Clay — outermost tier of the test pyramid).
- * Stops the Redis container out from under a running stack and confirms
- * the app degrades the way spec section 22 requires (in-memory rate-limit
- * fallback engages, liveness stays 200, readiness may flip) rather than
- * crashing. Requires a real `docker compose up` stack and Docker daemon.
- */
 import { execSync } from 'node:child_process';
 
 const HEALTH_PORT = process.env.HEALTH_PORT ?? '8081';

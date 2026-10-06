@@ -1,0 +1,32 @@
+{
+  "$id": "contracts/rbac.enums.json",
+  "layers": [
+    "owner_override",
+    "blacklist",
+    "guild_module_availability",
+    "channel_restriction",
+    "discord_permission",
+    "rbac_rank",
+    "grant_override"
+  ],
+  "ranks": [
+    "OWNER",
+    "ADMINISTRATOR",
+    "MODERATOR",
+    "HELPER",
+    "MEMBER",
+    "RESTRICTED"
+  ],
+  "grant_types": [
+    "permit",
+    "whitelist",
+    "blacklist",
+    "cooldown",
+    "rate_limit"
+  ],
+  "scope_precedence": [
+    "set",
+    "group",
+    "role"
+  ]
+}

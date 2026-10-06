@@ -1,23 +1,6 @@
 import type { Knex } from 'knex';
 import { addTimestamps } from '../migration-helpers.js';
 
-/**
- * Release-governance tables (blueprint §15.7 / §14.4 / §15.12, directive
- * D-8.10). Three tables:
- *
- *  - `licenses`            — the six-state license machine (`pending`
- *                            `under-review` `approved` `suspended` `restored`
- *                            `revoked`) bound to a developer via `subjectDevId`
- *                            (devId–license binding), with tier class and
- *                            intervention metadata.
- *  - `compatibility_ledger`— the machine-readable Compatibility Ledger:
- *                            registered contracts + core versions, acceptance
- *                            windows, and per-module provided contract versions.
- *  - `deployment_records`  — append-only view of every deployment (trigger,
- *                            devId/buildId deployed, module/version, validation
- *                            and gate outcomes, promotion/health/rollback
- *                            results). No update/delete surface.
- */
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable('licenses', (table) => {
     table.string('licenseId').primary();

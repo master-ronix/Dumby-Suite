@@ -1,24 +1,3 @@
-/**
- * Swastik promotion pipeline (blueprint §12.21, §15; ADR-006).
- *
- * Three invariants, enforced by construction:
- *
- *  - **Verified loads** — a staged build must pass static verification
- *    (path containment, manifest extraction via `parseManifest`, index syntax
- *    compile) before any live volume is touched; a build that fails
- *    verification never goes live.
- *  - **Atomic promotion** — the live symlink is replaced by a single
- *    `rename(2)` of a fully-built incoming link. A failure before the rename
- *    leaves the volume untouched; a failure after it is rolled back to the
- *    recorded previous target.
- *  - **ADR-006 gate** — the first promotion of a module is human-gated;
- *    subsequent updates are diff-auto-approved. No promotion path bypasses
- *    this decision (`decidePromotionGate` is the single decision point).
- *
- * Manifest reading is static extraction (D-4.9): `manifest.json` is parsed as
- * JSON and validated — never read via `import()`.
- */
-
 import { execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import {
@@ -41,24 +20,15 @@ import {
   assertSafeVersion,
   safeJoin,
 } from '../shared/utils/path-guard.js';
+import {
+  BUILD_PROVENANCE_SIDECAR,
+  writeBuildProvenanceSidecar,
+  type BuildProvenanceSidecar,
+} from './build-signing.js';
 
-/**
- * Distributed-lock contract for atomic promotion (blueprint §15.8, DIAGRAM
- * 15-B): the swap is executed under a Redis lock on
- * `swastik:promote:{moduleSlug}` so a promotion never interleaves with a core
- * restart (or another promotion of the same module). The LockStore interface
- * is the narrow save-side dependency; RedisLockStore (SET NX PX) is the
- * production implementation, InMemoryLockStore the test/fallback.
- */
 export const PROMOTION_LOCK_KEY_PREFIX = 'swastik:promote:';
 export const PROMOTION_LOCK_TTL_MS = 15_000;
 
-/**
- * Static load verification of the module bundle that never executes it:
- * `node --check` parses the copy as ESM (.mjs) and reports syntax errors only.
- * `import()` is reserved for the bootstrap loader (D-4.9 keeps manifest
- * reading static; this keeps verified-load checking static too).
- */
 function indexLoadCheck(indexPath: string): string | null {
   const probe = join(tmpdir(), `swastik-probe-${randomBytes(8).toString('hex')}.mjs`);
   writeFileSync(probe, readFileSync(indexPath, 'utf8'), 'utf8');
@@ -70,9 +40,7 @@ function indexLoadCheck(indexPath: string): string | null {
   } finally {
     try {
       unlinkSync(probe);
-    } catch {
-      /* temp probe cleanup is best-effort */
-    }
+    } catch {}
   }
 }
 
@@ -83,10 +51,6 @@ export interface StagedBuildVerification {
   readonly manifest?: ModuleManifest;
 }
 
-/**
- * Static verification of a staged build. Returns `ok: false` (with a reason)
- * instead of throwing so callers can map refusals onto HTTP/audit outcomes.
- */
 export function verifyStagedBuild(input: {
   readonly stagingVolume: string;
   readonly moduleSlug: string;
@@ -157,11 +121,6 @@ export type PromotionGateDecision =
   | { readonly allowed: true; readonly gate: 'human' | 'diff' }
   | { readonly allowed: false; readonly reason: string };
 
-/**
- * ADR-006's automation boundary as a pure function: the first promotion of a
- * module requires human approval; updates proceed on the diff-validation
- * basis (the staging-time license/ledger/validation gates already ran).
- */
 export function decidePromotionGate(input: {
   readonly isFirstPromotion: boolean;
   readonly humanApproved: boolean;
@@ -184,29 +143,17 @@ export interface PromotionOutcome {
   readonly rollbackLink: string | null;
 }
 
-/**
- * Atomically points `liveVolume/<slug>` at `stagingDir`.
- *
- * The incoming link is fully built under a `__incoming` name and then
- * `rename(2)`d onto the live name — POSIX replaces the destination atomically,
- * so a failed promotion leaves the previous live target in place. The previous
- * target (if any, and only if it is staging-contained) is preserved as a
- * `__rollback` link for post-swap recovery. This low-level primitive is
- * synchronous and lock-free; the Redis lock lives in {@link promoteUnderLock}.
- *
- * Post-flip containment (blueprint §15.8 / UR-C-14): immediately after the
- * `renameSync`, the live link is verified with `lstatSync`/`readlinkSync` —
- * it must still be a symlink resolving to exactly the promoted staging
- * directory inside the staging volume, never a real directory or any path
- * outside staging. `lstatSync` (not `readlinkSync`/`existsSync`) classifies
- * dangling `__rollback`/`__incoming` links as symlinks, so a link whose target
- * was cleaned up is still recognized and removed/restored correctly.
- */
 export function promoteAtomically(input: {
   readonly liveVolume: string;
   readonly stagingVolume: string;
   readonly moduleSlug: string;
   readonly stagingDir: string;
+  /**
+   * §15.8 provenance sidecar. When supplied it is written into the staged directory immediately
+   * before the pointer flip, so the promoted directory carries the buildId and signature the
+   * loader's load-time verification reads (finding #22). The atomic-swap mechanics are unchanged.
+   */
+  readonly provenance?: BuildProvenanceSidecar;
 }): PromotionOutcome {
   const slug = assertSafeSlug(input.moduleSlug);
   assertPathInside(input.stagingVolume, input.stagingDir);
@@ -235,6 +182,12 @@ export function promoteAtomically(input: {
     );
   }
 
+  let sidecarWritten = false;
+  if (input.provenance !== undefined) {
+    writeBuildProvenanceSidecar(input.stagingDir, input.provenance);
+    sidecarWritten = true;
+  }
+
   try {
     if (lstatIsLink(incomingLink)) unlinkSync(incomingLink);
     symlinkSync(input.stagingDir, incomingLink);
@@ -247,8 +200,11 @@ export function promoteAtomically(input: {
   } catch (err) {
     try {
       if (lstatIsLink(incomingLink)) unlinkSync(incomingLink);
-    } catch {
-      /* cleanup is best-effort; the volume was not swapped if rename never ran */
+    } catch {}
+    if (sidecarWritten) {
+      try {
+        unlinkSync(join(input.stagingDir, BUILD_PROVENANCE_SIDECAR));
+      } catch {}
     }
     throw err;
   }
@@ -260,11 +216,6 @@ export function promoteAtomically(input: {
   };
 }
 
-/**
- * Thrown (as a rejected promise) when another promotion/restart already holds
- * the module's `swastik:promote:{slug}` lock. The volume is never touched
- * while the lock is contended.
- */
 export class PromotionLockedError extends Error {
   readonly slug: string;
 
@@ -277,13 +228,6 @@ export class PromotionLockedError extends Error {
   }
 }
 
-/**
- * Redis-locked promotion (blueprint §15.8, DIAGRAM 15-B): executes
- * {@link promoteAtomically} under `SET NX PX` on `swastik:promote:{slug}` so a
- * promotion never interleaves with a core restart or another promotion of the
- * same module. The lock is released in a `finally`; a contended lock rejects
- * with {@link PromotionLockedError} — fail closed, volume untouched.
- */
 export async function promoteUnderLock(input: {
   readonly lockStore: LockStore;
   readonly liveVolume: string;
@@ -291,6 +235,7 @@ export async function promoteUnderLock(input: {
   readonly moduleSlug: string;
   readonly stagingDir: string;
   readonly lockTtlMs?: number;
+  readonly provenance?: BuildProvenanceSidecar;
 }): Promise<PromotionOutcome> {
   const slug = assertSafeSlug(input.moduleSlug);
   const lockKey = `${PROMOTION_LOCK_KEY_PREFIX}${slug}`;
@@ -304,18 +249,13 @@ export async function promoteUnderLock(input: {
       stagingVolume: input.stagingVolume,
       moduleSlug: slug,
       stagingDir: input.stagingDir,
+      ...(input.provenance !== undefined ? { provenance: input.provenance } : {}),
     });
   } finally {
     await input.lockStore.release(lockKey, lockOwner);
   }
 }
 
-/**
- * Post-flip containment assertion (blueprint §15.8 / UR-C-14): after the
- * `renameSync`, the live link must still be a symlink resolving to exactly the
- * promoted staging directory — never to a path outside the staging volume or
- * to a real directory. Throws on any violation.
- */
 function assertPostFlipContainment(
   liveLink: string,
   stagingVolume: string,
@@ -349,7 +289,6 @@ function assertPostFlipContainment(
   }
 }
 
-/** True only when `path` is a symbolic link, including a dangling one. */
 function lstatIsLink(path: string): boolean {
   try {
     return lstatSync(path).isSymbolicLink();
@@ -358,7 +297,6 @@ function lstatIsLink(path: string): boolean {
   }
 }
 
-/** Restores the live link to its pre-promotion target (post-swap failure). */
 export function rollbackPromotion(outcome: PromotionOutcome): void {
   if (lstatIsLink(outcome.liveLink) || existsSync(outcome.liveLink)) {
     unlinkSync(outcome.liveLink);

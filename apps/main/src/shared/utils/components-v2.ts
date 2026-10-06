@@ -1,8 +1,3 @@
-/**
- * Components V2 utilities (Cluster: Frame).
- * Builds Discord Components V2 messages per interface.md specification.
- */
-
 export const IS_COMPONENTS_V2 = 32768;
 
 export const ComponentType = {
@@ -99,9 +94,6 @@ export interface ComponentsV2Message {
   flags: typeof IS_COMPONENTS_V2;
 }
 
-/**
- * Creates a Text Display component.
- */
 export function textDisplay(content: string): TextDisplayComponent {
   return {
     type: ComponentType.TEXT_DISPLAY,
@@ -109,9 +101,6 @@ export function textDisplay(content: string): TextDisplayComponent {
   };
 }
 
-/**
- * Creates a Media Gallery component for banner images.
- */
 export function mediaGallery(url: string, description?: string): MediaGalleryComponent {
   const item: { media: { url: string }; description?: string } = { media: { url } };
   if (description !== undefined) {
@@ -123,9 +112,6 @@ export function mediaGallery(url: string, description?: string): MediaGalleryCom
   };
 }
 
-/**
- * Creates a Separator component.
- */
 export function separator(
   dividerOrSpacing: boolean | 'small' | 'large' = true,
   spacing: 'small' | 'large' = 'large',
@@ -139,9 +125,6 @@ export function separator(
   };
 }
 
-/**
- * Creates a Container component (top-level).
- */
 export function container(components: Component[], accentColor?: number): ContainerComponent {
   const result: ContainerComponent = {
     type: ComponentType.CONTAINER,
@@ -153,9 +136,6 @@ export function container(components: Component[], accentColor?: number): Contai
   return result;
 }
 
-/**
- * Creates a String Select Menu component.
- */
 export function stringSelect(
   customId: string,
   options: Array<{
@@ -195,9 +175,6 @@ export function stringSelect(
   return result;
 }
 
-/**
- * Creates a Button component.
- */
 export function button(
   customId: string,
   label: string,
@@ -218,9 +195,6 @@ export function button(
   return result;
 }
 
-/**
- * Creates an Action Row with buttons/selects.
- */
 export function actionRow(
   components: Array<ButtonComponent | StringSelectComponent>,
 ): ActionRowComponent {
@@ -230,9 +204,6 @@ export function actionRow(
   };
 }
 
-/**
- * Builds a complete Components V2 message.
- */
 export function buildComponentsV2(components: Component[]): ComponentsV2Message {
   return {
     components,
@@ -240,23 +211,12 @@ export function buildComponentsV2(components: Component[]): ComponentsV2Message 
   };
 }
 
-/**
- * Default Dumby accent color.
- */
 export const DEFAULT_ACCENT_COLOR = 0x5865f2;
 
-/**
- * Creates a banner Media Gallery from a URL or returns a generated banner placeholder.
- * In production, this would serve from the module's assets directory or CDN.
- */
 export function createBannerMediaGallery(bannerUrl: string): MediaGalleryComponent {
   return mediaGallery(bannerUrl, 'Dumby banner');
 }
 
-/**
- * Creates a default generated banner URL.
- * In a real implementation, this would generate an image server-side or use a placeholder service.
- */
 export function getDefaultBannerUrl(
   moduleName: string,
   accentColor = DEFAULT_ACCENT_COLOR,
@@ -265,9 +225,6 @@ export function getDefaultBannerUrl(
   return `https://api.dumby.dev/banner?module=${encoded}&color=${accentColor.toString(16).padStart(6, '0')}`;
 }
 
-/**
- * Creates the standard title block (TextDisplay with title and developer attribution).
- */
 export function createTitleBlock(
   pageName: string,
   developer = 'Quixotic Mnemonics',
@@ -280,25 +237,16 @@ export function createTitleBlock(
   return textDisplay(`${title}\n${attribution}`);
 }
 
-/**
- * Creates the Marketplace title block (no "Dumby |" prefix).
- */
 export function createMarketplaceTitleBlock(
   developer = 'Quixotic Mnemonics',
 ): TextDisplayComponent {
   return textDisplay(`Dumby | Marketplace\n-# Developed by ${developer}`);
 }
 
-/**
- * Creates a section header with visual separator.
- */
 export function createSectionHeader(emoji: string, title: string): TextDisplayComponent {
   return textDisplay(`━━ ${emoji} ${title} ━━`);
 }
 
-/**
- * Creates a key-value text display for health/info pages.
- */
 export function createKeyValueDisplay(pairs: Record<string, string>): TextDisplayComponent {
   const lines = Object.entries(pairs).map(([key, value]) => `${key}: ${value}`);
   return textDisplay(lines.join('\n'));

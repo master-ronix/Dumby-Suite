@@ -1,25 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import type { Logger } from '../logging/logger.js';
 
-/**
- * Process-level fatal handlers (Cluster: Grace). Replaces the previous
- * `console.error(...); process.exit(1)` inline handlers (UR-C-18): every
- * uncaughtException gets a structured fatal log carrying a correlation ID,
- * then routes through `system.fatalError` notification and a graceful
- * shutdown bounded to FATAL_SHUTDOWN_CEILING_MS, then exits 1. A rejected
- * promise is logged through the same fatal path but — matching prior
- * behaviour — does not terminate the process on its own.
- */
-
 export const FATAL_SHUTDOWN_CEILING_MS = 15_000;
 
 export interface FatalHandlerHooks {
   logger: Logger;
-  /** Emits the `system.fatalError` equivalent on the internal bus, if wired. */
   notify?: (correlationId: string, error: unknown) => void;
-  /** Runs graceful shutdown; may be absent in very early bootstrap stages. */
   shutdown?: () => Promise<void>;
-  /** Test seam; defaults to `process.exit`. */
   exit?: (code: number) => void;
 }
 
@@ -33,9 +20,7 @@ export function createUncaughtExceptionHandler(hooks: FatalHandlerHooks) {
     });
     try {
       hooks.notify?.(correlationId, error);
-    } catch {
-      // The fatal path must never throw while reporting its own fatal.
-    }
+    } catch {}
 
     void (async () => {
       await withCeiling(hooks.shutdown, FATAL_SHUTDOWN_CEILING_MS);
@@ -54,13 +39,10 @@ export function createUnhandledRejectionHandler(hooks: FatalHandlerHooks) {
     });
     try {
       hooks.notify?.(correlationId, reason);
-    } catch {
-      // The fatal path must never throw while reporting its own fatal.
-    }
+    } catch {}
   };
 }
 
-/** Registers both handlers and returns an uninstall function. */
 export function installFatalHandlers(hooks: FatalHandlerHooks): () => void {
   const uncaught = createUncaughtExceptionHandler(hooks);
   const rejected = createUnhandledRejectionHandler(hooks);
@@ -72,11 +54,6 @@ export function installFatalHandlers(hooks: FatalHandlerHooks): () => void {
   };
 }
 
-/**
- * Runs `fn` bounded by `ceilingMs`. If the ceiling elapses first, the
- * caller still proceeds to its post-shutdown exit path (the shutdown is
- * abandoned, never allowed to hang the fatal exit).
- */
 function withCeiling(fn: (() => Promise<void>) | undefined, ceilingMs: number): Promise<void> {
   return new Promise<void>((resolve) => {
     let settled = false;
@@ -89,7 +66,6 @@ function withCeiling(fn: (() => Promise<void>) | undefined, ceilingMs: number): 
       try {
         await fn?.();
       } catch {
-        // Shutdown failure must never abort the fatal exit.
       } finally {
         finish();
       }

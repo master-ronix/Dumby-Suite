@@ -52,11 +52,11 @@ test('shouldEarlyRecompute never triggers when computeDurationMs is zero (nothin
 });
 
 test('shouldEarlyRecompute is more likely to trigger as remaining TTL shrinks, for fixed randomness', () => {
-  const random = () => 0.01; // small random draw -> large threshold
+  const random = () => 0.01;
   expect(shouldEarlyRecompute(5, 10, 1, random)).toBe(true);
 });
 
 test('shouldEarlyRecompute rarely triggers with abundant remaining TTL and a "normal" random draw', () => {
-  const random = () => 0.99; // close to 1 -> tiny threshold
+  const random = () => 0.99;
   expect(shouldEarlyRecompute(100_000, 10, 1, random)).toBe(false);
 });

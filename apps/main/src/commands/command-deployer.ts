@@ -1,24 +1,3 @@
-/**
- * Command deployer — publishes slash command definitions to Discord's
- * API at Stage 16 (CLIENT_READY) inventory time (Cluster: Frame).
- *
- * Deployment scope is tier-based (directive.md Rule 20.3, blueprint.md
- * §13.2 / §17.4):
- *
- *   admin         → registered to the DEVELOPMENT GUILD ONLY, with
- *                   default_member_permissions: 0 (Layer 1 of the
- *                   Admin-tier defense, §13.6). Never global, never in
- *                   any other guild.
- *   core          → registered GLOBALLY (application commands). Present
- *                   in every guild unconditionally.
- *   standard /
- *   marketplace   → registered per-guild, only for guilds whose
- *                   guild_module_states row marks the module enabled.
- *
- * Startup never trusts a prior run (Rule 17.4 / 20.4): global scope and
- * each managed guild scope are cleared and re-registered from the set
- * computed fresh from the currently-loaded modules.
- */
 import { Routes } from 'discord.js';
 import type { CommandRegistry } from './command-registry.js';
 import type { CommandDefinition } from './command-registry.js';
@@ -32,14 +11,6 @@ export interface DeployerConfig {
   nodeEnv: string;
 }
 
-/**
- * Minimal subset of discord.js's REST client CommandDeployer needs. Kept as
- * an interface (rather than importing discord.js's REST class directly)
- * so unit tests can construct a CommandDeployer without one — deploy()
- * and undeploy() then only log the command inventory, making no network
- * calls. Bootstrap wires a real `new REST().setToken(...)` instance here
- * when DISCORD_ADAPTER=live.
- */
 export interface DiscordRestClient {
   put(route: `/${string}`, options: { body: unknown[] }): Promise<unknown>;
 }
@@ -48,13 +19,7 @@ export interface CommandDeployerDeps {
   registry: CommandRegistry;
   logger: Logger;
   config: DeployerConfig;
-  /** Present only in live mode. Absent in mock/test mode (no-op, logging only). */
   rest?: DiscordRestClient;
-  /**
-   * Resolves the guild IDs where a standard/marketplace module is enabled
-   * (guild_module_states, §13.4). Injected by bootstrap; absent in
-   * mock/test mode, where per-guild registration is logged but skipped.
-   */
   enabledGuildResolver?: (moduleSlug: string) => Promise<readonly string[]>;
 }
 
@@ -71,10 +36,6 @@ class MissingModuleTierError extends Error {
 export class CommandDeployer {
   constructor(private readonly deps: CommandDeployerDeps) {}
 
-  /**
-   * Deploy all registered commands to Discord using tier-based scoping.
-   * When `rest` is absent (mock/test mode), this only logs the inventory.
-   */
   async deploy(): Promise<void> {
     const { registry, logger, config, rest } = this.deps;
     const commands = registry.all();
@@ -99,7 +60,6 @@ export class CommandDeployer {
     });
 
     if (rest) {
-      // ── Global scope: Core-tier commands, delete-then-reregister ──────
       await rest.put(Routes.applicationCommands(config.applicationId), { body: [] });
       if (core.length > 0) {
         await rest.put(Routes.applicationCommands(config.applicationId), {
@@ -111,12 +71,10 @@ export class CommandDeployer {
         });
       }
 
-      // ── Per-guild scopes ──────────────────────────────────────────────
       const guilds = await this.computeGuildScopes({ admin, guildScoped });
 
       for (const [guildId, guildCommands] of guilds) {
         const guildLabel = guildId === config.devGuildId ? 'dev' : 'guild';
-        // Delete-then-reregister per managed guild scope (Rule 20.4).
         await rest.put(Routes.applicationGuildCommands(config.applicationId, guildId), {
           body: [],
         });
@@ -146,14 +104,6 @@ export class CommandDeployer {
     });
   }
 
-  /**
-   * Build the per-guild command map:
-   *  - Admin-tier commands → the development guild only (never global,
-   *    never any other guild), with default_member_permissions: 0n (§13.6
-   *    Layer 1 — hidden from every member's UI).
-   *  - Standard/Marketplace commands → every guild where the owning
-   *    module is enabled in guild_module_states.
-   */
   private async computeGuildScopes(args: {
     admin: CommandDefinition[];
     guildScoped: CommandDefinition[];

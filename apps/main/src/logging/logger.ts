@@ -1,9 +1,5 @@
-/**
- * Structured JSON logging (Cluster: Glass). Wraps Pino so every call site
- * uses the same (message, context) shape instead of pino's (context,
- * message) argument order, and centralizes redaction paths.
- */
 import pino, { type Logger as PinoLogger } from 'pino';
+import { scanAndRedact } from '../security/token-scanner.js';
 
 export interface LogContext {
   correlationId?: string;
@@ -38,6 +34,18 @@ export const REDACT_PATHS = [
   '*.clientSecret',
   '*.accessToken',
   '*.refreshToken',
+  // §22.8 / TABLE 22-D: the credential secret and its Argon2id hashes must never reach a log
+  // line, at any nesting depth, under any of the names the credential surfaces use. `keyId` and
+  // `devId` are deliberately not redacted — they are the operator correlation handles the
+  // credential surfaces log deliberately.
+  'credentialHash',
+  '*.credentialHash',
+  '*.*.credentialHash',
+  'devIdHash',
+  '*.devIdHash',
+  '*.*.devIdHash',
+  '*.credential.secret',
+  '*.*.credential.secret',
 ];
 
 export class Logger {
@@ -76,7 +84,9 @@ export class Logger {
   }
 }
 
-export function createLogger(level: string): Logger {
+export type TokenLeakHandler = (detail: { where: string }) => void;
+
+export function createLogger(level: string, onTokenLeak?: TokenLeakHandler): Logger {
   const instance = pino({
     level,
     redact: { paths: REDACT_PATHS, censor: '[REDACTED]' },
@@ -84,6 +94,22 @@ export function createLogger(level: string): Logger {
     formatters: {
       level(label: string) {
         return { level: label };
+      },
+    },
+    hooks: {
+      // §32.8 — dynamic token-leak scanning: a token-like pattern in any log argument is redacted
+      // and the bot owner is alerted.
+      logMethod(this: unknown, args, method) {
+        let leaked = false;
+        for (let i = 0; i < args.length; i += 1) {
+          const result = scanAndRedact((args as unknown[])[i]);
+          if (result.leaked) {
+            leaked = true;
+            (args as unknown[])[i] = result.redacted;
+          }
+        }
+        if (leaked) onTokenLeak?.({ where: 'log' });
+        return method.apply(this, args);
       },
     },
   });

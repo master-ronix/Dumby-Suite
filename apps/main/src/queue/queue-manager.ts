@@ -17,7 +17,6 @@ export interface RegisterQueueOptions<T = unknown> {
   maxConcurrency?: number;
 }
 
-/** Per spec section 17: 1 hour / 1000 completed jobs retained, failed jobs retained forever until the DLQ policy processes them. */
 const REMOVE_ON_COMPLETE = { age: 3600, count: 1000 };
 const REMOVE_ON_FAIL = false as const;
 const DLQ_CHECK_INTERVAL_MS = 15 * 60 * 1000;
@@ -87,6 +86,11 @@ export class QueueManager {
     return job.id ?? '';
   }
 
+  /** The names of every registered queue (finding #15 — the admin pause/resume routes need them). */
+  list(): readonly string[] {
+    return [...this.entries.keys()];
+  }
+
   async pause(queueName: string): Promise<void> {
     await this.getEntry(queueName).queue.pause();
   }
@@ -126,7 +130,6 @@ export class QueueManager {
     return (counts['waiting'] ?? 0) + (counts['active'] ?? 0) + (counts['delayed'] ?? 0);
   }
 
-  /** Runs the autoscaler policy for every registered queue against its current depth. */
   async tickAutoscaler(): Promise<void> {
     for (const [name, entry] of this.entries) {
       const depth = await this.getDepth(name);
@@ -143,7 +146,6 @@ export class QueueManager {
     }
   }
 
-  /** Starts the every-15-minutes DLQMonitor sweep. */
   startDlqMonitor(): void {
     this.dlqTimer = setInterval(() => void this.runDlqSweep(), DLQ_CHECK_INTERVAL_MS);
     this.dlqTimer.unref?.();

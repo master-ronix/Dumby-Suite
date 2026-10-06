@@ -1,19 +1,5 @@
 import type { Knex } from 'knex';
 
-/**
- * master-prompt.md Conflict 3 (authoritative): Swastik's control tables are
- * named `developers` and `builds` (blueprint §24.2 / directive Rule 27.2),
- * NOT `swastik_developers` / `swastik_builds` (documentation.md's naming).
- *
- * Migrations 000025/000026 shipped the wrong names AND a non-canonical shape
- * (discordUserId/displayName/status, uuid PK). This migration drops those and
- * recreates the canonical core-owned control tables.
- *
- * developers: devId (PK, opaque) · username · approvalStatus
- *             (pending|approved|declined) · registeredAt/approvedAt/approvedBy
- * builds:     buildId (PK) · devId (FK) · moduleSlug · version (semver) ·
- *             validationStatus (pending|passed|rejected) · promotedAt (nullable)
- */
 export async function up(knex: Knex): Promise<void> {
   await knex.schema.dropTableIfExists('swastik_builds');
   await knex.schema.dropTableIfExists('swastik_developers');
