@@ -2,14 +2,14 @@
 # Multi-stage build (blueprint.md §37 / directive.md §39):
 #   base   — shared Node.js image with pnpm
 #   deps   — production dependency install
-#   builder— full install + build
-#   runtime— final minimal image (no devDependencies)
+#   builder— full install + build + module staging
+#   runtime— final image (no devDependencies)
 #
 # Build context MUST be the workspace root (contains pnpm-lock.yaml,
 # pnpm-workspace.yaml, and every workspace package). This is a pnpm workspace,
 # so pnpm needs every package manifest present to validate the lockfile — a
-# partial context makes `pnpm install --frozen-lockfile` fail with a stale
-# lockfile. The whole repo is copied in; see ../../.dockerignore for exclusions.
+# partial context makes `pnpm install --frozen-lockfile` fail. See
+# ../../.dockerignore for exclusions.
 
 FROM node:22-slim AS base
 WORKDIR /app
@@ -22,20 +22,27 @@ RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
     pnpm install --frozen-lockfile --prod --filter @workspace/dumby
 
 # ── Stage: builder ─────────────────────────────────────────────────────────────
-# Install all deps (including devDeps) so tsc can run, then build the bot.
+# Full install (incl. devDeps) so tsc/esbuild can run, then build the bot, build
+# the first-party module bundles, and stage them into the MODULES_DIR layout.
 FROM base AS builder
 COPY . .
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
     pnpm install --frozen-lockfile
-RUN pnpm --filter @workspace/dumby build
+RUN pnpm --filter @workspace/dumby build \
+ && pnpm --filter @workspace/dumby build:modules \
+ && pnpm --filter @workspace/dumby stage:modules
 
 # ── Stage: runtime ─────────────────────────────────────────────────────────────
 FROM base AS runtime
 ENV NODE_ENV=production
+# Self-contained module tree staged in the builder. Override at deploy time to
+# point at mounted tier volumes instead (see docs/spec/lifecycle/infrastructure-deployment.md §41.2).
+ENV MODULES_DIR=/app/apps/main/staged-modules
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/main/node_modules ./apps/main/node_modules
 COPY --from=builder /app/apps/main/dist ./apps/main/dist
 COPY --from=builder /app/apps/main/scripts ./apps/main/scripts
+COPY --from=builder /app/apps/main/staged-modules ./apps/main/staged-modules
 COPY --from=builder /app/packages/swastik/dist ./packages/swastik/dist
 COPY apps/main/package.json apps/main/tsconfig.json ./apps/main/
 COPY packages/swastik/package.json ./packages/swastik/
