@@ -1,0 +1,12 @@
+# Build context for the Dumby images is the workspace ROOT (see
+# apps/main/Dockerfile). This file excludes everything the build does not need.
+**/node_modules
+**/.git
+**/.github
+**/dist
+**/dist-modules
+**/coverage
+**/*.tsbuildinfo
+**/*.log
+**/.env
+**/.env.local
