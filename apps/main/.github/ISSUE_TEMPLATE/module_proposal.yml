@@ -1,0 +1,19 @@
+name: Module Proposal
+description: Propose a new Dumby module.
+title: 'module: '
+labels: ['module-proposal']
+body:
+  - type: input
+    id: module-name
+    attributes:
+      label: Module name
+      description: Kebab-case module identifier.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: Commands, events, tables, routes, and permissions requested.
+    validations:
+      required: true

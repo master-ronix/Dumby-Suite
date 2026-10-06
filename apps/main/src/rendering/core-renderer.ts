@@ -1,0 +1,296 @@
+import {
+  buildComponentsV2,
+  container,
+  DEFAULT_ACCENT_COLOR,
+  separator,
+  textDisplay,
+  type ComponentsV2Message,
+} from '../shared/utils/components-v2.js';
+
+export const FOLLOWUP_ALARM_MS = 13 * 60 * 1000;
+
+export type RenderMode = 'D' | 'M' | 'C';
+
+export type NoticeReasonCode =
+  | 'UNKNOWN_COMMAND'
+  | 'MAINTENANCE'
+  | 'NOT_FOUND'
+  | 'FORBIDDEN'
+  | 'RESTRICTED'
+  | 'COOLDOWN'
+  | 'RATE_LIMITED'
+  | 'GUILD_UNAVAILABLE'
+  | 'MODULE_ERROR'
+  | 'OVERDUE';
+
+export interface RenderIdentity {
+  surface: string;
+  developer?: string;
+  version?: string;
+}
+
+export interface RenderDescriptor extends RenderIdentity {
+  mode?: RenderMode;
+  sections?: readonly string[];
+  summary?: string;
+}
+
+export interface FormalNoticeDescriptor extends RenderIdentity {
+  reason: NoticeReasonCode;
+  traceId: string;
+  heading?: string;
+  explanation?: string;
+}
+
+export interface RendererInteraction {
+  replied?: boolean;
+  deferred?: boolean;
+  reply(options: ComponentsV2Message): Promise<void>;
+  editReply(options: ComponentsV2Message): Promise<void>;
+}
+
+const DEFAULT_DEVELOPER = 'Quixotic Mnemonics';
+const DEFAULT_VERSION = '5.0.0';
+
+export class InvalidRenderDescriptorError extends Error {
+  constructor() {
+    super('Command handler returned a value that is not a valid render descriptor');
+    this.name = 'InvalidRenderDescriptorError';
+  }
+}
+
+export class DirectInteractionResponseError extends Error {
+  constructor(method: string) {
+    super(`Command handlers must return render descriptors; direct ${method} is forbidden`);
+    this.name = 'DirectInteractionResponseError';
+  }
+}
+
+export class CoreRenderer {
+  createTraceId(): string {
+    return `tr_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+  }
+
+  createReadOnlyInteraction<T extends object>(interaction: T): T {
+    return new Proxy(interaction, {
+      get(target, prop, receiver) {
+        if (
+          prop === 'reply' ||
+          prop === 'deferReply' ||
+          prop === 'editReply' ||
+          prop === 'followUp' ||
+          prop === 'showModal'
+        ) {
+          return async (): Promise<never> => {
+            throw new DirectInteractionResponseError(String(prop));
+          };
+        }
+        return Reflect.get(target, prop, receiver);
+      },
+    });
+  }
+
+  async sendBuffer(interaction: RendererInteraction, identity: RenderIdentity): Promise<void> {
+    const payload = this.renderBuffer(identity);
+    if (interaction.replied === true || interaction.deferred === true) {
+      await interaction.editReply(payload);
+      return;
+    }
+    await interaction.reply(payload);
+  }
+
+  async editFinal(interaction: RendererInteraction, descriptor: RenderDescriptor): Promise<void> {
+    await interaction.editReply(this.render(descriptor));
+  }
+
+  async editNotice(
+    interaction: RendererInteraction,
+    descriptor: FormalNoticeDescriptor,
+  ): Promise<void> {
+    await interaction.editReply(this.renderNotice(descriptor));
+  }
+
+  renderBuffer(identity: RenderIdentity): ComponentsV2Message {
+    return this.frame([
+      this.title(identity),
+      separator(),
+      textDisplay(`Preparing ${identity.surface}...`),
+    ]);
+  }
+
+  render(input: RenderDescriptor): ComponentsV2Message {
+    const mode = input.mode ?? 'D';
+    const sections = input.sections ?? (input.summary ? [input.summary] : []);
+    if (sections.length === 0) {
+      throw new InvalidRenderDescriptorError();
+    }
+
+    const body =
+      mode === 'C'
+        ? [textDisplay(this.oneLineRender(input.surface, sections[0] ?? input.surface))]
+        : mode === 'M'
+          ? [textDisplay(this.condensedRender(sections))]
+          : sections.flatMap((section, index) =>
+              index === 0 ? [textDisplay(section)] : [separator(), textDisplay(section)],
+            );
+
+    return this.frame([
+      this.title(input),
+      separator(),
+      ...body,
+      separator('small'),
+      this.footer(input, mode),
+    ]);
+  }
+
+  renderNotice(input: FormalNoticeDescriptor): ComponentsV2Message {
+    const heading = input.heading ?? this.defaultNoticeHeading(input.reason);
+    const explanation = input.explanation ?? this.defaultNoticeExplanation(input.reason);
+
+    return this.frame([
+      this.title(input),
+      separator(),
+      textDisplay(
+        [
+          `Warning: ${heading}`,
+          '',
+          explanation,
+          '',
+          `reason: ${input.reason}`,
+          `trace: ${input.traceId}`,
+        ].join('\n'),
+      ),
+    ]);
+  }
+
+  normalizeHandlerResult(result: unknown, fallback: RenderIdentity): RenderDescriptor {
+    if (result === undefined || result === null) {
+      return { ...fallback, summary: 'Done.' };
+    }
+
+    if (typeof result === 'string') {
+      return { ...fallback, summary: result };
+    }
+
+    if (this.isRenderDescriptor(result)) {
+      return {
+        surface: result.surface,
+        ...(result.developer !== undefined ? { developer: result.developer } : {}),
+        ...(result.version !== undefined ? { version: result.version } : {}),
+        ...(result.mode !== undefined ? { mode: result.mode } : {}),
+        ...(result.sections !== undefined ? { sections: result.sections } : {}),
+        ...(result.summary !== undefined ? { summary: result.summary } : {}),
+      };
+    }
+
+    throw new InvalidRenderDescriptorError();
+  }
+
+  noticeReasonFromError(err: unknown): NoticeReasonCode {
+    if (err instanceof InvalidRenderDescriptorError) return 'MODULE_ERROR';
+    const name = err instanceof Error ? err.name : '';
+    if (name === 'CommandNotFoundError') return 'UNKNOWN_COMMAND';
+    if (name === 'CommandScopeDeniedError') return 'FORBIDDEN';
+    if (name === 'PersonaOccupiedError') return 'FORBIDDEN';
+    return 'MODULE_ERROR';
+  }
+
+  private frame(components: Parameters<typeof container>[0]): ComponentsV2Message {
+    return buildComponentsV2([container(components, DEFAULT_ACCENT_COLOR)]);
+  }
+
+  private title(identity: RenderIdentity) {
+    const developer = identity.developer ?? DEFAULT_DEVELOPER;
+    const version = identity.version ?? DEFAULT_VERSION;
+    return textDisplay(`Dumby | ${identity.surface}\n-# Developed by ${developer} v${version}`);
+  }
+
+  private footer(identity: RenderIdentity, mode?: RenderMode) {
+    const developer = identity.developer ?? DEFAULT_DEVELOPER;
+    const version = identity.version ?? DEFAULT_VERSION;
+    const modeLabel = mode === undefined ? '' : ` | Mode ${mode}`;
+    return textDisplay(`-# Developed by ${developer} v${version}${modeLabel}`);
+  }
+
+  /**
+   * Mode C body: a single-line status render — the identity plus the first
+   * line of the summary (interface.md §1.4).
+   */
+  private oneLineRender(surface: string, first: string): string {
+    const line = first.split('\n').find((part) => part.trim().length > 0) ?? first;
+    return `${surface}: ${line}`;
+  }
+
+  /**
+   * Mode M body: the condensed summary — the first section, with any further
+   * sections collapsed to a count (interface.md §1.4).
+   */
+  private condensedRender(sections: readonly string[]): string {
+    const first = sections[0] ?? '';
+    const remainder = sections.length - 1;
+    return remainder > 0 ? `${first}\n+${remainder} more` : first;
+  }
+
+  private isRenderDescriptor(value: unknown): value is RenderDescriptor {
+    if (typeof value !== 'object' || value === null) return false;
+    const candidate = value as Partial<RenderDescriptor>;
+    const hasContent =
+      (Array.isArray(candidate.sections) &&
+        candidate.sections.every((s) => typeof s === 'string')) ||
+      typeof candidate.summary === 'string';
+    const validMode =
+      candidate.mode === undefined ||
+      candidate.mode === 'D' ||
+      candidate.mode === 'M' ||
+      candidate.mode === 'C';
+    return typeof candidate.surface === 'string' && hasContent && validMode;
+  }
+
+  private defaultNoticeHeading(reason: NoticeReasonCode): string {
+    switch (reason) {
+      case 'UNKNOWN_COMMAND':
+        return 'Unknown command';
+      case 'MAINTENANCE':
+        return 'Maintenance mode';
+      case 'NOT_FOUND':
+        return 'Not found';
+      case 'FORBIDDEN':
+      case 'RESTRICTED':
+        return 'Not permitted';
+      case 'COOLDOWN':
+      case 'RATE_LIMITED':
+        return 'Throttled';
+      case 'GUILD_UNAVAILABLE':
+        return 'Guild unavailable';
+      case 'OVERDUE':
+        return 'Interaction overdue';
+      case 'MODULE_ERROR':
+        return 'Module error';
+    }
+  }
+
+  private defaultNoticeExplanation(reason: NoticeReasonCode): string {
+    switch (reason) {
+      case 'UNKNOWN_COMMAND':
+        return 'That command is not registered or is not available here.';
+      case 'MAINTENANCE':
+        return 'Dumby is in maintenance mode. Please try again after the window ends.';
+      case 'NOT_FOUND':
+        return 'The requested target does not exist or is no longer available.';
+      case 'FORBIDDEN':
+        return 'Your permissions do not allow this action.';
+      case 'RESTRICTED':
+        return 'The restricted access floor applies to this action.';
+      case 'COOLDOWN':
+        return 'This command is cooling down. Please try again later.';
+      case 'RATE_LIMITED':
+        return 'The rate limit for this action has been exceeded.';
+      case 'GUILD_UNAVAILABLE':
+        return 'This module is not available in this server.';
+      case 'OVERDUE':
+        return 'The interaction expired before a final render was available.';
+      case 'MODULE_ERROR':
+        return 'The module failed while handling the interaction.';
+    }
+  }
+}

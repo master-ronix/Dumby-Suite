@@ -1,0 +1,5 @@
+# Development image placeholder. Local development currently uses tsx through
+# package scripts and docker-compose.yml at apps/main/docker-compose.yml.
+FROM node:22-slim
+WORKDIR /app
+RUN corepack enable

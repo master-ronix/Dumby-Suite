@@ -1,0 +1,19 @@
+name: Bug Report
+description: Report a reproducible defect in the Dumby runtime.
+title: 'bug: '
+labels: ['bug']
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What failed?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Minimal steps, commands, or inputs.
+    validations:
+      required: true

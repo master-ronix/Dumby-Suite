@@ -1,0 +1,4 @@
+# Wrapper compose file for the Part 3 docker/ path.
+# Use the canonical compose file at apps/main/docker-compose.yml.
+include:
+  - ../docker-compose.yml
