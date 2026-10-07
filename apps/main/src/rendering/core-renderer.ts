@@ -173,7 +173,7 @@ export class CoreRenderer {
         identity.version ?? DEFAULT_VERSION,
       ),
       separator(),
-      textDisplay(`Preparing ${identity.surface}...`),
+      textDisplay(`⏳ Preparing ${identity.surface}…`),
     ]);
   }
 
@@ -241,7 +241,7 @@ export class CoreRenderer {
       separator(),
       textDisplay(
         [
-          `Warning: ${heading}`,
+          `⚠ ${heading}`,
           '',
           explanation,
           '',
