@@ -16,16 +16,14 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 FROM base AS deps
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.base.json ./
 COPY apps/main/package.json apps/main/tsconfig.json apps/main/tsconfig.tests.json ./apps/main/
-RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
-    pnpm install --frozen-lockfile --prod --filter @workspace/dumby
+RUN pnpm install --frozen-lockfile --prod --filter @workspace/dumby
 
 # ── Stage: builder ─────────────────────────────────────────────────────────────
 # Install all deps (including devDeps) so tsc can run.
 FROM base AS builder
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.base.json ./
 COPY apps/main/package.json apps/main/tsconfig.json apps/main/tsconfig.tests.json ./apps/main/
-RUN --mount=type=cache,id=pnpm-store,target=/root/.local/share/pnpm/store \
-    pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile
 COPY apps/main/src ./apps/main/src
 COPY apps/main/scripts ./apps/main/scripts
 RUN pnpm --filter @workspace/dumby typecheck && pnpm --filter @workspace/dumby build
