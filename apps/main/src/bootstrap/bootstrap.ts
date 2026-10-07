@@ -805,7 +805,7 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
                 ) as unknown as () => Promise<void>,
               }
             : {}),
-          values: interaction.isStringSelectMenu() ? interaction.values : undefined,
+          ...(interaction.isStringSelectMenu() ? { values: interaction.values } : {}),
         };
         const handled = await interactionRegistry.dispatch(componentInteraction);
 
