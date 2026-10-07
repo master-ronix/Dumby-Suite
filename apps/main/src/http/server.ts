@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises';
 import Fastify, { type FastifyInstance } from 'fastify';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
@@ -34,6 +35,13 @@ export interface BuildServerOptions {
 }
 
 const ADMIN_PATH_PREFIX = '/admin/';
+
+/**
+ * §11.5 - the Mode D banner asset. It ships in the image and is served here, on the API surface
+ * Railway routes the public domain to, so Discord can load it as a media gallery without any
+ * external host. One image serves every page (the same banner on every module page).
+ */
+const BANNER_ASSET = new URL('../../assets/dumby-banner.png', import.meta.url);
 
 export function buildApiServer(options: BuildServerOptions): FastifyInstance {
   const app = Fastify({ logger: false });
@@ -79,6 +87,18 @@ export function buildApiServer(options: BuildServerOptions): FastifyInstance {
   if (options.oauth2Client !== undefined) {
     registerOAuthRoutes(app, options.oauth2Client);
   }
+
+  app.get('/assets/dumby-banner.png', async (_req, reply) => {
+    try {
+      const bytes = await readFile(BANNER_ASSET);
+      return reply
+        .header('content-type', 'image/png')
+        .header('cache-control', 'public, max-age=86400')
+        .send(bytes);
+    } catch {
+      return reply.code(404).send({ error: 'banner asset not found' });
+    }
+  });
 
   return app;
 }

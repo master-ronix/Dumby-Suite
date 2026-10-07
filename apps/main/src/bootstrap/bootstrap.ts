@@ -397,7 +397,16 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   const moduleRegistry = new ModuleRegistry();
   const permissionResolver = new PermissionResolver();
   const commandRegistry = new CommandRegistry();
-  const renderer = new CoreRenderer();
+  // §11.5 - the Mode D banner. The asset ships in the image and is served by this app's own API
+  // surface, so the URL is built from the deployment's public domain (Railway injects
+  // RAILWAY_PUBLIC_DOMAIN). Without a domain - a local run - the banner slot is simply omitted
+  // rather than pointed at a URL nothing serves.
+  const publicDomain = process.env['RAILWAY_PUBLIC_DOMAIN'];
+  const renderer = new CoreRenderer(
+    publicDomain !== undefined && publicDomain !== ''
+      ? { bannerUrl: `https://${publicDomain}/assets/dumby-banner.png` }
+      : {},
+  );
   const interactionRegistry = new InteractionRegistry({
     // Appendix C #19 — shared idempotency, so a double-click is deduped across pods.
     idempotency: new RedisIdempotencyStore(redis),

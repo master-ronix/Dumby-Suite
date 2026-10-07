@@ -52,6 +52,8 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/main/node_modules ./apps/main/node_modules
 COPY --from=builder /app/apps/main/dist ./apps/main/dist
 COPY --from=builder /app/apps/main/scripts ./apps/main/scripts
+# §11.5 - the banner asset the API surface serves at /assets/dumby-banner.png.
+COPY apps/main/assets ./apps/main/assets
 # apps/main/node_modules/@workspace/swastik links to /app/packages/swastik, so the whole
 # SDK (package.json + compiled dist + its own node_modules for `zod`) must be present.
 COPY --from=builder /app/packages/swastik ./packages/swastik

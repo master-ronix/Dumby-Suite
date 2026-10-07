@@ -122,6 +122,13 @@ export class DirectInteractionResponseError extends Error {
 }
 
 export class CoreRenderer {
+  private readonly bannerUrl: string | undefined;
+
+  /** §1.3 / §11.5 - the banner every Mode D page opens with; omitted means no banner slot. */
+  constructor(options: { bannerUrl?: string } = {}) {
+    this.bannerUrl = options.bannerUrl;
+  }
+
   createTraceId(): string {
     return `tr_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
   }
@@ -200,8 +207,9 @@ export class CoreRenderer {
     const components: Component[] = [];
 
     // §1.2 / §1.3 / §1.4 - the banner slot opens the frame, and is present in Mode D only.
-    if (mode === 'D' && input.banner !== undefined) {
-      components.push(createBannerMediaGallery(input.banner));
+    const bannerUrl = input.banner ?? this.bannerUrl;
+    if (mode === 'D' && bannerUrl !== undefined) {
+      components.push(createBannerMediaGallery(bannerUrl));
       components.push(separator());
     }
 
