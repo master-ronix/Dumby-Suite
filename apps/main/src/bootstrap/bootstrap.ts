@@ -730,20 +730,37 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
               'KickMembers',
             ].filter((p) => member.permissions?.has(p) === true)
           : undefined;
-        const commandInteraction: CommandInteraction = interaction as unknown as CommandInteraction;
-        if (channel) {
-          commandInteraction.channel = {
-            id: channel.id,
-            categoryId: channel.parentId ?? null,
-            isNsfw: channel.isNSFW?.() ?? false,
-          };
-        }
-        if (memberPermissions !== undefined) {
-          commandInteraction.memberPermissions = memberPermissions;
-        }
-        if (member?.roles?.cache) {
-          commandInteraction.memberRoles = [...member.roles.cache.keys()];
-        }
+        // discord.js defines `channel` and `memberPermissions` as getter-only properties, so the
+        // interaction cannot be enriched in place - assigning to `channel` throws
+        // "Cannot set property channel of #<BaseInteraction> which has only a getter", which
+        // rejects the listener and leaves the interaction unacknowledged ("The application did
+        // not respond"). Build a plain adapter carrying the router's CommandInteraction shape
+        // instead - the same pattern the component branch below uses.
+        const commandInteraction: CommandInteraction = {
+          commandName: interaction.commandName,
+          user: { id: interaction.user.id },
+          guildId: interaction.guildId,
+          reply: interaction.reply.bind(interaction) as unknown as CommandInteraction['reply'],
+          deferReply: interaction.deferReply.bind(
+            interaction,
+          ) as unknown as CommandInteraction['deferReply'],
+          editReply: interaction.editReply.bind(
+            interaction,
+          ) as unknown as CommandInteraction['editReply'],
+          replied: interaction.replied,
+          deferred: interaction.deferred,
+          ...(channel
+            ? {
+                channel: {
+                  id: channel.id,
+                  categoryId: channel.parentId ?? null,
+                  isNsfw: channel.isNSFW?.() ?? false,
+                },
+              }
+            : {}),
+          ...(memberPermissions !== undefined ? { memberPermissions } : {}),
+          ...(member?.roles?.cache ? { memberRoles: [...member.roles.cache.keys()] } : {}),
+        };
         void commandRouter.dispatch(commandInteraction).catch(async (err) => {
           logger.error('interaction-dispatch-failed', {
             command: interaction.commandName,
