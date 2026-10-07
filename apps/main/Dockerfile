@@ -25,9 +25,16 @@ FROM base AS builder
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.base.json .npmrc ./
 COPY apps/main/package.json apps/main/tsconfig.json apps/main/tsconfig.tests.json ./apps/main/
 COPY packages/swastik/package.json ./packages/swastik/
+# The first-party module packages are workspace projects (pnpm-workspace.yaml
+# globs `packages/modules/*`) and each declares `@workspace/swastik`. Their
+# manifests must be present BEFORE `pnpm install`, otherwise pnpm never links
+# @workspace/swastik into each module's node_modules and esbuild cannot resolve
+# it while bundling the modules (`build:modules` fails with "Could not resolve
+# \"@workspace/swastik\""). Copying the packages first also keeps the lockfile's
+# importers for `packages/modules/*` in sync with the workspace.
+COPY packages/modules ./packages/modules
 RUN pnpm install --frozen-lockfile
 COPY packages/swastik ./packages/swastik
-COPY packages/modules ./packages/modules
 COPY apps/main/src ./apps/main/src
 COPY apps/main/scripts ./apps/main/scripts
 # Build the swastik SDK (the bot imports it), typecheck + compile the bot, build the
