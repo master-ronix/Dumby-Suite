@@ -99,6 +99,8 @@ export default [
       parserOptions: { sourceType: 'module' },
     },
     rules: {
+      // Pino is the sole logger; feature modules must not write to console directly.
+      'no-console': 'error',
       'no-restricted-imports': restrictedImports([]),
       'no-restricted-syntax': [
         'error',

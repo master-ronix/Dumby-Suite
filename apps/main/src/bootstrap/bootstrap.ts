@@ -27,6 +27,7 @@ import { ModuleLoader } from '../module-system/loader.js';
 import { defaultEnabledForTier } from '../module-system/tier-rules.js';
 import { PermissionResolver } from '../permissions/resolver.js';
 import { AdminEvalGate } from '../permissions/admin-eval-gate.js';
+import { evaluateRank } from '../permissions/rank.js';
 import { PostgresGuildSuspensionStore } from '../governance/guild-suspension.js';
 import { createPowerEngineCatalog } from '../http/power-engine-catalog.js';
 import { DiscordOAuth2Client } from '../http/oauth/oauth2-client.js';
@@ -498,15 +499,22 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     .add(
       new RBACMiddleware({
         // Layer 6 (rank function): evaluated from live Discord state, never written.
+        // One rank derivation only (P13): the middleware reads the canonical six-rank
+        // `evaluateRank` and maps its long-form result to the middleware ladder's short form.
         getHighestRole: async (userId, guildId) => {
           const guild = discordClient?.guilds.cache.get(guildId);
           if (guild === undefined) return null;
-          if (guild.ownerId === userId) return 'OWNER';
-          const member = await guild.members.fetch(userId).catch(() => null);
-          if (member === null) return null;
-          if (member.permissions.has('Administrator')) return 'ADMIN';
-          if (member.permissions.has('ManageGuild')) return 'MOD';
-          return 'MEMBER';
+          const isGuildOwner = guild.ownerId === userId;
+          const member = isGuildOwner
+            ? null
+            : await guild.members.fetch(userId).catch(() => null);
+          if (member === null && !isGuildOwner) return null;
+          const rank = evaluateRank({
+            isGuildOwner,
+            permissions: member === null ? [] : [...member.permissions.toArray()],
+            restricted: false,
+          });
+          return RANK_TO_RBAC[rank] ?? 'MEMBER';
         },
         getRequiredRole: (commandName) => {
           const rank = commandRegistry.get(commandName)?.permissions?.rbac;

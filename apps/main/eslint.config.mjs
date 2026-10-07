@@ -25,6 +25,11 @@ export default [
       '@typescript-eslint/no-floating-promises': 'error',
       '@typescript-eslint/consistent-type-imports': 'error',
 
+      // Pino is the sole logger (blueprint §5.10 / directive Part 2). Direct console
+      // use is banned; the allow-listed entrypoints (src/entry, src/cli, scripts,
+      // tests) are exempted in the block below.
+      'no-console': 'error',
+
       'no-restricted-imports': [
         'error',
         {
@@ -69,24 +74,12 @@ export default [
       'import/no-cycle': ['error', { maxDepth: 5 }],
     },
   },
+  // NOTE: the module-boundary rules for feature modules live in
+  // packages/modules/eslint.config.mjs — ADR-005 moved module storage out of
+  // `src/modules/` into per-tier volumes, so any block scoped to `src/modules/**`
+  // here would silently match nothing.
   {
-    files: ['src/modules/*/**/*.ts'],
-    rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            {
-              group: ['../*/!(forCrossModuleRead)*', '../../modules/*/**'],
-              message: 'Modules may not deep-import sibling module internals directly.',
-            },
-          ],
-        },
-      ],
-    },
-  },
-  {
-    files: ['src/modules/*/commands/**/*.ts', 'src/commands/**/*.ts'],
+    files: ['src/commands/**/*.ts'],
     rules: {
       'no-restricted-imports': [
         'error',
@@ -104,11 +97,7 @@ export default [
     },
   },
   {
-    files: [
-      'src/modules/*/repository.ts',
-      'src/modules/*/*.repository.ts',
-      'src/db/repositories/**/*.ts',
-    ],
+    files: ['src/db/repositories/**/*.ts'],
     rules: {
       'no-restricted-imports': [
         'error',
@@ -128,6 +117,7 @@ export default [
     files: [
       'src/config/env.schema.ts',
       'src/entry/**/*.ts',
+      'src/cli/**/*.ts',
       'src/bootstrap/bootstrap.ts',
       'src/db/knexfile.ts',
       'scripts/**/*.ts',
@@ -135,6 +125,7 @@ export default [
     ],
     rules: {
       'no-restricted-syntax': 'off',
+      'no-console': 'off',
     },
   },
 ];

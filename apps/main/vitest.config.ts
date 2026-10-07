@@ -23,7 +23,6 @@ export default defineConfig({
         'src/db/client.ts',
         'src/db/knexfile.ts',
         'src/db/repositories/**',
-        'src/modules/register-all.ts',
         'src/shared/testing/**',
       ],
       thresholds: {
