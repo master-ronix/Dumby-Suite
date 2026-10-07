@@ -42,10 +42,11 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/main/node_modules ./apps/main/node_modules
 COPY --from=builder /app/apps/main/dist ./apps/main/dist
 COPY --from=builder /app/apps/main/scripts ./apps/main/scripts
-# apps/main/node_modules/@workspace/swastik links to /app/packages/swastik, so the
-# compiled SDK must exist at runtime for the bot's `@workspace/swastik/*` imports.
-COPY --from=builder /app/packages/swastik/dist ./packages/swastik/dist
-COPY packages/swastik/package.json ./packages/swastik/package.json
+# apps/main/node_modules/@workspace/swastik links to /app/packages/swastik, so the whole
+# SDK must exist at runtime: its package.json (exports -> dist), its compiled dist/, and
+# its OWN node_modules — pnpm keeps each package's dependencies in that package's
+# node_modules, and the SDK's runtime dependency is `zod`.
+COPY --from=builder /app/packages/swastik ./packages/swastik
 COPY apps/main/package.json apps/main/tsconfig.json ./apps/main/
 EXPOSE 8080 8081 8082
 USER node
