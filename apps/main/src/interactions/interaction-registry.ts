@@ -9,6 +9,8 @@ export interface ComponentInteraction {
   deferReply: (options?: { ephemeral?: boolean }) => Promise<void>;
   deferUpdate?: () => Promise<void>;
   editReply: (options: unknown) => Promise<void>;
+  /** §11.3 — the chosen option values, present only on a String Select Menu interaction. */
+  values?: readonly string[];
 }
 
 export interface IComponentHandler {

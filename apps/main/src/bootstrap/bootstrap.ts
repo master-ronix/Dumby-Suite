@@ -53,6 +53,7 @@ import { installFatalHandlers } from '../shutdown/fatal-handler.js';
 import { Redis } from 'ioredis';
 import { CommandRegistry } from '../commands/command-registry.js';
 import { CommandRouter } from '../commands/command-router.js';
+import { registerCoreFrameHandlers } from '../interactions/core-frame.handlers.js';
 import type { CommandInteraction } from '../commands/command-router.js';
 import { PersonaCommandBindingService } from '../personas/persona-command-binding.service.js';
 import {
@@ -581,6 +582,9 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
       personaBindingService.resolveCommandOwner(guildId, moduleSlug),
     ...(config.get('PERSONA_ID') !== '' ? { residentPersonaId: config.get('PERSONA_ID') } : {}),
   });
+  // §2.4 / §11.3 - the frame's own interactive controls: the D/M/C density control and the
+  // navigation dropdown. Registered after the router exists, since each re-enters it.
+  registerCoreFrameHandlers({ registry: interactionRegistry, router: commandRouter });
   container.registerValue(CORE_TOKENS.EventBus, eventBus);
   container.registerValue(CORE_TOKENS.EventRouter, eventRouter);
   container.registerValue(CORE_TOKENS.Scheduler, scheduler);
@@ -801,6 +805,7 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
                 ) as unknown as () => Promise<void>,
               }
             : {}),
+          values: interaction.isStringSelectMenu() ? interaction.values : undefined,
         };
         const handled = await interactionRegistry.dispatch(componentInteraction);
 

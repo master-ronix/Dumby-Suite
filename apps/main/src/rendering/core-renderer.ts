@@ -1,10 +1,13 @@
 import {
+  actionRow,
   buildComponentsV2,
+  button,
   container,
   createBannerMediaGallery,
   createTitleBlock,
   DEFAULT_ACCENT_COLOR,
   separator,
+  stringSelect,
   textDisplay,
   type Component,
   type ComponentsV2Message,
@@ -32,6 +35,25 @@ export interface RenderIdentity {
   version?: string;
 }
 
+export interface NavigationOption {
+  readonly label: string;
+  readonly value: string;
+  readonly description?: string;
+  readonly emoji?: string;
+  readonly default?: boolean;
+}
+
+/** §11.3 — the navigation dropdown: one minted customId plus the page options. */
+export interface NavigationControl {
+  readonly customId: string;
+  readonly options: readonly NavigationOption[];
+}
+
+/** §1.2/§3.3 — the footer's D/M/C density control, one minted customId per mode. */
+export interface ModeControl {
+  readonly customIds: Readonly<Record<RenderMode, string>>;
+}
+
 export interface RenderDescriptor extends RenderIdentity {
   mode?: RenderMode;
   sections?: readonly string[];
@@ -42,6 +64,10 @@ export interface RenderDescriptor extends RenderIdentity {
    * exists the slot is omitted rather than pointed at a URL that would 404.
    */
   banner?: string;
+  /** §11.3 — present in Modes D and M; omitted in Mode C. */
+  navigation?: NavigationControl;
+  /** §1.2 — the footer density control. */
+  modeControl?: ModeControl;
 }
 
 /**
@@ -230,8 +256,39 @@ export class CoreRenderer {
     }
     components.push(separator());
 
-    // §1.2 / §1.5 - the footer repeats the attribution.
+    // §1.2 / §3.3 - the footer repeats the attribution and carries the D/M/C density control.
     components.push(textDisplay(`-# Developed by ${developer} v${version}`));
+    const modeControl = input.modeControl;
+    if (modeControl !== undefined) {
+      components.push(
+        actionRow(
+          (['D', 'M', 'C'] as const).map((value) =>
+            button(modeControl.customIds[value], value, mode === value ? 1 : 2),
+          ),
+        ),
+      );
+    }
+
+    // §11.3 - the navigation dropdown sits below the footer, and is omitted in Mode C.
+    const navigation = input.navigation;
+    if (mode !== 'C' && navigation !== undefined && navigation.options.length > 0) {
+      components.push(separator());
+      components.push(
+        actionRow([
+          stringSelect(
+            navigation.customId,
+            navigation.options.map((option) => ({
+              label: option.label,
+              value: option.value,
+              ...(option.description !== undefined ? { description: option.description } : {}),
+              ...(option.emoji !== undefined ? { emoji: option.emoji } : {}),
+              ...(option.default !== undefined ? { default: option.default } : {}),
+            })),
+            'Navigate to:',
+          ),
+        ]),
+      );
+    }
 
     return this.frame(components);
   }
@@ -260,7 +317,7 @@ export class CoreRenderer {
     ]);
   }
 
-  normalizeHandlerResult(result: unknown, fallback: RenderIdentity): RenderDescriptor {
+  normalizeHandlerResult(result: unknown, fallback: RenderDescriptor): RenderDescriptor {
     if (result === undefined || result === null) {
       return { ...fallback, summary: 'Done.' };
     }

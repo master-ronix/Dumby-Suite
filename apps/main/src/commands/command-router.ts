@@ -10,8 +10,12 @@ import { type GuildSuspensionStore } from '../governance/guild-suspension.js';
 import {
   CoreRenderer,
   FOLLOWUP_ALARM_MS,
+  type ModeControl,
+  type NavigationControl,
+  type NavigationOption,
   type NoticeReasonCode,
   type RenderIdentity,
+  type RenderMode,
 } from '../rendering/core-renderer.js';
 import { PersonaOccupiedError } from '../personas/persona.js';
 
@@ -90,9 +94,12 @@ export class CommandRouter {
     this.renderer = options.renderer ?? new CoreRenderer();
   }
 
-  async dispatch(interaction: CommandInteraction): Promise<void> {
+  async dispatch(
+    interaction: CommandInteraction,
+    options: { mode?: RenderMode } = {},
+  ): Promise<void> {
     const name = interaction.commandName;
-    const identity = { surface: this.surfaceName(name) };
+    const identity: RenderIdentity = { surface: this.pageTitle(name) };
 
     if (interaction.guildId === null) {
       this.logger.warn('dm-interaction-rejected', { command: name, userId: interaction.user.id });
@@ -160,7 +167,12 @@ export class CommandRouter {
       );
       if (!pipelinePassed) return;
 
-      const render = this.renderer.normalizeHandlerResult(declaredResponse, identity);
+      const render = this.renderer.normalizeHandlerResult(declaredResponse, {
+        ...identity,
+        ...(options.mode !== undefined ? { mode: options.mode } : {}),
+        navigation: this.navigationControl(name, interaction.user.id),
+        modeControl: this.modeControl(name, interaction.user.id),
+      });
       await this.renderer.editFinal(interaction, render);
       this.logger.info('command-executed', {
         command: name,
@@ -372,6 +384,57 @@ export class CommandRouter {
     if (normalized.includes('rate')) return 'RATE_LIMITED';
     if (normalized.includes('cooldown')) return 'COOLDOWN';
     return 'FORBIDDEN';
+  }
+
+  /** §3-§10 — a page's title is its division's name, which is not always its command name. */
+  private pageTitle(commandName: string): string {
+    const titles: Record<string, string> = {
+      dashboard: 'Dashboard',
+      health: 'Health',
+      browse: 'Marketplace',
+      queue: 'Queue',
+      persona: 'Persona',
+      permit: 'Permit',
+      modules: 'Modules',
+      hello: 'Hello World',
+    };
+    return titles[commandName] ?? this.surfaceName(commandName);
+  }
+
+  /**
+   * §11.3 — Dashboard (Home) first, then every registered page. The installed/marketplace prefix
+   * lives in the option description only (§11.4), truncated to Discord's 100-character limit.
+   */
+  private navigationControl(current: string, invokerId: string): NavigationControl {
+    const commands = [...this.registry.all()].sort((a, b) =>
+      a.data.name === 'dashboard' ? -1 : b.data.name === 'dashboard' ? 1 : 0,
+    );
+    const options: NavigationOption[] = commands.map((command) => {
+      const name = command.data.name;
+      const isHome = name === 'dashboard';
+      const installed = this.registry.tierForCommand(command) !== 'marketplace';
+      const description = isHome
+        ? '🏠 Home'
+        : `${installed ? '✅ installed' : '🛒 marketplace'} — ${command.data.description}`;
+      return {
+        label: isHome ? 'Dashboard (Home)' : this.pageTitle(name),
+        value: name,
+        description: description.slice(0, 100),
+        ...(name === current ? { default: true } : {}),
+      };
+    });
+    return { customId: `dumby:nav:${invokerId}:${current}`, options };
+  }
+
+  /** §1.2 — one minted customId per density mode, each carrying the page it applies to. */
+  private modeControl(current: string, invokerId: string): ModeControl {
+    return {
+      customIds: {
+        D: `dumby:mode:${invokerId}:D:${current}`,
+        M: `dumby:mode:${invokerId}:M:${current}`,
+        C: `dumby:mode:${invokerId}:C:${current}`,
+      },
+    };
   }
 
   private surfaceName(commandName: string): string {
