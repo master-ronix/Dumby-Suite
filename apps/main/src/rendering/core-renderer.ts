@@ -162,13 +162,13 @@ export class CoreRenderer {
   createReadOnlyInteraction<T extends object>(interaction: T): T {
     return new Proxy(interaction, {
       get(target, prop, receiver) {
-        if (
-          prop === 'reply' ||
-          prop === 'deferReply' ||
-          prop === 'editReply' ||
-          prop === 'followUp' ||
-          prop === 'showModal'
-        ) {
+        // §2.4 / Appendix C #20 — a handler must not open a response path of its own, so `reply`,
+        // `followUp` and `showModal` stay blocked. `editReply` is deliberately allowed: the registry
+        // acknowledges a component interaction with `deferUpdate` before the handler runs, and after
+        // that `editReply` is the only call that can land a result on the existing message. Blocking
+        // it left every component handler with no way to respond at all — the trigger fired, the
+        // handler ran, and nothing ever reached the message.
+        if (prop === 'reply' || prop === 'followUp' || prop === 'showModal') {
           return async (): Promise<never> => {
             throw new DirectInteractionResponseError(String(prop));
           };

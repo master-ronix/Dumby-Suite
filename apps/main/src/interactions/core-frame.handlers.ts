@@ -21,8 +21,11 @@ function asPageInteraction(
     commandName,
     user: { id: interaction.user.id },
     guildId: interaction.guildId,
-    reply: interaction.reply,
-    deferReply: interaction.deferReply,
+    // The registry has already acknowledged this component interaction with `deferUpdate`, so a
+    // reply or defer here would be a second acknowledgement, which Discord rejects. Only `editReply`
+    // should act, and it edits the navigation message in place (§2.2).
+    reply: async () => {},
+    deferReply: async () => {},
     editReply: interaction.editReply,
     replied: true,
     deferred: false,
