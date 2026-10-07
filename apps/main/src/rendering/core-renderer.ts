@@ -1,9 +1,12 @@
 import {
   buildComponentsV2,
   container,
+  createBannerMediaGallery,
+  createTitleBlock,
   DEFAULT_ACCENT_COLOR,
   separator,
   textDisplay,
+  type Component,
   type ComponentsV2Message,
 } from '../shared/utils/components-v2.js';
 
@@ -33,6 +36,12 @@ export interface RenderDescriptor extends RenderIdentity {
   mode?: RenderMode;
   sections?: readonly string[];
   summary?: string;
+  /**
+   * §1.3 - an explicit banner URL for the Mode D banner slot. When absent the Renderer is meant to
+   * generate the default banner (§11.5); that generation needs an image endpoint, so until one
+   * exists the slot is omitted rather than pointed at a URL that would 404.
+   */
+  banner?: string;
 }
 
 /**
@@ -48,9 +57,17 @@ export interface PageRenderDescriptor extends RenderIdentity {
   page: string;
   data: Readonly<Record<string, unknown>>;
   mode?: RenderMode;
+  banner?: string;
 }
 
-/** Maps page data to render sections: the primary value is the content line, the rest a meta line. */
+/**
+ * Maps page data to render sections: the primary value is the content line, the remaining fields a
+ * single subtext meta line.
+ *
+ * §11.6 - `-#` is subtext only at the *start* of a line, so exactly one marker is emitted, at the
+ * head of the meta line. Emitting one per field left every marker after the first rendering as
+ * literal `-#` characters in the middle of the line.
+ */
 export function derivePageSections(
   page: string,
   data: Readonly<Record<string, unknown>>,
@@ -58,8 +75,9 @@ export function derivePageSections(
   const entries = Object.entries(data);
   const [first, ...rest] = entries;
   const primary = first === undefined ? page : String(first[1]);
-  const meta = rest.map(([key, value]) => `-# ${key}: ${String(value)}`).join(' | ');
-  return meta.length > 0 ? [primary, meta] : [primary];
+  if (rest.length === 0) return [primary];
+  const meta = rest.map(([key, value]) => `${key}: ${String(value)}`).join(' | ');
+  return [primary, `-# ${meta}`];
 }
 
 function isPageDataResult(value: unknown): value is PageDataResult {
@@ -149,7 +167,11 @@ export class CoreRenderer {
 
   renderBuffer(identity: RenderIdentity): ComponentsV2Message {
     return this.frame([
-      this.title(identity),
+      createTitleBlock(
+        identity.surface,
+        identity.developer ?? DEFAULT_DEVELOPER,
+        identity.version ?? DEFAULT_VERSION,
+      ),
       separator(),
       textDisplay(`Preparing ${identity.surface}...`),
     ]);
@@ -161,6 +183,7 @@ export class CoreRenderer {
       ...(input.developer !== undefined ? { developer: input.developer } : {}),
       ...(input.version !== undefined ? { version: input.version } : {}),
       ...(input.mode !== undefined ? { mode: input.mode } : {}),
+      ...(input.banner !== undefined ? { banner: input.banner } : {}),
       sections: derivePageSections(input.page, input.data),
     });
   }
@@ -172,22 +195,37 @@ export class CoreRenderer {
       throw new InvalidRenderDescriptorError();
     }
 
-    const body =
-      mode === 'C'
-        ? [textDisplay(this.oneLineRender(input.surface, sections[0] ?? input.surface))]
-        : mode === 'M'
-          ? [textDisplay(this.condensedRender(sections))]
-          : sections.flatMap((section, index) =>
-              index === 0 ? [textDisplay(section)] : [separator(), textDisplay(section)],
-            );
+    const developer = input.developer ?? DEFAULT_DEVELOPER;
+    const version = input.version ?? DEFAULT_VERSION;
+    const components: Component[] = [];
 
-    return this.frame([
-      this.title(input),
-      separator(),
-      ...body,
-      separator('small'),
-      this.footer(input, mode),
-    ]);
+    // §1.2 / §1.3 / §1.4 - the banner slot opens the frame, and is present in Mode D only.
+    if (mode === 'D' && input.banner !== undefined) {
+      components.push(createBannerMediaGallery(input.banner));
+      components.push(separator());
+    }
+
+    // §1.2 / §1.5 - the identity band: the title and its attribution line.
+    components.push(createTitleBlock(input.surface, developer, version));
+    components.push(separator());
+
+    // §1.2 / §1.4 - the content slot, rendered at the page's density.
+    if (mode === 'C') {
+      components.push(textDisplay(this.oneLineRender(input.surface, sections[0] ?? input.surface)));
+    } else if (mode === 'M') {
+      components.push(textDisplay(this.condensedRender(sections)));
+    } else {
+      sections.forEach((section, index) => {
+        if (index > 0) components.push(separator());
+        components.push(textDisplay(section));
+      });
+    }
+    components.push(separator());
+
+    // §1.2 / §1.5 - the footer repeats the attribution.
+    components.push(textDisplay(`-# Developed by ${developer} v${version}`));
+
+    return this.frame(components);
   }
 
   renderNotice(input: FormalNoticeDescriptor): ComponentsV2Message {
@@ -195,7 +233,11 @@ export class CoreRenderer {
     const explanation = input.explanation ?? this.defaultNoticeExplanation(input.reason);
 
     return this.frame([
-      this.title(input),
+      createTitleBlock(
+        input.surface,
+        input.developer ?? DEFAULT_DEVELOPER,
+        input.version ?? DEFAULT_VERSION,
+      ),
       separator(),
       textDisplay(
         [
@@ -231,6 +273,7 @@ export class CoreRenderer {
         ...(result.mode !== undefined ? { mode: result.mode } : {}),
         ...(result.sections !== undefined ? { sections: result.sections } : {}),
         ...(result.summary !== undefined ? { summary: result.summary } : {}),
+        ...(result.banner !== undefined ? { banner: result.banner } : {}),
       };
     }
 
@@ -251,19 +294,6 @@ export class CoreRenderer {
 
   private frame(components: Parameters<typeof container>[0]): ComponentsV2Message {
     return buildComponentsV2([container(components, DEFAULT_ACCENT_COLOR)]);
-  }
-
-  private title(identity: RenderIdentity) {
-    const developer = identity.developer ?? DEFAULT_DEVELOPER;
-    const version = identity.version ?? DEFAULT_VERSION;
-    return textDisplay(`Dumby | ${identity.surface}\n-# Developed by ${developer} v${version}`);
-  }
-
-  private footer(identity: RenderIdentity, mode?: RenderMode) {
-    const developer = identity.developer ?? DEFAULT_DEVELOPER;
-    const version = identity.version ?? DEFAULT_VERSION;
-    const modeLabel = mode === undefined ? '' : ` | Mode ${mode}`;
-    return textDisplay(`-# Developed by ${developer} v${version}${modeLabel}`);
   }
 
   private oneLineRender(surface: string, first: string): string {
