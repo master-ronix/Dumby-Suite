@@ -55,10 +55,16 @@ COPY --from=builder /app/apps/main/scripts ./apps/main/scripts
 # apps/main/node_modules/@workspace/swastik links to /app/packages/swastik, so the whole
 # SDK (package.json + compiled dist + its own node_modules for `zod`) must be present.
 COPY --from=builder /app/packages/swastik ./packages/swastik
-# First-party modules placed on their tier volumes at build time, so the bot boots with
-# the Core Command Surface. NOTE: a Railway volume mounted at /mnt/modules would shadow
-# these — leave /mnt/modules unmounted unless managing modules externally.
+# The first-party modules are baked at image build time, so the bot boots with the Core
+# Command Surface and needs no external volume. They are placed at /app/baked-modules —
+# OUTSIDE any volume mount — and MODULES_DIR points there, because a Railway volume mounted
+# at /mnt/modules would shadow the baked tree and leave the bot with zero commands. A copy
+# is still placed at /mnt/modules for deployments that override MODULES_DIR to the
+# documented default. Both trees are chowned to `node` so promotion/quarantine can write.
 COPY --from=builder /mnt/modules /mnt/modules
+COPY --from=builder /mnt/modules /app/baked-modules
+RUN chown -R node:node /app/baked-modules /mnt/modules
+ENV MODULES_DIR=/app/baked-modules
 COPY apps/main/package.json apps/main/tsconfig.json ./apps/main/
 EXPOSE 8080 8081 8082
 USER node
