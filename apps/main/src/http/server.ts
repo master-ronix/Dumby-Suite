@@ -63,6 +63,12 @@ export function buildApiServer(options: BuildServerOptions): FastifyInstance {
   });
 
   registerInfoRoutes(app, options.config);
+  // Health + metrics are served on the API surface too, so an orchestrator that probes a
+  // single port (Railway healthchecks the PORT variable) reaches /health/liveness and
+  // /metrics here rather than getting a 404. The dedicated health (HEALTH_PORT) and
+  // metrics (METRICS_PORT) servers still exist and remain the canonical probes.
+  registerHealthRoutes(app, options.progress);
+  registerMetricsRoutes(app, options.metrics);
   registerAdminRoutes(app, options.adminDeps);
   if (options.mdisDeps !== undefined) {
     registerMdisRoutes(app, options.mdisDeps);
