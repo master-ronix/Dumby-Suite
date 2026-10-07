@@ -18,16 +18,15 @@ export const dashboardCommand = defineCommand({
   execute: (_interaction, _context) => ({
     page: 'dashboard',
     data: {
-      commands: [
-        '**Core Commands**',
-        '',
+      title: 'Core Commands',
+      lines: [
         '/health — System health, ping & latency',
         '/browse — Browse the module marketplace',
         '/queue — Manage BCCM command queue actions',
         '/persona — View active personas & command inventory',
         '/permit — Manage guild-side grants, lists & limits',
         '/modules — View, manage & uninstall installed modules',
-      ].join('\n'),
+      ],
     },
   }),
 });

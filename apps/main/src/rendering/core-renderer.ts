@@ -12,6 +12,7 @@ import {
   type Component,
   type ComponentsV2Message,
 } from '../shared/utils/components-v2.js';
+import { pageSections } from './page-layouts.js';
 
 export const FOLLOWUP_ALARM_MS = 13 * 60 * 1000;
 
@@ -87,23 +88,15 @@ export interface PageRenderDescriptor extends RenderIdentity {
 }
 
 /**
- * Maps page data to render sections: the primary value is the content line, the remaining fields a
- * single subtext meta line.
- *
- * §11.6 - `-#` is subtext only at the *start* of a line, so exactly one marker is emitted, at the
- * head of the meta line. Emitting one per field left every marker after the first rendering as
- * literal `-#` characters in the middle of the line.
+ * Maps page data to render sections. The per-page layouts live in `page-layouts.ts` (§1.7's
+ * page-descriptor layer); this re-exports that entry point so the renderer and the router keep
+ * one call site.
  */
 export function derivePageSections(
   page: string,
   data: Readonly<Record<string, unknown>>,
 ): readonly string[] {
-  const entries = Object.entries(data);
-  const [first, ...rest] = entries;
-  const primary = first === undefined ? page : String(first[1]);
-  if (rest.length === 0) return [primary];
-  const meta = rest.map(([key, value]) => `${key}: ${String(value)}`).join(' | ');
-  return [primary, `-# ${meta}`];
+  return pageSections(page, data);
 }
 
 function isPageDataResult(value: unknown): value is PageDataResult {

@@ -544,26 +544,39 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     )
     .add(new AnalyticsMiddleware(logger));
   const isModuleEnabledInGuild = async (moduleId: string, guildId: string): Promise<boolean> => {
-    const row = await db
-      .knex('guild_module_states')
-      .where({ guildId, moduleSlug: moduleId })
-      .whereNull('deletedAt')
-      .first<{ enabled: boolean; state: string }>();
+    const tier = moduleRegistry.get(moduleId)?.manifest.tier ?? 'marketplace';
+    try {
+      const row = await db
+        .knex('guild_module_states')
+        .where({ guildId, moduleSlug: moduleId })
+        .whereNull('deletedAt')
+        .first<{ enabled: boolean; state: string }>();
 
-    if (row === undefined) {
-      const tier = moduleRegistry.get(moduleId)?.manifest.tier ?? 'marketplace';
-      const enabled = defaultEnabledForTier(tier);
-      if (enabled) {
-        await db
-          .knex('guild_module_states')
-          .insert({ guildId, moduleSlug: moduleId, enabled: true, state: 'active' })
-          .onConflict(['guildId', 'moduleSlug'])
-          .ignore();
+      if (row === undefined) {
+        const enabled = defaultEnabledForTier(tier);
+        if (enabled) {
+          await db
+            .knex('guild_module_states')
+            .insert({ guildId, moduleSlug: moduleId, enabled: true, state: 'active' })
+            .onConflict(['guildId', 'moduleSlug'])
+            .ignore();
+        }
+        return enabled;
       }
-      return enabled;
-    }
 
-    return row.enabled === true && row.state === 'active';
+      return row.enabled === true && row.state === 'active';
+    } catch (err) {
+      // A Standard-tier module is enabled by default (§13), and the per-guild row is an override.
+      // A missing table or a transient read failure must not turn `/hello` into a MODULE_ERROR
+      // notice, so fall back to the tier default and record why.
+      logger.warn('module-enabled-check-failed', {
+        module: moduleId,
+        guildId,
+        tier,
+        error: String(err),
+      });
+      return defaultEnabledForTier(tier);
+    }
   };
   // §22.2 / Table 22-A — one store, shared by the dispatch path (enforcement) and the Power
   // Engine catalog (the control action that writes it).
