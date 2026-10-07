@@ -5,49 +5,19 @@
   "description": "Dumby Swastik module authoring surface.",
   "type": "module",
   "exports": {
-    ".": {
-      "types": "./src/index.ts",
-      "default": "./dist/index.js"
-    },
-    "./manifest": {
-      "types": "./src/manifest.ts",
-      "default": "./dist/manifest.js"
-    },
-    "./entrypoints/core": {
-      "types": "./src/entrypoints/core.ts",
-      "default": "./dist/entrypoints/core.js"
-    },
-    "./entrypoints/admin": {
-      "types": "./src/entrypoints/admin.ts",
-      "default": "./dist/entrypoints/admin.js"
-    },
-    "./entrypoints/standard": {
-      "types": "./src/entrypoints/standard.ts",
-      "default": "./dist/entrypoints/standard.js"
-    },
-    "./entrypoints/marketplace": {
-      "types": "./src/entrypoints/marketplace.ts",
-      "default": "./dist/entrypoints/marketplace.js"
-    },
-    "./validate": {
-      "types": "./src/validate.ts",
-      "default": "./dist/validate.js"
-    },
-    "./events": {
-      "types": "./src/events.ts",
-      "default": "./dist/events.js"
-    }
+    ".": { "workspace": "./src/index.ts", "types": "./src/index.ts", "default": "./dist/index.js" },
+    "./manifest": { "workspace": "./src/manifest.ts", "types": "./src/manifest.ts", "default": "./dist/manifest.js" },
+    "./entrypoints/core": { "workspace": "./src/entrypoints/core.ts", "types": "./src/entrypoints/core.ts", "default": "./dist/entrypoints/core.js" },
+    "./entrypoints/admin": { "workspace": "./src/entrypoints/admin.ts", "types": "./src/entrypoints/admin.ts", "default": "./dist/entrypoints/admin.js" },
+    "./entrypoints/standard": { "workspace": "./src/entrypoints/standard.ts", "types": "./src/entrypoints/standard.ts", "default": "./dist/entrypoints/standard.js" },
+    "./entrypoints/marketplace": { "workspace": "./src/entrypoints/marketplace.ts", "types": "./src/entrypoints/marketplace.ts", "default": "./dist/entrypoints/marketplace.js" },
+    "./validate": { "workspace": "./src/validate.ts", "types": "./src/validate.ts", "default": "./dist/validate.js" },
+    "./events": { "workspace": "./src/events.ts", "types": "./src/events.ts", "default": "./dist/events.js" }
   },
-  "files": [
-    "src",
-    "dist",
-    "_template"
-  ],
+  "files": ["src", "dist", "_template"],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
-  "dependencies": {
-    "zod": "^3.23.8"
-  }
+  "dependencies": { "zod": "^3.23.8" }
 }
