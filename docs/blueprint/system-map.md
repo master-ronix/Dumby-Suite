@@ -364,7 +364,7 @@ the gap.** Each row's evidence is a path under `apps/main/`.
 
 | Edge / invariant | Specified | Wired in code today | Evidence |
 |---|---|---|---|
-| One instance of everything | yes | yes — a fixed core token registry | `src/di/tokens.ts` (21 core tokens) |
+| One instance of everything | yes | yes — a fixed core token registry | `src/di/tokens.ts` (22 core tokens) |
 | 18-stage bootstrap | yes | yes — exact order | `src/bootstrap/stages.ts` |
 | 9-step shutdown | yes | yes — exact order | `src/bootstrap/stages.ts` |
 | 12-stage middleware pipeline | yes | yes — 12 built-ins with priorities −20…90 | `src/middleware/built-in/*.ts` |
