@@ -9,7 +9,9 @@
     "pnpm": ">=9.0.0"
   },
   "scripts": {
+    "prebuild": "pnpm --filter @workspace/swastik build",
     "build": "tsc -p tsconfig.json",
+    "predev": "pnpm --filter @workspace/swastik build",
     "dev": "tsx watch src/bootstrap/bootstrap.ts",
     "start": "node dist/entry/main.js",
     "start:dev": "tsx src/entry/main.ts",
@@ -33,6 +35,7 @@
     "verify:all": "tsx scripts/verify-all.ts",
     "swastik:deploy": "tsx scripts/swastik-deploy.ts",
     "build:modules": "tsx scripts/build-first-party-modules.ts",
+    "stage:modules": "node scripts/stage-modules.mjs",
     "seed:modules": "tsx scripts/seed-first-party-modules.ts",
     "test:flow": "vitest run --config vitest.flow.config.ts"
   },

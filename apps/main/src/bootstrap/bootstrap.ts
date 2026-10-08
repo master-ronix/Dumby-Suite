@@ -27,6 +27,7 @@ import { ModuleLoader } from '../module-system/loader.js';
 import { defaultEnabledForTier } from '../module-system/tier-rules.js';
 import { PermissionResolver } from '../permissions/resolver.js';
 import { AdminEvalGate } from '../permissions/admin-eval-gate.js';
+import { evaluateRank } from '../permissions/rank.js';
 import { PostgresGuildSuspensionStore } from '../governance/guild-suspension.js';
 import { createPowerEngineCatalog } from '../http/power-engine-catalog.js';
 import { DiscordOAuth2Client } from '../http/oauth/oauth2-client.js';
@@ -52,6 +53,10 @@ import { installFatalHandlers } from '../shutdown/fatal-handler.js';
 import { Redis } from 'ioredis';
 import { CommandRegistry } from '../commands/command-registry.js';
 import { CommandRouter } from '../commands/command-router.js';
+import { registerCoreFrameHandlers } from '../interactions/core-frame.handlers.js';
+import { createPageDataProvider } from '../rendering/page-data.js';
+import { registerKnownGuilds } from '../discord/guild-registry.js';
+import { createBccmEffectHandlers } from '../commands/bccm-effects.js';
 import type { CommandInteraction } from '../commands/command-router.js';
 import { PersonaCommandBindingService } from '../personas/persona-command-binding.service.js';
 import {
@@ -396,7 +401,16 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   const moduleRegistry = new ModuleRegistry();
   const permissionResolver = new PermissionResolver();
   const commandRegistry = new CommandRegistry();
-  const renderer = new CoreRenderer();
+  // §11.5 - the Mode D banner. The asset ships in the image and is served by this app's own API
+  // surface, so the URL is built from the deployment's public domain (Railway injects
+  // RAILWAY_PUBLIC_DOMAIN). Without a domain - a local run - the banner slot is simply omitted
+  // rather than pointed at a URL nothing serves.
+  const publicDomain = process.env['RAILWAY_PUBLIC_DOMAIN'];
+  const renderer = new CoreRenderer(
+    publicDomain !== undefined && publicDomain !== ''
+      ? { bannerUrl: `https://${publicDomain}/assets/dumby-banner.png` }
+      : {},
+  );
   const interactionRegistry = new InteractionRegistry({
     // Appendix C #19 — shared idempotency, so a double-click is deduped across pods.
     idempotency: new RedisIdempotencyStore(redis),
@@ -501,12 +515,17 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
         getHighestRole: async (userId, guildId) => {
           const guild = discordClient?.guilds.cache.get(guildId);
           if (guild === undefined) return null;
-          if (guild.ownerId === userId) return 'OWNER';
-          const member = await guild.members.fetch(userId).catch(() => null);
-          if (member === null) return null;
-          if (member.permissions.has('Administrator')) return 'ADMIN';
-          if (member.permissions.has('ManageGuild')) return 'MOD';
-          return 'MEMBER';
+          const isGuildOwner = guild.ownerId === userId;
+          const member = isGuildOwner
+            ? null
+            : await guild.members.fetch(userId).catch(() => null);
+          if (member === null && !isGuildOwner) return null;
+          const rank = evaluateRank({
+            isGuildOwner,
+            permissions: member === null ? [] : [...member.permissions.toArray()],
+            restricted: false,
+          });
+          return RANK_TO_RBAC[rank] ?? 'MEMBER';
         },
         getRequiredRole: (commandName) => {
           const rank = commandRegistry.get(commandName)?.permissions?.rbac;
@@ -528,30 +547,55 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     )
     .add(new AnalyticsMiddleware(logger));
   const isModuleEnabledInGuild = async (moduleId: string, guildId: string): Promise<boolean> => {
-    const row = await db
-      .knex('guild_module_states')
-      .where({ guildId, moduleSlug: moduleId })
-      .whereNull('deletedAt')
-      .first<{ enabled: boolean; state: string }>();
+    const tier = moduleRegistry.get(moduleId)?.manifest.tier ?? 'marketplace';
+    try {
+      const row = await db
+        .knex('guild_module_states')
+        .where({ guildId, moduleSlug: moduleId })
+        .whereNull('deletedAt')
+        .first<{ enabled: boolean; state: string }>();
 
-    if (row === undefined) {
-      const tier = moduleRegistry.get(moduleId)?.manifest.tier ?? 'marketplace';
-      const enabled = defaultEnabledForTier(tier);
-      if (enabled) {
-        await db
-          .knex('guild_module_states')
-          .insert({ guildId, moduleSlug: moduleId, enabled: true, state: 'active' })
-          .onConflict(['guildId', 'moduleSlug'])
-          .ignore();
+      if (row === undefined) {
+        const enabled = defaultEnabledForTier(tier);
+        if (enabled) {
+          await db
+            .knex('guild_module_states')
+            .insert({ guildId, moduleSlug: moduleId, enabled: true, state: 'active' })
+            .onConflict(['guildId', 'moduleSlug'])
+            .ignore();
+        }
+        return enabled;
       }
-      return enabled;
-    }
 
-    return row.enabled === true && row.state === 'active';
+      return row.enabled === true && row.state === 'active';
+    } catch (err) {
+      // A Standard-tier module is enabled by default (§13), and the per-guild row is an override.
+      // A missing table or a transient read failure must not turn `/hello` into a MODULE_ERROR
+      // notice, so fall back to the tier default and record why.
+      logger.warn('module-enabled-check-failed', {
+        module: moduleId,
+        guildId,
+        tier,
+        error: String(err),
+      });
+      return defaultEnabledForTier(tier);
+    }
   };
   // §22.2 / Table 22-A — one store, shared by the dispatch path (enforcement) and the Power
   // Engine catalog (the control action that writes it).
   const guildSuspensions = new PostgresGuildSuspensionStore(db.knex);
+  // §1.7 — page data is gathered at dispatch. Declared before the router so the provider's client
+  // getter closes over the client the live branch assigns later.
+  let discordClient: Client | undefined;
+  const pageDataProvider = createPageDataProvider({
+    getClient: () => discordClient,
+    moduleRegistry,
+    db,
+    redis,
+    config,
+    logger,
+  });
+  const bccmEffects = createBccmEffectHandlers({ knex: db.knex, registry: commandRegistry, logger });
   const commandRouter = new CommandRouter(commandRegistry, logger, {
     devGuildId: config.get('DEV_GUILD_ID'),
     isModuleEnabledInGuild,
@@ -562,10 +606,15 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     grantStore: new PostgresGrantWriter(db.knex),
     // §22.2 / Table 22-A — the Power Engine `suspendGuild` state the dispatch path must consult.
     guildSuspensions,
+    pageDataProvider,
+    effectHandlers: bccmEffects,
     resolveCommandOwner: (guildId, moduleSlug) =>
       personaBindingService.resolveCommandOwner(guildId, moduleSlug),
     ...(config.get('PERSONA_ID') !== '' ? { residentPersonaId: config.get('PERSONA_ID') } : {}),
   });
+  // §2.4 / §11.3 - the frame's own interactive controls: the D/M/C density control and the
+  // navigation dropdown. Registered after the router exists, since each re-enters it.
+  registerCoreFrameHandlers({ registry: interactionRegistry, router: commandRouter });
   container.registerValue(CORE_TOKENS.EventBus, eventBus);
   container.registerValue(CORE_TOKENS.EventRouter, eventRouter);
   container.registerValue(CORE_TOKENS.Scheduler, scheduler);
@@ -663,7 +712,6 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   progress.advanceTo('EVENT_REGISTER');
 
   progress.advanceTo('DISCORD_LOGIN');
-  let discordClient: Client | undefined;
   let shardOwnership: ShardOwnershipManager | undefined;
   if (config.get('DISCORD_ADAPTER') === 'live') {
     // §23.2 — claim this pod's shard-ownership locks before the gateway identifies, so a rolling
@@ -677,7 +725,11 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     });
     const configuredShards =
       config.get('SHARD_COUNT') > 1 ? parseShardRange(config.get('SHARD_RANGE')) : [0];
-    const ownedShards = await shardOwnership.claim(configuredShards);
+    // Bounded claim: ShardOwnershipManager.claim() defaults to Infinity retries, which stalls
+    // Stage 15 forever (no crash, no bot online) when a shard lock is held by a stale instance.
+    // Bound it so the boot always proceeds to the gateway login.
+    logger.info('shard-ownership-claiming', { shards: configuredShards });
+    const ownedShards = await shardOwnership.claim(configuredShards, 30);
     shardOwnership.startHeartbeat();
     logger.info('shard-ownership-claimed', { shards: ownedShards, configured: configuredShards });
     const modules = moduleRegistry.all();
@@ -695,6 +747,31 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
 
     discordClient.on(Events.InteractionCreate, async (interaction) => {
       if (!isAcceptingGatewayEvents()) return;
+
+      if (interaction.isAutocomplete()) {
+        // §2.5 — autocomplete answers within an 800 ms budget; the registry serves the partial or
+        // cached set rather than a late or empty answer. Every option space that declares
+        // autocomplete (/queue's `command`, /permit's targets) resolves to the same source: the
+        // registered command names.
+        const focused = interaction.options.getFocused(true);
+        const query = String(focused.value).toLowerCase();
+        const choices = await interactionRegistry.runAutocomplete(
+          async () =>
+            commandRegistry
+              .all()
+              .map((command) => command.data.name)
+              .filter((name) => name.toLowerCase().includes(query))
+              .slice(0, 25)
+              .map((name) => ({ name, value: name })),
+          [],
+        );
+        try {
+          await interaction.respond([...choices]);
+        } catch (err) {
+          logger.warn('autocomplete-respond-failed', { error: String(err) });
+        }
+        return;
+      }
 
       if (interaction.isChatInputCommand()) {
         const channel = (
@@ -720,20 +797,38 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
               'KickMembers',
             ].filter((p) => member.permissions?.has(p) === true)
           : undefined;
-        const commandInteraction: CommandInteraction = interaction as unknown as CommandInteraction;
-        if (channel) {
-          commandInteraction.channel = {
-            id: channel.id,
-            categoryId: channel.parentId ?? null,
-            isNsfw: channel.isNSFW?.() ?? false,
-          };
-        }
-        if (memberPermissions !== undefined) {
-          commandInteraction.memberPermissions = memberPermissions;
-        }
-        if (member?.roles?.cache) {
-          commandInteraction.memberRoles = [...member.roles.cache.keys()];
-        }
+        // discord.js defines `channel` and `memberPermissions` as getter-only properties, so the
+        // interaction cannot be enriched in place - assigning to `channel` throws
+        // "Cannot set property channel of #<BaseInteraction> which has only a getter", which
+        // rejects the listener and leaves the interaction unacknowledged ("The application did
+        // not respond"). Build a plain adapter carrying the router's CommandInteraction shape
+        // instead - the same pattern the component branch below uses.
+        const commandInteraction: CommandInteraction = {
+          commandName: interaction.commandName,
+          user: { id: interaction.user.id },
+          guildId: interaction.guildId,
+          reply: interaction.reply.bind(interaction) as unknown as CommandInteraction['reply'],
+          deferReply: interaction.deferReply.bind(
+            interaction,
+          ) as unknown as CommandInteraction['deferReply'],
+          editReply: interaction.editReply.bind(
+            interaction,
+          ) as unknown as CommandInteraction['editReply'],
+          replied: interaction.replied,
+          deferred: interaction.deferred,
+          options: interaction.options,
+          ...(channel
+            ? {
+                channel: {
+                  id: channel.id,
+                  categoryId: channel.parentId ?? null,
+                  isNsfw: channel.isNSFW?.() ?? false,
+                },
+              }
+            : {}),
+          ...(memberPermissions !== undefined ? { memberPermissions } : {}),
+          ...(member?.roles?.cache ? { memberRoles: [...member.roles.cache.keys()] } : {}),
+        };
         void commandRouter.dispatch(commandInteraction).catch(async (err) => {
           logger.error('interaction-dispatch-failed', {
             command: interaction.commandName,
@@ -765,6 +860,7 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
                 ) as unknown as () => Promise<void>,
               }
             : {}),
+          ...(interaction.isStringSelectMenu() ? { values: interaction.values } : {}),
         };
         const handled = await interactionRegistry.dispatch(componentInteraction);
 
@@ -824,7 +920,22 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
         return allRows.map((row) => row.id).filter((id) => !disabled.has(id));
       },
     });
-    await commandDeployer.deploy();
+    // A failed command-registration must NOT take the bot offline. The client has already
+    // logged in (Stage 15) and the gateway connection is independent of command deployment;
+    // crashing here would drop a healthy bot every time the Discord REST call hiccups.
+    try {
+      await commandDeployer.deploy();
+    } catch (err) {
+      logger.error('command-deploy-failed', {
+        error: String(err),
+        applicationId,
+        devGuildId: config.get('DEV_GUILD_ID'),
+      });
+    }
+    // Twelve tables foreign-key onto `guilds`, so every guild-scoped write needs the guild row to
+    // exist first. Register the guilds we are already in before anything touches guild state.
+    await registerKnownGuilds(discordClient, db, logger);
+
     logger.info('discord-client-ready', {
       applicationId,
       guildCount: discordClient.guilds.cache.size,

@@ -1,0 +1,7 @@
+{
+  "$schema": "https://schema.railpack.com",
+  "provider": "node",
+  "deploy": {
+    "startCommand": "pnpm --filter @workspace/dumby start"
+  }
+}

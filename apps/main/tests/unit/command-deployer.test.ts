@@ -143,6 +143,43 @@ describe('CommandDeployer', () => {
     });
   });
 
+  test('deploy() registers every command to the development guild in development', async () => {
+    const registry = new CommandRegistry();
+    registerModule(registry, 'core', 'core');
+    registerModule(registry, 'core-admin', 'admin');
+    registry.register({
+      data: { name: 'health', description: 'Health check' },
+      execute: async () => {},
+      moduleId: 'core',
+    });
+    registry.register({
+      data: { name: 'admin', description: 'Admin command' },
+      execute: async () => {},
+      moduleId: 'core-admin',
+    });
+    const logger = makeLogger() as unknown as Logger;
+    const put = vi.fn().mockResolvedValue(undefined);
+    const deployer = new CommandDeployer({
+      registry,
+      logger,
+      config: { ...config, nodeEnv: 'development' },
+      rest: { put },
+    });
+    await deployer.deploy();
+    // §17.4 TABLE 17-C — every tier goes to the development guild, per-guild, not global.
+    expect(put).toHaveBeenCalledWith('/applications/1234567890/guilds/9876543210/commands', {
+      body: expect.arrayContaining([
+        expect.objectContaining({ name: 'health' }),
+        expect.objectContaining({ name: 'admin', default_member_permissions: '0' }),
+      ]),
+    });
+    const globalCalls = put.mock.calls.filter(
+      ([route]) => route === '/applications/1234567890/commands',
+    );
+    expect(globalCalls).toHaveLength(1);
+    expect(globalCalls[0]?.[1]).toEqual({ body: [] });
+  });
+
   test('deploy() registers admin commands only to the development guild', async () => {
     const registry = new CommandRegistry();
     registerModule(registry, 'core-admin', 'admin');

@@ -10,8 +10,13 @@ import { type GuildSuspensionStore } from '../governance/guild-suspension.js';
 import {
   CoreRenderer,
   FOLLOWUP_ALARM_MS,
+  type ModeControl,
+  type NavigationControl,
+  type NavigationOption,
   type NoticeReasonCode,
   type RenderIdentity,
+  type RenderMode,
+  derivePageSections,
 } from '../rendering/core-renderer.js';
 import { PersonaOccupiedError } from '../personas/persona.js';
 
@@ -28,6 +33,8 @@ export interface CommandInteraction {
   memberPermissions?: readonly string[];
   memberRoles?: readonly string[];
   isGuildOwner?: boolean;
+  /** §6.7 — the interaction's option accessor, so a handler can read its own arguments. */
+  options?: unknown;
 }
 
 export class CommandNotFoundError extends Error {
@@ -71,6 +78,25 @@ export interface CommandRouterOptions {
    * configuration rather than editing it.
    */
   guildSuspensions?: GuildSuspensionStore;
+  /**
+   * §1.7 — supplies a module's page data at dispatch. Modules cannot reach the host process, so
+   * anything a page reports about the running system (metrics, queue state, personas) is gathered
+   * here and handed to the handler as `context.data`.
+   */
+  pageDataProvider?: (
+    moduleId: string,
+    guildId: string | null,
+  ) => Promise<Readonly<Record<string, unknown>>>;
+  /**
+   * §6.7 — performs the side effects a handler declares. Keyed by effect kind; an undeclared kind
+   * is ignored rather than failing the interaction.
+   */
+  effectHandlers?: Readonly<
+    Record<
+      string,
+      (payload: Readonly<Record<string, unknown>>, interaction: CommandInteraction) => Promise<void>
+    >
+  >;
 }
 
 export class CommandRouter {
@@ -90,9 +116,12 @@ export class CommandRouter {
     this.renderer = options.renderer ?? new CoreRenderer();
   }
 
-  async dispatch(interaction: CommandInteraction): Promise<void> {
+  async dispatch(
+    interaction: CommandInteraction,
+    options: { mode?: RenderMode } = {},
+  ): Promise<void> {
     const name = interaction.commandName;
-    const identity = { surface: this.surfaceName(name) };
+    const identity: RenderIdentity = { surface: this.pageTitle(name) };
 
     if (interaction.guildId === null) {
       this.logger.warn('dm-interaction-rejected', { command: name, userId: interaction.user.id });
@@ -148,6 +177,10 @@ export class CommandRouter {
         async () => {
           declaredResponse = await def.execute(
             this.renderer.createReadOnlyInteraction(interaction),
+            {
+              config: def.moduleConfig ?? {},
+              data: (await this.options.pageDataProvider?.(def.moduleId, interaction.guildId)) ?? {},
+            },
           );
         },
       );
@@ -160,11 +193,53 @@ export class CommandRouter {
       );
       if (!pipelinePassed) return;
 
-      const render = this.renderer.normalizeHandlerResult(declaredResponse, identity);
+      // §6.7 — the handler declares its side effects; the host performs them. They run before the
+      // render so a rejected effect surfaces as a formal notice rather than a stale page.
+      const effects =
+        (
+          declaredResponse as {
+            effects?: readonly {
+              kind: string;
+              payload: Readonly<Record<string, unknown>>;
+            }[];
+          }
+        ).effects ?? [];
+      for (const effect of effects) {
+        const effectHandler = this.options.effectHandlers?.[effect.kind];
+        if (effectHandler === undefined) {
+          // A declared effect with no handler is a wiring bug, not a handler bug: say so loudly
+          // rather than dropping the action silently, which is indistinguishable from success.
+          this.logger.warn('command-effect-unhandled', { command: name, kind: effect.kind });
+          continue;
+        }
+        this.logger.info('command-effect-running', { command: name, kind: effect.kind });
+        await effectHandler(effect.payload, interaction);
+      }
+
+      const render = this.renderer.normalizeHandlerResult(declaredResponse, {
+        ...identity,
+        ...(def.identity?.developer !== undefined ? { developer: def.identity.developer } : {}),
+        ...(def.identity?.version !== undefined ? { version: def.identity.version } : {}),
+        ...(options.mode !== undefined ? { mode: options.mode } : {}),
+        navigation: this.navigationControl(name, interaction.user.id),
+        modeControl: this.modeControl(name, interaction.user.id),
+      });
+      // A page whose data the effects just changed is re-derived, so the render shows the result
+      // of the action rather than the state it was gathered in.
+      if (effects.length > 0) {
+        const pageName = (declaredResponse as { page?: string }).page;
+        if (pageName !== undefined) {
+          const fresh =
+            (await this.options.pageDataProvider?.(def.moduleId, interaction.guildId)) ?? {};
+          render.sections = derivePageSections(pageName, fresh);
+        }
+      }
+
       await this.renderer.editFinal(interaction, render);
       this.logger.info('command-executed', {
         command: name,
         moduleId: def.moduleId,
+        effectCount: effects.length,
         userId: interaction.user.id,
         guildId: interaction.guildId,
         durationMs: Date.now() - start,
@@ -372,6 +447,57 @@ export class CommandRouter {
     if (normalized.includes('rate')) return 'RATE_LIMITED';
     if (normalized.includes('cooldown')) return 'COOLDOWN';
     return 'FORBIDDEN';
+  }
+
+  /** §3-§10 — a page's title is its division's name, which is not always its command name. */
+  private pageTitle(commandName: string): string {
+    const titles: Record<string, string> = {
+      dashboard: 'Dashboard',
+      health: 'Health',
+      browse: 'Marketplace',
+      queue: 'Queue',
+      persona: 'Persona',
+      permit: 'Permit',
+      modules: 'Modules',
+      hello: 'Hello World',
+    };
+    return titles[commandName] ?? this.surfaceName(commandName);
+  }
+
+  /**
+   * §11.3 — Dashboard (Home) first, then every registered page. The installed/marketplace prefix
+   * lives in the option description only (§11.4), truncated to Discord's 100-character limit.
+   */
+  private navigationControl(current: string, invokerId: string): NavigationControl {
+    const commands = [...this.registry.all()].sort((a, b) =>
+      a.data.name === 'dashboard' ? -1 : b.data.name === 'dashboard' ? 1 : 0,
+    );
+    const options: NavigationOption[] = commands.map((command) => {
+      const name = command.data.name;
+      const isHome = name === 'dashboard';
+      const installed = this.registry.tierForCommand(command) !== 'marketplace';
+      const description = isHome
+        ? '🏠 Home'
+        : `${installed ? '✅ installed' : '🛒 marketplace'} — ${command.data.description}`;
+      return {
+        label: isHome ? 'Dashboard (Home)' : this.pageTitle(name),
+        value: name,
+        description: description.slice(0, 100),
+        ...(name === current ? { default: true } : {}),
+      };
+    });
+    return { customId: `dumby:nav:${invokerId}:${current}`, options };
+  }
+
+  /** §1.2 — one minted customId per density mode, each carrying the page it applies to. */
+  private modeControl(current: string, invokerId: string): ModeControl {
+    return {
+      customIds: {
+        D: `dumby:mode:${invokerId}:D:${current}`,
+        M: `dumby:mode:${invokerId}:M:${current}`,
+        C: `dumby:mode:${invokerId}:C:${current}`,
+      },
+    };
   }
 
   private surfaceName(commandName: string): string {

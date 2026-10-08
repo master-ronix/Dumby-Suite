@@ -96,6 +96,7 @@ export async function buildFirstPartyModulePackage(
     bundle: true,
     format: 'esm',
     platform: 'node',
+    conditions: ['workspace'],
     target: 'node22',
     sourcemap: false,
     legalComments: 'none',

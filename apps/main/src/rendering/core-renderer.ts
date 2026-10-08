@@ -1,11 +1,18 @@
 import {
+  actionRow,
   buildComponentsV2,
+  button,
   container,
+  createBannerMediaGallery,
+  createTitleBlock,
   DEFAULT_ACCENT_COLOR,
   separator,
+  stringSelect,
   textDisplay,
+  type Component,
   type ComponentsV2Message,
 } from '../shared/utils/components-v2.js';
+import { pageSections } from './page-layouts.js';
 
 export const FOLLOWUP_ALARM_MS = 13 * 60 * 1000;
 
@@ -29,10 +36,39 @@ export interface RenderIdentity {
   version?: string;
 }
 
+export interface NavigationOption {
+  readonly label: string;
+  readonly value: string;
+  readonly description?: string;
+  readonly emoji?: string;
+  readonly default?: boolean;
+}
+
+/** §11.3 — the navigation dropdown: one minted customId plus the page options. */
+export interface NavigationControl {
+  readonly customId: string;
+  readonly options: readonly NavigationOption[];
+}
+
+/** §1.2/§3.3 — the footer's D/M/C density control, one minted customId per mode. */
+export interface ModeControl {
+  readonly customIds: Readonly<Record<RenderMode, string>>;
+}
+
 export interface RenderDescriptor extends RenderIdentity {
   mode?: RenderMode;
   sections?: readonly string[];
   summary?: string;
+  /**
+   * §1.3 - an explicit banner URL for the Mode D banner slot. When absent the Renderer is meant to
+   * generate the default banner (§11.5); that generation needs an image endpoint, so until one
+   * exists the slot is omitted rather than pointed at a URL that would 404.
+   */
+  banner?: string;
+  /** §11.3 — present in Modes D and M; omitted in Mode C. */
+  navigation?: NavigationControl;
+  /** §1.2 — the footer density control. */
+  modeControl?: ModeControl;
 }
 
 /**
@@ -48,18 +84,19 @@ export interface PageRenderDescriptor extends RenderIdentity {
   page: string;
   data: Readonly<Record<string, unknown>>;
   mode?: RenderMode;
+  banner?: string;
 }
 
-/** Maps page data to render sections: the primary value is the content line, the rest a meta line. */
+/**
+ * Maps page data to render sections. The per-page layouts live in `page-layouts.ts` (§1.7's
+ * page-descriptor layer); this re-exports that entry point so the renderer and the router keep
+ * one call site.
+ */
 export function derivePageSections(
   page: string,
   data: Readonly<Record<string, unknown>>,
 ): readonly string[] {
-  const entries = Object.entries(data);
-  const [first, ...rest] = entries;
-  const primary = first === undefined ? page : String(first[1]);
-  const meta = rest.map(([key, value]) => `-# ${key}: ${String(value)}`).join(' | ');
-  return meta.length > 0 ? [primary, meta] : [primary];
+  return pageSections(page, data);
 }
 
 function isPageDataResult(value: unknown): value is PageDataResult {
@@ -104,6 +141,13 @@ export class DirectInteractionResponseError extends Error {
 }
 
 export class CoreRenderer {
+  private readonly bannerUrl: string | undefined;
+
+  /** §1.3 / §11.5 - the banner every Mode D page opens with; omitted means no banner slot. */
+  constructor(options: { bannerUrl?: string } = {}) {
+    this.bannerUrl = options.bannerUrl;
+  }
+
   createTraceId(): string {
     return `tr_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
   }
@@ -111,13 +155,13 @@ export class CoreRenderer {
   createReadOnlyInteraction<T extends object>(interaction: T): T {
     return new Proxy(interaction, {
       get(target, prop, receiver) {
-        if (
-          prop === 'reply' ||
-          prop === 'deferReply' ||
-          prop === 'editReply' ||
-          prop === 'followUp' ||
-          prop === 'showModal'
-        ) {
+        // §2.4 / Appendix C #20 — a handler must not open a response path of its own, so `reply`,
+        // `followUp` and `showModal` stay blocked. `editReply` is deliberately allowed: the registry
+        // acknowledges a component interaction with `deferUpdate` before the handler runs, and after
+        // that `editReply` is the only call that can land a result on the existing message. Blocking
+        // it left every component handler with no way to respond at all — the trigger fired, the
+        // handler ran, and nothing ever reached the message.
+        if (prop === 'reply' || prop === 'followUp' || prop === 'showModal') {
           return async (): Promise<never> => {
             throw new DirectInteractionResponseError(String(prop));
           };
@@ -149,9 +193,13 @@ export class CoreRenderer {
 
   renderBuffer(identity: RenderIdentity): ComponentsV2Message {
     return this.frame([
-      this.title(identity),
+      createTitleBlock(
+        identity.surface,
+        identity.developer ?? DEFAULT_DEVELOPER,
+        identity.version ?? DEFAULT_VERSION,
+      ),
       separator(),
-      textDisplay(`Preparing ${identity.surface}...`),
+      textDisplay(`⏳ Preparing ${identity.surface}…`),
     ]);
   }
 
@@ -161,6 +209,7 @@ export class CoreRenderer {
       ...(input.developer !== undefined ? { developer: input.developer } : {}),
       ...(input.version !== undefined ? { version: input.version } : {}),
       ...(input.mode !== undefined ? { mode: input.mode } : {}),
+      ...(input.banner !== undefined ? { banner: input.banner } : {}),
       sections: derivePageSections(input.page, input.data),
     });
   }
@@ -172,22 +221,69 @@ export class CoreRenderer {
       throw new InvalidRenderDescriptorError();
     }
 
-    const body =
-      mode === 'C'
-        ? [textDisplay(this.oneLineRender(input.surface, sections[0] ?? input.surface))]
-        : mode === 'M'
-          ? [textDisplay(this.condensedRender(sections))]
-          : sections.flatMap((section, index) =>
-              index === 0 ? [textDisplay(section)] : [separator(), textDisplay(section)],
-            );
+    const developer = input.developer ?? DEFAULT_DEVELOPER;
+    const version = input.version ?? DEFAULT_VERSION;
+    const components: Component[] = [];
 
-    return this.frame([
-      this.title(input),
-      separator(),
-      ...body,
-      separator('small'),
-      this.footer(input, mode),
-    ]);
+    // §1.2 / §1.3 / §1.4 - the banner slot opens the frame, and is present in Mode D only.
+    const bannerUrl = input.banner ?? this.bannerUrl;
+    if (mode === 'D' && bannerUrl !== undefined) {
+      components.push(createBannerMediaGallery(bannerUrl));
+      components.push(separator());
+    }
+
+    // §1.2 / §1.5 - the identity band: the title and its attribution line.
+    components.push(createTitleBlock(input.surface, developer, version));
+    components.push(separator());
+
+    // §1.2 / §1.4 - the content slot, rendered at the page's density.
+    if (mode === 'C') {
+      components.push(textDisplay(this.oneLineRender(input.surface, sections[0] ?? input.surface)));
+    } else if (mode === 'M') {
+      components.push(textDisplay(this.condensedRender(sections)));
+    } else {
+      sections.forEach((section, index) => {
+        if (index > 0) components.push(separator());
+        components.push(textDisplay(section));
+      });
+    }
+    components.push(separator());
+
+    // §1.2 / §3.3 - the footer repeats the attribution and carries the D/M/C density control.
+    components.push(textDisplay(`-# Developed by ${developer} v${version}`));
+    const modeControl = input.modeControl;
+    if (modeControl !== undefined) {
+      components.push(
+        actionRow(
+          (['D', 'M', 'C'] as const).map((value) =>
+            button(modeControl.customIds[value], value, mode === value ? 1 : 2),
+          ),
+        ),
+      );
+    }
+
+    // §11.3 - the navigation dropdown sits below the footer, and is omitted in Mode C.
+    const navigation = input.navigation;
+    if (mode !== 'C' && navigation !== undefined && navigation.options.length > 0) {
+      components.push(separator());
+      components.push(
+        actionRow([
+          stringSelect(
+            navigation.customId,
+            navigation.options.map((option) => ({
+              label: option.label,
+              value: option.value,
+              ...(option.description !== undefined ? { description: option.description } : {}),
+              ...(option.emoji !== undefined ? { emoji: option.emoji } : {}),
+              ...(option.default !== undefined ? { default: option.default } : {}),
+            })),
+            'Navigate to:',
+          ),
+        ]),
+      );
+    }
+
+    return this.frame(components);
   }
 
   renderNotice(input: FormalNoticeDescriptor): ComponentsV2Message {
@@ -195,11 +291,15 @@ export class CoreRenderer {
     const explanation = input.explanation ?? this.defaultNoticeExplanation(input.reason);
 
     return this.frame([
-      this.title(input),
+      createTitleBlock(
+        input.surface,
+        input.developer ?? DEFAULT_DEVELOPER,
+        input.version ?? DEFAULT_VERSION,
+      ),
       separator(),
       textDisplay(
         [
-          `Warning: ${heading}`,
+          `⚠ ${heading}`,
           '',
           explanation,
           '',
@@ -210,7 +310,7 @@ export class CoreRenderer {
     ]);
   }
 
-  normalizeHandlerResult(result: unknown, fallback: RenderIdentity): RenderDescriptor {
+  normalizeHandlerResult(result: unknown, fallback: RenderDescriptor): RenderDescriptor {
     if (result === undefined || result === null) {
       return { ...fallback, summary: 'Done.' };
     }
@@ -231,6 +331,7 @@ export class CoreRenderer {
         ...(result.mode !== undefined ? { mode: result.mode } : {}),
         ...(result.sections !== undefined ? { sections: result.sections } : {}),
         ...(result.summary !== undefined ? { summary: result.summary } : {}),
+        ...(result.banner !== undefined ? { banner: result.banner } : {}),
       };
     }
 
@@ -251,19 +352,6 @@ export class CoreRenderer {
 
   private frame(components: Parameters<typeof container>[0]): ComponentsV2Message {
     return buildComponentsV2([container(components, DEFAULT_ACCENT_COLOR)]);
-  }
-
-  private title(identity: RenderIdentity) {
-    const developer = identity.developer ?? DEFAULT_DEVELOPER;
-    const version = identity.version ?? DEFAULT_VERSION;
-    return textDisplay(`Dumby | ${identity.surface}\n-# Developed by ${developer} v${version}`);
-  }
-
-  private footer(identity: RenderIdentity, mode?: RenderMode) {
-    const developer = identity.developer ?? DEFAULT_DEVELOPER;
-    const version = identity.version ?? DEFAULT_VERSION;
-    const modeLabel = mode === undefined ? '' : ` | Mode ${mode}`;
-    return textDisplay(`-# Developed by ${developer} v${version}${modeLabel}`);
   }
 
   private oneLineRender(surface: string, first: string): string {

@@ -47,11 +47,12 @@ string-collision risk across modules), unspoofable (a `Symbol` equals only itsel
 type-safe when paired with TypeScript generics, so `resolve<T>` needs no manual cast.
 
 The core token registry declares a fixed set of core services, each bound to a
-`Symbol('core.<Name>')`. At commit `e60ee66` the registry
-(`apps/main/src/di/tokens.ts`) declares **21 core tokens**: Logger, Config, Db, EventBus,
-Cache, Queue, ModuleRegistry, PermissionResolver, Metrics, CommandRegistry, CommandRouter,
-Renderer, InteractionRegistry, CommandCeilingService, CollisionResolutionService,
-Personas, EventRouter, Scheduler, AdminEvalGate, OAuth2, and MtpTokens. Module tokens are
+`Symbol('core.<Name>')`. The registry
+(`apps/main/src/di/tokens.ts`) declares **22 core tokens**: Logger, Config, Db, EventBus,
+Cache, Queue, ModuleRegistry, PermissionResolver, Metrics, I18n, CommandRegistry,
+CommandRouter, Renderer, InteractionRegistry, CommandCeilingService,
+CollisionResolutionService, Personas, EventRouter, Scheduler, AdminEvalGate, OAuth2, and
+MtpTokens. Module tokens are
 namespaced under `module.<moduleId>.<Name>`, so two modules may each declare a
 `ReminderService` token without colliding.
 

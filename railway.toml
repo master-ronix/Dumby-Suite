@@ -1,0 +1,18 @@
+# Railway config-as-code for the Dumby bot service (@workspace/dumby).
+#
+# Build context MUST be the workspace root: apps/main/Dockerfile COPYs the root
+# pnpm-lock.yaml / pnpm-workspace.yaml / tsconfig.base.json, so Root Directory
+# must stay "/" and the Dockerfile path is relative to the repo root.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "apps/main/Dockerfile"
+
+[deploy]
+# Liveness returns 200 as soon as bootstrap Stage 04 is reached.
+# Do NOT use /health/readiness here - it only turns 200 at Stage 18 (all
+# required modules healthy), which would block every deploy until modules exist.
+healthcheckPath = "/health/liveness"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10

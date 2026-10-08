@@ -1,8 +1,8 @@
 {
   "$id": "docs/status/code-reconciliation.json",
   "title": "Docs ↔ Code reconciliation",
-  "note": "Every row compares what the NEW documentation asserts against the actual source in master-ronix/Dumby-Suite (apps/main at b6ae1a6d860902274cd3c237d68c1c886687ba8b). Standing rule: the specification is authority; where the code is narrower, the code is the gap to close.",
-  "verified_commit": "b6ae1a6d860902274cd3c237d68c1c886687ba8b",
+  "note": "Every row compares what the NEW documentation asserts against the actual source in master-ronix/Dumby-Suite (apps/main at c510a35f58e73d2633d36a3d1caa22a5322d8ab3, branch feature/dev). Standing rule: the specification is authority; where the code is narrower, the code is the gap to close.",
+  "verified_commit": "c510a35f58e73d2633d36a3d1caa22a5322d8ab3",
   "verdicts": [
     "match",
     "doc-incomplete",
@@ -148,11 +148,11 @@
     {
       "id": "REC-017",
       "area": "DI container",
-      "doc_claim": "typed Symbol tokens, frozen core; all 21 core tokens named in spec/architecture/dependency-injection-service-container.md §10.2",
-      "code_truth": "21 CORE_TOKENS declared (Logger, Config, Db, EventBus, Cache, Queue, ModuleRegistry, PermissionResolver, Metrics, CommandRegistry, CommandRouter, Renderer, InteractionRegistry, CommandCeilingService, CollisionResolutionService, Personas, EventRouter, Scheduler, AdminEvalGate, OAuth2, MtpTokens)",
+      "doc_claim": "typed Symbol tokens, frozen core; all 22 core tokens named in spec/architecture/dependency-injection-service-container.md §10.2",
+      "code_truth": "22 CORE_TOKENS declared (Logger, Config, Db, EventBus, Cache, Queue, ModuleRegistry, PermissionResolver, Metrics, I18n, CommandRegistry, CommandRouter, Renderer, InteractionRegistry, CommandCeilingService, CollisionResolutionService, Personas, EventRouter, Scheduler, AdminEvalGate, OAuth2, MtpTokens)",
       "code_ref": "apps/main/src/di/tokens.ts",
       "verdict": "match",
-      "resolution": "Resolved in v5.3.0 (docs side completed); previously recorded as a doc-side gap."
+      "resolution": "Re-verified against HEAD c510a35f58e73d2633d36a3d1caa22a5322d8ab3 — the registry declares 22 core tokens (I18n added since the earlier 21-token count); the docs count and list now match the code."
     },
     {
       "id": "REC-018",

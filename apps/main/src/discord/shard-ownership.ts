@@ -3,6 +3,14 @@ import type { Logger } from '../logging/logger.js';
 
 export const SHARD_LOCK_KEY_PREFIX = 'shard:';
 
+/**
+ * The lock TTL is a multiple of the heartbeat interval: §26.4 refreshes the TTL *every* heartbeat,
+ * so the TTL must outlast the interval. With TTL == heartbeat the key expires at the very instant
+ * the first renewal runs (Redis expires it at `heartbeatMs`, and the timer fires at `heartbeatMs`),
+ * so `refresh` sees no key and the lock is dropped ~10s after it was claimed.
+ */
+const HEARTBEAT_TTL_MULTIPLIER = 3;
+
 /** §23.2 — the shard-ownership lock key: `shard:{shardId}:owner`. */
 export function shardLockKey(shardId: number): string {
   return `${SHARD_LOCK_KEY_PREFIX}${shardId}:owner`;
@@ -30,8 +38,14 @@ export interface ShardOwnershipDeps {
   logger: Logger;
   /** Identifies this process as the lock owner (a pod is identified by host + pid). */
   ownerId: string;
+  /** How often the held locks are refreshed. */
   heartbeatMs: number;
   retryMs: number;
+  /**
+   * The lock TTL. Defaults to `HEARTBEAT_TTL_MULTIPLIER × heartbeatMs`, so the key outlives the
+   * renewal interval by a wide margin and a single missed renewal cannot drop the lock.
+   */
+  ttlMs?: number;
   schedule?: (fn: () => void, ms: number) => unknown;
   cancel?: (handle: unknown) => void;
   sleep?: (ms: number) => Promise<void>;
@@ -50,6 +64,11 @@ export class ShardOwnershipManager {
 
   constructor(private readonly deps: ShardOwnershipDeps) {}
 
+  /** The TTL written on claim and on every renewal (see `ShardOwnershipDeps.ttlMs`). */
+  private get ttlMs(): number {
+    return this.deps.ttlMs ?? this.deps.heartbeatMs * HEARTBEAT_TTL_MULTIPLIER;
+  }
+
   /** Claim each shard, retrying every `SHARD_LOCK_RETRY_MS` until owned or attempts run out. */
   async claim(
     shardIds: readonly number[],
@@ -61,7 +80,7 @@ export class ShardOwnershipManager {
       let attempt = 0;
       for (;;) {
         attempt += 1;
-        const got = await this.deps.lockStore.setNX(key, this.deps.ownerId, this.deps.heartbeatMs);
+        const got = await this.deps.lockStore.setNX(key, this.deps.ownerId, this.ttlMs);
         if (got) {
           this.held.add(shardId);
           acquired.push(shardId);
@@ -97,7 +116,7 @@ export class ShardOwnershipManager {
       const kept = await this.deps.lockStore.refresh(
         shardLockKey(shardId),
         this.deps.ownerId,
-        this.deps.heartbeatMs,
+        this.ttlMs,
       );
       if (!kept) {
         this.deps.logger.error('shard-lock-lost', { shardId });

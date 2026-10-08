@@ -7,25 +7,18 @@ import { mockupPreviewPlugin } from "./mockupPreviewPlugin";
 
 const rawPort = process.env.PORT;
 
-if (!rawPort) {
-  throw new Error(
-    "PORT environment variable is required but was not provided.",
-  );
-}
+// PORT and BASE_PATH are injected by the hosting platform at runtime. They must
+// not be *required* here: `vite build` evaluates this config during the build
+// step (Railway/Railpack) before any runtime env vars exist, so throwing on a
+// missing PORT fails the build. Fall back to safe defaults instead, and only
+// reject a PORT that is present but invalid.
+const port = rawPort ? Number(rawPort) : 5173;
 
-const port = Number(rawPort);
-
-if (Number.isNaN(port) || port <= 0) {
+if (rawPort && (Number.isNaN(port) || port <= 0)) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-const basePath = process.env.BASE_PATH;
-
-if (!basePath) {
-  throw new Error(
-    "BASE_PATH environment variable is required but was not provided.",
-  );
-}
+const basePath = process.env.BASE_PATH ?? "/";
 
 export default defineConfig({
   base: basePath,

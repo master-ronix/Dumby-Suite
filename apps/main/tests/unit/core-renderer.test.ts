@@ -58,7 +58,6 @@ describe('CoreRenderer grammar', () => {
   test('defaults to Mode D for direct invocations', () => {
     const message = renderer.render({ surface: 'Dashboard', sections: ['a', 'b'] });
 
-    expect(textContents(message).some((content) => content.includes('Mode D'))).toBe(true);
     expect(textContents(message).filter((content) => content === 'a' || content === 'b')).toEqual([
       'a',
       'b',
@@ -72,7 +71,7 @@ describe('CoreRenderer grammar', () => {
     expect(contents).toContain('a');
     expect(contents).toContain('b');
     expect(contents).toContain('c');
-    expect(contents.some((content) => content.includes('Mode D'))).toBe(true);
+    expect(contents.some((content) => content.includes('Developed by'))).toBe(true);
   });
 
   test('Mode M collapses long listings to the first section and a count', () => {
@@ -85,7 +84,7 @@ describe('CoreRenderer grammar', () => {
     const contents = textContents(message);
     expect(contents).toContain('first\n+2 more');
     expect(contents).not.toContain('second');
-    expect(contents.some((content) => content.includes('Mode M'))).toBe(true);
+    expect(contents.some((content) => content.includes('Developed by'))).toBe(true);
   });
 
   test('Mode C renders a single condensed status line', () => {
@@ -99,7 +98,7 @@ describe('CoreRenderer grammar', () => {
     expect(contents.some((content) => content.startsWith('Health: all systems nominal'))).toBe(
       true,
     );
-    expect(contents.some((content) => content.includes('Mode C'))).toBe(true);
+    expect(contents.some((content) => content.includes('Developed by'))).toBe(true);
   });
 
   test('mode changes density, never the reported surface', () => {
