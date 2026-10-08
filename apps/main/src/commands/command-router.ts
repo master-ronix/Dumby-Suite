@@ -80,7 +80,10 @@ export interface CommandRouterOptions {
    * anything a page reports about the running system (metrics, queue state, personas) is gathered
    * here and handed to the handler as `context.data`.
    */
-  pageDataProvider?: (moduleId: string) => Promise<Readonly<Record<string, unknown>>>;
+  pageDataProvider?: (
+    moduleId: string,
+    guildId: string | null,
+  ) => Promise<Readonly<Record<string, unknown>>>;
 }
 
 export class CommandRouter {
@@ -163,7 +166,7 @@ export class CommandRouter {
             this.renderer.createReadOnlyInteraction(interaction),
             {
               config: def.moduleConfig ?? {},
-              data: (await this.options.pageDataProvider?.(def.moduleId)) ?? {},
+              data: (await this.options.pageDataProvider?.(def.moduleId, interaction.guildId)) ?? {},
             },
           );
         },

@@ -9,11 +9,5 @@ export const personaCommand = defineCommand({
   name: 'persona',
   description: 'View activated personas and their command inventory.',
   pages: ['persona'],
-  execute: (_interaction, _context) => ({
-    page: 'persona',
-    data: {
-      report: 'Active personas',
-      active: 0, note: 'persona creation is handled through the Twill registration API',
-    },
-  }),
+  execute: (_interaction, context) => ({ page: 'persona', data: context.data }),
 });

@@ -54,6 +54,7 @@ import { Redis } from 'ioredis';
 import { CommandRegistry } from '../commands/command-registry.js';
 import { CommandRouter } from '../commands/command-router.js';
 import { registerCoreFrameHandlers } from '../interactions/core-frame.handlers.js';
+import { createPageDataProvider } from '../rendering/page-data.js';
 import type { CommandInteraction } from '../commands/command-router.js';
 import { PersonaCommandBindingService } from '../personas/persona-command-binding.service.js';
 import {
@@ -581,6 +582,17 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   // §22.2 / Table 22-A — one store, shared by the dispatch path (enforcement) and the Power
   // Engine catalog (the control action that writes it).
   const guildSuspensions = new PostgresGuildSuspensionStore(db.knex);
+  // §1.7 — page data is gathered at dispatch. Declared before the router so the provider's client
+  // getter closes over the client the live branch assigns later.
+  let discordClient: Client | undefined;
+  const pageDataProvider = createPageDataProvider({
+    getClient: () => discordClient,
+    moduleRegistry,
+    db,
+    redis,
+    config,
+    logger,
+  });
   const commandRouter = new CommandRouter(commandRegistry, logger, {
     devGuildId: config.get('DEV_GUILD_ID'),
     isModuleEnabledInGuild,
@@ -591,10 +603,7 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     grantStore: new PostgresGrantWriter(db.knex),
     // §22.2 / Table 22-A — the Power Engine `suspendGuild` state the dispatch path must consult.
     guildSuspensions,
-    // §1.7 — page data is gathered at dispatch, not at registration: it reports the running
-    // system. Providers for health, queue, persona and permit land next; the hook is wired now
-    // so those pages become pure data additions.
-    pageDataProvider: async () => ({}),
+    pageDataProvider,
     resolveCommandOwner: (guildId, moduleSlug) =>
       personaBindingService.resolveCommandOwner(guildId, moduleSlug),
     ...(config.get('PERSONA_ID') !== '' ? { residentPersonaId: config.get('PERSONA_ID') } : {}),
@@ -699,7 +708,6 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   progress.advanceTo('EVENT_REGISTER');
 
   progress.advanceTo('DISCORD_LOGIN');
-  let discordClient: Client | undefined;
   let shardOwnership: ShardOwnershipManager | undefined;
   if (config.get('DISCORD_ADAPTER') === 'live') {
     // §23.2 — claim this pod's shard-ownership locks before the gateway identifies, so a rolling

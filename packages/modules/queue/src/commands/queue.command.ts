@@ -16,11 +16,5 @@ export const queueCommand = defineCommand({
     { name: 'disable', description: 'Set true to disable the command, false to re-enable', type: 5 },
     { name: 'action', description: 'The BCCM action type', type: 3 },
   ],
-  execute: (_interaction, _context) => ({
-    page: 'queue',
-    data: {
-      report: 'BCCM command queue',
-      window: '12-13h batching window', pending: 0, note: 'submission requires Administrator or Manage Guild',
-    },
-  }),
+  execute: (_interaction, context) => ({ page: 'queue', data: context.data }),
 });
