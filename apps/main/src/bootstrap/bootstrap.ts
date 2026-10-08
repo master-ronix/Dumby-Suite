@@ -55,6 +55,7 @@ import { CommandRegistry } from '../commands/command-registry.js';
 import { CommandRouter } from '../commands/command-router.js';
 import { registerCoreFrameHandlers } from '../interactions/core-frame.handlers.js';
 import { createPageDataProvider } from '../rendering/page-data.js';
+import { registerKnownGuilds } from '../discord/guild-registry.js';
 import { createBccmEffectHandlers } from '../commands/bccm-effects.js';
 import type { CommandInteraction } from '../commands/command-router.js';
 import { PersonaCommandBindingService } from '../personas/persona-command-binding.service.js';
@@ -931,6 +932,10 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
         devGuildId: config.get('DEV_GUILD_ID'),
       });
     }
+    // Twelve tables foreign-key onto `guilds`, so every guild-scoped write needs the guild row to
+    // exist first. Register the guilds we are already in before anything touches guild state.
+    await registerKnownGuilds(discordClient, db, logger);
+
     logger.info('discord-client-ready', {
       applicationId,
       guildCount: discordClient.guilds.cache.size,
