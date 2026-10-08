@@ -240,6 +240,14 @@ authority_scope: [history]
 
 ---
 
+### v5.3.0 — Dashboard Runtime Error: Diagnostics + Render Fallback — 2026-10-08
+
+- 2026-10-08 · fix · verdict=IN PROGRESS
+- The dashboard raised a `MODULE_ERROR` at runtime and the cause could not be read from the log tool (structured fields not surfaced). The router `catch` now embeds the error text and stack in the log message; the final render now retries once without the action controls if the payload is rejected.
+- Root cause still open; the next deploy's `command-execution-error: …` line will name it.
+
+---
+
 ### 4. Cross-Version Defect Lifecycle
 
 <!-- One row per introduced defect: id · introduced · status · resolution. -->

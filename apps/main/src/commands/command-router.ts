@@ -15,6 +15,7 @@ import {
   type NavigationOption,
   type NoticeReasonCode,
   type PageActionRow,
+  type RenderDescriptor,
   type RenderIdentity,
   type RenderMode,
   derivePageSections,
@@ -266,7 +267,7 @@ export class CommandRouter {
         }
       }
 
-      await this.renderer.editFinal(interaction, render);
+      await this.editFinalWithFallback(interaction, render);
       this.logger.info('command-executed', {
         command: name,
         moduleId: def.moduleId,
@@ -276,11 +277,16 @@ export class CommandRouter {
         durationMs: Date.now() - start,
       });
     } catch (err) {
-      this.logger.error('command-execution-error', {
+      // Diagnostic: the log tool does not always surface a log's structured `error` field, so the
+      // message string carries the error text (and the stack) directly.
+      const message = err instanceof Error ? err.message : String(err);
+      const stack = err instanceof Error ? err.stack : undefined;
+      this.logger.error(`command-execution-error: ${message}`, {
         command: name,
         moduleId: def.moduleId,
         userId: interaction.user.id,
         error: String(err),
+        ...(stack !== undefined ? { stack } : {}),
       });
       await this.renderer.editNotice(interaction, {
         ...identity,
@@ -470,6 +476,28 @@ export class CommandRouter {
           });
         });
     }, this.followupAlarmMs);
+  }
+
+  /**
+   * Renders the final page. If the payload is rejected (most likely the action controls — a
+   * Components v2 container rejecting the action row), drop the controls and retry once, so the
+   * page stays usable while the underlying error is logged for diagnosis.
+   */
+  private async editFinalWithFallback(
+    interaction: CommandInteraction,
+    render: RenderDescriptor,
+  ): Promise<void> {
+    try {
+      await this.renderer.editFinal(interaction, render);
+    } catch (err) {
+      this.logger.warn(
+        `command-render-fallback: ${err instanceof Error ? err.message : String(err)}`,
+        { command: interaction.commandName, error: String(err) },
+      );
+      const withoutActions: RenderDescriptor = { ...render };
+      Reflect.deleteProperty(withoutActions, 'actions');
+      await this.renderer.editFinal(interaction, withoutActions);
+    }
   }
 
   private reasonFromRejection(reason: string): NoticeReasonCode {

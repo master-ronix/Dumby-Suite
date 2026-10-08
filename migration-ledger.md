@@ -188,6 +188,15 @@ Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (rea
 
 ---
 
+### F-5 — Dashboard runtime MODULE_ERROR: diagnostics + render fallback (IN PROGRESS — 2026-10-08)
+- **Symptom:** the dashboard renders its buffer, then the formal `MODULE_ERROR` notice. The deploy is live; the error text was not retrievable from the log tool (it returns only the log message name, not structured fields).
+- **Action taken:**
+  1. The router's `catch` now writes the error text and stack **into the log message** (`command-execution-error: <message>`), so the log tool can read the cause.
+  2. The final render now goes through a fallback: if the payload is rejected, the action controls are dropped and the render is retried once, so the page stays usable while the cause is captured.
+- **Open:** the root cause is not yet identified; the next deploy's log line (`command-execution-error: …`) will name it.
+
+---
+
 ## Findings & Deviations Register
 
 1. **Application suite not run.** The environment has no installed dependencies, so the typecheck/lint/unit suite is pending on the real toolchain. The corpus gate suite (25/25) is green.
