@@ -169,6 +169,23 @@ export function createPageDataProvider(
     };
   }
 
+  async function permit(): Promise<PageData> {
+    const lines: string[] = ['Choose a module command to manage grant access:', ''];
+    for (const entry of moduleRegistry.all()) {
+      for (const command of entry.manifest.commands) {
+        lines.push(
+          `📦 /${command.name}   ${entry.manifest.name} v${entry.manifest.version} — ${command.description}`,
+        );
+      }
+    }
+    lines.push(
+      '',
+      '§8.4 — grants resolve role > group > set, most-specific-wins, and never override Layers 1–3,',
+      'the bot-capability check, or the RESTRICTED floor. Layer 6 ranks are evaluated, never written.',
+    );
+    return { title: 'Grant Access — Step 1: Select Command', lines };
+  }
+
   return async (moduleId: string, guildId: string | null): Promise<PageData> => {
     switch (moduleId) {
       case 'health':
@@ -177,6 +194,8 @@ export function createPageDataProvider(
         return persona();
       case 'queue':
         return queue(guildId);
+      case 'permit':
+        return permit();
       default:
         return {};
     }

@@ -16,11 +16,5 @@ export const permitCommand = defineCommand({
     { name: 'cooldown', description: 'Set cooldown duration and scope for a command', type: 3 },
     { name: 'rate-limit', description: 'Set rate limits for a command', type: 3 },
   ],
-  execute: (_interaction, _context) => ({
-    page: 'permit',
-    data: {
-      report: 'Layer 7 - guild-side grants',
-      layer: 'Layer 7', note: 'Layer 6 ranks are evaluated, never written',
-    },
-  }),
+  execute: (_interaction, context) => ({ page: 'permit', data: context.data }),
 });

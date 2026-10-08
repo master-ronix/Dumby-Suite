@@ -744,6 +744,31 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     discordClient.on(Events.InteractionCreate, async (interaction) => {
       if (!isAcceptingGatewayEvents()) return;
 
+      if (interaction.isAutocomplete()) {
+        // §2.5 — autocomplete answers within an 800 ms budget; the registry serves the partial or
+        // cached set rather than a late or empty answer. Every option space that declares
+        // autocomplete (/queue's `command`, /permit's targets) resolves to the same source: the
+        // registered command names.
+        const focused = interaction.options.getFocused(true);
+        const query = String(focused.value).toLowerCase();
+        const choices = await interactionRegistry.runAutocomplete(
+          async () =>
+            commandRegistry
+              .all()
+              .map((command) => command.data.name)
+              .filter((name) => name.toLowerCase().includes(query))
+              .slice(0, 25)
+              .map((name) => ({ name, value: name })),
+          [],
+        );
+        try {
+          await interaction.respond([...choices]);
+        } catch (err) {
+          logger.warn('autocomplete-respond-failed', { error: String(err) });
+        }
+        return;
+      }
+
       if (interaction.isChatInputCommand()) {
         const channel = (
           interaction as unknown as {
