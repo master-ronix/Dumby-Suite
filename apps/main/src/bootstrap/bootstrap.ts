@@ -91,6 +91,7 @@ import {
 import { LiveGatewayAdapter } from '../discord/gateway.live-adapter.js';
 import { CommandDeployer } from '../commands/command-deployer.js';
 import { CoreRenderer } from '../rendering/core-renderer.js';
+import { ensureDefaultModuleEmoji } from '../rendering/module-emoji-upload.js';
 import {
   InteractionRegistry,
   RedisIdempotencyStore,
@@ -889,6 +890,13 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   progress.advanceTo('CLIENT_READY');
   if (discordClient) {
     const applicationId = discordClient.application?.id ?? '';
+    // item 9 - upload the framework's default white module icon as an application emoji (once).
+    // Non-fatal: on failure the unicode fallback applies until the next boot.
+    try {
+      await ensureDefaultModuleEmoji(discordClient, logger);
+    } catch (err) {
+      logger.warn('module-emoji-upload-failed', { error: String(err) });
+    }
     const rest = new REST({ version: '10' }).setToken(config.get('BOT_TOKEN'));
     const commandDeployer = new CommandDeployer({
       registry: commandRegistry,

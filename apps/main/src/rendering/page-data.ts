@@ -189,7 +189,7 @@ export function createPageDataProvider(
   async function permit(): Promise<PageData> {
     const lines: string[] = ['Choose a module command to manage grant access:', ''];
     for (const entry of moduleRegistry.all()) {
-      const icon = moduleIcon(entry.manifest.name, entry.manifest.ui?.icon);
+      const icon = moduleIcon(entry.manifest.ui?.icon);
       for (const command of entry.manifest.commands) {
         lines.push(
           `${icon} /${command.name}   ${entry.manifest.name} v${entry.manifest.version} — ${command.description}`,
@@ -204,16 +204,9 @@ export function createPageDataProvider(
     return { title: 'Grant Access — Step 1: Select Command', lines };
   }
 
-  function titleCase(slug: string): string {
-    return slug
-      .split('-')
-      .map((part) => (part.length > 0 ? part.charAt(0).toUpperCase() + part.slice(1) : part))
-      .join(' ');
-  }
-
   // UR-004 items 1/2/3 — page 0 is the main dashboard (core commands); page 1..n is each
-  // standard-tier module's page. Every command shows its module icon (declared asset, else the
-  // project-wide default).
+  // standard-tier module's page. item 5 — only the main page shows each command's module icon
+  // (declared custom emoji, else the framework's default white icon); a module page does not.
   async function dashboard(page: number): Promise<PageData> {
     const all = moduleRegistry.all();
     const standard = all.filter((entry) => entry.manifest.tier === 'standard');
@@ -222,25 +215,28 @@ export function createPageDataProvider(
     if (page >= 1 && page <= standard.length) {
       const entry = standard[page - 1];
       if (entry !== undefined) {
-        const icon = moduleIcon(entry.manifest.name, entry.manifest.ui?.icon);
+        // items 4/5/14 - a module page shows only its registered commands: no heading (the frame's
+        // title already names the page) and no module icon beside them.
         return {
-          title: titleCase(entry.manifest.name),
-          lines: entry.manifest.commands.map((command) => `${icon} \`/${command.name}\``),
+          lines: entry.manifest.commands.map((command) => `\`/${command.name}\``),
           pageTotal,
           page,
         };
       }
     }
 
+    // item 5 - only the main dashboard page shows each core command's module icon: the declared
+    // custom emoji, else the framework's default white icon.
     const lines: string[] = [];
     for (const entry of all) {
       if (entry.manifest.tier !== 'core') continue;
-      const icon = moduleIcon(entry.manifest.name, entry.manifest.ui?.icon);
+      const icon = moduleIcon(entry.manifest.ui?.icon);
       for (const command of entry.manifest.commands) {
         lines.push(`${icon} \`/${command.name}\``);
       }
     }
-    return { title: 'Core Commands', lines, pageTotal, page: 0 };
+    // item 4 - no per-page heading; the frame's "Dumby Suite | Dashboard" title already names it.
+    return { lines, pageTotal, page: 0 };
   }
 
   // items 10/11/15 — /browse is marketplace discovery: only installable modules are offered.
@@ -256,7 +252,7 @@ export function createPageDataProvider(
       lines.push('No marketplace modules are available to install.');
     } else {
       for (const entry of installable) {
-        const icon = moduleIcon(entry.manifest.name, entry.manifest.ui?.icon);
+        const icon = moduleIcon(entry.manifest.ui?.icon);
         lines.push(`${icon} ${entry.manifest.name} — ${entry.manifest.description}`);
       }
     }
@@ -272,7 +268,7 @@ export function createPageDataProvider(
     const lines = moduleRegistry
       .all()
       .map((entry) => {
-        const icon = moduleIcon(entry.manifest.name, entry.manifest.ui?.icon);
+        const icon = moduleIcon(entry.manifest.ui?.icon);
         return `${icon} ${entry.manifest.name} (${entry.manifest.tier}) — ${entry.manifest.description}`;
       });
     lines.push('', 'Use the info and uninstall buttons beside a module to manage it.');

@@ -1,6 +1,7 @@
 import type { Container } from '../di/container.js';
 import type { Logger } from '../logging/logger.js';
 import { topologicalLoadOrder, classifyLoadFailures, type ModuleNode } from './topo-sort.js';
+import { resolveRegisteredDeveloper } from './developer-registry.js';
 import { validateTierRules } from './tier-rules.js';
 import { checkModuleAgainstPolicy, type SecurityPolicy } from './policy-lockfile.js';
 import type { ModuleRegistry } from './registry.js';
@@ -123,9 +124,8 @@ export class ModuleLoader {
                     buildId: mod.manifest.buildId,
                     devUsername:
                       mod.manifest.ui?.devUsername ??
-                      (mod.manifest.devId === FIRST_PARTY_DEV_ID
-                        ? FRAMEWORK_DEV_USERNAME
-                        : mod.manifest.devId),
+                      resolveRegisteredDeveloper(mod.manifest.devId) ??
+                      mod.manifest.devId,
                     ...(mod.manifest.ui?.displayName !== undefined
                       ? { displayName: mod.manifest.ui.displayName }
                       : {}),

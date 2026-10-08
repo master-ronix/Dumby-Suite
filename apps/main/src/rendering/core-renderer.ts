@@ -260,7 +260,10 @@ export class CoreRenderer {
     }
 
     // items 6/7/8 - the identity band: a bold "Dumby Suite | <page>" title, then the developer.
-    components.push(createTitleBlock(input.surface, developer));
+    // item 2 - the attribution is the developer's registered username, not a static name.
+    const attribution =
+      input.devUsername !== undefined ? `@${input.devUsername}` : developer;
+    components.push(createTitleBlock(input.surface, attribution));
     components.push(separator());
 
     // §1.2 / §1.4 - the content slot, rendered at the page's density.
@@ -291,6 +294,8 @@ export class CoreRenderer {
         );
       }
     }
+    // item 1 - a divider separates the footer (build id · dev username) from the action controls.
+    if (topLevel.length > 0) components.push(separator());
 
     return this.frame(components, input.accent, topLevel);
   }

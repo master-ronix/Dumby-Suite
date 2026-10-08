@@ -257,6 +257,15 @@ authority_scope: [history]
 
 ---
 
+### v5.5.0 — Dashboard: Control Placement, Registered Attribution, Module Icons & Page Headings (State B) — 2026-10-08
+
+- 2026-10-08 · migration-prompt 5.2.0 · item S6 · verdict=PUSHED (pending log confirmation)
+- Work order: UR-20261008-005. ADR: ADR-014.
+- Landed: (1) the page's action controls render below the footer, after a divider; (2) the developer attribution resolves to the platform-registered username, not a static name; (3) a module's icon is a custom Discord emoji named by `ui.icon`, with the framework's default white icon (bundled, uploaded once as an application emoji) when a module names none — the per-module emoji hardcode is removed; (4) a dashboard page carries no in-content heading; (5) only the main dashboard page shows each command's module icon.
+- Verification: documentation gate suite 25/25 green; application typecheck/lint/unit pending on the real toolchain.
+
+---
+
 ### 4. Cross-Version Defect Lifecycle
 
 <!-- One row per introduced defect: id · introduced · status · resolution. -->

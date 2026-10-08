@@ -201,6 +201,17 @@ Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (rea
 
 ---
 
+### F-6 — Dashboard controls, attribution, icons and headings (PUSHED — 2026-10-08)
+- **Work order:** UR-20261008-005. **ADR:** ADR-014.
+- **Control placement (item 1):** the action controls now render below the footer, separated by a divider (a Separator is the last element of the container; the action rows are top-level beside it).
+- **Registered attribution (item 2):** the title attribution resolves to the developer's platform-registered username (`devUsername`) rather than the static organisation name. The registry seam is `module-system/developer-registry.ts` (backed by the credentials service); an unregistered `devId` falls back to the declared developer rather than inventing a name.
+- **Module icons (item 3):** the icon is a custom Discord emoji. `rendering/module-icons.ts` resolves the manifest's `ui.icon` (a custom-emoji name → its `<:name:id>` reference, or a unicode glyph verbatim), else the framework default white icon — bundled at `apps/main/assets/default-module-icon.png` and uploaded once as an application emoji at bootstrap (`rendering/module-emoji-upload.ts`). The per-module emoji hardcode is removed. Upload failure is non-fatal: the unicode fallback applies.
+- **Page headings (item 4):** a dashboard page carries no in-content heading; the frame title names the page.
+- **Icon scope (item 5):** only the main dashboard page shows each command's module icon; a module-specific page shows none.
+- **Verification:** documentation gate suite 25/25 green (counts.adrs 13→14; compliance.json regenerated). Application typecheck/lint/unit pending on the real toolchain — the local gates do not run `tsc`.
+
+---
+
 ## Findings & Deviations Register
 
 1. **Application suite not run.** The environment has no installed dependencies, so the typecheck/lint/unit suite is pending on the real toolchain. The corpus gate suite (25/25) is green.
