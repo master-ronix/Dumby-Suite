@@ -119,7 +119,7 @@ export class CommandRouter {
 
   async dispatch(
     interaction: CommandInteraction,
-    options: { mode?: RenderMode } = {},
+    options: { mode?: RenderMode; page?: number } = {},
   ): Promise<void> {
     const name = interaction.commandName;
     const identity: RenderIdentity = { surface: this.pageTitle(name) };
@@ -180,7 +180,12 @@ export class CommandRouter {
             this.renderer.createReadOnlyInteraction(interaction),
             {
               config: def.moduleConfig ?? {},
-              data: (await this.options.pageDataProvider?.(def.moduleId, interaction.guildId)) ?? {},
+              data:
+                (await this.options.pageDataProvider?.(
+                  def.moduleId,
+                  interaction.guildId,
+                  options.page,
+                )) ?? {},
             },
           );
         },
@@ -241,7 +246,7 @@ export class CommandRouter {
         ...(declaredDensity !== undefined ? { mode: declaredDensity } : {}),
         // items 10/11/15/17 - page-declared action controls; the dashboard's nav is Home/Next/Prev.
         ...(name === 'dashboard' || name === 'modules' || name === 'browse'
-          ? { actions: this.pageActions(name, declaredPageData, interaction.user.id) }
+          ? { actions: this.pageActions(name, declaredPageData, interaction.user.id, options.page) }
           : {}),
       });
       // A page whose data the effects just changed is re-derived, so the render shows the result
@@ -250,7 +255,11 @@ export class CommandRouter {
         const pageName = (declaredResponse as { page?: string }).page;
         if (pageName !== undefined) {
           const fresh =
-            (await this.options.pageDataProvider?.(def.moduleId, interaction.guildId)) ?? {};
+            (await this.options.pageDataProvider?.(
+              def.moduleId,
+              interaction.guildId,
+              options.page,
+            )) ?? {};
           render.sections = derivePageSections(pageName, fresh);
         }
       }
@@ -519,6 +528,7 @@ export class CommandRouter {
     commandName: string,
     data: Readonly<Record<string, unknown>> | undefined,
     invokerId: string,
+    page = 0,
   ): readonly PageActionRow[] {
     const raw = Array.isArray(data?.['modules']) ? (data['modules'] as unknown[]) : [];
     const ids = raw
@@ -528,14 +538,16 @@ export class CommandRouter {
     const mint = (action: string, target: string): string =>
       `dumby:act:${invokerId}:${action}:${target}`;
 
-    // item 10 - the dashboard's navigation is Home (icon-only) / Next page / Previous page.
+    // UR-004 items 2/3 - the dashboard's navigation is Home (icon-only) / Next page / Previous
+    // page; Next/Previous move between the main page (page 0) and the standard module pages.
     if (commandName === 'dashboard') {
-      const nav = (target: string): string => `dumby:nav:${invokerId}:${target}`;
+      const total = typeof data?.['pageTotal'] === 'number' ? (data['pageTotal'] as number) : 1;
+      const nav = (n: number): string => `dumby:nav:${invokerId}:page:${n}`;
       return [
         [
-          { customId: nav('dashboard'), label: '⌂', style: 2 },
-          { customId: nav('next'), label: 'next page', style: 2 },
-          { customId: nav('prev'), label: 'previous page', style: 2 },
+          { customId: nav(0), label: '⌂', style: 2 },
+          { customId: nav(Math.min(page + 1, total - 1)), label: 'next page', style: 2 },
+          { customId: nav(Math.max(page - 1, 0)), label: 'previous page', style: 2 },
         ],
       ];
     }

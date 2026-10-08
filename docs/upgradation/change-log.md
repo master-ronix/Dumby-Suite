@@ -222,6 +222,15 @@ authority_scope: [history]
 
 ---
 
+### v5.3.0 — Dashboard Round 2: Icon Fallback & Standard Module Pages (State B) — 2026-10-08
+
+- 2026-10-08 · migration-prompt 5.2.0 · item S5 · verdict=DONE
+- Work order: UR-20261008-004.
+- Landed: project-wide default module icon fallback; standard-tier modules carry their own pages under the dashboard (main page lists core commands); Next/Previous page navigate to the standard module pages (first is Hello World with its `hello` command).
+- Verification: documentation gate suite 25/25 green; application typecheck/lint/unit pending on the real toolchain.
+
+---
+
 ### 4. Cross-Version Defect Lifecycle
 
 <!-- One row per introduced defect: id · introduced · status · resolution. -->

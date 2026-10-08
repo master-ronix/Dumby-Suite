@@ -4,6 +4,7 @@ import type { ConfigService } from '../config/config.service.js';
 import type { DbClient } from '../db/client.js';
 import type { Logger } from '../logging/logger.js';
 import type { ModuleRegistry } from '../module-system/registry.js';
+import { moduleIcon } from './module-icons.js';
 
 export interface PageDataDeps {
   getClient: () => Client | undefined;
@@ -39,7 +40,7 @@ const formatUptime = (seconds: number): string => {
  */
 export function createPageDataProvider(
   deps: PageDataDeps,
-): (moduleId: string, guildId: string | null) => Promise<PageData> {
+): (moduleId: string, guildId: string | null, page?: number) => Promise<PageData> {
   const { getClient, moduleRegistry, db, redis, config, logger } = deps;
 
   async function health(): Promise<PageData> {
@@ -202,27 +203,43 @@ export function createPageDataProvider(
     return { title: 'Grant Access — Step 1: Select Command', lines };
   }
 
-  // items 1/3/4/5 — the dashboard lists the core modules' commands (emoji + backticked name,
-  // no descriptions), registered dynamically; core modules carry no separate page.
-  async function dashboard(): Promise<PageData> {
-    const icons: Record<string, string> = {
-      dashboard: '🏠',
-      health: '🩺',
-      browse: '🛒',
-      queue: '📋',
-      persona: '👥',
-      permit: '🔑',
-      modules: '📦',
-    };
+  function titleCase(slug: string): string {
+    return slug
+      .split('-')
+      .map((part) => (part.length > 0 ? part.charAt(0).toUpperCase() + part.slice(1) : part))
+      .join(' ');
+  }
+
+  // UR-004 items 1/2/3 — page 0 is the main dashboard (core commands); page 1..n is each
+  // standard-tier module's page. Every command shows its module icon (declared asset, else the
+  // project-wide default).
+  async function dashboard(page: number): Promise<PageData> {
+    const all = moduleRegistry.all();
+    const standard = all.filter((entry) => entry.manifest.tier === 'standard');
+    const pageTotal = 1 + standard.length;
+
+    if (page >= 1 && page <= standard.length) {
+      const entry = standard[page - 1];
+      if (entry !== undefined) {
+        const icon = moduleIcon(entry.manifest.name, entry.manifest.ui?.icon);
+        return {
+          title: titleCase(entry.manifest.name),
+          lines: entry.manifest.commands.map((command) => `${icon} \`/${command.name}\``),
+          pageTotal,
+          page,
+        };
+      }
+    }
+
     const lines: string[] = [];
-    for (const entry of moduleRegistry.all()) {
+    for (const entry of all) {
       if (entry.manifest.tier !== 'core') continue;
-      const icon = icons[entry.manifest.name] ?? '🔹';
+      const icon = moduleIcon(entry.manifest.name, entry.manifest.ui?.icon);
       for (const command of entry.manifest.commands) {
         lines.push(`${icon} \`/${command.name}\``);
       }
     }
-    return { title: 'Core Commands', lines };
+    return { title: 'Core Commands', lines, pageTotal, page: 0 };
   }
 
   // items 10/11/15 — /browse is marketplace discovery: only installable modules are offered.
@@ -261,7 +278,7 @@ export function createPageDataProvider(
     };
   }
 
-  return async (moduleId: string, guildId: string | null): Promise<PageData> => {
+  return async (moduleId: string, guildId: string | null, page = 0): Promise<PageData> => {
     switch (moduleId) {
       case 'health':
         return health();
@@ -272,7 +289,7 @@ export function createPageDataProvider(
       case 'permit':
         return permit();
       case 'dashboard':
-        return dashboard();
+        return dashboard(page);
       case 'browse':
         return marketplace();
       case 'modules':

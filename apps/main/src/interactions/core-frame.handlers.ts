@@ -79,11 +79,21 @@ export function registerCoreFrameHandlers(deps: {
 
   registry.register({
     customIdPrefix: NAV_PREFIX,
-    parse: (customId) => ({ page: customId.split(':')[3] }),
+    parse: (customId) => {
+      const parts = customId.split(':');
+      return { target: parts[3], page: parts[4] };
+    },
     execute: async (interaction, context) => {
-      const { page } = context as { page?: string };
-      const target = interaction.values?.[0] ?? page;
+      const { target, page } = context as { target?: string; page?: string };
       if (target === undefined) return;
+      // UR-004 item 3 - a page target navigates the dashboard to that page.
+      if (target === 'page') {
+        const n = Number(page);
+        await router.dispatch(asPageInteraction(interaction, 'dashboard'), {
+          page: Number.isFinite(n) ? n : 0,
+        });
+        return;
+      }
       const command = target === 'next' || target === 'prev' ? 'dashboard' : target;
       await router.dispatch(asPageInteraction(interaction, command));
     },

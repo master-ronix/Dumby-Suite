@@ -172,6 +172,16 @@ Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (rea
 
 ---
 
+### S5 — Dashboard: module icon fallback + standard module pages (UR-20261008-004)
+- **Status:** DONE · **Date:** 2026-10-08
+- **Landed:**
+  1. A project-wide default module icon fallback (`rendering/module-icons.ts`): a module's declared `ui.icon` wins; otherwise a default emoji keyed by module name, with a generic fallback. Not a per-page hardcode.
+  2. The main dashboard page lists the core commands; each standard-tier module carries its own page.
+  3. Next/Previous page move between page 0 (main) and the standard module pages; the first standard page is Hello World showing its `hello` command.
+- **Evidence:** the corpus gate suite is green (25/25).
+
+---
+
 ## Findings & Deviations Register
 
 1. **Application suite not run.** The environment has no installed dependencies, so the typecheck/lint/unit suite is pending on the real toolchain. The corpus gate suite (25/25) is green.
