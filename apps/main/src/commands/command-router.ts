@@ -206,9 +206,14 @@ export class CommandRouter {
         ).effects ?? [];
       for (const effect of effects) {
         const effectHandler = this.options.effectHandlers?.[effect.kind];
-        if (effectHandler !== undefined) {
-          await effectHandler(effect.payload, interaction);
+        if (effectHandler === undefined) {
+          // A declared effect with no handler is a wiring bug, not a handler bug: say so loudly
+          // rather than dropping the action silently, which is indistinguishable from success.
+          this.logger.warn('command-effect-unhandled', { command: name, kind: effect.kind });
+          continue;
         }
+        this.logger.info('command-effect-running', { command: name, kind: effect.kind });
+        await effectHandler(effect.payload, interaction);
       }
 
       const render = this.renderer.normalizeHandlerResult(declaredResponse, {
@@ -234,6 +239,7 @@ export class CommandRouter {
       this.logger.info('command-executed', {
         command: name,
         moduleId: def.moduleId,
+        effectCount: effects.length,
         userId: interaction.user.id,
         guildId: interaction.guildId,
         durationMs: Date.now() - start,

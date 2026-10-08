@@ -23,7 +23,7 @@ export const queueCommand = defineCommand({
     { name: 'command', description: 'The command name to queue an action for', type: 3, autocomplete: true },
     { name: 'alias', description: 'An alias name to add for the command', type: 3 },
     { name: 'new-name', description: 'A new name to rename the command to', type: 3 },
-    { name: 'disable', description: 'True to disable the command, false to re-enable it', type: 5 },
+    { name: 'disable', description: 'Set true to disable the command, false to re-enable', type: 5 },
     { name: 'action', description: 'The BCCM action type', type: 3 },
   ],
   execute: (interaction, context) => {
