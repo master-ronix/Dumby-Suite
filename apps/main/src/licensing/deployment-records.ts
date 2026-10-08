@@ -19,8 +19,8 @@ export type RollbackResult = 'none' | 'success' | 'failed';
 export interface DeploymentRecord {
   readonly recordId: string;
   readonly triggeredBy: DeploymentTrigger;
-  readonly devId: string;
-  readonly buildId: string;
+  readonly devId: number;
+  readonly buildId: number;
   readonly module: string;
   readonly version: string;
   readonly validationOutcome: OutcomeStatus;
@@ -35,8 +35,8 @@ export interface DeploymentRecord {
 export interface DeploymentRecordInput {
   readonly recordId: string;
   readonly triggeredBy: DeploymentTrigger;
-  readonly devId: string;
-  readonly buildId: string;
+  readonly devId: number;
+  readonly buildId: number;
   readonly module: string;
   readonly version: string;
   readonly validationOutcome: OutcomeStatus;
@@ -54,7 +54,7 @@ export class DuplicateDeploymentRecordError extends Error {
 }
 
 export class MissingDeploymentRecordError extends Error {
-  constructor(readonly buildId: string) {
+  constructor(readonly buildId: number) {
     super(
       `No deployment record exists for build "${buildId}" — a deployment that leaves no record did not happen`,
     );
@@ -120,7 +120,7 @@ export class AppendOnlyDeploymentRecords {
     return this.#records.find((record) => record.recordId === recordId);
   }
 
-  forBuild(buildId: string): DeploymentRecord | undefined {
+  forBuild(buildId: number): DeploymentRecord | undefined {
     return this.#records.find((record) => record.buildId === buildId);
   }
 
@@ -128,7 +128,7 @@ export class AppendOnlyDeploymentRecords {
     return this.#records.filter((record) => record.module === module);
   }
 
-  assertRecorded(buildId: string): DeploymentRecord {
+  assertRecorded(buildId: number): DeploymentRecord {
     const record = this.forBuild(buildId);
     if (record === undefined) {
       throw new MissingDeploymentRecordError(buildId);

@@ -119,10 +119,10 @@ async function writeAudit(
  * leaves no record did not happen. Failures here are logged, never fatal to the deploy itself.
  */
 async function recordDeployment(input: {
-  buildId: string;
+  buildId: number;
   module: string;
   version: string;
-  devId: string;
+  devId: number;
   promotionResult: PromotionResult;
 }): Promise<void> {
   try {
@@ -156,7 +156,7 @@ function safeModulePathSegment(moduleSlug: string, version: string): string {
 }
 
 interface DeveloperPrincipal {
-  readonly devId: string;
+  readonly devId: number;
   readonly keyId: string;
   readonly dev: Record<string, unknown>;
 }
@@ -378,7 +378,7 @@ app.get('/swastik/developers/me', async (request, reply) => {
 async function resolveModuleOwnership(
   store: ModuleOwnershipStore,
   slug: string,
-  devId: string,
+  devId: number,
 ): Promise<{ readonly allowed: boolean }> {
   const existing = await store.findBySlug(slug);
   const decision = decideModuleOwnership(existing, devId);
@@ -529,7 +529,7 @@ app.post('/swastik/modules/upload', async (request, reply) => {
 });
 
 app.get('/swastik/modules/:slug/builds/:buildId', async (request, reply) => {
-  const { slug, buildId } = request.params as { slug: string; buildId: string };
+  const { slug, buildId } = request.params as { slug: string; buildId: number };
   const principal = await authenticateDeveloper(
     request.headers.authorization,
     reply,
@@ -681,7 +681,7 @@ app.post('/internal/deploy', async (request, reply) => {
   } = body as {
     moduleSlug?: string;
     version?: string;
-    devId?: string;
+    devId?: number;
     manifest?: unknown;
     indexSource?: unknown;
   };

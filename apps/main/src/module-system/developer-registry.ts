@@ -24,13 +24,13 @@ export interface RegisteredDeveloper {
   readonly username: string;
 }
 
-const REGISTERED_DEVELOPERS: Readonly<Record<string, RegisteredDeveloper>> = {
-  // The first-party framework account (Quixotic Mnemonics) and its registered handle.
-  dev_first_party: { name: 'Quixotic Mnemonics', username: 'master_ronix' },
+const REGISTERED_DEVELOPERS: Readonly<Record<number, RegisteredDeveloper>> = {
+  // devId 1 — the first-party framework account (Quixotic Mnemonics) and its registered handle.
+  1: { name: 'Quixotic Mnemonics', username: 'master_ronix' },
 };
 
 export function resolveRegisteredDeveloper(
-  devId: string | undefined,
+  devId: number | undefined,
 ): RegisteredDeveloper | undefined {
   if (devId === undefined) return undefined;
   return REGISTERED_DEVELOPERS[devId];

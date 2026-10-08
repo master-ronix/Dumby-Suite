@@ -101,7 +101,7 @@ app.post<{ Body: { label: string; registeredBy: string; readable?: boolean } }>(
 );
 
 app.post<{
-  Body: { devId: string; label?: string; registeredBy: string; status?: 'pending' | 'active' };
+  Body: { devId: number; label?: string; registeredBy: string; status?: 'pending' | 'active' };
 }>('/credentials/issue-devid', async (request, reply) => {
   const { devId, label, registeredBy, status } = request.body;
   if (!devId || !registeredBy) {
@@ -162,7 +162,7 @@ app.post<{
 // §22.8: verification is delegated here and only here. A refusal names no field: the precise
 // cause goes to the operator log, and the caller receives the shared refusal body.
 app.post<{
-  Body: { keyId: string; secret: string; devId?: string };
+  Body: { keyId: string; secret: string; devId?: number };
 }>(
   '/credentials/verify',
   { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } },

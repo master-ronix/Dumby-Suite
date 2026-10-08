@@ -40,7 +40,7 @@ export interface VerifiedCredential {
 export interface IssueCredentialInput {
   readonly purpose: CredentialPurpose;
   /** Bound developer identity; persisted only as its Argon2id hash. */
-  readonly devId?: string;
+  readonly devId?: number;
   readonly status?: CredentialStatus;
 }
 
@@ -84,7 +84,7 @@ export class DeveloperCredentialService {
     const keyId = `key_${randomBytes(this.keyIdBytes).toString('hex')}`;
     const secret = randomBytes(this.secretBytes).toString('hex');
     const credentialHash = await this.hasher.hash(secret);
-    const devIdHash = input.devId === undefined ? null : await this.hasher.hash(input.devId);
+    const devIdHash = input.devId === undefined ? null : await this.hasher.hash(String(input.devId));
     const status: CredentialStatus = input.status ?? 'pending';
     const record: CredentialRecord = {
       keyId,
@@ -109,7 +109,7 @@ export class DeveloperCredentialService {
   async verify(input: {
     keyId: string;
     secret: string;
-    devId?: string;
+    devId?: number;
   }): Promise<VerifiedCredential> {
     const record = await this.store.findByKeyId(input.keyId);
     if (record === undefined) throw new CredentialVerificationError('unknown-key-id');
@@ -122,7 +122,7 @@ export class DeveloperCredentialService {
       if (record.devIdHash === null) {
         throw new CredentialVerificationError('credential-has-no-bound-identity');
       }
-      const devIdMatches = await this.hasher.verify(record.devIdHash, input.devId);
+      const devIdMatches = await this.hasher.verify(record.devIdHash, String(input.devId));
       if (!devIdMatches) throw new CredentialVerificationError('identity-mismatch');
     }
     if (record.status !== 'active') throw new CredentialVerificationError('pending-credential');

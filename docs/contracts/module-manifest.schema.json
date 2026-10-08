@@ -63,10 +63,12 @@
       ]
     },
     "devId": {
-      "type": "string"
+      "type": "integer",
+      "minimum": 1
     },
     "buildId": {
-      "type": "string"
+      "type": "integer",
+      "minimum": 1
     },
     "marketplaceCategory": {
       "enum": [

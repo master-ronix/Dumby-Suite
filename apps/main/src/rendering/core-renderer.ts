@@ -41,8 +41,8 @@ export interface RenderIdentity {
   accent?: string;
   /** ADR-012 — the module's declared banner URL. */
   banner?: string;
-  /** item 9 — the module build id shown in the footer. */
-  buildId?: string;
+  /** item 9 / UR-006 — the numeric module build id shown in the footer. */
+  buildId?: number;
   /** item 9 — the module developer username shown in the footer. */
   devUsername?: string;
 }
@@ -281,8 +281,8 @@ export class CoreRenderer {
     // item 9 - the footer: the module build id and the developer username.
     components.push(textDisplay(this.footerLine(input.buildId, input.devUsername, developer)));
 
-    // items 10/11/15/17 - page-declared action controls. Interactive components are NOT valid
-    // inside a Components v2 container; they are emitted as top-level action rows beside it.
+    // items 10/11/15/17 - page-declared action controls. They are emitted as top-level action
+    // rows, kept under the container and below the footer's divider (the Separator above).
     const topLevel: Component[] = [];
     const actions = input.actions;
     if (actions !== undefined) {
@@ -369,7 +369,7 @@ export class CoreRenderer {
   }
 
   private footerLine(
-    buildId: string | undefined,
+    buildId: number | undefined,
     devUsername: string | undefined,
     developer: string,
   ): string {

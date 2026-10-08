@@ -119,8 +119,10 @@ const commonManifestFields = {
   tier: moduleTierSchema,
   devGuildOnly: z.boolean().optional(),
   // Required by the contract: a manifest names the developer and the exact uploaded version.
-  devId: z.string().min(1),
-  buildId: z.string().min(1),
+  // Both are NUMERIC identifiers: `devId` is the registered developer number (§15.6); `buildId`
+  // is the build number Swastik assigns per accepted version (§15.8). They are not strings.
+  devId: z.number().int().positive(),
+  buildId: z.number().int().positive(),
   // Required by the contract, always. A `hardcoded: true` build must set it to 'private'.
   visibility: moduleVisibilitySchema,
   releaseStatus: moduleReleaseStatusSchema,

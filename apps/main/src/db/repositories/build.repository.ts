@@ -6,10 +6,10 @@ import type { Knex } from 'knex';
  * it before every import. A row missing any provenance column is not promotable and never loads.
  */
 export interface BuildProvenanceRecord {
-  readonly buildId: string;
+  readonly buildId: number;
   readonly moduleSlug: string;
   readonly version: string;
-  readonly devId: string;
+  readonly devId: number;
   readonly sourceArchiveHash: string | null;
   readonly artifactHash: string | null;
   readonly lockfileHash: string | null;
@@ -21,15 +21,15 @@ export interface BuildProvenanceRecord {
 }
 
 export interface BuildStore {
-  findByBuildId(buildId: string): Promise<BuildProvenanceRecord | undefined>;
+  findByBuildId(buildId: number): Promise<BuildProvenanceRecord | undefined>;
   setProvenance(record: BuildProvenanceRecord): Promise<boolean>;
 }
 
 interface BuildRow {
-  buildId: string;
+  buildId: number;
   moduleSlug: string;
   version: string;
-  devId: string;
+  devId: number;
   sourceArchiveHash: string | null;
   artifactHash: string | null;
   lockfileHash: string | null;
@@ -60,7 +60,7 @@ function fromRow(row: BuildRow): BuildProvenanceRecord {
 export class PostgresBuildStore implements BuildStore {
   constructor(private readonly knex: Knex) {}
 
-  async findByBuildId(buildId: string): Promise<BuildProvenanceRecord | undefined> {
+  async findByBuildId(buildId: number): Promise<BuildProvenanceRecord | undefined> {
     const row = await this.knex('builds')
       .select(
         'buildId',
@@ -107,7 +107,7 @@ export class InMemoryBuildStore implements BuildStore {
     return this;
   }
 
-  async findByBuildId(buildId: string): Promise<BuildProvenanceRecord | undefined> {
+  async findByBuildId(buildId: number): Promise<BuildProvenanceRecord | undefined> {
     return this.#rows.get(buildId);
   }
 

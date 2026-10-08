@@ -16,7 +16,7 @@ import {
  */
 export interface DeploymentRecordStore {
   append(record: DeploymentRecord): Promise<void>;
-  forBuild(buildId: string): Promise<DeploymentRecord | undefined>;
+  forBuild(buildId: number): Promise<DeploymentRecord | undefined>;
   getAll(): Promise<readonly DeploymentRecord[]>;
 }
 
@@ -25,8 +25,8 @@ export interface DeploymentRecordRow {
   triggerType: string;
   initiatedBy: string;
   oidcRepositoryIdentity: string | null;
-  devId: string;
-  buildId: string;
+  devId: number;
+  buildId: number;
   module: string;
   version: string;
   validationOutcome: string;
@@ -88,7 +88,7 @@ export class PostgresDeploymentRecordStore implements DeploymentRecordStore {
     await this.knex('deployment_records').insert(deploymentRecordToRow(record));
   }
 
-  async forBuild(buildId: string): Promise<DeploymentRecord | undefined> {
+  async forBuild(buildId: number): Promise<DeploymentRecord | undefined> {
     const row = await this.knex('deployment_records').where({ buildId }).first();
     return row === undefined ? undefined : deploymentRecordFromRow(row as DeploymentRecordRow);
   }
@@ -107,7 +107,7 @@ export class InMemoryDeploymentRecordStore implements DeploymentRecordStore {
     this.records.append(record);
   }
 
-  async forBuild(buildId: string): Promise<DeploymentRecord | undefined> {
+  async forBuild(buildId: number): Promise<DeploymentRecord | undefined> {
     return this.records.forBuild(buildId);
   }
 

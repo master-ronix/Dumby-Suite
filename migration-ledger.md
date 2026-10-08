@@ -222,6 +222,15 @@ Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (rea
 
 ---
 
+### F-8 — devId / buildId typed as strings (FIXED — 2026-10-08)
+- **Work order:** UR-20261008-007. **ADR:** ADR-016.
+- **Fault:** the registered developer id and the build id are numbers, but both were typed as strings across the manifest schema, the eight module manifests, the DB tables (`developers`, `builds`, `licenses`, deployment records) and the provenance/credential code.
+- **Fix:** `devId` and `buildId` are numbers end-to-end. The manifest schema requires positive integers; the manifests carry numeric ids (devId 1 = first-party; a per-module build number); the DB migrations use integer columns; the render identity, the account registry (keyed by numeric `devId`) and the footer carry the numeric `buildId`. The credential layer stringifies the number only for the Argon2id hash.
+- **Preserved:** the page's action controls remain top-level, under the container and below the footer's divider.
+- **Verification:** gate suite 25/25; touched files type-check against real typings.
+
+---
+
 ## Findings & Deviations Register
 
 1. **Application suite not run.** The environment has no installed dependencies, so the typecheck/lint/unit suite is pending on the real toolchain. The corpus gate suite (25/25) is green.

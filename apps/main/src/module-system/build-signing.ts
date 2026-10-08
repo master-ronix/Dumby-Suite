@@ -33,7 +33,7 @@ export interface BuildProvenanceTuple {
   readonly moduleSlug: string;
   readonly version: string;
   readonly devId: string;
-  readonly buildId: string;
+  readonly buildId: number;
   readonly sourceArchiveHash: string;
   readonly artifactHash: string;
   readonly gateResultsHash: string;
@@ -48,7 +48,7 @@ export interface SignedProvenance {
 
 /** The on-disk sidecar that ties a promoted directory to a `builds` row (finding #22). */
 export interface BuildProvenanceSidecar extends SignedProvenance {
-  readonly buildId: string;
+  readonly buildId: number;
   readonly moduleSlug: string;
   readonly version: string;
   readonly devId: string;

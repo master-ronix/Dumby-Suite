@@ -69,7 +69,7 @@ export interface AdminRoutesDeps {
   operatorAllowList?: readonly string[];
   /** §22.5: verifies a presented Power Engine operator credential (delegated to the Credentials Service). */
   operatorVerifier?: {
-    verify(input: { keyId: string; secret: string; devId?: string }): Promise<unknown>;
+    verify(input: { keyId: string; secret: string; devId?: number }): Promise<unknown>;
   };
   /** §15.8: activates a developer credential on approval (delegated to the Credentials Service). */
   credentialActivator?: { activate(keyId: string): Promise<boolean> };
@@ -254,7 +254,7 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
     async (req: FastifyRequest, reply: FastifyReply) => {
       const body = extractRequest(req);
       const { devId } = (req.body ?? {}) as {
-        devId?: string;
+        devId?: number;
       };
       const outcome = await deps.dispatcher.dispatch('suspendDeveloper', body, async () => {
         await deps.db
@@ -275,7 +275,7 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
     reply: FastifyReply,
     decision: 'approve' | 'decline',
   ): Promise<FastifyReply> => {
-    const { devId } = req.params as { devId: string };
+    const { devId } = req.params as { devId: number };
     const body = extractRequest(req);
     const presented = parseDeveloperCredential(req.headers.authorization);
     if (!presented || deps.operatorVerifier === undefined) {

@@ -285,6 +285,16 @@ authority_scope: [history]
 
 ---
 
+### v5.7.0 — Numeric Developer & Build Identifiers (State B) — 2026-10-08
+
+- 2026-10-08 · migration-prompt 5.2.0 · item S8 · verdict=PUSHED
+- Work order: UR-20261008-007. ADR: ADR-016.
+- Corrected: `devId` and `buildId` were modelled as strings across the manifest schema, the manifests, the DB tables and the provenance/credential code. They are numbers end-to-end now — the manifest schema requires positive integers; the `developers`/`builds`/`licenses`/deployment-record tables carry integer columns; the render identity, the account registry (keyed by numeric `devId`) and the footer carry the numeric `buildId`. The credential layer stringifies the number only where Argon2id hashes a secret.
+- Controls placement (item 1 of UR-005) preserved: the action rows stay top-level, under the container and below the footer's divider.
+- Verification: documentation gate suite 25/25 green; the touched files type-check against real typings.
+
+---
+
 ### 4. Cross-Version Defect Lifecycle
 
 <!-- One row per introduced defect: id · introduced · status · resolution. -->
