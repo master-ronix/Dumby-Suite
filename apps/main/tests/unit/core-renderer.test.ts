@@ -50,9 +50,11 @@ describe('CoreRenderer grammar', () => {
   test('the title carries the module identity and the attribution occupies its own line', () => {
     const message = renderer.render({ surface: 'Health', summary: 'ok' });
 
-    const title = textContents(message).find((content) => content.startsWith('Dumby | Health'));
+    const title = textContents(message).find((content) =>
+      content.startsWith('**Dumby Suite | Health**'),
+    );
     expect(title).toBeDefined();
-    expect(title).toContain('-# Developed by Quixotic Mnemonics v5.0.0');
+    expect(title).toContain('-# Developed by Quixotic Mnemonics');
   });
 
   test('defaults to Mode D for direct invocations', () => {
@@ -104,8 +106,8 @@ describe('CoreRenderer grammar', () => {
   test('mode changes density, never the reported surface', () => {
     const d = textContents(renderer.render({ surface: 'Health', mode: 'D', summary: 'ok' }));
     const c = textContents(renderer.render({ surface: 'Health', mode: 'C', summary: 'ok' }));
-    expect(d.some((content) => content.includes('Dumby | Health'))).toBe(true);
-    expect(c.some((content) => content.includes('Dumby | Health'))).toBe(true);
+    expect(d.some((content) => content.includes('Dumby Suite | Health'))).toBe(true);
+    expect(c.some((content) => content.includes('Dumby Suite | Health'))).toBe(true);
   });
 
   test('rejects a descriptor with no sections and no summary', () => {
@@ -125,7 +127,7 @@ describe('CoreRenderer buffer embed', () => {
 
     const contents = textContents(message);
     expect(frame(message).accent_color).toBe(0xffca6d);
-    expect(contents.some((content) => content.startsWith('Dumby | Health'))).toBe(true);
+    expect(contents.some((content) => content.startsWith('**Dumby Suite | Health**'))).toBe(true);
     expect(contents.some((content) => content.includes('Preparing Health'))).toBe(true);
   });
 

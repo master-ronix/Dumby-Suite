@@ -10,7 +10,7 @@ const manifestPath = fileURLToPath(
   new URL('../../../../packages/modules/hello-world/manifest.json', import.meta.url),
 );
 const identity = {
-  surface: 'Dumby | Hello World',
+  surface: 'Hello World',
   developer: 'Quixotic Mnemonics',
   version: '1.0.0',
 };

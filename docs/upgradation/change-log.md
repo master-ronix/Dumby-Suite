@@ -231,6 +231,15 @@ authority_scope: [history]
 
 ---
 
+### v5.3.0 — Deploy-blocking Typecheck Fix (UR-20261008-004) — 2026-10-08
+
+- 2026-10-08 · fix · verdict=DONE
+- The UR-004 pagination change passed a third argument to `pageDataProvider` while its option type still declared two parameters; `tsc` failed at both call sites in `command-router.ts`. The option signature now accepts `page?: number`.
+- Stale unit-test expectations from the grammar change (title/footer) were corrected in the same pass.
+- Note: the local documentation gates do not run `tsc`; the app typecheck runs on the real toolchain.
+
+---
+
 ### 4. Cross-Version Defect Lifecycle
 
 <!-- One row per introduced defect: id · introduced · status · resolution. -->

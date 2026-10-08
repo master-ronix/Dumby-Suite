@@ -182,6 +182,12 @@ Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (rea
 
 ---
 
+### F-4 — UR-004 pageDataProvider arity mismatch (FIXED — 2026-10-08)
+- **Status:** resolved. The UR-004 pagination change passed a third argument (`page`) to `pageDataProvider`, but the `CommandRouterOptions` signature still declared two parameters — `TS2554` at both call sites, which failed the `@workspace/dumby` Docker typecheck. The option signature now accepts `page?: number`; the stale test expectations left by the grammar change (title/footer) were updated in the same pass.
+- **Process lesson:** the local documentation gates do not run `tsc`; the app typecheck is a separate gate that must be run on the real toolchain before deploy.
+
+---
+
 ## Findings & Deviations Register
 
 1. **Application suite not run.** The environment has no installed dependencies, so the typecheck/lint/unit suite is pending on the real toolchain. The corpus gate suite (25/25) is green.

@@ -24,7 +24,7 @@ const CASES: Array<{ slug: string; command: string; declared: readonly CommandDe
 ];
 
 function identity(slug: string) {
-  return { surface: `Dumby | ${slug}`, developer: 'Quixotic Mnemonics', version: '1.0.0' };
+  return { surface: slug, developer: 'Quixotic Mnemonics', version: '1.0.0' };
 }
 
 describe('MR-2…MR-8 — Core-tier modules (single-command each)', () => {

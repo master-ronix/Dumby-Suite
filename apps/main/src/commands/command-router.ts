@@ -87,6 +87,8 @@ export interface CommandRouterOptions {
   pageDataProvider?: (
     moduleId: string,
     guildId: string | null,
+    /** UR-004 — the dashboard page index (0 = main; 1..n = the standard module pages). */
+    page?: number,
   ) => Promise<Readonly<Record<string, unknown>>>;
   /**
    * §6.7 — performs the side effects a handler declares. Keyed by effect kind; an undeclared kind

@@ -148,18 +148,18 @@ describe('components-v2 builders', () => {
     );
   });
 
-  test('createTitleBlock renders developed-by attribution with optional version', () => {
+  test('createTitleBlock renders a bold Dumby Suite title and the developer line', () => {
     expect(createTitleBlock('Dashboard')).toStrictEqual(
-      textDisplay('Dumby | Dashboard\n-# Developed by Quixotic Mnemonics'),
+      textDisplay('**Dumby Suite | Dashboard**\n-# Developed by Quixotic Mnemonics'),
     );
-    expect(createTitleBlock('Health', 'Quixotic Mnemonics', '1.0.0')).toStrictEqual(
-      textDisplay('Dumby | Health\n-# Developed by Quixotic Mnemonics v1.0.0'),
+    expect(createTitleBlock('Health', 'Quixotic Mnemonics')).toStrictEqual(
+      textDisplay('**Dumby Suite | Health**\n-# Developed by Quixotic Mnemonics'),
     );
   });
 
   test('createMarketplaceTitleBlock names the surface with framework attribution', () => {
     expect(createMarketplaceTitleBlock()).toStrictEqual(
-      textDisplay('Dumby | Marketplace\n-# Developed by Quixotic Mnemonics'),
+      textDisplay('**Dumby Suite | Marketplace**\n-# Developed by Quixotic Mnemonics'),
     );
   });
 
