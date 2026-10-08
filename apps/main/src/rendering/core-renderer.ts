@@ -1,6 +1,7 @@
 import {
   actionRow,
   buildComponentsV2,
+  button,
   container,
   createBannerMediaGallery,
   createTitleBlock,
@@ -62,6 +63,16 @@ export interface ModeControl {
   readonly customIds: Readonly<Record<RenderMode, string>>;
 }
 
+/** item 11/15/17 — a page-declared action button (info, uninstall, paging, search). */
+export interface PageActionButton {
+  readonly customId: string;
+  readonly label: string;
+  readonly style?: 1 | 2 | 3 | 4;
+}
+
+/** item 17 — one action row; Discord shows up to five buttons per row. */
+export type PageActionRow = readonly PageActionButton[];
+
 export interface RenderDescriptor extends RenderIdentity {
   mode?: RenderMode;
   sections?: readonly string[];
@@ -76,6 +87,8 @@ export interface RenderDescriptor extends RenderIdentity {
   navigation?: NavigationControl;
   /** §1.2 — the footer density control. */
   modeControl?: ModeControl;
+  /** item 11/15/17 — page-declared action buttons rendered below the footer. */
+  actions?: readonly PageActionRow[];
 }
 
 /**
@@ -253,6 +266,15 @@ export class CoreRenderer {
     // ADR-013 - the footer grammar: module pages show `<name> [<id>]` then attribution; the
     // D/M/C density control is removed as a global utility (density is per page).
     components.push(textDisplay(this.footerLine(input.moduleId, input.displayName, developer)));
+
+    // item 11/15/17 - page-declared action buttons (info / uninstall / paging / search).
+    const actions = input.actions;
+    if (actions !== undefined) {
+      for (const row of actions) {
+        if (row.length === 0) continue;
+        components.push(actionRow(row.map((b) => button(b.customId, b.label, b.style ?? 2))));
+      }
+    }
 
     // §11.3 - the navigation dropdown sits below the footer, and is omitted in Mode C.
     const navigation = input.navigation;

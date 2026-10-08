@@ -202,6 +202,17 @@ authority_scope: [history]
 
 ---
 
+### v5.3.0 — Change-Set Migration, Interactive Tranche (State B) — 2026-10-08
+
+- 2026-10-08 · migration-prompt 5.2.0 · items M10/M12/M14/M16 · verdict=PARTIAL→LANDED
+- Work order recorded as UR-20261008-002 (renderer/dashboard/module change set).
+- Landed: page-declared action buttons in the renderer; /modules info+uninstall and paging controls; /browse search and info controls; the interaction registry handles the `dumby:act:` prefix.
+- Landed: the default module banner asset wired as the served default.
+- Tracked: the /browse search text-input modal; the ephemeral info embed; the M12 autocomplete source.
+- Verification: documentation gate suite 25/25 green; application typecheck/lint/unit pending on the real toolchain.
+
+---
+
 ### 4. Cross-Version Defect Lifecycle
 
 <!-- One row per introduced defect: id · introduced · status · resolution. -->

@@ -14,6 +14,7 @@ import {
   type NavigationControl,
   type NavigationOption,
   type NoticeReasonCode,
+  type PageActionRow,
   type RenderIdentity,
   type RenderMode,
   derivePageSections,
@@ -219,6 +220,8 @@ export class CommandRouter {
       // item 4 / ADR-013 — density is a per-page declaration; a page's density wins.
       const declaredDensityRaw = (declaredResponse as { data?: { density?: unknown } } | null)?.data
         ?.density;
+      const declaredPageData = (declaredResponse as { data?: Readonly<Record<string, unknown>> } | null)
+        ?.data;
       const declaredDensity =
         declaredDensityRaw === 'D' || declaredDensityRaw === 'M' || declaredDensityRaw === 'C'
           ? declaredDensityRaw
@@ -236,6 +239,10 @@ export class CommandRouter {
         // no dropdown grammar.
         ...(name === 'dashboard'
           ? { navigation: this.navigationControl(name, interaction.user.id) }
+          : {}),
+        // items 11/15/17 - page-declared action controls (info / uninstall / paging / search).
+        ...(name === 'modules' || name === 'browse'
+          ? { actions: this.pageActions(name, declaredPageData, interaction.user.id) }
           : {}),
       });
       // A page whose data the effects just changed is re-derived, so the render shows the result
@@ -501,6 +508,46 @@ export class CommandRouter {
       };
     });
     return { customId: `dumby:nav:${invokerId}:${current}`, options };
+  }
+
+  /**
+   * items 11/15/17 - the page-declared action controls. /modules carries a per-module info +
+   * uninstall pair and a paging row; /browse carries a search control and a per-module info
+   * control. Every customId is minted `dumby:act:<invoker>:<action>:<target>` so the interaction
+   * registry's invoker re-check holds.
+   */
+  private pageActions(
+    commandName: string,
+    data: Readonly<Record<string, unknown>> | undefined,
+    invokerId: string,
+  ): readonly PageActionRow[] {
+    const raw = Array.isArray(data?.['modules']) ? (data['modules'] as unknown[]) : [];
+    const ids = raw
+      .map((m) => (typeof m === 'object' && m !== null ? (m as { id?: unknown }).id : undefined))
+      .filter((id): id is string => typeof id === 'string');
+    const rows: PageActionRow[] = [];
+    const mint = (action: string, target: string): string =>
+      `dumby:act:${invokerId}:${action}:${target}`;
+
+    if (commandName === 'modules') {
+      for (const id of ids) {
+        rows.push([
+          { customId: mint('info', id), label: 'info', style: 2 },
+          { customId: mint('uninstall', id), label: 'uninstall/disable', style: 4 },
+        ]);
+      }
+      rows.push([
+        { customId: mint('next', 'modules'), label: 'next page', style: 2 },
+        { customId: mint('prev', 'modules'), label: 'previous page', style: 2 },
+        { customId: mint('first', 'modules'), label: 'first page', style: 2 },
+      ]);
+    } else if (commandName === 'browse') {
+      rows.push([{ customId: mint('search', 'browse'), label: '🔍 search', style: 2 }]);
+      for (const id of ids) {
+        rows.push([{ customId: mint('info', id), label: `info: ${id}`, style: 2 }]);
+      }
+    }
+    return rows;
   }
 
   /** §1.2 — one minted customId per density mode, each carrying the page it applies to. */

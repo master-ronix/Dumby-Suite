@@ -230,7 +230,11 @@ export function createPageDataProvider(
         lines.push(`${entry.manifest.name} — ${entry.manifest.description}`);
       }
     }
-    return { title: 'Marketplace', lines };
+    return {
+      title: 'Marketplace',
+      lines,
+      modules: installable.map((entry) => ({ id: entry.manifest.name })),
+    };
   }
 
   // item 17 — /modules lists only installed/enabled modules.
@@ -239,7 +243,11 @@ export function createPageDataProvider(
       .all()
       .map((entry) => `${entry.manifest.name} (${entry.manifest.tier}) — ${entry.manifest.description}`);
     lines.push('', 'Use the info and uninstall buttons beside a module to manage it.');
-    return { title: 'Installed Modules', lines };
+    return {
+      title: 'Installed Modules',
+      lines,
+      modules: moduleRegistry.all().map((entry) => ({ id: entry.manifest.name })),
+    };
   }
 
   return async (moduleId: string, guildId: string | null): Promise<PageData> => {

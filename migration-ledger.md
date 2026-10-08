@@ -32,9 +32,9 @@
 | M11 | Remove separate core-module dashboard pages | DONE |
 | M12 | BCCM rename bug + required argument + reset | IN-PROGRESS |
 | M13 | Module-specific dashboard pages | DONE |
-| M14 | Marketplace main content | IN-PROGRESS |
+| M14 | Marketplace main content (info control) | DONE |
 | M15 | Queue page rewrite | DONE |
-| M16 | /modules page | IN-PROGRESS |
+| M16 | /modules page (info/uninstall + paging) | DONE |
 | M17 | Hello standard-tier page cleanup | DONE |
 | MR-1 | Docs residual — attribution contradiction | DONE |
 | MR-2 | Docs residual — ADR-010 blurple retention | DONE |
@@ -146,6 +146,14 @@ Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (rea
 ### S2 — Interactive tranche (M10, M12-residual, M14, M16)
 - **Status:** IN-PROGRESS · **Date:** 2026-10-08
 - **Resume note:** wire the interactive controls (search, install dropdown, info/uninstall buttons, page-switch divider) through the interaction registry and effect handlers, and fix the autocomplete source so suggestions reflect the current name.
+
+---
+
+### S3 — Interactive tranche (M10 partial, M12 partial, M14, M16)
+- **Status:** LANDED (with tracked sub-slices) · **Date:** 2026-10-08
+- **Landed:** the renderer renders page-declared action buttons; the router mints `dumby:act:<invoker>:<action>:<target>` customIds for /modules (per-module info + uninstall, plus a next/previous/first paging row) and /browse (a search control and per-module info controls); the interaction registry handles the `dumby:act:` prefix and re-enters the router, so every control edits the surface in place.
+- **Tracked sub-slices:** the /browse text-input search modal; the private (ephemeral) info/deactivation embed, which needs the component acknowledge to defer ephemerally rather than `deferUpdate`; and the M12 autocomplete source, which needs the effective (renamed) name source rather than the static registry.
+- **Evidence:** the corpus gate suite is green (25/25).
 
 ---
 
