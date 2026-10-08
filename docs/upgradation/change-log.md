@@ -248,11 +248,12 @@ authority_scope: [history]
 
 ---
 
-### v5.3.0 — Dashboard MODULE_ERROR: action-row placement (State B) — 2026-10-08
+### v5.4.0 — Dashboard MODULE_ERROR: duplicate custom_id (State B) — 2026-10-08
 
-- 2026-10-08 · fix · verdict=DONE
-- Root cause: the page's action row was emitted inside the Components v2 container; interactive components are not valid there, so Discord rejected the payload and the router surfaced `MODULE_ERROR` (the fallback then hid the buttons). Fixed by emitting action rows as top-level components beside the container.
-- The project-wide default module icon is now applied at every module-icon surface (dashboard, permit, marketplace, installed modules).
+- 2026-10-08 · fix · verdict=PUSHED (pending log confirmation)
+- Root cause (live log): `COMPONENT_CUSTOM_ID_DUPLICATED`. The dashboard nav buttons were keyed on their target page, so on page 0 Home and Previous both minted `…:page:0`. Fixed by keying each button on its role (`home` / `next:<n>` / `prev:<n>`) and disabling a control with no target; the nav handler now reads the role.
+- The project-wide default module icon is applied at every module-icon surface (dashboard, permit, marketplace, installed modules).
+- F-5 is not closed until a dashboard open logs no `command-render-fallback` line.
 
 ---
 

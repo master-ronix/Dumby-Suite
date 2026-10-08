@@ -86,16 +86,16 @@ export function registerCoreFrameHandlers(deps: {
     execute: async (interaction, context) => {
       const { target, page } = context as { target?: string; page?: string };
       if (target === undefined) return;
-      // UR-004 item 3 - a page target navigates the dashboard to that page.
-      if (target === 'page') {
-        const n = Number(page);
+      // F-5 — numeric navigation (home / next / prev, and the legacy `page`) carries the target
+      // page index in the fourth segment; any other target is a page name from the dropdown.
+      if (target === 'home' || target === 'next' || target === 'prev' || target === 'page') {
+        const n = target === 'home' ? 0 : Number(page);
         await router.dispatch(asPageInteraction(interaction, 'dashboard'), {
           page: Number.isFinite(n) ? n : 0,
         });
         return;
       }
-      const command = target === 'next' || target === 'prev' ? 'dashboard' : target;
-      await router.dispatch(asPageInteraction(interaction, command));
+      await router.dispatch(asPageInteraction(interaction, target));
     },
   });
 }

@@ -188,13 +188,16 @@ Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (rea
 
 ---
 
-### F-5 — Dashboard runtime MODULE_ERROR (RESOLVED — 2026-10-08)
-- **Root cause:** the page's action row (Home / Next / Previous buttons) was emitted **inside the Components v2 container**. Interactive components are not valid inside a container — Discord rejected the payload (`Invalid Form Body`), which the router surfaced as `MODULE_ERROR`; the render fallback then dropped the controls, which is why the page showed without its buttons.
-- **Fix:** interactive action rows are now emitted as **top-level components beside the container** (`frame(components, accent, topLevel)`), the documented Components v2 pattern.
-- **Also:** the project-wide default module icon (`rendering/module-icons.ts`) is now applied at every module-icon surface — the dashboard list, the permit command list, the marketplace, and the installed-modules list — so no module renders without an icon.
+### F-5 — Dashboard runtime MODULE_ERROR (OPEN — fix pushed, pending a clean dashboard open)
+- **Symptom:** the dashboard renders its buffer, then the formal `MODULE_ERROR` notice.
+- **Root cause (from the live log):** Discord rejects the payload with
+  `COMPONENT_CUSTOM_ID_DUPLICATED`. The dashboard's action row was keyed on each button's **target page**, so on page 0 Home (`…:page:0`) and Previous (`…:page:0`) shared a `custom_id`. The action-row *placement* was never the fault.
+- **Fix (pushed):** the button role now forms part of the id — `dumby:nav:<inv>:home:0`, `:next:<n>`, `:prev:<n>` — and a control with no target (Previous on page 0, Next on the last page) is **disabled** rather than colliding. The nav handler was updated to read the role + page index.
+- **Status discipline:** not closed. F-5 stays open until a dashboard open produces **no** `command-render-fallback` line in the log.
+- **Note:** the earlier "action row inside the container" diagnosis was wrong; the action row is now top-level (harmless, and the documented placement), but that change did not address this fault.
 
-#### F-5a — diagnostics + render fallback (interim)
-- The router's `catch` now writes the error text and stack into the log message; the final render retries once without the action controls if the payload is rejected. Both remain in place as diagnostics/safety.
+#### F-5a — diagnostics + render fallback
+- The router's `catch` writes the error text and stack into the log message; the final render retries once without the action controls if the payload is rejected. Both remain in place as diagnostics/safety.
 
 ---
 

@@ -572,12 +572,17 @@ export class CommandRouter {
     // page; Next/Previous move between the main page (page 0) and the standard module pages.
     if (commandName === 'dashboard') {
       const total = typeof data?.['pageTotal'] === 'number' ? (data['pageTotal'] as number) : 1;
-      const nav = (n: number): string => `dumby:nav:${invokerId}:page:${n}`;
+      const last = Math.max(total - 1, 0);
+      // F-5 — each control's customId must be unique within the message. Keying every button on
+      // its target page made Home and Previous collide on page 0 (both `...:page:0`), which Discord
+      // rejects as COMPONENT_CUSTOM_ID_DUPLICATED. The role now forms part of the id, and a control
+      // with no target (Previous on page 0, Next on the last page) is disabled instead of colliding.
+      const nav = (role: string, n: number): string => `dumby:nav:${invokerId}:${role}:${n}`;
       return [
         [
-          { customId: nav(0), label: '⌂', style: 2 },
-          { customId: nav(Math.min(page + 1, total - 1)), label: 'next page', style: 2 },
-          { customId: nav(Math.max(page - 1, 0)), label: 'previous page', style: 2 },
+          { customId: nav('home', 0), label: '⌂', style: 2, disabled: page === 0 },
+          { customId: nav('next', Math.min(page + 1, last)), label: 'next page', style: 2, disabled: page >= last },
+          { customId: nav('prev', Math.max(page - 1, 0)), label: 'previous page', style: 2, disabled: page <= 0 },
         ],
       ];
     }
