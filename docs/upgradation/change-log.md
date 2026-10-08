@@ -248,6 +248,14 @@ authority_scope: [history]
 
 ---
 
+### v5.3.0 — Dashboard MODULE_ERROR: action-row placement (State B) — 2026-10-08
+
+- 2026-10-08 · fix · verdict=DONE
+- Root cause: the page's action row was emitted inside the Components v2 container; interactive components are not valid there, so Discord rejected the payload and the router surfaced `MODULE_ERROR` (the fallback then hid the buttons). Fixed by emitting action rows as top-level components beside the container.
+- The project-wide default module icon is now applied at every module-icon surface (dashboard, permit, marketplace, installed modules).
+
+---
+
 ### 4. Cross-Version Defect Lifecycle
 
 <!-- One row per introduced defect: id · introduced · status · resolution. -->

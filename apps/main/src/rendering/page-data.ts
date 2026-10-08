@@ -189,9 +189,10 @@ export function createPageDataProvider(
   async function permit(): Promise<PageData> {
     const lines: string[] = ['Choose a module command to manage grant access:', ''];
     for (const entry of moduleRegistry.all()) {
+      const icon = moduleIcon(entry.manifest.name, entry.manifest.ui?.icon);
       for (const command of entry.manifest.commands) {
         lines.push(
-          `📦 /${command.name}   ${entry.manifest.name} v${entry.manifest.version} — ${command.description}`,
+          `${icon} /${command.name}   ${entry.manifest.name} v${entry.manifest.version} — ${command.description}`,
         );
       }
     }
@@ -255,7 +256,8 @@ export function createPageDataProvider(
       lines.push('No marketplace modules are available to install.');
     } else {
       for (const entry of installable) {
-        lines.push(`${entry.manifest.name} — ${entry.manifest.description}`);
+        const icon = moduleIcon(entry.manifest.name, entry.manifest.ui?.icon);
+        lines.push(`${icon} ${entry.manifest.name} — ${entry.manifest.description}`);
       }
     }
     return {
@@ -269,7 +271,10 @@ export function createPageDataProvider(
   async function installedModules(): Promise<PageData> {
     const lines = moduleRegistry
       .all()
-      .map((entry) => `${entry.manifest.name} (${entry.manifest.tier}) — ${entry.manifest.description}`);
+      .map((entry) => {
+        const icon = moduleIcon(entry.manifest.name, entry.manifest.ui?.icon);
+        return `${icon} ${entry.manifest.name} (${entry.manifest.tier}) — ${entry.manifest.description}`;
+      });
     lines.push('', 'Use the info and uninstall buttons beside a module to manage it.');
     return {
       title: 'Installed Modules',

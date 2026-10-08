@@ -188,12 +188,13 @@ Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (rea
 
 ---
 
-### F-5 — Dashboard runtime MODULE_ERROR: diagnostics + render fallback (IN PROGRESS — 2026-10-08)
-- **Symptom:** the dashboard renders its buffer, then the formal `MODULE_ERROR` notice. The deploy is live; the error text was not retrievable from the log tool (it returns only the log message name, not structured fields).
-- **Action taken:**
-  1. The router's `catch` now writes the error text and stack **into the log message** (`command-execution-error: <message>`), so the log tool can read the cause.
-  2. The final render now goes through a fallback: if the payload is rejected, the action controls are dropped and the render is retried once, so the page stays usable while the cause is captured.
-- **Open:** the root cause is not yet identified; the next deploy's log line (`command-execution-error: …`) will name it.
+### F-5 — Dashboard runtime MODULE_ERROR (RESOLVED — 2026-10-08)
+- **Root cause:** the page's action row (Home / Next / Previous buttons) was emitted **inside the Components v2 container**. Interactive components are not valid inside a container — Discord rejected the payload (`Invalid Form Body`), which the router surfaced as `MODULE_ERROR`; the render fallback then dropped the controls, which is why the page showed without its buttons.
+- **Fix:** interactive action rows are now emitted as **top-level components beside the container** (`frame(components, accent, topLevel)`), the documented Components v2 pattern.
+- **Also:** the project-wide default module icon (`rendering/module-icons.ts`) is now applied at every module-icon surface — the dashboard list, the permit command list, the marketplace, and the installed-modules list — so no module renders without an icon.
+
+#### F-5a — diagnostics + render fallback (interim)
+- The router's `catch` now writes the error text and stack into the log message; the final render retries once without the action controls if the payload is rejected. Both remain in place as diagnostics/safety.
 
 ---
 

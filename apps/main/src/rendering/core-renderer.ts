@@ -277,16 +277,18 @@ export class CoreRenderer {
     // item 9 - the footer: the module build id and the developer username.
     components.push(textDisplay(this.footerLine(input.buildId, input.devUsername, developer)));
 
-    // item 11/15/17 - page-declared action buttons (info / uninstall / paging / search).
+    // items 10/11/15/17 - page-declared action controls. Interactive components are NOT valid
+    // inside a Components v2 container; they are emitted as top-level action rows beside it.
+    const topLevel: Component[] = [];
     const actions = input.actions;
     if (actions !== undefined) {
       for (const row of actions) {
         if (row.length === 0) continue;
-        components.push(actionRow(row.map((b) => button(b.customId, b.label, b.style ?? 2))));
+        topLevel.push(actionRow(row.map((b) => button(b.customId, b.label, b.style ?? 2))));
       }
     }
 
-    return this.frame(components, input.accent);
+    return this.frame(components, input.accent, topLevel);
   }
 
   renderNotice(input: FormalNoticeDescriptor): ComponentsV2Message {
@@ -352,9 +354,10 @@ export class CoreRenderer {
   private frame(
     components: Parameters<typeof container>[0],
     accent: string | undefined = undefined,
+    topLevel: Component[] = [],
   ): ComponentsV2Message {
     const color = accent !== undefined ? Number.parseInt(accent.replace('#', ''), 16) : DEFAULT_ACCENT_COLOR;
-    return buildComponentsV2([container(components, color)]);
+    return buildComponentsV2([container(components, color), ...topLevel]);
   }
 
   private footerLine(
