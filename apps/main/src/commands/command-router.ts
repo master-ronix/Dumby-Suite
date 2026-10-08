@@ -233,15 +233,14 @@ export class CommandRouter {
         ...(def.identity?.displayName !== undefined ? { displayName: def.identity.displayName } : {}),
         ...(def.identity?.accent !== undefined ? { accent: def.identity.accent } : {}),
         ...(def.identity?.banner !== undefined ? { banner: def.identity.banner } : {}),
+        ...(def.identity?.buildId !== undefined ? { buildId: def.identity.buildId } : {}),
+        ...(def.identity?.devUsername !== undefined
+          ? { devUsername: def.identity.devUsername }
+          : {}),
         ...(options.mode !== undefined ? { mode: options.mode } : {}),
         ...(declaredDensity !== undefined ? { mode: declaredDensity } : {}),
-        // ADR-013 - the page-switch dropdown is a dashboard-only property; module pages impose
-        // no dropdown grammar.
-        ...(name === 'dashboard'
-          ? { navigation: this.navigationControl(name, interaction.user.id) }
-          : {}),
-        // items 11/15/17 - page-declared action controls (info / uninstall / paging / search).
-        ...(name === 'modules' || name === 'browse'
+        // items 10/11/15/17 - page-declared action controls; the dashboard's nav is Home/Next/Prev.
+        ...(name === 'dashboard' || name === 'modules' || name === 'browse'
           ? { actions: this.pageActions(name, declaredPageData, interaction.user.id) }
           : {}),
       });
@@ -528,6 +527,18 @@ export class CommandRouter {
     const rows: PageActionRow[] = [];
     const mint = (action: string, target: string): string =>
       `dumby:act:${invokerId}:${action}:${target}`;
+
+    // item 10 - the dashboard's navigation is Home (icon-only) / Next page / Previous page.
+    if (commandName === 'dashboard') {
+      const nav = (target: string): string => `dumby:nav:${invokerId}:${target}`;
+      return [
+        [
+          { customId: nav('dashboard'), label: '⌂', style: 2 },
+          { customId: nav('next'), label: 'next page', style: 2 },
+          { customId: nav('prev'), label: 'previous page', style: 2 },
+        ],
+      ];
+    }
 
     if (commandName === 'modules') {
       for (const id of ids) {

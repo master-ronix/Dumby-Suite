@@ -70,7 +70,9 @@ export function toCommandDefinition(
     options.identity.version !== undefined ||
     options.identity.displayName !== undefined ||
     options.identity.accent !== undefined ||
-    options.identity.banner !== undefined
+    options.identity.banner !== undefined ||
+    options.identity.buildId !== undefined ||
+    options.identity.devUsername !== undefined
       ? {
           identity: {
             ...(options.identity.developer !== undefined
@@ -82,6 +84,10 @@ export function toCommandDefinition(
               : {}),
             ...(options.identity.accent !== undefined ? { accent: options.identity.accent } : {}),
             ...(options.identity.banner !== undefined ? { banner: options.identity.banner } : {}),
+            ...(options.identity.buildId !== undefined ? { buildId: options.identity.buildId } : {}),
+            ...(options.identity.devUsername !== undefined
+              ? { devUsername: options.identity.devUsername }
+              : {}),
           },
         }
       : {}),

@@ -84,7 +84,8 @@ export function registerCoreFrameHandlers(deps: {
       const { page } = context as { page?: string };
       const target = interaction.values?.[0] ?? page;
       if (target === undefined) return;
-      await router.dispatch(asPageInteraction(interaction, target));
+      const command = target === 'next' || target === 'prev' ? 'dashboard' : target;
+      await router.dispatch(asPageInteraction(interaction, command));
     },
   });
 }

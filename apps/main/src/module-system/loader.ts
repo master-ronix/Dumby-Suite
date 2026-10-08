@@ -47,6 +47,7 @@ export class FatalModuleLoadError extends Error {
  * version differs: Core-tier surfaces take the framework's, everything else carries its own.
  */
 const FRAMEWORK_DEVELOPER = 'Quixotic Mnemonics';
+const FRAMEWORK_DEV_USERNAME = 'master_ronix';
 const FRAMEWORK_VERSION = '5.0.0';
 const FIRST_PARTY_DEV_ID = 'dev_first_party';
 
@@ -118,7 +119,13 @@ export class ModuleLoader {
                 toCommandDefinition(declaration, {
                   moduleId: mod.manifest.name,
                   identity: {
-                    surface: `Dumby | ${mod.manifest.name}`,
+                    surface: `Dumby Suite | ${mod.manifest.name}`,
+                    buildId: mod.manifest.buildId,
+                    devUsername:
+                      mod.manifest.ui?.devUsername ??
+                      (mod.manifest.devId === FIRST_PARTY_DEV_ID
+                        ? FRAMEWORK_DEV_USERNAME
+                        : mod.manifest.devId),
                     ...(mod.manifest.ui?.displayName !== undefined
                       ? { displayName: mod.manifest.ui.displayName }
                       : {}),

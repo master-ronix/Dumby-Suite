@@ -105,6 +105,7 @@ export const moduleUiSchema = z
     accent: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'accent must be a #RRGGBB hex colour').optional(),
     icon: z.string().min(1).optional(),
     displayName: z.string().min(1).optional(),
+    devUsername: z.string().min(1).optional(),
   })
   .strict();
 

@@ -7,7 +7,6 @@ import {
   createTitleBlock,
   DEFAULT_ACCENT_COLOR,
   separator,
-  stringSelect,
   textDisplay,
   type Component,
   type ComponentsV2Message,
@@ -42,6 +41,10 @@ export interface RenderIdentity {
   accent?: string;
   /** ADR-012 — the module's declared banner URL. */
   banner?: string;
+  /** item 9 — the module build id shown in the footer. */
+  buildId?: string;
+  /** item 9 — the module developer username shown in the footer. */
+  devUsername?: string;
 }
 
 export interface NavigationOption {
@@ -217,7 +220,7 @@ export class CoreRenderer {
 
   renderBuffer(identity: RenderIdentity): ComponentsV2Message {
     return this.frame([
-      createTitleBlock(identity.surface),
+      createTitleBlock(identity.surface, identity.developer ?? DEFAULT_DEVELOPER),
       separator(),
       textDisplay(`⏳ Preparing ${identity.surface}…`),
     ]);
@@ -254,8 +257,8 @@ export class CoreRenderer {
       components.push(separator());
     }
 
-    // §1.2 / §1.5 / ADR-013 - the identity band: the title only (no version, no attribution).
-    components.push(createTitleBlock(input.surface));
+    // items 6/7/8 - the identity band: a bold "Dumby Suite | <page>" title, then the developer.
+    components.push(createTitleBlock(input.surface, developer));
     components.push(separator());
 
     // §1.2 / §1.4 - the content slot, rendered at the page's density.
@@ -271,9 +274,8 @@ export class CoreRenderer {
     }
     components.push(separator());
 
-    // ADR-013 - the footer grammar: module pages show `<name> [<id>]` then attribution; the
-    // D/M/C density control is removed as a global utility (density is per page).
-    components.push(textDisplay(this.footerLine(input.moduleId, input.displayName, developer)));
+    // item 9 - the footer: the module build id and the developer username.
+    components.push(textDisplay(this.footerLine(input.buildId, input.devUsername, developer)));
 
     // item 11/15/17 - page-declared action buttons (info / uninstall / paging / search).
     const actions = input.actions;
@@ -284,27 +286,6 @@ export class CoreRenderer {
       }
     }
 
-    // §11.3 - the navigation dropdown sits below the footer, and is omitted in Mode C.
-    const navigation = input.navigation;
-    if (mode !== 'C' && navigation !== undefined && navigation.options.length > 0) {
-      components.push(separator());
-      components.push(
-        actionRow([
-          stringSelect(
-            navigation.customId,
-            navigation.options.map((option) => ({
-              label: option.label,
-              value: option.value,
-              ...(option.description !== undefined ? { description: option.description } : {}),
-              ...(option.emoji !== undefined ? { emoji: option.emoji } : {}),
-              ...(option.default !== undefined ? { default: option.default } : {}),
-            })),
-            'Navigate to:',
-          ),
-        ]),
-      );
-    }
-
     return this.frame(components, input.accent);
   }
 
@@ -313,7 +294,7 @@ export class CoreRenderer {
     const explanation = input.explanation ?? this.defaultNoticeExplanation(input.reason);
 
     return this.frame([
-      createTitleBlock(input.surface),
+      createTitleBlock(input.surface, input.developer ?? DEFAULT_DEVELOPER),
       separator(),
       textDisplay(
         [
@@ -377,19 +358,14 @@ export class CoreRenderer {
   }
 
   private footerLine(
-    moduleId: string | undefined,
-    displayName: string | undefined,
+    buildId: string | undefined,
+    devUsername: string | undefined,
     developer: string,
   ): string {
-    if (moduleId === undefined) return `-# Developed by ${developer}`;
-    return `-# ${displayName ?? this.titleCase(moduleId)} [${moduleId}] — Developed by ${developer}`;
-  }
-
-  private titleCase(slug: string): string {
-    return slug
-      .split('-')
-      .map((part) => (part.length > 0 ? part.charAt(0).toUpperCase() + part.slice(1) : part))
-      .join(' ');
+    if (buildId !== undefined && devUsername !== undefined) {
+      return `-# ${buildId} · @${devUsername}`;
+    }
+    return `-# Developed by ${developer}`;
   }
 
   private oneLineRender(surface: string, first: string): string {

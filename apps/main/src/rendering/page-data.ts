@@ -202,13 +202,24 @@ export function createPageDataProvider(
     return { title: 'Grant Access — Step 1: Select Command', lines };
   }
 
-  // item 3 / §1.7 — the core command list is registered dynamically, never hardcoded.
+  // items 1/3/4/5 — the dashboard lists the core modules' commands (emoji + backticked name,
+  // no descriptions), registered dynamically; core modules carry no separate page.
   async function dashboard(): Promise<PageData> {
+    const icons: Record<string, string> = {
+      dashboard: '🏠',
+      health: '🩺',
+      browse: '🛒',
+      queue: '📋',
+      persona: '👥',
+      permit: '🔑',
+      modules: '📦',
+    };
     const lines: string[] = [];
     for (const entry of moduleRegistry.all()) {
       if (entry.manifest.tier !== 'core') continue;
+      const icon = icons[entry.manifest.name] ?? '🔹';
       for (const command of entry.manifest.commands) {
-        lines.push(`/${command.name} — ${command.description}`);
+        lines.push(`${icon} \`/${command.name}\``);
       }
     }
     return { title: 'Core Commands', lines };

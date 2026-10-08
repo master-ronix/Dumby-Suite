@@ -213,6 +213,15 @@ authority_scope: [history]
 
 ---
 
+### v5.3.0 — Dashboard Visual Corrections (State B) — 2026-10-08
+
+- 2026-10-08 · migration-prompt 5.2.0 · item S4 · verdict=DONE
+- Work order: UR-20261008-003 (dashboard page visual corrections), one page per request.
+- Landed: commands-only dashboard list with module emoji and backticks; no core sub-pages; bold `Dumby Suite | <page>` title with the developer line beneath; footer `<build id> · @<dev username>`; Home/Next/Previous buttons replacing the dropdown.
+- Verification: documentation gate suite 25/25 green; application typecheck/lint/unit pending on the real toolchain.
+
+---
+
 ### 4. Cross-Version Defect Lifecycle
 
 <!-- One row per introduced defect: id · introduced · status · resolution. -->

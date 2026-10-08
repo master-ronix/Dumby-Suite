@@ -29,6 +29,8 @@ export interface CommandDefinition {
     readonly displayName?: string;
     readonly accent?: string;
     readonly banner?: string;
+    readonly buildId?: string;
+    readonly devUsername?: string;
   };
 }
 

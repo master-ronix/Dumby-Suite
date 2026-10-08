@@ -225,14 +225,17 @@ export function getDefaultBannerUrl(
   return `https://api.dumby.dev/banner?module=${encoded}&color=${accentColor.toString(16).padStart(6, '0')}`;
 }
 
-export function createTitleBlock(pageName: string): TextDisplayComponent {
-  return textDisplay(`Dumby | ${pageName}`);
+export function createTitleBlock(
+  pageName: string,
+  developer = 'Quixotic Mnemonics',
+): TextDisplayComponent {
+  return textDisplay(`**Dumby Suite | ${pageName}**\n-# Developed by ${developer}`);
 }
 
 export function createMarketplaceTitleBlock(
   developer = 'Quixotic Mnemonics',
 ): TextDisplayComponent {
-  return textDisplay(`Dumby | Marketplace\n-# Developed by ${developer}`);
+  return textDisplay(`**Dumby Suite | Marketplace**\n-# Developed by ${developer}`);
 }
 
 export function createSectionHeader(emoji: string, title: string): TextDisplayComponent {

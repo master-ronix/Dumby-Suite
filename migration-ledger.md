@@ -157,6 +157,21 @@ Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (rea
 
 ---
 
+### S4 — Dashboard page visual corrections (UR-20261008-003)
+- **Status:** DONE · **Date:** 2026-10-08
+- **Landed (dashboard page, one page per request):**
+  1. The dashboard lists the core modules' commands, not their descriptions.
+  2/3. Core modules carry no separate page; their commands are listed on the main dashboard page.
+  4. Commands are backticked.
+  5. Each command shows its module emoji (default emoji authored for the core modules).
+  6/7/8. The title is bold and reads `**Dumby Suite | <page>**`, with `-# Developed by <dev name>` directly beneath it.
+  9. The footer reads `<build id> · @<dev username>` (first-party username resolves to `master_ronix`).
+  10. The dropdown is replaced by a Home (icon-only `⌂`), Next page, and Previous page button row.
+- **Renderer grammar shared by all pages** (title/footer/nav) was updated once, in the renderer, so the change is consistent rather than page-local.
+- **Evidence:** the corpus gate suite is green (25/25).
+
+---
+
 ## Findings & Deviations Register
 
 1. **Application suite not run.** The environment has no installed dependencies, so the typecheck/lint/unit suite is pending on the real toolchain. The corpus gate suite (25/25) is green.
