@@ -260,10 +260,9 @@ export class CoreRenderer {
     }
 
     // items 6/7/8 - the identity band: a bold "Dumby Suite | <page>" title, then the developer.
-    // item 2 - the attribution is the developer's registered username, not a static name.
-    const attribution =
-      input.devUsername !== undefined ? `@${input.devUsername}` : developer;
-    components.push(createTitleBlock(input.surface, attribution));
+    // §1.5 - the attribution names the developer (the registered name, resolved from devId); the
+    // @handle is a footer field, not the attribution. The version is stripped (item 2).
+    components.push(createTitleBlock(input.surface, developer));
     components.push(separator());
 
     // §1.2 / §1.4 - the content slot, rendered at the page's density.

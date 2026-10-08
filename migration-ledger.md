@@ -213,6 +213,15 @@ Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (rea
 
 ---
 
+### F-7 — Developer identity conflated on the surfaces (FIXED — 2026-10-08)
+- **Work order:** UR-20261008-006. **ADR:** ADR-015 (supersedes ADR-014's attribution clause).
+- **Misinterpretation:** UR-005 put the developer's **@handle** in the title attribution. §1.5 reserves that line for the developer's **name** (`Developed by {Developer}`). Corrected — the attribution names the developer; the @handle is a footer field.
+- **Fault:** the loader's attribution fell back to the raw **`devId`** (`mod.manifest.devId`), which §32.12 treats as being as sensitive as a bot token. The attribution now resolves `devName`/`devUsername` from the account registry by `devId` (`module-system/developer-registry.ts`) and never renders the identifier.
+- **Identity model:** `devId` (registration, §15.6 — never user-facing) · `buildId` (per version, §15.8 — footer) · `devName` (attribution) · `devUsername` (footer). Both name and handle come from the registry, not static text.
+- **Verification:** gate suite 25/25; touched files type-check against real typings.
+
+---
+
 ## Findings & Deviations Register
 
 1. **Application suite not run.** The environment has no installed dependencies, so the typecheck/lint/unit suite is pending on the real toolchain. The corpus gate suite (25/25) is green.

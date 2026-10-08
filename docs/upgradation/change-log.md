@@ -275,6 +275,16 @@ authority_scope: [history]
 
 ---
 
+### v5.6.0 — Developer Identity Model Corrected (State B) — 2026-10-08
+
+- 2026-10-08 · migration-prompt 5.2.0 · item S7 · verdict=PUSHED
+- Work order: UR-20261008-006. ADR: ADR-015 (supersedes ADR-014's attribution clause).
+- Corrected: the title attribution is the developer's **name** (`Developed by <devName>`), per §1.5 — the UR-005 change had wrongly put the @handle there. The @handle stays a footer field (`<buildId> · @<devUsername>`).
+- Fixed a fault: the loader fell back to rendering the raw **`devId`**, which §32.12 treats as being as sensitive as a bot token; the attribution now resolves `devName`/`devUsername` from the account registry by `devId` and never prints the identifier.
+- Verification: documentation gate suite 25/25 green; the touched files type-check against real typings (discord.js 14.17).
+
+---
+
 ### 4. Cross-Version Defect Lifecycle
 
 <!-- One row per introduced defect: id · introduced · status · resolution. -->

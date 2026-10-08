@@ -156,7 +156,7 @@
     }
   ],
   "program_numbers": {
-    "adrs": 14,
+    "adrs": 15,
     "core_commands": 8,
     "rbac_layers": 7,
     "ranks": 6,

@@ -1,22 +1,37 @@
 /**
- * item 2 — the developer attribution is the platform's **registered username**, not a static name.
+ * item 2 — the developer attribution resolves to the platform's registered identity, never to a
+ * static name and never to the raw `devId`.
+ *
+ * Identity model (they are four distinct things):
+ *   - `devId`       the registered developer identifier, issued at developer registration (§15.6)
+ *                   through the Credentials Service. It is as sensitive as a bot token (§32.12) and
+ *                   may never be rendered on a user-facing surface.
+ *   - `buildId`     the identifier of one uploaded version, assigned by Swastik at upload (§15.8).
+ *   - `devName`     the developer's display name — the attribution line (`Developed by <name>`, §1.5).
+ *   - `devUsername` the developer's registered @handle — the footer (`<buildId> · @<handle>`).
  *
  * The account registry is owned by the credentials service, coordinated with Swastik and the
- * development portal: a user registers a display name + unique username on the Dumby website, and
- * a developer id is issued when they switch to a developer account. A module manifest's `devId`
- * must match a live registration for the module to be attributed (and, per the provenance check,
- * to load).
- *
- * This is the framework-side seam for that registry. A dev id that is not registered resolves to
- * `undefined`, and the caller falls back to the module's declared developer rather than inventing
- * a name.
+ * development portal: a user registers a display name + unique username on the Dumby website, and a
+ * developer id is issued when they switch to a developer account. A manifest's `devId` must match a
+ * live registration. This is the framework-side seam for that registry; an unregistered `devId`
+ * resolves to `undefined`, and the caller falls back to the framework developer rather than
+ * printing the identifier.
  */
-const REGISTERED_DEVELOPERS: Readonly<Record<string, string>> = {
-  // The first-party framework account (Quixotic Mnemonics) — its registered handle.
-  dev_first_party: 'master_ronix',
+export interface RegisteredDeveloper {
+  /** The developer's display name — shown in the title attribution. */
+  readonly name: string;
+  /** The developer's registered @handle — shown in the footer. */
+  readonly username: string;
+}
+
+const REGISTERED_DEVELOPERS: Readonly<Record<string, RegisteredDeveloper>> = {
+  // The first-party framework account (Quixotic Mnemonics) and its registered handle.
+  dev_first_party: { name: 'Quixotic Mnemonics', username: 'master_ronix' },
 };
 
-export function resolveRegisteredDeveloper(devId: string | undefined): string | undefined {
+export function resolveRegisteredDeveloper(
+  devId: string | undefined,
+): RegisteredDeveloper | undefined {
   if (devId === undefined) return undefined;
   return REGISTERED_DEVELOPERS[devId];
 }
