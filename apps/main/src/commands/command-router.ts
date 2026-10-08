@@ -216,13 +216,27 @@ export class CommandRouter {
         await effectHandler(effect.payload, interaction);
       }
 
+      // item 4 / ADR-013 — density is a per-page declaration; a page's density wins.
+      const declaredDensityRaw = (declaredResponse as { data?: { density?: unknown } } | null)?.data
+        ?.density;
+      const declaredDensity =
+        declaredDensityRaw === 'D' || declaredDensityRaw === 'M' || declaredDensityRaw === 'C'
+          ? declaredDensityRaw
+          : undefined;
       const render = this.renderer.normalizeHandlerResult(declaredResponse, {
         ...identity,
+        moduleId: def.moduleId,
         ...(def.identity?.developer !== undefined ? { developer: def.identity.developer } : {}),
-        ...(def.identity?.version !== undefined ? { version: def.identity.version } : {}),
+        ...(def.identity?.displayName !== undefined ? { displayName: def.identity.displayName } : {}),
+        ...(def.identity?.accent !== undefined ? { accent: def.identity.accent } : {}),
+        ...(def.identity?.banner !== undefined ? { banner: def.identity.banner } : {}),
         ...(options.mode !== undefined ? { mode: options.mode } : {}),
-        navigation: this.navigationControl(name, interaction.user.id),
-        modeControl: this.modeControl(name, interaction.user.id),
+        ...(declaredDensity !== undefined ? { mode: declaredDensity } : {}),
+        // ADR-013 - the page-switch dropdown is a dashboard-only property; module pages impose
+        // no dropdown grammar.
+        ...(name === 'dashboard'
+          ? { navigation: this.navigationControl(name, interaction.user.id) }
+          : {}),
       });
       // A page whose data the effects just changed is re-derived, so the render shows the result
       // of the action rather than the state it was gathered in.

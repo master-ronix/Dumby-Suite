@@ -221,6 +221,16 @@
     "dashboardSchema": {
       "type": "object"
     },
+    "ui": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "banner": { "type": "string" },
+        "accent": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+        "icon": { "type": "string" },
+        "displayName": { "type": "string" }
+      }
+    },
     "crossModuleReads": {
       "type": "array",
       "items": {

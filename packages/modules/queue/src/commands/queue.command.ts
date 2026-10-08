@@ -20,11 +20,22 @@ export const queueCommand = defineCommand({
   description: 'Manage BCCM command queue actions — submit, view, edit, and cancel pending command changes.',
   pages: ['queue'],
   options: [
-    { name: 'command', description: 'The command name to queue an action for', type: 3, autocomplete: true },
+    {
+      name: 'command',
+      description: 'The command name to queue an action for',
+      type: 3,
+      autocomplete: true,
+      required: true,
+    },
     { name: 'alias', description: 'An alias name to add for the command', type: 3 },
     { name: 'new-name', description: 'A new name to rename the command to', type: 3 },
     { name: 'disable', description: 'Set true to disable the command, false to re-enable', type: 5 },
     { name: 'action', description: 'The BCCM action type', type: 3 },
+    {
+      name: 'reset',
+      description: 'Reset the command to its original name',
+      type: 5,
+    },
   ],
   execute: (interaction, context) => {
     const options = (interaction as { options?: QueueOptions }).options;
@@ -35,7 +46,8 @@ export const queueCommand = defineCommand({
     const alias = options?.getString('alias') ?? undefined;
     const newName = options?.getString('new-name') ?? undefined;
     const disable = options?.getBoolean('disable') ?? undefined;
-    const action = options?.getString('action') ?? undefined;
+    const reset = options?.getBoolean('reset') ?? undefined;
+    const action = reset === true ? 'reset' : (options?.getString('action') ?? undefined);
     return {
       page: 'queue',
       data: context.data,

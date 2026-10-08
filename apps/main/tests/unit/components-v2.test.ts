@@ -144,7 +144,7 @@ describe('components-v2 builders', () => {
       'https://api.dumby.dev/banner?module=My%20Module&color=abcdef',
     );
     expect(getDefaultBannerUrl('Health', DEFAULT_ACCENT_COLOR)).toBe(
-      'https://api.dumby.dev/banner?module=Health&color=5865f2',
+      'https://api.dumby.dev/banner?module=Health&color=ffca6d',
     );
   });
 

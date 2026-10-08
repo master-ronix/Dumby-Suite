@@ -535,7 +535,7 @@ First-party modules are seeded onto their tier volumes (`modules-core` for the C
 - Every command responds in a test guild with the exact Components V2 formatting specified in `spec/request-layer/` — container structure, text display content, flag value, banner, title format, attribution line
 - Every interaction follows the buffer-then-render contract: the instant buffer embed is edited into the final render or the formal notice frame — verified by asserting the edit, never a second message
 - Title and attribution follow the grammar exactly: surface titles carry the module identity; developer attribution appears in the footer/subtitle attribution slot — never in the surface title
-- The renderer applies the single official accent token — blurple `#5865F2` — everywhere; no other accent value appears anywhere in the presented surfaces
+- The renderer applies the single official accent token — amber `#FFCA6D` — everywhere; no other accent value appears anywhere in the presented surfaces
 - Formal notices carry reason codes and a trace correlation ID — the personality's failure voice is honest and never silent
 - Dashboard edit-in-place works: the first `/dashboard` sends a message; every subsequent interaction edits it — verified by asserting no second message is sent
 - Dropdown navigation works: selecting an option edits the message to the target page; the dropdown remains present on every page

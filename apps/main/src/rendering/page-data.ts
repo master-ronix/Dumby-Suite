@@ -171,13 +171,17 @@ export function createPageDataProvider(
     const pending = entries.length;
     return {
       title: 'Pending Command Queue Actions',
-      lines: [
-        'Batch window: changes are batched and pushed within the 12–13 hour window (§15.8)',
-        '',
-        ...(pending === 0 ? ['No pending queue actions.'] : entries),
-        '',
-        `Total queued: ${pending}   |   Next batch push: within 12–13h`,
+      groups: [
+        {
+          name: 'Batch',
+          rows: [
+            ['Window', 'changes are batched and pushed within the 12–13 hour window (§15.8)'],
+            ['Total queued', String(pending)],
+            ['Next batch push', 'within 12–13h'],
+          ],
+        },
       ],
+      lines: pending === 0 ? ['No pending queue actions.'] : entries,
     };
   }
 
@@ -198,6 +202,46 @@ export function createPageDataProvider(
     return { title: 'Grant Access — Step 1: Select Command', lines };
   }
 
+  // item 3 / §1.7 — the core command list is registered dynamically, never hardcoded.
+  async function dashboard(): Promise<PageData> {
+    const lines: string[] = [];
+    for (const entry of moduleRegistry.all()) {
+      if (entry.manifest.tier !== 'core') continue;
+      for (const command of entry.manifest.commands) {
+        lines.push(`/${command.name} — ${command.description}`);
+      }
+    }
+    return { title: 'Core Commands', lines };
+  }
+
+  // items 10/11/15 — /browse is marketplace discovery: only installable modules are offered.
+  async function marketplace(): Promise<PageData> {
+    const installable = moduleRegistry
+      .all()
+      .filter((entry) => entry.manifest.tier === 'marketplace');
+    const lines: string[] = [
+      'Search for a module with the search bar, then select one to install.',
+      '',
+    ];
+    if (installable.length === 0) {
+      lines.push('No marketplace modules are available to install.');
+    } else {
+      for (const entry of installable) {
+        lines.push(`${entry.manifest.name} — ${entry.manifest.description}`);
+      }
+    }
+    return { title: 'Marketplace', lines };
+  }
+
+  // item 17 — /modules lists only installed/enabled modules.
+  async function installedModules(): Promise<PageData> {
+    const lines = moduleRegistry
+      .all()
+      .map((entry) => `${entry.manifest.name} (${entry.manifest.tier}) — ${entry.manifest.description}`);
+    lines.push('', 'Use the info and uninstall buttons beside a module to manage it.');
+    return { title: 'Installed Modules', lines };
+  }
+
   return async (moduleId: string, guildId: string | null): Promise<PageData> => {
     switch (moduleId) {
       case 'health':
@@ -208,6 +252,12 @@ export function createPageDataProvider(
         return queue(guildId);
       case 'permit':
         return permit();
+      case 'dashboard':
+        return dashboard();
+      case 'browse':
+        return marketplace();
+      case 'modules':
+        return installedModules();
       default:
         return {};
     }

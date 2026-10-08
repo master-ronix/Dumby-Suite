@@ -119,6 +119,15 @@ export class ModuleLoader {
                   moduleId: mod.manifest.name,
                   identity: {
                     surface: `Dumby | ${mod.manifest.name}`,
+                    ...(mod.manifest.ui?.displayName !== undefined
+                      ? { displayName: mod.manifest.ui.displayName }
+                      : {}),
+                    ...(mod.manifest.ui?.accent !== undefined
+                      ? { accent: mod.manifest.ui.accent }
+                      : {}),
+                    ...(mod.manifest.ui?.banner !== undefined
+                      ? { banner: mod.manifest.ui.banner }
+                      : {}),
                     developer:
                       mod.manifest.devId === undefined || mod.manifest.devId === FIRST_PARTY_DEV_ID
                         ? FRAMEWORK_DEVELOPER

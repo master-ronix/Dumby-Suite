@@ -39,12 +39,12 @@ function frame(message: ComponentsV2Message): ContainerComponent {
 const renderer = new CoreRenderer();
 
 describe('CoreRenderer grammar', () => {
-  test('every render is a Components V2 message with the official blurple accent', () => {
+  test('every render is a Components V2 message with the official amber accent', () => {
     const message = renderer.render({ surface: 'Health', summary: 'all systems nominal' });
 
     expect(message.flags).toBe(32768);
     expect(frame(message).type).toBe(ComponentType.CONTAINER);
-    expect(frame(message).accent_color).toBe(0x5865f2);
+    expect(frame(message).accent_color).toBe(0xffca6d);
   });
 
   test('the title carries the module identity and the attribution occupies its own line', () => {
@@ -124,7 +124,7 @@ describe('CoreRenderer buffer embed', () => {
     const message = renderer.renderBuffer({ surface: 'Health' });
 
     const contents = textContents(message);
-    expect(frame(message).accent_color).toBe(0x5865f2);
+    expect(frame(message).accent_color).toBe(0xffca6d);
     expect(contents.some((content) => content.startsWith('Dumby | Health'))).toBe(true);
     expect(contents.some((content) => content.includes('Preparing Health'))).toBe(true);
   });
@@ -155,7 +155,7 @@ describe('CoreRenderer formal notice frame', () => {
     });
 
     const contents = textContents(message);
-    expect(frame(message).accent_color).toBe(0x5865f2);
+    expect(frame(message).accent_color).toBe(0xffca6d);
     expect(contents.some((content) => content.includes('reason: RATE_LIMITED'))).toBe(true);
     expect(contents.some((content) => content.includes('trace: tr_abc123'))).toBe(true);
   });

@@ -15730,7 +15730,7 @@
   {
    "source_file": "adr/ADR-010.md",
    "source_line": 1,
-   "heading": "ADR-010: Official Accent Colour — Blurple #5865F2",
+   "heading": "ADR-010: Official Accent Colour — Superseded by ADR-012",
    "target": "adr/ADR-010.md",
    "status": "mapped"
   },

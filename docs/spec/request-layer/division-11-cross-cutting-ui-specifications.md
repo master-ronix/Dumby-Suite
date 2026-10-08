@@ -75,7 +75,7 @@ These emoji are NOT used anywhere else in the frame. They do not appear in the m
 When a module does not provide a banner in its assets directory, the Renderer generates a custom banner:
 
 **Generation process:**
-1. Start a 1280×720 canvas with a gradient background in the official accent colour, `#5865F2`.
+1. Start a 1280×720 canvas with a gradient background in the official accent colour, `#FFCA6D`.
 2. Centre the module's logo emoji on the banner.
 3. Add the module's name as text below the logo.
 4. Save and serve the generated banner.

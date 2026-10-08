@@ -1,7 +1,6 @@
 import {
   actionRow,
   buildComponentsV2,
-  button,
   container,
   createBannerMediaGallery,
   createTitleBlock,
@@ -34,6 +33,14 @@ export interface RenderIdentity {
   surface: string;
   developer?: string;
   version?: string;
+  /** ADR-013 — the owning module; the module-page footer is `<name> [<id>]`. */
+  moduleId?: string;
+  /** ADR-013 — the module's declared display name (defaults to the title-cased id). */
+  displayName?: string;
+  /** ADR-012 — the module's declared accent (defaults to amber). */
+  accent?: string;
+  /** ADR-012 — the module's declared banner URL. */
+  banner?: string;
 }
 
 export interface NavigationOption {
@@ -124,7 +131,6 @@ export interface RendererInteraction {
 }
 
 const DEFAULT_DEVELOPER = 'Quixotic Mnemonics';
-const DEFAULT_VERSION = '5.0.0';
 
 export class InvalidRenderDescriptorError extends Error {
   constructor() {
@@ -193,11 +199,7 @@ export class CoreRenderer {
 
   renderBuffer(identity: RenderIdentity): ComponentsV2Message {
     return this.frame([
-      createTitleBlock(
-        identity.surface,
-        identity.developer ?? DEFAULT_DEVELOPER,
-        identity.version ?? DEFAULT_VERSION,
-      ),
+      createTitleBlock(identity.surface),
       separator(),
       textDisplay(`⏳ Preparing ${identity.surface}…`),
     ]);
@@ -222,7 +224,6 @@ export class CoreRenderer {
     }
 
     const developer = input.developer ?? DEFAULT_DEVELOPER;
-    const version = input.version ?? DEFAULT_VERSION;
     const components: Component[] = [];
 
     // §1.2 / §1.3 / §1.4 - the banner slot opens the frame, and is present in Mode D only.
@@ -232,8 +233,8 @@ export class CoreRenderer {
       components.push(separator());
     }
 
-    // §1.2 / §1.5 - the identity band: the title and its attribution line.
-    components.push(createTitleBlock(input.surface, developer, version));
+    // §1.2 / §1.5 / ADR-013 - the identity band: the title only (no version, no attribution).
+    components.push(createTitleBlock(input.surface));
     components.push(separator());
 
     // §1.2 / §1.4 - the content slot, rendered at the page's density.
@@ -249,18 +250,9 @@ export class CoreRenderer {
     }
     components.push(separator());
 
-    // §1.2 / §3.3 - the footer repeats the attribution and carries the D/M/C density control.
-    components.push(textDisplay(`-# Developed by ${developer} v${version}`));
-    const modeControl = input.modeControl;
-    if (modeControl !== undefined) {
-      components.push(
-        actionRow(
-          (['D', 'M', 'C'] as const).map((value) =>
-            button(modeControl.customIds[value], value, mode === value ? 1 : 2),
-          ),
-        ),
-      );
-    }
+    // ADR-013 - the footer grammar: module pages show `<name> [<id>]` then attribution; the
+    // D/M/C density control is removed as a global utility (density is per page).
+    components.push(textDisplay(this.footerLine(input.moduleId, input.displayName, developer)));
 
     // §11.3 - the navigation dropdown sits below the footer, and is omitted in Mode C.
     const navigation = input.navigation;
@@ -283,7 +275,7 @@ export class CoreRenderer {
       );
     }
 
-    return this.frame(components);
+    return this.frame(components, input.accent);
   }
 
   renderNotice(input: FormalNoticeDescriptor): ComponentsV2Message {
@@ -291,11 +283,7 @@ export class CoreRenderer {
     const explanation = input.explanation ?? this.defaultNoticeExplanation(input.reason);
 
     return this.frame([
-      createTitleBlock(
-        input.surface,
-        input.developer ?? DEFAULT_DEVELOPER,
-        input.version ?? DEFAULT_VERSION,
-      ),
+      createTitleBlock(input.surface),
       separator(),
       textDisplay(
         [
@@ -327,7 +315,7 @@ export class CoreRenderer {
       return {
         surface: result.surface,
         ...(result.developer !== undefined ? { developer: result.developer } : {}),
-        ...(result.version !== undefined ? { version: result.version } : {}),
+        ...(result.moduleId !== undefined ? { moduleId: result.moduleId } : {}),
         ...(result.mode !== undefined ? { mode: result.mode } : {}),
         ...(result.sections !== undefined ? { sections: result.sections } : {}),
         ...(result.summary !== undefined ? { summary: result.summary } : {}),
@@ -350,8 +338,28 @@ export class CoreRenderer {
     return 'MODULE_ERROR';
   }
 
-  private frame(components: Parameters<typeof container>[0]): ComponentsV2Message {
-    return buildComponentsV2([container(components, DEFAULT_ACCENT_COLOR)]);
+  private frame(
+    components: Parameters<typeof container>[0],
+    accent: string | undefined = undefined,
+  ): ComponentsV2Message {
+    const color = accent !== undefined ? Number.parseInt(accent.replace('#', ''), 16) : DEFAULT_ACCENT_COLOR;
+    return buildComponentsV2([container(components, color)]);
+  }
+
+  private footerLine(
+    moduleId: string | undefined,
+    displayName: string | undefined,
+    developer: string,
+  ): string {
+    if (moduleId === undefined) return `-# Developed by ${developer}`;
+    return `-# ${displayName ?? this.titleCase(moduleId)} [${moduleId}] — Developed by ${developer}`;
+  }
+
+  private titleCase(slug: string): string {
+    return slug
+      .split('-')
+      .map((part) => (part.length > 0 ? part.charAt(0).toUpperCase() + part.slice(1) : part))
+      .join(' ');
   }
 
   private oneLineRender(surface: string, first: string): string {
