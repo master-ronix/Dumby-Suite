@@ -188,12 +188,12 @@ Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (rea
 
 ---
 
-### F-5 — Dashboard runtime MODULE_ERROR (OPEN — fix pushed, pending a clean dashboard open)
+### F-5 — Dashboard runtime MODULE_ERROR (RESOLVED — confirmed from the live log, 2026-10-08)
 - **Symptom:** the dashboard renders its buffer, then the formal `MODULE_ERROR` notice.
 - **Root cause (from the live log):** Discord rejects the payload with
   `COMPONENT_CUSTOM_ID_DUPLICATED`. The dashboard's action row was keyed on each button's **target page**, so on page 0 Home (`…:page:0`) and Previous (`…:page:0`) shared a `custom_id`. The action-row *placement* was never the fault.
 - **Fix (pushed):** the button role now forms part of the id — `dumby:nav:<inv>:home:0`, `:next:<n>`, `:prev:<n>` — and a control with no target (Previous on page 0, Next on the last page) is **disabled** rather than colliding. The nav handler was updated to read the role + page index.
-- **Status discipline:** not closed. F-5 stays open until a dashboard open produces **no** `command-render-fallback` line in the log.
+- **Confirmation (live log, deployment `e3153d69` = `a2078a6`):** from 22:19 every `command-invocation` is followed by `command-executed`; no `command-render-fallback` and no `command-execution-error` lines; navigation clicks included. The dashboard renders with its buttons. **F-5 closed on this evidence.**
 - **Note:** the earlier "action row inside the container" diagnosis was wrong; the action row is now top-level (harmless, and the documented placement), but that change did not address this fault.
 
 #### F-5a — diagnostics + render fallback
@@ -208,7 +208,8 @@ Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (rea
 - **Module icons (item 3):** the icon is a custom Discord emoji. `rendering/module-icons.ts` resolves the manifest's `ui.icon` (a custom-emoji name → its `<:name:id>` reference, or a unicode glyph verbatim), else the framework default white icon — bundled at `apps/main/assets/default-module-icon.png` and uploaded once as an application emoji at bootstrap (`rendering/module-emoji-upload.ts`). The per-module emoji hardcode is removed. Upload failure is non-fatal: the unicode fallback applies.
 - **Page headings (item 4):** a dashboard page carries no in-content heading; the frame title names the page.
 - **Icon scope (item 5):** only the main dashboard page shows each command's module icon; a module-specific page shows none.
-- **Verification:** documentation gate suite 25/25 green (counts.adrs 13→14; compliance.json regenerated). Application typecheck/lint/unit pending on the real toolchain — the local gates do not run `tsc`.
+- **Build fix (2026-10-08):** the first push (`d2f4d8e`) failed its build — `TS18047: 'application' is possibly 'null'` at `rendering/module-emoji-upload.ts` lines 19/28, because discord.js types `client.application` as `Application | null`. The guard now checks null as well as undefined (a missing application is a skip, logged `module-emoji-upload-failed` with `reason: application-unavailable`, and the unicode fallback applies).
+- **Verification:** documentation gate suite 25/25 green (counts.adrs 13→14; compliance.json regenerated). The three new files type-check against real discord.js 14.17 typings, and the changed files show no new `tsc` errors. Application typecheck/lint/unit still run on the real toolchain — the local gates do not run `tsc`.
 
 ---
 

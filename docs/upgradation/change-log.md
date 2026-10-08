@@ -250,7 +250,7 @@ authority_scope: [history]
 
 ### v5.4.0 — Dashboard MODULE_ERROR: duplicate custom_id (State B) — 2026-10-08
 
-- 2026-10-08 · fix · verdict=PUSHED (pending log confirmation)
+- 2026-10-08 · fix · verdict=CONFIRMED (deployment `e3153d69`; no `command-render-fallback` from 22:19)
 - Root cause (live log): `COMPONENT_CUSTOM_ID_DUPLICATED`. The dashboard nav buttons were keyed on their target page, so on page 0 Home and Previous both minted `…:page:0`. Fixed by keying each button on its role (`home` / `next:<n>` / `prev:<n>`) and disabling a control with no target; the nav handler now reads the role.
 - The project-wide default module icon is applied at every module-icon surface (dashboard, permit, marketplace, installed modules).
 - F-5 is not closed until a dashboard open logs no `command-render-fallback` line.
@@ -259,10 +259,19 @@ authority_scope: [history]
 
 ### v5.5.0 — Dashboard: Control Placement, Registered Attribution, Module Icons & Page Headings (State B) — 2026-10-08
 
-- 2026-10-08 · migration-prompt 5.2.0 · item S6 · verdict=PUSHED (pending log confirmation)
+- 2026-10-08 · migration-prompt 5.2.0 · item S6 · verdict=PUSHED (build fixed; pending deploy)
 - Work order: UR-20261008-005. ADR: ADR-014.
 - Landed: (1) the page's action controls render below the footer, after a divider; (2) the developer attribution resolves to the platform-registered username, not a static name; (3) a module's icon is a custom Discord emoji named by `ui.icon`, with the framework's default white icon (bundled, uploaded once as an application emoji) when a module names none — the per-module emoji hardcode is removed; (4) a dashboard page carries no in-content heading; (5) only the main dashboard page shows each command's module icon.
 - Verification: documentation gate suite 25/25 green; application typecheck/lint/unit pending on the real toolchain.
+
+---
+
+### v5.5.1 — UR-005 Build Fix: nullable `client.application` — 2026-10-08
+
+- 2026-10-08 · fix · verdict=PUSHED
+- `d2f4d8e` stopped at typecheck: `TS18047: 'application' is possibly 'null'` at `rendering/module-emoji-upload.ts` lines 19/28 (discord.js types `client.application` as `Application | null`).
+- The guard now checks null as well as undefined; a missing application is a skip (logged `module-emoji-upload-failed`, `reason: application-unavailable`) and the unicode fallback applies.
+- The three new files were type-checked against real discord.js 14.17 typings before this push.
 
 ---
 

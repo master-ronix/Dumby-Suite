@@ -13,8 +13,13 @@ const DEFAULT_ICON_ASSET = new URL('../../assets/default-module-icon.png', impor
  * and the unicode fallback applies.
  */
 export async function ensureDefaultModuleEmoji(client: Client, logger: Logger): Promise<void> {
+  // discord.js types `client.application` as `Application | null` until the client is ready;
+  // a missing application is a skip, not a failure, and the unicode fallback applies.
   const application = client.application;
-  if (application === undefined) return;
+  if (application === null || application === undefined) {
+    logger.warn('module-emoji-upload-failed', { reason: 'application-unavailable' });
+    return;
+  }
 
   const existing = await application.emojis.fetch();
   const found = existing.find((emoji) => emoji.name === DEFAULT_MODULE_ICON_NAME);
