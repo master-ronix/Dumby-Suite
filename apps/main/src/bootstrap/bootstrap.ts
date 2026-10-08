@@ -408,7 +408,11 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   const publicDomain = process.env['RAILWAY_PUBLIC_DOMAIN'];
   const renderer = new CoreRenderer(
     publicDomain !== undefined && publicDomain !== ''
-      ? { bannerUrl: `https://${publicDomain}/assets/dumby-banner.png` }
+      ? {
+          bannerUrl: `https://${publicDomain}/assets/dumby-banner.png`,
+          // item 6 - the dashboard carries its own banner; every other module uses the default.
+          bannersByModule: { dashboard: `https://${publicDomain}/assets/dashboard-banner.png` },
+        }
       : {},
   );
   const interactionRegistry = new InteractionRegistry({

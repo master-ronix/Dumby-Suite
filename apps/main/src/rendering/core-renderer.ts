@@ -161,10 +161,15 @@ export class DirectInteractionResponseError extends Error {
 
 export class CoreRenderer {
   private readonly bannerUrl: string | undefined;
+  private readonly bannersByModule: Readonly<Record<string, string>>;
 
-  /** §1.3 / §11.5 - the banner every Mode D page opens with; omitted means no banner slot. */
-  constructor(options: { bannerUrl?: string } = {}) {
+  /**
+   * §1.3 / §11.5 - the Mode D banner. `bannersByModule` lets a specific module (the dashboard,
+   * item 6) carry its own banner; every other module falls back to `bannerUrl` (the default).
+   */
+  constructor(options: { bannerUrl?: string; bannersByModule?: Record<string, string> } = {}) {
     this.bannerUrl = options.bannerUrl;
+    this.bannersByModule = options.bannersByModule ?? {};
   }
 
   createTraceId(): string {
@@ -240,7 +245,10 @@ export class CoreRenderer {
     const components: Component[] = [];
 
     // §1.2 / §1.3 / §1.4 - the banner slot opens the frame, and is present in Mode D only.
-    const bannerUrl = input.banner ?? this.bannerUrl;
+    // item 6 - a module's own banner wins; then the default. The dashboard carries its own.
+    const moduleBanner =
+      input.moduleId !== undefined ? this.bannersByModule[input.moduleId] : undefined;
+    const bannerUrl = input.banner ?? moduleBanner ?? this.bannerUrl;
     if (mode === 'D' && bannerUrl !== undefined) {
       components.push(createBannerMediaGallery(bannerUrl));
       components.push(separator());
