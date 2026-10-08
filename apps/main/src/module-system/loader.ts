@@ -40,6 +40,16 @@ export class FatalModuleLoadError extends Error {
   }
 }
 
+/**
+ * §1.5 / §11.6 — the framework's own surfaces attribute to Quixotic Mnemonics at the framework
+ * version; a module page attributes to its developer at the module's version. Every module here
+ * is first-party (`dev_first_party`), so the developer resolves to the framework's, and only the
+ * version differs: Core-tier surfaces take the framework's, everything else carries its own.
+ */
+const FRAMEWORK_DEVELOPER = 'Quixotic Mnemonics';
+const FRAMEWORK_VERSION = '5.0.0';
+const FIRST_PARTY_DEV_ID = 'dev_first_party';
+
 export class ModuleLoader {
   constructor(
     private readonly registry: ModuleRegistry,
@@ -109,8 +119,12 @@ export class ModuleLoader {
                   moduleId: mod.manifest.name,
                   identity: {
                     surface: `Dumby | ${mod.manifest.name}`,
-                    ...(mod.manifest.devId !== undefined ? { developer: mod.manifest.devId } : {}),
-                    version: mod.manifest.version,
+                    developer:
+                      mod.manifest.devId === undefined || mod.manifest.devId === FIRST_PARTY_DEV_ID
+                        ? FRAMEWORK_DEVELOPER
+                        : mod.manifest.devId,
+                    version:
+                      mod.manifest.tier === 'core' ? FRAMEWORK_VERSION : mod.manifest.version,
                   },
                   renderer,
                   config: mod.manifest.config,

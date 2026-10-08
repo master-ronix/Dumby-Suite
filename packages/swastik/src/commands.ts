@@ -10,6 +10,13 @@ export interface CommandPageData {
 
 export interface CommandContext {
   readonly config: Readonly<Record<string, unknown>>;
+  /**
+   * Host-supplied data for the command's declared page. The framework gathers it at dispatch —
+   * live metrics, the module registry, queue state, persona bindings — so a module can present
+   * runtime state without reaching into the host process itself, which it cannot do. Empty when
+   * the host supplies nothing for the module.
+   */
+  readonly data: Readonly<Record<string, unknown>>;
 }
 
 export type CommandHandler = (

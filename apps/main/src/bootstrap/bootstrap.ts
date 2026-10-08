@@ -591,6 +591,10 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     grantStore: new PostgresGrantWriter(db.knex),
     // §22.2 / Table 22-A — the Power Engine `suspendGuild` state the dispatch path must consult.
     guildSuspensions,
+    // §1.7 — page data is gathered at dispatch, not at registration: it reports the running
+    // system. Providers for health, queue, persona and permit land next; the hook is wired now
+    // so those pages become pure data additions.
+    pageDataProvider: async () => ({}),
     resolveCommandOwner: (guildId, moduleSlug) =>
       personaBindingService.resolveCommandOwner(guildId, moduleSlug),
     ...(config.get('PERSONA_ID') !== '' ? { residentPersonaId: config.get('PERSONA_ID') } : {}),

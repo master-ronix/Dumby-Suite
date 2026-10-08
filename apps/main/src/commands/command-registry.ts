@@ -1,4 +1,5 @@
 import type { RESTPostAPIChatInputApplicationCommandsJSONBody } from 'discord.js';
+import type { CommandContext } from '@workspace/swastik';
 import type { ModuleTier } from '../module-system/tier-rules.js';
 import type { Rank } from '../permissions/rank.js';
 
@@ -10,7 +11,7 @@ export interface CommandPermissions {
 
 export interface CommandDefinition {
   data: RESTPostAPIChatInputApplicationCommandsJSONBody;
-  execute: (interaction: unknown) => Promise<unknown>;
+  execute: (interaction: unknown, context: CommandContext) => Promise<unknown>;
   moduleId: string;
   guildOnly?: boolean;
   permissionDeclared?: boolean;
@@ -19,6 +20,10 @@ export interface CommandDefinition {
   requiresDefer?: boolean;
   ephemeral?: boolean;
   cooldownMs?: number;
+  /** §1.7 — the module's manifest config, handed to the handler as `context.config`. */
+  moduleConfig?: Readonly<Record<string, unknown>>;
+  /** §1.5/§11.6 — the module's attribution for the identity band. */
+  identity?: { readonly developer?: string; readonly version?: string };
 }
 
 export class CommandCollisionError extends Error {

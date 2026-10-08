@@ -75,6 +75,12 @@ export interface CommandRouterOptions {
    * configuration rather than editing it.
    */
   guildSuspensions?: GuildSuspensionStore;
+  /**
+   * §1.7 — supplies a module's page data at dispatch. Modules cannot reach the host process, so
+   * anything a page reports about the running system (metrics, queue state, personas) is gathered
+   * here and handed to the handler as `context.data`.
+   */
+  pageDataProvider?: (moduleId: string) => Promise<Readonly<Record<string, unknown>>>;
 }
 
 export class CommandRouter {
@@ -155,6 +161,10 @@ export class CommandRouter {
         async () => {
           declaredResponse = await def.execute(
             this.renderer.createReadOnlyInteraction(interaction),
+            {
+              config: def.moduleConfig ?? {},
+              data: (await this.options.pageDataProvider?.(def.moduleId)) ?? {},
+            },
           );
         },
       );
@@ -169,6 +179,8 @@ export class CommandRouter {
 
       const render = this.renderer.normalizeHandlerResult(declaredResponse, {
         ...identity,
+        ...(def.identity?.developer !== undefined ? { developer: def.identity.developer } : {}),
+        ...(def.identity?.version !== undefined ? { version: def.identity.version } : {}),
         ...(options.mode !== undefined ? { mode: options.mode } : {}),
         navigation: this.navigationControl(name, interaction.user.id),
         modeControl: this.modeControl(name, interaction.user.id),

@@ -1,4 +1,4 @@
-import type { CommandDeclaration } from '@workspace/swastik';
+import type { CommandContext, CommandDeclaration } from '@workspace/swastik';
 import type { RESTPostAPIChatInputApplicationCommandsJSONBody } from 'discord.js';
 import type { CoreRenderer, RenderIdentity } from '../rendering/core-renderer.js';
 import type { Rank } from '../permissions/rank.js';
@@ -45,7 +45,6 @@ export function toCommandDefinition(
         }
       : {}),
   };
-  const context = { config: options.config ?? {} };
   const declared = declaration.permissions;
   return {
     data,
@@ -66,6 +65,18 @@ export function toCommandDefinition(
           },
         }
       : {}),
-    execute: (interaction: unknown) => Promise.resolve(declaration.execute(interaction, context)),
+    moduleConfig: options.config ?? {},
+    ...(options.identity.developer !== undefined || options.identity.version !== undefined
+      ? {
+          identity: {
+            ...(options.identity.developer !== undefined
+              ? { developer: options.identity.developer }
+              : {}),
+            ...(options.identity.version !== undefined ? { version: options.identity.version } : {}),
+          },
+        }
+      : {}),
+    execute: (interaction: unknown, context: CommandContext) =>
+      Promise.resolve(declaration.execute(interaction, context)),
   };
 }
