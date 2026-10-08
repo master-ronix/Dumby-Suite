@@ -69,7 +69,7 @@ export interface AdminRoutesDeps {
   operatorAllowList?: readonly string[];
   /** §22.5: verifies a presented Power Engine operator credential (delegated to the Credentials Service). */
   operatorVerifier?: {
-    verify(input: { keyId: string; secret: string; devId?: number }): Promise<unknown>;
+    verify(input: { keyId: string; secret: string; devId?: string | number }): Promise<unknown>;
   };
   /** §15.8: activates a developer credential on approval (delegated to the Credentials Service). */
   credentialActivator?: { activate(keyId: string): Promise<boolean> };
@@ -293,7 +293,7 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
     const verdict = decideApproval({
       actorId: body.actorId,
       subjectType: 'developer',
-      subjectId: devId,
+      subjectId: String(devId),
       operatorAllowList: deps.operatorAllowList ?? [],
       decision,
     });
@@ -324,7 +324,7 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
     const outcome = await deps.dispatcher.dispatch(`developer.${decision}`, body, async () => {
       await new PostgresApprovalStore(deps.db.knex).decide(
         'developer',
-        devId,
+        String(devId),
         status,
         body.actorId,
         body.reason,

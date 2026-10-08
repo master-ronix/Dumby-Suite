@@ -100,7 +100,7 @@ export class PostgresBuildStore implements BuildStore {
 
 /** In-memory store so the proving tests need no database (same pattern as the credential store). */
 export class InMemoryBuildStore implements BuildStore {
-  readonly #rows = new Map<string, BuildProvenanceRecord>();
+  readonly #rows = new Map<number, BuildProvenanceRecord>();
 
   seed(record: BuildProvenanceRecord): this {
     this.#rows.set(record.buildId, record);

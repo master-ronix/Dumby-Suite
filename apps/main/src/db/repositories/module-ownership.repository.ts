@@ -6,7 +6,7 @@ import type {
 
 interface ModuleRow {
   slug: string;
-  ownerDevId: string;
+  ownerDevId: number;
   createdAt: string | Date;
   ownershipTransferredAt: string | Date | null;
 }
@@ -32,7 +32,7 @@ export class PostgresModuleOwnershipStore implements ModuleOwnershipStore {
     return row ? fromRow(row) : undefined;
   }
 
-  async claim(slug: string, ownerDevId: string): Promise<boolean> {
+  async claim(slug: string, ownerDevId: number): Promise<boolean> {
     const inserted = await this.knex('modules')
       .insert({ slug, ownerDevId })
       .onConflict('slug')
@@ -41,7 +41,7 @@ export class PostgresModuleOwnershipStore implements ModuleOwnershipStore {
     return inserted.length > 0;
   }
 
-  async transfer(slug: string, toDevId: string): Promise<boolean> {
+  async transfer(slug: string, toDevId: number): Promise<boolean> {
     const updated = await this.knex('modules')
       .where({ slug })
       .update({ ownerDevId: toDevId, ownershipTransferredAt: new Date() });
@@ -62,7 +62,7 @@ export class InMemoryModuleOwnershipStore implements ModuleOwnershipStore {
     return this.#rows.get(slug);
   }
 
-  async claim(slug: string, ownerDevId: string): Promise<boolean> {
+  async claim(slug: string, ownerDevId: number): Promise<boolean> {
     if (this.#rows.has(slug)) return false;
     this.#rows.set(slug, {
       slug,
@@ -73,7 +73,7 @@ export class InMemoryModuleOwnershipStore implements ModuleOwnershipStore {
     return true;
   }
 
-  async transfer(slug: string, toDevId: string): Promise<boolean> {
+  async transfer(slug: string, toDevId: number): Promise<boolean> {
     const existing = this.#rows.get(slug);
     if (existing === undefined) return false;
     this.#rows.set(slug, { ...existing, ownerDevId: toDevId, ownershipTransferredAt: new Date() });

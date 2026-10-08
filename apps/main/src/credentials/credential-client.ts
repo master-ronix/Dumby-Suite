@@ -9,7 +9,7 @@ import {
  * and act on its verdict.
  */
 export interface CredentialVerifier {
-  verify(input: { keyId: string; secret: string; devId?: number }): Promise<VerifiedCredential>;
+  verify(input: { keyId: string; secret: string; devId?: string | number }): Promise<VerifiedCredential>;
 }
 
 /**
@@ -18,7 +18,7 @@ export interface CredentialVerifier {
  */
 export interface CredentialIssuer {
   issueDevId(input: {
-    devId: number;
+    devId: string | number;
     registeredBy: string;
     label?: string;
   }): Promise<{ keyId: string; secret: string; status: string }>;
@@ -69,7 +69,7 @@ export class HttpCredentialClient implements CredentialClient {
   async verify(input: {
     keyId: string;
     secret: string;
-    devId?: number;
+    devId?: string | number;
   }): Promise<VerifiedCredential> {
     const body = await this.post('/credentials/verify', input);
     if (
@@ -87,7 +87,7 @@ export class HttpCredentialClient implements CredentialClient {
   }
 
   async issueDevId(input: {
-    devId: number;
+    devId: string | number;
     registeredBy: string;
     label?: string;
   }): Promise<{ keyId: string; secret: string; status: string }> {

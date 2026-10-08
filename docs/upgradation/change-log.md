@@ -295,6 +295,15 @@ authority_scope: [history]
 
 ---
 
+### v5.7.1 — UR-007 Repo-Wide Typecheck Fix — 2026-10-08
+
+- 2026-10-08 · fix · verdict=PUSHED
+- `19eed84` failed its build: the numeric-id change reached only part of the codebase (~40 type errors). The first pass was a spot check, not a repo-wide typecheck.
+- Fixed across `swastik.ts` (numeric devId/buildId, numeric dev-id and build-number minting, stringified redact/audit boundaries), the module-ownership and license stores (numeric ids + integer `ownerDevId` column), `build.repository`, `build-signing`, `swastik-loader`, `admin.routes` (generic approval subject ids), and the credential layer (`devId` is an opaque `string | number` subject).
+- Verified with a repo-wide `tsc -p apps/main/tsconfig.json --noEmit` against real typings: **0 errors** (only the native `argon2` module is absent locally; its types resolve in the build). Gate suite 25/25.
+
+---
+
 ### 4. Cross-Version Defect Lifecycle
 
 <!-- One row per introduced defect: id · introduced · status · resolution. -->

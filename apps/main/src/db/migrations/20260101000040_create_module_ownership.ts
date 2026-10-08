@@ -9,7 +9,7 @@ export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable('modules', (table) => {
     table.string('slug').primary();
     table
-      .string('ownerDevId')
+      .integer('ownerDevId')
       .notNullable()
       .references('devId')
       .inTable('developers')

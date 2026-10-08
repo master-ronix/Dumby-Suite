@@ -93,7 +93,7 @@ export function hashFile(path: string): string {
  */
 export function canonicalDescriptor(tuple: BuildProvenanceTuple): string {
   const ordered: Record<string, string> = {};
-  for (const field of DESCRIPTOR_FIELD_ORDER) ordered[field] = tuple[field];
+  for (const field of DESCRIPTOR_FIELD_ORDER) ordered[field] = String(tuple[field]);
   return JSON.stringify(ordered);
 }
 

@@ -40,7 +40,7 @@ export interface VerifiedCredential {
 export interface IssueCredentialInput {
   readonly purpose: CredentialPurpose;
   /** Bound developer identity; persisted only as its Argon2id hash. */
-  readonly devId?: number;
+  readonly devId?: string | number;
   readonly status?: CredentialStatus;
 }
 
@@ -109,7 +109,7 @@ export class DeveloperCredentialService {
   async verify(input: {
     keyId: string;
     secret: string;
-    devId?: number;
+    devId?: string | number;
   }): Promise<VerifiedCredential> {
     const record = await this.store.findByKeyId(input.keyId);
     if (record === undefined) throw new CredentialVerificationError('unknown-key-id');

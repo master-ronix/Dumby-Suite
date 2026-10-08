@@ -15,7 +15,7 @@ export type LicenseTierClass = (typeof LICENSE_TIER_CLASSES)[number];
 
 export interface LicenseRecord {
   readonly licenseId: string;
-  readonly subjectDevId: string;
+  readonly subjectDevId: number;
   readonly tierClass: LicenseTierClass;
   readonly state: LicenseState;
   readonly approvedBy?: string;
@@ -183,19 +183,15 @@ export function licenseAuthorizesTier(license: LicenseRecord, declaredTier: stri
 
 export function licenseMatchesManifestDevId(
   license: LicenseRecord,
-  manifestDevId: string | undefined,
+  manifestDevId: number | undefined,
 ): boolean {
-  return (
-    typeof manifestDevId === 'string' &&
-    manifestDevId.length > 0 &&
-    manifestDevId === license.subjectDevId
-  );
+  return typeof manifestDevId === 'number' && manifestDevId === license.subjectDevId;
 }
 
 export function licenseAuthorizesDeploy(
   license: LicenseRecord,
   declaration: {
-    readonly manifestDevId: string | undefined;
+    readonly manifestDevId: number | undefined;
     readonly moduleTier: string;
   },
 ): readonly string[] {
@@ -216,7 +212,7 @@ export function licenseAuthorizesDeploy(
 
 export function createPendingLicense(
   licenseId: string,
-  subjectDevId: string,
+  subjectDevId: number,
   tierClass: LicenseTierClass = 'standard',
 ): LicenseRecord {
   return {

@@ -115,6 +115,17 @@ async function writeAudit(
 }
 
 /**
+ * UR-007 — buildId is a number: the next build number. Swastik assigns a fresh one per accepted
+ * version (§15.8); it is not a string.
+ */
+async function nextBuildNumber(): Promise<number> {
+  const row = (await db.knex('builds').max('buildId as m').first()) as
+    | { m?: number | string | null }
+    | undefined;
+  return Number(row?.m ?? 0) + 1;
+}
+
+/**
  * §44.8 / finding #8 — every deployment leaves a `deployment_records` row, so a deployment that
  * leaves no record did not happen. Failures here are logged, never fatal to the deploy itself.
  */
@@ -130,7 +141,7 @@ async function recordDeployment(input: {
     await store.append(
       buildDeploymentRecord({
         recordId: randomUUID(),
-        triggeredBy: { type: 'operator', initiatedBy: input.devId },
+        triggeredBy: { type: 'operator', initiatedBy: String(input.devId) },
         devId: input.devId,
         buildId: input.buildId,
         module: input.module,
@@ -200,7 +211,7 @@ async function authenticateDeveloper(
     return reply.code(CREDENTIAL_REFUSAL_STATUS).send(CREDENTIAL_REFUSAL_BODY);
   }
   const dev = await db.knex('developers').where({ credentialKeyId: presented.keyId }).first();
-  const devId = dev === undefined ? undefined : String(dev['devId']);
+  const devId = dev === undefined ? undefined : Number(dev['devId']);
   let reason: string;
   try {
     await credentialClient.verify(devId === undefined ? presented : { ...presented, devId });
@@ -248,7 +259,7 @@ const OPTIONAL_LICENSE_FIELDS = [
 function licenseFromRow(row: Record<string, unknown>): LicenseRecord {
   const license: LicenseRecord = {
     licenseId: String(row['licenseId']),
-    subjectDevId: String(row['subjectDevId']),
+    subjectDevId: Number(row['subjectDevId']),
     tierClass: row['tierClass'] as LicenseRecord['tierClass'],
     state: row['state'] as LicenseRecord['state'],
   };
@@ -337,7 +348,11 @@ app.post('/swastik/developers/register', async (request, reply) => {
   if (!username) {
     return reply.code(400).send({ error: 'username is required' });
   }
-  const rawDevId = `dev_${randomBytes(16).toString('hex')}`;
+  // devId is a number (UR-007): the next developer number, assigned at registration.
+  const maxRow = (await db.knex('developers').max('devId as m').first()) as
+    | { m?: number | string | null }
+    | undefined;
+  const rawDevId = Number(maxRow?.m ?? 0) + 1;
   // Issuance is delegated to the Credentials Service (§22.8). Swastik mints nothing: it receives
   // a keyId plus a secret shown exactly once and binds the keyId to the developer row.
   const issued = await credentialClient.issueDevId({ devId: rawDevId, registeredBy: username });
@@ -354,8 +369,8 @@ app.post('/swastik/developers/register', async (request, reply) => {
     tierClass: pendingLicense.tierClass,
     state: pendingLicense.state,
   });
-  logger.info('swastik-developer-registered', { username, devId: redact(rawDevId) });
-  await writeAudit('DEVELOPER_REGISTERED', 'allowed', { username, devId: redact(rawDevId) });
+  logger.info('swastik-developer-registered', { username, devId: redact(String(rawDevId)) });
+  await writeAudit('DEVELOPER_REGISTERED', 'allowed', { username, devId: redact(String(rawDevId)) });
   return reply.code(201).send({
     devId: rawDevId,
     approvalStatus: 'pending',
@@ -396,7 +411,7 @@ app.post('/swastik/modules/upload', async (request, reply) => {
   // so the response cannot be used to probe approval state.
   if (dev['approvalStatus'] !== 'approved') {
     // §15.8: the attempt creates a pending approval request the owner reviews.
-    await new PostgresApprovalStore(db.knex).requestPending('developer', devId);
+    await new PostgresApprovalStore(db.knex).requestPending('developer', String(devId));
     logger.warn('swastik-developer-auth-refused', {
       route: 'upload',
       reason: 'developer-not-approved',
@@ -436,7 +451,7 @@ app.post('/swastik/modules/upload', async (request, reply) => {
     await writeAudit('BUILD_UPLOAD_REJECTED', 'rejected', {
       moduleSlug,
       version,
-      devId: redact(devId),
+      devId: redact(String(devId)),
       error: (err as Error).message,
     });
     return reply.code(422).send({
@@ -460,7 +475,7 @@ app.post('/swastik/modules/upload', async (request, reply) => {
     await writeAudit('BUILD_UPLOAD_REJECTED', 'rejected', {
       moduleSlug,
       version,
-      devId: redact(devId),
+      devId: redact(String(devId)),
       error: 'no license is registered for this developer',
     });
     return reply.code(403).send({ error: 'no license is registered for this developer' });
@@ -473,7 +488,7 @@ app.post('/swastik/modules/upload', async (request, reply) => {
     await writeAudit('BUILD_UPLOAD_REJECTED', 'rejected', {
       moduleSlug,
       version,
-      devId: redact(devId),
+      devId: redact(String(devId)),
       error: licenseViolations.join('; '),
     });
     return reply.code(403).send({ error: `license gate refused: ${licenseViolations.join('; ')}` });
@@ -488,7 +503,7 @@ app.post('/swastik/modules/upload', async (request, reply) => {
     await writeAudit('MODULE_UPLOAD_DENIED_NON_OWNER', 'rejected', {
       moduleSlug,
       version,
-      devId: redact(devId),
+      devId: redact(String(devId)),
     });
     return reply.code(403).send({ error: 'module is owned by another developer' });
   }
@@ -497,14 +512,14 @@ app.post('/swastik/modules/upload', async (request, reply) => {
     await writeAudit('BUILD_UPLOAD_REJECTED', 'rejected', {
       moduleSlug,
       version,
-      devId: redact(devId),
+      devId: redact(String(devId)),
       error: uploadGate.violations.join('; '),
     });
     return reply
       .code(409)
       .send({ error: `Compatibility Ledger refused staging: ${uploadGate.violations.join('; ')}` });
   }
-  const buildId = `build_${randomBytes(12).toString('hex')}`;
+  const buildId = await nextBuildNumber();
   const stagingDir = safeJoin(stagingVolume, safeModulePathSegment(moduleSlug, version));
   if (!existsSync(stagingDir)) mkdirSync(stagingDir, { recursive: true });
   const manifestPath = join(stagingDir, 'manifest.json');
@@ -518,12 +533,12 @@ app.post('/swastik/modules/upload', async (request, reply) => {
     version,
     validationStatus: 'pending',
   });
-  logger.info('swastik-build-staged', { buildId, moduleSlug, version, devId: redact(devId) });
+  logger.info('swastik-build-staged', { buildId, moduleSlug, version, devId: redact(String(devId)) });
   await writeAudit('BUILD_STAGED', 'allowed', {
     buildId,
     moduleSlug,
     version,
-    devId: redact(devId),
+    devId: redact(String(devId)),
   });
   return reply.code(201).send({ buildId, status: 'staged', moduleSlug, version });
 });
@@ -725,11 +740,11 @@ app.post('/internal/deploy', async (request, reply) => {
   }
   if (dev.approvalStatus !== 'approved') {
     // §15.8: the attempt creates a pending approval request the owner reviews.
-    await new PostgresApprovalStore(db.knex).requestPending('developer', providedDevId);
+    await new PostgresApprovalStore(db.knex).requestPending('developer', String(providedDevId));
     await writeAudit('DEVELOPER_DEPLOY_DENIED', 'rejected', {
       moduleSlug: safeModuleSlug,
       version: safeModuleVersion,
-      devId: redact(providedDevId),
+      devId: redact(String(providedDevId)),
     });
     return reply
       .code(403)
@@ -748,7 +763,7 @@ app.post('/internal/deploy', async (request, reply) => {
     await writeAudit('MODULE_DEPLOY_REJECTED', 'rejected', {
       moduleSlug: safeModuleSlug,
       version: safeModuleVersion,
-      devId: redact(providedDevId),
+      devId: redact(String(providedDevId)),
       error: licenseViolations.join('; '),
     });
     return reply.code(403).send({ error: `license gate refused: ${licenseViolations.join('; ')}` });
@@ -763,7 +778,7 @@ app.post('/internal/deploy', async (request, reply) => {
     await writeAudit('MODULE_DEPLOY_DENIED_NON_OWNER', 'rejected', {
       moduleSlug: safeModuleSlug,
       version: safeModuleVersion,
-      devId: redact(providedDevId),
+      devId: redact(String(providedDevId)),
     });
     return reply.code(403).send({ error: 'module is owned by another developer' });
   }
@@ -772,7 +787,7 @@ app.post('/internal/deploy', async (request, reply) => {
     await writeAudit('MODULE_DEPLOY_REJECTED', 'rejected', {
       moduleSlug: safeModuleSlug,
       version: safeModuleVersion,
-      devId: redact(providedDevId),
+      devId: redact(String(providedDevId)),
       error: deployGate.violations.join('; '),
     });
     return reply.code(409).send({
@@ -780,7 +795,7 @@ app.post('/internal/deploy', async (request, reply) => {
     });
   }
 
-  const buildId = `build_${randomBytes(12).toString('hex')}`;
+  const buildId = await nextBuildNumber();
   const stagingDir = safeJoin(
     stagingVolume,
     safeModulePathSegment(safeModuleSlug, safeModuleVersion),
@@ -833,7 +848,7 @@ app.post('/internal/deploy', async (request, reply) => {
       moduleSlug: safeModuleSlug,
       version: safeModuleVersion,
       buildId,
-      devId: redact(providedDevId),
+      devId: redact(String(providedDevId)),
       error: gate.reason,
     });
     return reply.code(403).send({ error: gate.reason });
@@ -864,7 +879,7 @@ app.post('/internal/deploy', async (request, reply) => {
       moduleSlug: safeModuleSlug,
       version: safeModuleVersion,
       buildId,
-      devId: redact(providedDevId),
+      devId: redact(String(providedDevId)),
       gate: gate.gate,
       tier: manifest.tier,
     });
@@ -872,7 +887,7 @@ app.post('/internal/deploy', async (request, reply) => {
       buildId,
       module: safeModuleSlug,
       version: safeModuleVersion,
-      devId: providedDevId,
+      devId: Number(providedDevId),
       promotionResult: 'promoted',
     });
     return reply.code(201).send({
@@ -909,7 +924,7 @@ app.post('/internal/deploy', async (request, reply) => {
       buildId,
       module: safeModuleSlug,
       version: safeModuleVersion,
-      devId: providedDevId,
+      devId: Number(providedDevId),
       promotionResult: promotion !== null ? 'rolled-back' : 'not-attempted',
     });
     return reply.code(500).send({ error: `deploy failed: ${(err as Error).message}` });

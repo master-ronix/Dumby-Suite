@@ -218,7 +218,9 @@ Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (rea
 - **Misinterpretation:** UR-005 put the developer's **@handle** in the title attribution. §1.5 reserves that line for the developer's **name** (`Developed by {Developer}`). Corrected — the attribution names the developer; the @handle is a footer field.
 - **Fault:** the loader's attribution fell back to the raw **`devId`** (`mod.manifest.devId`), which §32.12 treats as being as sensitive as a bot token. The attribution now resolves `devName`/`devUsername` from the account registry by `devId` (`module-system/developer-registry.ts`) and never renders the identifier.
 - **Identity model:** `devId` (registration, §15.6 — never user-facing) · `buildId` (per version, §15.8 — footer) · `devName` (attribution) · `devUsername` (footer). Both name and handle come from the registry, not static text.
-- **Verification:** gate suite 25/25; touched files type-check against real typings.
+- **Build failure (2026-10-08):** the first numeric-id push (`19eed84`) failed at typecheck — the change reached only part of the codebase (~40 errors). A spot check is not a repo-wide typecheck.
+- **Repo-wide fix:** numeric devId/buildId across `swastik.ts` (numeric dev-id and build-number minting; stringified `redact`/audit/`initiatedBy` boundaries), the module-ownership and license stores (numeric ids; the `modules.ownerDevId` column is now integer), `build.repository` (numeric map key), `build-signing` (canonical descriptor stringifies every field), `swastik-loader` (quarantine key is a path segment), `admin.routes` (generic approval subject ids stringified), and the credential layer (`devId` is an opaque `string | number` subject).
+- **Verification:** a repo-wide `tsc -p apps/main/tsconfig.json --noEmit` against real typings reports **0 errors**; gate suite 25/25.
 
 ---
 

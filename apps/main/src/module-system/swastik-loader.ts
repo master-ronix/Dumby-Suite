@@ -216,7 +216,7 @@ function quarantineModuleDir(input: {
   readonly entry: string;
   readonly logger: Logger;
 }): string | null {
-  const key = input.buildId ?? input.entry;
+  const key = input.buildId !== null ? String(input.buildId) : input.entry;
   const dest = join(input.quarantineDir, key);
   try {
     mkdirSync(input.quarantineDir, { recursive: true });
