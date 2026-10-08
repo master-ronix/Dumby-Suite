@@ -55,6 +55,7 @@ import { CommandRegistry } from '../commands/command-registry.js';
 import { CommandRouter } from '../commands/command-router.js';
 import { registerCoreFrameHandlers } from '../interactions/core-frame.handlers.js';
 import { createPageDataProvider } from '../rendering/page-data.js';
+import { createBccmEffectHandlers } from './bccm-effects.js';
 import type { CommandInteraction } from '../commands/command-router.js';
 import { PersonaCommandBindingService } from '../personas/persona-command-binding.service.js';
 import {
@@ -593,6 +594,7 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     config,
     logger,
   });
+  const bccmEffects = createBccmEffectHandlers({ knex: db.knex, registry: commandRegistry, logger });
   const commandRouter = new CommandRouter(commandRegistry, logger, {
     devGuildId: config.get('DEV_GUILD_ID'),
     isModuleEnabledInGuild,
@@ -604,6 +606,7 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     // §22.2 / Table 22-A — the Power Engine `suspendGuild` state the dispatch path must consult.
     guildSuspensions,
     pageDataProvider,
+    effectHandlers: bccmEffects,
     resolveCommandOwner: (guildId, moduleSlug) =>
       personaBindingService.resolveCommandOwner(guildId, moduleSlug),
     ...(config.get('PERSONA_ID') !== '' ? { residentPersonaId: config.get('PERSONA_ID') } : {}),
@@ -812,6 +815,7 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
           ) as unknown as CommandInteraction['editReply'],
           replied: interaction.replied,
           deferred: interaction.deferred,
+          options: interaction.options,
           ...(channel
             ? {
                 channel: {

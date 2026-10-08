@@ -3,9 +3,20 @@
  * schema with `defineCommand` and its handler returns page data; the Renderer derives the whole
  * presentation from that data, so module code never constructs components, embeds or flags.
  */
+/**
+ * §6.7 — a declared side effect. A module cannot reach the host process, so it cannot write to the
+ * queue, the database or anything else itself; it declares what should happen and the host
+ * performs it, which keeps the handler free of side effects during its own execution.
+ */
+export interface CommandEffect {
+  readonly kind: string;
+  readonly payload: Readonly<Record<string, unknown>>;
+}
+
 export interface CommandPageData {
   readonly page: string;
   readonly data: Readonly<Record<string, unknown>>;
+  readonly effects?: readonly CommandEffect[];
 }
 
 export interface CommandContext {

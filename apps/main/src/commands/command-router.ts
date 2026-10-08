@@ -16,6 +16,7 @@ import {
   type NoticeReasonCode,
   type RenderIdentity,
   type RenderMode,
+  derivePageSections,
 } from '../rendering/core-renderer.js';
 import { PersonaOccupiedError } from '../personas/persona.js';
 
@@ -32,6 +33,8 @@ export interface CommandInteraction {
   memberPermissions?: readonly string[];
   memberRoles?: readonly string[];
   isGuildOwner?: boolean;
+  /** §6.7 — the interaction's option accessor, so a handler can read its own arguments. */
+  options?: unknown;
 }
 
 export class CommandNotFoundError extends Error {
@@ -84,6 +87,16 @@ export interface CommandRouterOptions {
     moduleId: string,
     guildId: string | null,
   ) => Promise<Readonly<Record<string, unknown>>>;
+  /**
+   * §6.7 — performs the side effects a handler declares. Keyed by effect kind; an undeclared kind
+   * is ignored rather than failing the interaction.
+   */
+  effectHandlers?: Readonly<
+    Record<
+      string,
+      (payload: Readonly<Record<string, unknown>>, interaction: CommandInteraction) => Promise<void>
+    >
+  >;
 }
 
 export class CommandRouter {
@@ -180,6 +193,24 @@ export class CommandRouter {
       );
       if (!pipelinePassed) return;
 
+      // §6.7 — the handler declares its side effects; the host performs them. They run before the
+      // render so a rejected effect surfaces as a formal notice rather than a stale page.
+      const effects =
+        (
+          declaredResponse as {
+            effects?: readonly {
+              kind: string;
+              payload: Readonly<Record<string, unknown>>;
+            }[];
+          }
+        ).effects ?? [];
+      for (const effect of effects) {
+        const effectHandler = this.options.effectHandlers?.[effect.kind];
+        if (effectHandler !== undefined) {
+          await effectHandler(effect.payload, interaction);
+        }
+      }
+
       const render = this.renderer.normalizeHandlerResult(declaredResponse, {
         ...identity,
         ...(def.identity?.developer !== undefined ? { developer: def.identity.developer } : {}),
@@ -188,6 +219,17 @@ export class CommandRouter {
         navigation: this.navigationControl(name, interaction.user.id),
         modeControl: this.modeControl(name, interaction.user.id),
       });
+      // A page whose data the effects just changed is re-derived, so the render shows the result
+      // of the action rather than the state it was gathered in.
+      if (effects.length > 0) {
+        const pageName = (declaredResponse as { page?: string }).page;
+        if (pageName !== undefined) {
+          const fresh =
+            (await this.options.pageDataProvider?.(def.moduleId, interaction.guildId)) ?? {};
+          render.sections = derivePageSections(pageName, fresh);
+        }
+      }
+
       await this.renderer.editFinal(interaction, render);
       this.logger.info('command-executed', {
         command: name,

@@ -144,25 +144,37 @@ export function createPageDataProvider(
   }
 
   async function queue(guildId: string | null): Promise<PageData> {
-    let pending = 0;
+    let entries: readonly string[] = [];
     if (guildId !== null) {
       try {
         const rows = await db
           .knex('guild_command_queue')
-          .where({ guildId })
+          .where({ guildId, status: 'pending' })
           .whereNull('deletedAt')
-          .select('guildId');
-        pending = rows.length;
+          .orderBy('scheduledFor', 'asc')
+          .select('commandKey', 'payload');
+        entries = rows.map((row, index) => {
+          const row2 = row as { commandKey?: unknown; payload?: unknown };
+          const entry = (row2.payload ?? {}) as Record<string, unknown>;
+          const parts = [`#${index + 1}`, `Action: ${String(entry['action'] ?? 'rename')}`];
+          parts.push(`Command: ${String(row2.commandKey ?? '')}`);
+          if (entry['newName'] !== undefined) parts.push(`New Name: ${String(entry['newName'])}`);
+          if (entry['alias'] !== undefined) parts.push(`Alias: ${String(entry['alias'])}`);
+          if (entry['disable'] !== undefined) parts.push(`Disable: ${String(entry['disable'])}`);
+          parts.push('Status: Queued');
+          return parts.join('   |   ');
+        });
       } catch (err) {
         logger.warn('page-data-queue-unavailable', { guildId, error: String(err) });
       }
     }
+    const pending = entries.length;
     return {
       title: 'Pending Command Queue Actions',
       lines: [
         'Batch window: changes are batched and pushed within the 12–13 hour window (§15.8)',
         '',
-        pending === 0 ? 'No pending queue actions.' : `${pending} pending queue action(s).`,
+        ...(pending === 0 ? ['No pending queue actions.'] : entries),
         '',
         `Total queued: ${pending}   |   Next batch push: within 12–13h`,
       ],
