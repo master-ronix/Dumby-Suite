@@ -8,7 +8,7 @@
  */
 export interface ModuleOwnershipRecord {
   readonly slug: string;
-  readonly ownerDevId: number;
+  readonly ownerDevId: string;
   readonly createdAt: Date;
   readonly ownershipTransferredAt: Date | null;
 }
@@ -16,11 +16,11 @@ export interface ModuleOwnershipRecord {
 export type OwnershipDecision =
   | { readonly kind: 'claim' }
   | { readonly kind: 'owned' }
-  | { readonly kind: 'denied'; readonly ownerDevId: number };
+  | { readonly kind: 'denied'; readonly ownerDevId: string };
 
 export function decideModuleOwnership(
   existing: ModuleOwnershipRecord | undefined,
-  devId: number,
+  devId: string,
 ): OwnershipDecision {
   if (existing === undefined) return { kind: 'claim' };
   if (existing.ownerDevId === devId) return { kind: 'owned' };
@@ -30,7 +30,7 @@ export function decideModuleOwnership(
 export interface ModuleOwnershipStore {
   findBySlug(slug: string): Promise<ModuleOwnershipRecord | undefined>;
   /** Insert the ownership row if the slug is unclaimed. Returns true when this call claimed it. */
-  claim(slug: string, ownerDevId: number): Promise<boolean>;
+  claim(slug: string, ownerDevId: string): Promise<boolean>;
   /** Operator-initiated ownership transfer (§44.8). Returns true when a row was updated. */
-  transfer(slug: string, toDevId: number): Promise<boolean>;
+  transfer(slug: string, toDevId: string): Promise<boolean>;
 }

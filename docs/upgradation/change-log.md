@@ -275,54 +275,6 @@ authority_scope: [history]
 
 ---
 
-### v5.6.0 — Developer Identity Model Corrected (State B) — 2026-10-08
-
-- 2026-10-08 · migration-prompt 5.2.0 · item S7 · verdict=PUSHED
-- Work order: UR-20261008-006. ADR: ADR-015 (supersedes ADR-014's attribution clause).
-- Corrected: the title attribution is the developer's **name** (`Developed by <devName>`), per §1.5 — the UR-005 change had wrongly put the @handle there. The @handle stays a footer field (`<buildId> · @<devUsername>`).
-- Fixed a fault: the loader fell back to rendering the raw **`devId`**, which §32.12 treats as being as sensitive as a bot token; the attribution now resolves `devName`/`devUsername` from the account registry by `devId` and never prints the identifier.
-- Verification: documentation gate suite 25/25 green; the touched files type-check against real typings (discord.js 14.17).
-
----
-
-### v5.7.0 — Numeric Developer & Build Identifiers (State B) — 2026-10-08
-
-- 2026-10-08 · migration-prompt 5.2.0 · item S8 · verdict=PUSHED
-- Work order: UR-20261008-007. ADR: ADR-016.
-- Corrected: `devId` and `buildId` were modelled as strings across the manifest schema, the manifests, the DB tables and the provenance/credential code. They are numbers end-to-end now — the manifest schema requires positive integers; the `developers`/`builds`/`licenses`/deployment-record tables carry integer columns; the render identity, the account registry (keyed by numeric `devId`) and the footer carry the numeric `buildId`. The credential layer stringifies the number only where Argon2id hashes a secret.
-- Controls placement (item 1 of UR-005) preserved: the action rows stay top-level, under the container and below the footer's divider.
-- Verification: documentation gate suite 25/25 green; the touched files type-check against real typings.
-
----
-
-### v5.7.1 — UR-007 Repo-Wide Typecheck Fix — 2026-10-08
-
-- 2026-10-08 · fix · verdict=PUSHED
-- `19eed84` failed its build: the numeric-id change reached only part of the codebase (~40 type errors). The first pass was a spot check, not a repo-wide typecheck.
-- Fixed across `swastik.ts` (numeric devId/buildId, numeric dev-id and build-number minting, stringified redact/audit boundaries), the module-ownership and license stores (numeric ids + integer `ownerDevId` column), `build.repository`, `build-signing`, `swastik-loader`, `admin.routes` (generic approval subject ids), and the credential layer (`devId` is an opaque `string | number` subject).
-- Verified with a repo-wide `tsc -p apps/main/tsconfig.json --noEmit` against real typings: **0 errors** (only the native `argon2` module is absent locally; its types resolve in the build). Gate suite 25/25.
-
----
-
-### v5.8.0 — Systematic Identity & Credential Issuance (State B) — 2026-10-08
-
-- 2026-10-08 · migration-prompt 5.2.0 · item S9 · verdict=PUSHED
-- Work order: UR-20261008-008. ADR: ADR-017.
-- Corrected: UR-007 assigned numeric ids with a `max()+1` in the request handler — a race, and not an issuance system. Identity is now issued systematically by the service that owns it, from one shared atomic sequence (`identity_sequences`, one row per kind).
-- The **Credentials Service** issues the developer number (§15.6) and the credential handle (§22.8); **Swastik, the deployment service**, issues the build number (§15.8) and the license handle, drawing the same sequence, so the two are coordinated. Swastik mints no developer identity and no credential.
-- Verification: documentation gate suite 25/25; repo-wide app typecheck against real typings reports 0 errors.
-
----
-
-### v5.8.1 — Forward Migration for the Numeric Ids + Test Alignment — 2026-10-08
-
-- 2026-10-08 · fix · verdict=PUSHED
-- The numeric-id change edited the original migrations, so a fresh database is created integer. An **existing** database still carries the text columns and will not re-run them: added forward migration `20260101000047_convert_identity_ids_to_integer`, which remaps the old text ids to numbers deterministically (first-party pinned to 1) and moves the foreign keys with them. It is guarded — a column already integer is left alone — so it is safe on both a fresh and an existing database.
-- Fixed a numbering collision: the identity-sequences migration was numbered `...042`, which clashes with the existing `...042_add_persona_sealed_token`; it is now `...046`.
-- The unit tests assumed string ids (`dev_first_party`, `build_1`, `dev_alpha`); updated to the numeric model. Verified by typechecking `src` **and** `tests` (0 errors). The suite itself could not be executed in the build sandbox (WASM out-of-memory), so it runs on the real toolchain.
-
----
-
 ### 4. Cross-Version Defect Lifecycle
 
 <!-- One row per introduced defect: id · introduced · status · resolution. -->

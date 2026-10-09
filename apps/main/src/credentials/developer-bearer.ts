@@ -31,7 +31,7 @@ export type DeveloperAuthFailureReason =
 export type DeveloperAuthOutcome =
   | {
       readonly ok: true;
-      readonly devId: number;
+      readonly devId: string;
       readonly keyId: string;
       readonly dev: Record<string, unknown>;
     }
@@ -62,7 +62,7 @@ export async function authenticateDeveloperCredential(input: {
   const presented = parseDeveloperCredential(input.authorization);
   if (!presented) return { ok: false, reason: 'no-credential-presented' };
   const dev = await input.findDeveloperByKeyId(presented.keyId);
-  const devId = dev === undefined ? undefined : Number(dev['devId']);
+  const devId = dev === undefined ? undefined : String(dev['devId']);
   try {
     await input.verifier.verify(devId === undefined ? presented : { ...presented, devId });
   } catch (err) {

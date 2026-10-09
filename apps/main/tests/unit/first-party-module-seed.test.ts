@@ -107,8 +107,8 @@ describe('first-party module packages', () => {
       expect(pkg.manifest.hardcoded).toBe(false);
       expect(pkg.manifest.hardcodeGuildId).toBeUndefined();
       // Required by the contract, so every first-party package must carry them.
-      expect(pkg.manifest.devId).toBe(1);
-      expect(typeof pkg.manifest.buildId).toBe('number');
+      expect(pkg.manifest.devId).toBe('dev_first_party');
+      expect(pkg.manifest.buildId).toMatch(/^build_/);
       expect(['public', 'unlisted', 'private']).toContain(pkg.manifest.visibility);
       expect(['private', 'public']).toContain(pkg.manifest.releaseStatus);
     }
@@ -356,8 +356,8 @@ describe('seeded manifest payload', () => {
   test('re-validates once the deploying devId is injected', () => {
     const pkg = discoverFirstPartyModulePackages().find((p) => p.slug === 'health');
     if (pkg === undefined) throw new Error('health package missing');
-    expect(parseManifest({ ...pkg.manifest, devId: 1 }).devId).toBe(
-      1,
+    expect(parseManifest({ ...pkg.manifest, devId: 'dev_first_party' }).devId).toBe(
+      'dev_first_party',
     );
   });
 

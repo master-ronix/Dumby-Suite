@@ -69,7 +69,7 @@ export interface AdminRoutesDeps {
   operatorAllowList?: readonly string[];
   /** §22.5: verifies a presented Power Engine operator credential (delegated to the Credentials Service). */
   operatorVerifier?: {
-    verify(input: { keyId: string; secret: string; devId?: string | number }): Promise<unknown>;
+    verify(input: { keyId: string; secret: string; devId?: string }): Promise<unknown>;
   };
   /** §15.8: activates a developer credential on approval (delegated to the Credentials Service). */
   credentialActivator?: { activate(keyId: string): Promise<boolean> };
@@ -254,7 +254,7 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
     async (req: FastifyRequest, reply: FastifyReply) => {
       const body = extractRequest(req);
       const { devId } = (req.body ?? {}) as {
-        devId?: number;
+        devId?: string;
       };
       const outcome = await deps.dispatcher.dispatch('suspendDeveloper', body, async () => {
         await deps.db
@@ -275,7 +275,7 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
     reply: FastifyReply,
     decision: 'approve' | 'decline',
   ): Promise<FastifyReply> => {
-    const { devId } = req.params as { devId: number };
+    const { devId } = req.params as { devId: string };
     const body = extractRequest(req);
     const presented = parseDeveloperCredential(req.headers.authorization);
     if (!presented || deps.operatorVerifier === undefined) {
@@ -293,7 +293,7 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
     const verdict = decideApproval({
       actorId: body.actorId,
       subjectType: 'developer',
-      subjectId: String(devId),
+      subjectId: devId,
       operatorAllowList: deps.operatorAllowList ?? [],
       decision,
     });
@@ -324,7 +324,7 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
     const outcome = await deps.dispatcher.dispatch(`developer.${decision}`, body, async () => {
       await new PostgresApprovalStore(deps.db.knex).decide(
         'developer',
-        String(devId),
+        devId,
         status,
         body.actorId,
         body.reason,

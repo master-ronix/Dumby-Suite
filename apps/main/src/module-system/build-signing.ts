@@ -33,7 +33,7 @@ export interface BuildProvenanceTuple {
   readonly moduleSlug: string;
   readonly version: string;
   readonly devId: string;
-  readonly buildId: number;
+  readonly buildId: string;
   readonly sourceArchiveHash: string;
   readonly artifactHash: string;
   readonly gateResultsHash: string;
@@ -48,7 +48,7 @@ export interface SignedProvenance {
 
 /** The on-disk sidecar that ties a promoted directory to a `builds` row (finding #22). */
 export interface BuildProvenanceSidecar extends SignedProvenance {
-  readonly buildId: number;
+  readonly buildId: string;
   readonly moduleSlug: string;
   readonly version: string;
   readonly devId: string;
@@ -93,7 +93,7 @@ export function hashFile(path: string): string {
  */
 export function canonicalDescriptor(tuple: BuildProvenanceTuple): string {
   const ordered: Record<string, string> = {};
-  for (const field of DESCRIPTOR_FIELD_ORDER) ordered[field] = String(tuple[field]);
+  for (const field of DESCRIPTOR_FIELD_ORDER) ordered[field] = tuple[field];
   return JSON.stringify(ordered);
 }
 

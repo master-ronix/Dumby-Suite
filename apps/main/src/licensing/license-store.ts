@@ -19,7 +19,7 @@ const OPTIONAL_LICENSE_FIELDS = [
 export function licenseFromRow(row: Record<string, unknown>): LicenseRecord {
   const license: LicenseRecord = {
     licenseId: String(row['licenseId']),
-    subjectDevId: Number(row['subjectDevId']),
+    subjectDevId: String(row['subjectDevId']),
     tierClass: row['tierClass'] as LicenseRecord['tierClass'],
     state: row['state'] as LicenseRecord['state'],
   };
@@ -50,14 +50,14 @@ export function approveLicenseRecord(
 }
 
 export interface LicenseStore {
-  findBySubjectDevId(devId: number): Promise<LicenseRecord | undefined>;
+  findBySubjectDevId(devId: string): Promise<LicenseRecord | undefined>;
   save(record: LicenseRecord): Promise<void>;
 }
 
 export class PostgresLicenseStore implements LicenseStore {
   constructor(private readonly knex: Knex) {}
 
-  async findBySubjectDevId(devId: number): Promise<LicenseRecord | undefined> {
+  async findBySubjectDevId(devId: string): Promise<LicenseRecord | undefined> {
     const row = await this.knex('licenses')
       .where({ subjectDevId: devId })
       .first<Record<string, unknown> | undefined>();

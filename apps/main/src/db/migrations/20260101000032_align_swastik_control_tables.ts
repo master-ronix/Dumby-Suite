@@ -7,7 +7,7 @@ export async function up(knex: Knex): Promise<void> {
   await knex.raw('drop type if exists swastik_developer_status');
 
   await knex.schema.createTable('developers', (table) => {
-    table.integer('devId').primary();
+    table.string('devId').primary();
     table.string('username').notNullable().unique();
     table
       .enu('approvalStatus', ['pending', 'approved', 'declined'], {
@@ -23,9 +23,9 @@ export async function up(knex: Knex): Promise<void> {
   });
 
   await knex.schema.createTable('builds', (table) => {
-    table.integer('buildId').primary();
+    table.string('buildId').primary();
     table
-      .integer('devId')
+      .string('devId')
       .notNullable()
       .references('devId')
       .inTable('developers')
@@ -81,7 +81,7 @@ export async function down(knex: Knex): Promise<void> {
       .inTable('swastik_developers')
       .onDelete('CASCADE');
     table.string('version').notNullable();
-    table.integer('buildId').notNullable();
+    table.string('buildId').notNullable();
     table
       .enu('status', ['pending', 'signed', 'rejected', 'revoked'], {
         useNative: true,

@@ -5,7 +5,7 @@ export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable('licenses', (table) => {
     table.string('licenseId').primary();
     table
-      .integer('subjectDevId')
+      .string('subjectDevId')
       .notNullable()
       .references('devId')
       .inTable('developers')
@@ -87,12 +87,12 @@ export async function up(knex: Knex): Promise<void> {
     table.string('initiatedBy').notNullable();
     table.string('oidcRepositoryIdentity').nullable();
     table
-      .integer('devId')
+      .string('devId')
       .notNullable()
       .references('devId')
       .inTable('developers')
       .onDelete('RESTRICT');
-    table.integer('buildId').notNullable();
+    table.string('buildId').notNullable();
     table.string('module').notNullable();
     table.string('version').notNullable();
     table

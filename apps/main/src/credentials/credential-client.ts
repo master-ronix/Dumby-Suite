@@ -9,7 +9,7 @@ import {
  * and act on its verdict.
  */
 export interface CredentialVerifier {
-  verify(input: { keyId: string; secret: string; devId?: string | number }): Promise<VerifiedCredential>;
+  verify(input: { keyId: string; secret: string; devId?: string }): Promise<VerifiedCredential>;
 }
 
 /**
@@ -17,11 +17,11 @@ export interface CredentialVerifier {
  * developer credentials itself.
  */
 export interface CredentialIssuer {
-  /** §15.6/§22.8 — the Credentials Service issues the developer identity number, not the caller. */
   issueDevId(input: {
+    devId: string;
     registeredBy: string;
     label?: string;
-  }): Promise<{ devId: number; keyId: string; secret: string; status: string }>;
+  }): Promise<{ keyId: string; secret: string; status: string }>;
   /** §22.5/§22.8: issue a Power Engine operator credential (`operator_keypair`) bound to the operator id. */
   issueOperator(input: {
     operatorId: string;
@@ -39,7 +39,6 @@ export interface CredentialClient
   extends CredentialVerifier, CredentialIssuer, CredentialActivator {}
 
 interface IssueResponseBody {
-  readonly devId?: unknown;
   readonly keyId?: unknown;
   readonly secret?: unknown;
   readonly status?: unknown;
@@ -70,7 +69,7 @@ export class HttpCredentialClient implements CredentialClient {
   async verify(input: {
     keyId: string;
     secret: string;
-    devId?: string | number;
+    devId?: string;
   }): Promise<VerifiedCredential> {
     const body = await this.post('/credentials/verify', input);
     if (
@@ -88,19 +87,15 @@ export class HttpCredentialClient implements CredentialClient {
   }
 
   async issueDevId(input: {
+    devId: string;
     registeredBy: string;
     label?: string;
-  }): Promise<{ devId: number; keyId: string; secret: string; status: string }> {
+  }): Promise<{ keyId: string; secret: string; status: string }> {
     const body = await this.post('/credentials/issue-devid', input);
-    if (
-      typeof body.devId !== 'number' ||
-      typeof body.keyId !== 'string' ||
-      typeof body.secret !== 'string'
-    ) {
+    if (typeof body.keyId !== 'string' || typeof body.secret !== 'string') {
       throw new CredentialVerificationError('malformed-issue-response');
     }
     return {
-      devId: body.devId,
       keyId: body.keyId,
       secret: body.secret,
       status: typeof body.status === 'string' ? body.status : 'pending',

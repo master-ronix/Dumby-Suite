@@ -8,8 +8,8 @@ function baseContext(overrides: Partial<PermissionContext> = {}): PermissionCont
   return {
     tier: 'standard',
     hardcoded: false,
-    devId: 1,
-    buildId: 1,
+    devId: 'dev_first_party',
+    buildId: 'build_test_1_0_0',
     visibility: 'public',
     releaseStatus: 'public',
     actorId: 'user-1',
@@ -200,8 +200,8 @@ test('layer 7: grants never reach core commands', () => {
   const ctx = baseContext({
     tier: 'core',
     hardcoded: false,
-    devId: 1,
-    buildId: 1,
+    devId: 'dev_first_party',
+    buildId: 'build_test_1_0_0',
     visibility: 'public',
     releaseStatus: 'public',
     grants: {
@@ -357,8 +357,8 @@ test('layer 6: Core tier is exempt from RBAC even without the required rank', ()
   const ctx = baseContext({
     tier: 'core',
     hardcoded: false,
-    devId: 1,
-    buildId: 1,
+    devId: 'dev_first_party',
+    buildId: 'build_test_1_0_0',
     visibility: 'public',
     releaseStatus: 'public',
     requiredRank: 'MODERATOR',
@@ -388,8 +388,8 @@ test('layers short-circuit in order: a layer-2 failure never reaches layer 7 che
   const ctx = baseContext({
     tier: 'standard',
     hardcoded: false,
-    devId: 1,
-    buildId: 1,
+    devId: 'dev_first_party',
+    buildId: 'build_test_1_0_0',
     visibility: 'public',
     releaseStatus: 'public',
     blacklist: { isGloballyBlacklisted: () => true, isGuildBlacklisted: () => false },

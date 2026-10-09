@@ -213,37 +213,6 @@ Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (rea
 
 ---
 
-### F-7 — Developer identity conflated on the surfaces (FIXED — 2026-10-08)
-- **Work order:** UR-20261008-006. **ADR:** ADR-015 (supersedes ADR-014's attribution clause).
-- **Misinterpretation:** UR-005 put the developer's **@handle** in the title attribution. §1.5 reserves that line for the developer's **name** (`Developed by {Developer}`). Corrected — the attribution names the developer; the @handle is a footer field.
-- **Fault:** the loader's attribution fell back to the raw **`devId`** (`mod.manifest.devId`), which §32.12 treats as being as sensitive as a bot token. The attribution now resolves `devName`/`devUsername` from the account registry by `devId` (`module-system/developer-registry.ts`) and never renders the identifier.
-- **Identity model:** `devId` (registration, §15.6 — never user-facing) · `buildId` (per version, §15.8 — footer) · `devName` (attribution) · `devUsername` (footer). Both name and handle come from the registry, not static text.
-- **Build failure (2026-10-08):** the first numeric-id push (`19eed84`) failed at typecheck — the change reached only part of the codebase (~40 errors). A spot check is not a repo-wide typecheck.
-- **Repo-wide fix:** numeric devId/buildId across `swastik.ts` (numeric dev-id and build-number minting; stringified `redact`/audit/`initiatedBy` boundaries), the module-ownership and license stores (numeric ids; the `modules.ownerDevId` column is now integer), `build.repository` (numeric map key), `build-signing` (canonical descriptor stringifies every field), `swastik-loader` (quarantine key is a path segment), `admin.routes` (generic approval subject ids stringified), and the credential layer (`devId` is an opaque `string | number` subject).
-- **Verification:** a repo-wide `tsc -p apps/main/tsconfig.json --noEmit` against real typings reports **0 errors**; gate suite 25/25.
-
----
-
-### F-8 — devId / buildId typed as strings (FIXED — 2026-10-08)
-- **Work order:** UR-20261008-007. **ADR:** ADR-016.
-- **Fault:** the registered developer id and the build id are numbers, but both were typed as strings across the manifest schema, the eight module manifests, the DB tables (`developers`, `builds`, `licenses`, deployment records) and the provenance/credential code.
-- **Fix:** `devId` and `buildId` are numbers end-to-end. The manifest schema requires positive integers; the manifests carry numeric ids (devId 1 = first-party; a per-module build number); the DB migrations use integer columns; the render identity, the account registry (keyed by numeric `devId`) and the footer carry the numeric `buildId`. The credential layer stringifies the number only for the Argon2id hash.
-- **Preserved:** the page's action controls remain top-level, under the container and below the footer's divider.
-- **Verification:** gate suite 25/25; touched files type-check against real typings.
-
----
-
-### F-9 — Identity assigned ad hoc, not issued (FIXED — 2026-10-08)
-- **Work order:** UR-20261008-008. **ADR:** ADR-017.
-- **Fault:** UR-007 made the ids numeric but assigned them with a `max()+1` query in the request handler — a race between concurrent callers, and not an issuance system: the id was not produced by the service that owns identity.
-- **Fix:** a single identity issuer allocates every identity number from the shared `identity_sequences` table (one atomic insert-or-increment per kind). The Credentials Service issues the developer number and the credential handle; Swastik, the deployment service, issues the build number and the license handle from the same sequence — coordinated, not independent. Swastik no longer mints a developer identity or a credential; it asks the Credentials Service and records what it is given.
-- **New:** `identity/identity-issuer.ts`; migration `create_identity_sequences`.
-- **Verification:** gate suite 25/25; repo-wide app typecheck 0 errors.
-- **Forward migration (2026-10-08):** the numeric-id change edits the original migrations, so a fresh database is integer; an existing one still carries the text columns and will not re-run them. Added `20260101000047_convert_identity_ids_to_integer` — a guarded, deterministic remap (first-party pinned to 1) that moves the foreign keys with the columns. Also fixed a migration-number collision: the identity-sequences migration moved `042 → 046` (it clashed with `042_add_persona_sealed_token`).
-- **Tests (2026-10-08):** the unit tests assumed string ids; updated to the numeric model and verified by typechecking `src` and `tests` together (0 errors). The suite could not run in the build sandbox (WASM OOM) and runs on the real toolchain.
-
----
-
 ## Findings & Deviations Register
 
 1. **Application suite not run.** The environment has no installed dependencies, so the typecheck/lint/unit suite is pending on the real toolchain. The corpus gate suite (25/25) is green.

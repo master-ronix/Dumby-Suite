@@ -102,7 +102,7 @@ function parseDiscoveredModuleName(entry: string): DiscoveredModuleName | null {
  * serve a previous version's bytes across a hot swap. A stale-cache import becomes structurally
  * impossible rather than merely unlikely.
  */
-export function cacheBustedImportUrl(indexPath: string, buildId: number | null): string {
+export function cacheBustedImportUrl(indexPath: string, buildId: string | null): string {
   const href = pathToFileURL(indexPath).href;
   return buildId === null ? href : `${href}?b=${encodeURIComponent(buildId)}`;
 }
@@ -120,11 +120,11 @@ export class ModuleProvenanceRefusedError extends Error {
 }
 
 type ProvenanceVerdict =
-  | { readonly ok: true; readonly buildId: number }
+  | { readonly ok: true; readonly buildId: string }
   | {
       readonly ok: false;
       readonly reason: string;
-      readonly buildId: number | null;
+      readonly buildId: string | null;
       readonly expectedArtifactHash: string | null;
       readonly actualArtifactHash: string | null;
     };
@@ -212,11 +212,11 @@ function verifyBuildProvenance(input: {
 function quarantineModuleDir(input: {
   readonly moduleDir: string;
   readonly quarantineDir: string;
-  readonly buildId: number | null;
+  readonly buildId: string | null;
   readonly entry: string;
   readonly logger: Logger;
 }): string | null {
-  const key = input.buildId !== null ? String(input.buildId) : input.entry;
+  const key = input.buildId ?? input.entry;
   const dest = join(input.quarantineDir, key);
   try {
     mkdirSync(input.quarantineDir, { recursive: true });
@@ -338,7 +338,7 @@ export async function loadModulesFromTierVolumes(
           throw new Error(`index.js is missing from live module "${entry}"`);
         }
 
-        let buildId: number | null = null;
+        let buildId: string | null = null;
         if (guardActive) {
           const verdict = await verifyBuildProvenance({
             moduleDir,

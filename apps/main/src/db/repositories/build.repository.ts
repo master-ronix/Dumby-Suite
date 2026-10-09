@@ -6,10 +6,10 @@ import type { Knex } from 'knex';
  * it before every import. A row missing any provenance column is not promotable and never loads.
  */
 export interface BuildProvenanceRecord {
-  readonly buildId: number;
+  readonly buildId: string;
   readonly moduleSlug: string;
   readonly version: string;
-  readonly devId: number;
+  readonly devId: string;
   readonly sourceArchiveHash: string | null;
   readonly artifactHash: string | null;
   readonly lockfileHash: string | null;
@@ -21,15 +21,15 @@ export interface BuildProvenanceRecord {
 }
 
 export interface BuildStore {
-  findByBuildId(buildId: number): Promise<BuildProvenanceRecord | undefined>;
+  findByBuildId(buildId: string): Promise<BuildProvenanceRecord | undefined>;
   setProvenance(record: BuildProvenanceRecord): Promise<boolean>;
 }
 
 interface BuildRow {
-  buildId: number;
+  buildId: string;
   moduleSlug: string;
   version: string;
-  devId: number;
+  devId: string;
   sourceArchiveHash: string | null;
   artifactHash: string | null;
   lockfileHash: string | null;
@@ -60,7 +60,7 @@ function fromRow(row: BuildRow): BuildProvenanceRecord {
 export class PostgresBuildStore implements BuildStore {
   constructor(private readonly knex: Knex) {}
 
-  async findByBuildId(buildId: number): Promise<BuildProvenanceRecord | undefined> {
+  async findByBuildId(buildId: string): Promise<BuildProvenanceRecord | undefined> {
     const row = await this.knex('builds')
       .select(
         'buildId',
@@ -100,14 +100,14 @@ export class PostgresBuildStore implements BuildStore {
 
 /** In-memory store so the proving tests need no database (same pattern as the credential store). */
 export class InMemoryBuildStore implements BuildStore {
-  readonly #rows = new Map<number, BuildProvenanceRecord>();
+  readonly #rows = new Map<string, BuildProvenanceRecord>();
 
   seed(record: BuildProvenanceRecord): this {
     this.#rows.set(record.buildId, record);
     return this;
   }
 
-  async findByBuildId(buildId: number): Promise<BuildProvenanceRecord | undefined> {
+  async findByBuildId(buildId: string): Promise<BuildProvenanceRecord | undefined> {
     return this.#rows.get(buildId);
   }
 

@@ -48,7 +48,9 @@ export class FatalModuleLoadError extends Error {
  * version differs: Core-tier surfaces take the framework's, everything else carries its own.
  */
 const FRAMEWORK_DEVELOPER = 'Quixotic Mnemonics';
+const FRAMEWORK_DEV_USERNAME = 'master_ronix';
 const FRAMEWORK_VERSION = '5.0.0';
+const FIRST_PARTY_DEV_ID = 'dev_first_party';
 
 export class ModuleLoader {
   constructor(
@@ -112,8 +114,6 @@ export class ModuleLoader {
         // §1.7 (UR-11) — register the module's schema-declared commands against the Renderer.
         if (commandRegistry !== undefined && mod.commands !== undefined) {
           const renderer = this.container.tryResolve<CoreRenderer>(CORE_TOKENS.Renderer);
-          // item 2 — the registered developer identity, resolved from the account registry by devId.
-          const registered = resolveRegisteredDeveloper(mod.manifest.devId);
           if (renderer !== undefined) {
             for (const declaration of mod.commands) {
               commandRegistry.register(
@@ -122,12 +122,10 @@ export class ModuleLoader {
                   identity: {
                     surface: `Dumby Suite | ${mod.manifest.name}`,
                     buildId: mod.manifest.buildId,
-                    // The footer's @handle: the manifest's declared username, else the registered one.
-                    ...(mod.manifest.ui?.devUsername !== undefined
-                      ? { devUsername: mod.manifest.ui.devUsername }
-                      : registered !== undefined
-                        ? { devUsername: registered.username }
-                        : {}),
+                    devUsername:
+                      mod.manifest.ui?.devUsername ??
+                      resolveRegisteredDeveloper(mod.manifest.devId) ??
+                      mod.manifest.devId,
                     ...(mod.manifest.ui?.displayName !== undefined
                       ? { displayName: mod.manifest.ui.displayName }
                       : {}),
@@ -137,9 +135,10 @@ export class ModuleLoader {
                     ...(mod.manifest.ui?.banner !== undefined
                       ? { banner: mod.manifest.ui.banner }
                       : {}),
-                    // The title attribution is the developer's registered NAME — never the raw
-                    // devId, which is as sensitive as a bot token (§32.12) and is not user-facing.
-                    developer: registered?.name ?? FRAMEWORK_DEVELOPER,
+                    developer:
+                      mod.manifest.devId === undefined || mod.manifest.devId === FIRST_PARTY_DEV_ID
+                        ? FRAMEWORK_DEVELOPER
+                        : mod.manifest.devId,
                     version:
                       mod.manifest.tier === 'core' ? FRAMEWORK_VERSION : mod.manifest.version,
                   },

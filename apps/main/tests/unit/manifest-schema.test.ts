@@ -14,8 +14,8 @@ const base = {
   description: 'A test module',
   tier: 'standard',
   hardcoded: false,
-  devId: 1,
-  buildId: 1,
+  devId: 'dev_first_party',
+  buildId: 'build_test_1_0_0',
   visibility: 'public',
   releaseStatus: 'public',
 };

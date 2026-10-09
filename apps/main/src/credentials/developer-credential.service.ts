@@ -1,9 +1,5 @@
 import { randomBytes } from 'node:crypto';
 import argon2 from 'argon2';
-import {
-  InMemoryIdentityIssuer,
-  type IdentityIssuer,
-} from '../identity/identity-issuer.js';
 import type {
   CredentialPurpose,
   CredentialRecord,
@@ -44,7 +40,7 @@ export interface VerifiedCredential {
 export interface IssueCredentialInput {
   readonly purpose: CredentialPurpose;
   /** Bound developer identity; persisted only as its Argon2id hash. */
-  readonly devId?: string | number;
+  readonly devId?: string;
   readonly status?: CredentialStatus;
 }
 
@@ -59,8 +55,6 @@ const argon2Hasher: CredentialHasher = {
 };
 
 export interface DeveloperCredentialServiceOptions {
-  /** §15.6/§22.8 — the shared identity issuer; the entry wires the Postgres one. */
-  readonly issuer?: IdentityIssuer;
   readonly hasher?: CredentialHasher;
   readonly keyIdBytes?: number;
   readonly secretBytes?: number;
@@ -74,33 +68,23 @@ export interface DeveloperCredentialServiceOptions {
  */
 export class DeveloperCredentialService {
   private readonly hasher: CredentialHasher;
+  private readonly keyIdBytes: number;
   private readonly secretBytes: number;
-  private readonly issuer: IdentityIssuer;
 
   constructor(
     private readonly store: CredentialStore,
     options: DeveloperCredentialServiceOptions = {},
   ) {
     this.hasher = options.hasher ?? argon2Hasher;
+    this.keyIdBytes = options.keyIdBytes ?? 16;
     this.secretBytes = options.secretBytes ?? 32;
-    // §15.6/§22.8 — the issuer allocates systematic, coordinated identity numbers.
-    this.issuer = options.issuer ?? new InMemoryIdentityIssuer();
-  }
-
-  /**
-   * §15.6/§22.8 — the Credentials Service issues the developer's identity number at registration.
-   * No other surface mints it; Swastik asks here and records what it is given.
-   */
-  async issueDeveloperId(): Promise<number> {
-    return this.issuer.issue('developer');
   }
 
   async issue(input: IssueCredentialInput): Promise<IssuedCredential> {
-    // §22.8 — the credential handle is issued systematically too, not drawn at random.
-    const keyId = `key_${await this.issuer.issue('credential')}`;
+    const keyId = `key_${randomBytes(this.keyIdBytes).toString('hex')}`;
     const secret = randomBytes(this.secretBytes).toString('hex');
     const credentialHash = await this.hasher.hash(secret);
-    const devIdHash = input.devId === undefined ? null : await this.hasher.hash(String(input.devId));
+    const devIdHash = input.devId === undefined ? null : await this.hasher.hash(input.devId);
     const status: CredentialStatus = input.status ?? 'pending';
     const record: CredentialRecord = {
       keyId,
@@ -125,7 +109,7 @@ export class DeveloperCredentialService {
   async verify(input: {
     keyId: string;
     secret: string;
-    devId?: string | number;
+    devId?: string;
   }): Promise<VerifiedCredential> {
     const record = await this.store.findByKeyId(input.keyId);
     if (record === undefined) throw new CredentialVerificationError('unknown-key-id');
@@ -138,7 +122,7 @@ export class DeveloperCredentialService {
       if (record.devIdHash === null) {
         throw new CredentialVerificationError('credential-has-no-bound-identity');
       }
-      const devIdMatches = await this.hasher.verify(record.devIdHash, String(input.devId));
+      const devIdMatches = await this.hasher.verify(record.devIdHash, input.devId);
       if (!devIdMatches) throw new CredentialVerificationError('identity-mismatch');
     }
     if (record.status !== 'active') throw new CredentialVerificationError('pending-credential');

@@ -1,6 +1,6 @@
 import Fastify, { type FastifyReply } from 'fastify';
 import { isMainEntry } from './is-main-entry.js';
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Redis } from 'ioredis';
@@ -40,10 +40,6 @@ import {
   type PromotionOutcome,
 } from '../module-system/promotion.js';
 import { buildDeploymentRecord, type PromotionResult } from '../licensing/deployment-records.js';
-import {
-  PostgresIdentityIssuer,
-  type IdentityIssuer,
-} from '../identity/identity-issuer.js';
 import { PostgresDeploymentRecordStore } from '../db/repositories/deployment-record.repository.js';
 import { HttpCredentialClient, type CredentialClient } from '../credentials/credential-client.js';
 import {
@@ -67,8 +63,6 @@ let liveVolume: string;
 let promotionLock: RedisLockStore;
 let lockRedis: Redis;
 let credentialClient: CredentialClient;
-// §15.8 — the deployment service issues build numbers from the shared identity sequence.
-let identityIssuer: IdentityIssuer;
 
 async function init(): Promise<void> {
   env = parseEnv(pickEnvKeys(process.env));
@@ -90,9 +84,6 @@ async function init(): Promise<void> {
     internalApiKey: env.INTERNAL_API_KEY,
     timeoutMs: env.CREDENTIALS_SERVICE_TIMEOUT_MS,
   });
-  // The same identity sequence the Credentials Service draws from, so build issuance is
-  // coordinated with credential issuance rather than minted independently.
-  identityIssuer = new PostgresIdentityIssuer(db.knex);
   modulesDir = env.MODULES_DIR;
   stagingVolume = env.SWASTIK_STAGING_VOLUME_PATH;
   liveVolume = env.SWASTIK_LIVE_VOLUME_PATH;
@@ -128,10 +119,10 @@ async function writeAudit(
  * leaves no record did not happen. Failures here are logged, never fatal to the deploy itself.
  */
 async function recordDeployment(input: {
-  buildId: number;
+  buildId: string;
   module: string;
   version: string;
-  devId: number;
+  devId: string;
   promotionResult: PromotionResult;
 }): Promise<void> {
   try {
@@ -139,7 +130,7 @@ async function recordDeployment(input: {
     await store.append(
       buildDeploymentRecord({
         recordId: randomUUID(),
-        triggeredBy: { type: 'operator', initiatedBy: String(input.devId) },
+        triggeredBy: { type: 'operator', initiatedBy: input.devId },
         devId: input.devId,
         buildId: input.buildId,
         module: input.module,
@@ -165,7 +156,7 @@ function safeModulePathSegment(moduleSlug: string, version: string): string {
 }
 
 interface DeveloperPrincipal {
-  readonly devId: number;
+  readonly devId: string;
   readonly keyId: string;
   readonly dev: Record<string, unknown>;
 }
@@ -209,7 +200,7 @@ async function authenticateDeveloper(
     return reply.code(CREDENTIAL_REFUSAL_STATUS).send(CREDENTIAL_REFUSAL_BODY);
   }
   const dev = await db.knex('developers').where({ credentialKeyId: presented.keyId }).first();
-  const devId = dev === undefined ? undefined : Number(dev['devId']);
+  const devId = dev === undefined ? undefined : String(dev['devId']);
   let reason: string;
   try {
     await credentialClient.verify(devId === undefined ? presented : { ...presented, devId });
@@ -257,7 +248,7 @@ const OPTIONAL_LICENSE_FIELDS = [
 function licenseFromRow(row: Record<string, unknown>): LicenseRecord {
   const license: LicenseRecord = {
     licenseId: String(row['licenseId']),
-    subjectDevId: Number(row['subjectDevId']),
+    subjectDevId: String(row['subjectDevId']),
     tierClass: row['tierClass'] as LicenseRecord['tierClass'],
     state: row['state'] as LicenseRecord['state'],
   };
@@ -346,26 +337,25 @@ app.post('/swastik/developers/register', async (request, reply) => {
   if (!username) {
     return reply.code(400).send({ error: 'username is required' });
   }
-  // Issuance is delegated to the Credentials Service (§22.8). Swastik mints nothing — not the
-  // developer identity and not the credential. It receives the issued devId plus a keyId and a
-  // secret shown exactly once, and binds the keyId to the developer row.
-  const issued = await credentialClient.issueDevId({ registeredBy: username });
-  const rawDevId = issued.devId;
+  const rawDevId = `dev_${randomBytes(16).toString('hex')}`;
+  // Issuance is delegated to the Credentials Service (§22.8). Swastik mints nothing: it receives
+  // a keyId plus a secret shown exactly once and binds the keyId to the developer row.
+  const issued = await credentialClient.issueDevId({ devId: rawDevId, registeredBy: username });
   await db.knex('developers').insert({
     devId: rawDevId,
     username,
     approvalStatus: 'pending',
     credentialKeyId: issued.keyId,
   });
-  const pendingLicense = createPendingLicense(`lic_${await identityIssuer.issue('license')}`, rawDevId);
+  const pendingLicense = createPendingLicense(`lic_${randomBytes(16).toString('hex')}`, rawDevId);
   await db.knex('licenses').insert({
     licenseId: pendingLicense.licenseId,
     subjectDevId: pendingLicense.subjectDevId,
     tierClass: pendingLicense.tierClass,
     state: pendingLicense.state,
   });
-  logger.info('swastik-developer-registered', { username, devId: redact(String(rawDevId)) });
-  await writeAudit('DEVELOPER_REGISTERED', 'allowed', { username, devId: redact(String(rawDevId)) });
+  logger.info('swastik-developer-registered', { username, devId: redact(rawDevId) });
+  await writeAudit('DEVELOPER_REGISTERED', 'allowed', { username, devId: redact(rawDevId) });
   return reply.code(201).send({
     devId: rawDevId,
     approvalStatus: 'pending',
@@ -388,7 +378,7 @@ app.get('/swastik/developers/me', async (request, reply) => {
 async function resolveModuleOwnership(
   store: ModuleOwnershipStore,
   slug: string,
-  devId: number,
+  devId: string,
 ): Promise<{ readonly allowed: boolean }> {
   const existing = await store.findBySlug(slug);
   const decision = decideModuleOwnership(existing, devId);
@@ -406,7 +396,7 @@ app.post('/swastik/modules/upload', async (request, reply) => {
   // so the response cannot be used to probe approval state.
   if (dev['approvalStatus'] !== 'approved') {
     // §15.8: the attempt creates a pending approval request the owner reviews.
-    await new PostgresApprovalStore(db.knex).requestPending('developer', String(devId));
+    await new PostgresApprovalStore(db.knex).requestPending('developer', devId);
     logger.warn('swastik-developer-auth-refused', {
       route: 'upload',
       reason: 'developer-not-approved',
@@ -446,7 +436,7 @@ app.post('/swastik/modules/upload', async (request, reply) => {
     await writeAudit('BUILD_UPLOAD_REJECTED', 'rejected', {
       moduleSlug,
       version,
-      devId: redact(String(devId)),
+      devId: redact(devId),
       error: (err as Error).message,
     });
     return reply.code(422).send({
@@ -470,7 +460,7 @@ app.post('/swastik/modules/upload', async (request, reply) => {
     await writeAudit('BUILD_UPLOAD_REJECTED', 'rejected', {
       moduleSlug,
       version,
-      devId: redact(String(devId)),
+      devId: redact(devId),
       error: 'no license is registered for this developer',
     });
     return reply.code(403).send({ error: 'no license is registered for this developer' });
@@ -483,7 +473,7 @@ app.post('/swastik/modules/upload', async (request, reply) => {
     await writeAudit('BUILD_UPLOAD_REJECTED', 'rejected', {
       moduleSlug,
       version,
-      devId: redact(String(devId)),
+      devId: redact(devId),
       error: licenseViolations.join('; '),
     });
     return reply.code(403).send({ error: `license gate refused: ${licenseViolations.join('; ')}` });
@@ -498,7 +488,7 @@ app.post('/swastik/modules/upload', async (request, reply) => {
     await writeAudit('MODULE_UPLOAD_DENIED_NON_OWNER', 'rejected', {
       moduleSlug,
       version,
-      devId: redact(String(devId)),
+      devId: redact(devId),
     });
     return reply.code(403).send({ error: 'module is owned by another developer' });
   }
@@ -507,14 +497,14 @@ app.post('/swastik/modules/upload', async (request, reply) => {
     await writeAudit('BUILD_UPLOAD_REJECTED', 'rejected', {
       moduleSlug,
       version,
-      devId: redact(String(devId)),
+      devId: redact(devId),
       error: uploadGate.violations.join('; '),
     });
     return reply
       .code(409)
       .send({ error: `Compatibility Ledger refused staging: ${uploadGate.violations.join('; ')}` });
   }
-  const buildId = await identityIssuer.issue('build');
+  const buildId = `build_${randomBytes(12).toString('hex')}`;
   const stagingDir = safeJoin(stagingVolume, safeModulePathSegment(moduleSlug, version));
   if (!existsSync(stagingDir)) mkdirSync(stagingDir, { recursive: true });
   const manifestPath = join(stagingDir, 'manifest.json');
@@ -528,18 +518,18 @@ app.post('/swastik/modules/upload', async (request, reply) => {
     version,
     validationStatus: 'pending',
   });
-  logger.info('swastik-build-staged', { buildId, moduleSlug, version, devId: redact(String(devId)) });
+  logger.info('swastik-build-staged', { buildId, moduleSlug, version, devId: redact(devId) });
   await writeAudit('BUILD_STAGED', 'allowed', {
     buildId,
     moduleSlug,
     version,
-    devId: redact(String(devId)),
+    devId: redact(devId),
   });
   return reply.code(201).send({ buildId, status: 'staged', moduleSlug, version });
 });
 
 app.get('/swastik/modules/:slug/builds/:buildId', async (request, reply) => {
-  const { slug, buildId } = request.params as { slug: string; buildId: number };
+  const { slug, buildId } = request.params as { slug: string; buildId: string };
   const principal = await authenticateDeveloper(
     request.headers.authorization,
     reply,
@@ -691,7 +681,7 @@ app.post('/internal/deploy', async (request, reply) => {
   } = body as {
     moduleSlug?: string;
     version?: string;
-    devId?: number;
+    devId?: string;
     manifest?: unknown;
     indexSource?: unknown;
   };
@@ -735,11 +725,11 @@ app.post('/internal/deploy', async (request, reply) => {
   }
   if (dev.approvalStatus !== 'approved') {
     // §15.8: the attempt creates a pending approval request the owner reviews.
-    await new PostgresApprovalStore(db.knex).requestPending('developer', String(providedDevId));
+    await new PostgresApprovalStore(db.knex).requestPending('developer', providedDevId);
     await writeAudit('DEVELOPER_DEPLOY_DENIED', 'rejected', {
       moduleSlug: safeModuleSlug,
       version: safeModuleVersion,
-      devId: redact(String(providedDevId)),
+      devId: redact(providedDevId),
     });
     return reply
       .code(403)
@@ -758,7 +748,7 @@ app.post('/internal/deploy', async (request, reply) => {
     await writeAudit('MODULE_DEPLOY_REJECTED', 'rejected', {
       moduleSlug: safeModuleSlug,
       version: safeModuleVersion,
-      devId: redact(String(providedDevId)),
+      devId: redact(providedDevId),
       error: licenseViolations.join('; '),
     });
     return reply.code(403).send({ error: `license gate refused: ${licenseViolations.join('; ')}` });
@@ -773,7 +763,7 @@ app.post('/internal/deploy', async (request, reply) => {
     await writeAudit('MODULE_DEPLOY_DENIED_NON_OWNER', 'rejected', {
       moduleSlug: safeModuleSlug,
       version: safeModuleVersion,
-      devId: redact(String(providedDevId)),
+      devId: redact(providedDevId),
     });
     return reply.code(403).send({ error: 'module is owned by another developer' });
   }
@@ -782,7 +772,7 @@ app.post('/internal/deploy', async (request, reply) => {
     await writeAudit('MODULE_DEPLOY_REJECTED', 'rejected', {
       moduleSlug: safeModuleSlug,
       version: safeModuleVersion,
-      devId: redact(String(providedDevId)),
+      devId: redact(providedDevId),
       error: deployGate.violations.join('; '),
     });
     return reply.code(409).send({
@@ -790,7 +780,7 @@ app.post('/internal/deploy', async (request, reply) => {
     });
   }
 
-  const buildId = await identityIssuer.issue('build');
+  const buildId = `build_${randomBytes(12).toString('hex')}`;
   const stagingDir = safeJoin(
     stagingVolume,
     safeModulePathSegment(safeModuleSlug, safeModuleVersion),
@@ -843,7 +833,7 @@ app.post('/internal/deploy', async (request, reply) => {
       moduleSlug: safeModuleSlug,
       version: safeModuleVersion,
       buildId,
-      devId: redact(String(providedDevId)),
+      devId: redact(providedDevId),
       error: gate.reason,
     });
     return reply.code(403).send({ error: gate.reason });
@@ -874,7 +864,7 @@ app.post('/internal/deploy', async (request, reply) => {
       moduleSlug: safeModuleSlug,
       version: safeModuleVersion,
       buildId,
-      devId: redact(String(providedDevId)),
+      devId: redact(providedDevId),
       gate: gate.gate,
       tier: manifest.tier,
     });
@@ -882,7 +872,7 @@ app.post('/internal/deploy', async (request, reply) => {
       buildId,
       module: safeModuleSlug,
       version: safeModuleVersion,
-      devId: Number(providedDevId),
+      devId: providedDevId,
       promotionResult: 'promoted',
     });
     return reply.code(201).send({
@@ -919,7 +909,7 @@ app.post('/internal/deploy', async (request, reply) => {
       buildId,
       module: safeModuleSlug,
       version: safeModuleVersion,
-      devId: Number(providedDevId),
+      devId: providedDevId,
       promotionResult: promotion !== null ? 'rolled-back' : 'not-attempted',
     });
     return reply.code(500).send({ error: `deploy failed: ${(err as Error).message}` });

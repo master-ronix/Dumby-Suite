@@ -12,7 +12,7 @@ export async function up(knex: Knex): Promise<void> {
       .inTable('swastik_developers')
       .onDelete('CASCADE');
     table.string('version').notNullable();
-    table.integer('buildId').notNullable();
+    table.string('buildId').notNullable();
     table
       .enu('status', ['pending', 'signed', 'rejected', 'revoked'], {
         useNative: true,
