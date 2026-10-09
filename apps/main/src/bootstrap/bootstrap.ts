@@ -83,7 +83,7 @@ import { DeferMiddleware } from '../middleware/built-in/defer.js';
 import { SlidingWindowRateLimiter } from '../ratelimit/sliding-window.js';
 import { GuildConfigService } from '../config/guild-config.service.js';
 import { PostgresGuildConfigStore } from '../db/repositories/guild-config.repository.js';
-import { Events, REST, type Client } from 'discord.js';
+import { Events, REST, Routes, type Client } from 'discord.js';
 import {
   buildDiscordClient,
   computeIntentsBitfield,
@@ -91,6 +91,9 @@ import {
 } from '../discord/client-builder.js';
 import { LiveGatewayAdapter } from '../discord/gateway.live-adapter.js';
 import { CommandDeployer } from '../commands/command-deployer.js';
+import { CommandCeilingService } from '../commands/command-ceiling.js';
+import { createKnexBccmStore } from '../commands/bccm-batch-push-store.js';
+import { runBccmBatchPush, type BccmDiscordClient } from '../commands/bccm-batch-push.js';
 import { CoreRenderer } from '../rendering/core-renderer.js';
 import { ensureDefaultModuleEmoji } from '../rendering/module-emoji-upload.js';
 import {
@@ -711,6 +714,59 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
 
   progress.advanceTo('MODULE_LOAD');
   const loadReport = await moduleLoader.loadAll();
+  // §17.7/§17.8 — the BCCM batch push. Registered before the scheduler starts; the Discord
+  // client is resolved lazily because the REST client is only built after login.
+  let bccmDiscordClient: BccmDiscordClient | undefined;
+  const commandCeiling = new CommandCeilingService({
+    getCurrentCommandCount: async (guildId) => {
+      const rows = await db
+        .knex('guild_module_states')
+        .where({ guildId, enabled: true, state: 'active' })
+        .whereNull('deletedAt')
+        .select<{ moduleSlug: string }[]>('moduleSlug');
+      return rows.reduce(
+        (sum, row) => sum + (moduleRegistry.get(row.moduleSlug)?.manifest.commands.length ?? 0),
+        0,
+      );
+    },
+    getPendingAdditions: async (guildId) => {
+      const rows = await db
+        .knex('guild_command_queue')
+        .where({ guildId, status: 'pending' })
+        .whereNull('deletedAt')
+        .whereRaw("payload->>'action' in ('rename', 'alias', 'enable', 'reset')")
+        .count<{ count: string }[]>('* as count');
+      return Number(rows[0]?.count ?? 0);
+    },
+    getPendingRemovals: async (guildId) => {
+      const rows = await db
+        .knex('guild_command_queue')
+        .where({ guildId, status: 'pending' })
+        .whereNull('deletedAt')
+        .whereRaw("payload->>'action' = 'disable'")
+        .count<{ count: string }[]>('* as count');
+      return Number(rows[0]?.count ?? 0);
+    },
+  });
+  const bccmStore = createKnexBccmStore(db.knex);
+  scheduler.register({
+    name: 'bccm-batch-push',
+    cron: '0 */12 * * *',
+    execute: async () => {
+      if (bccmDiscordClient === undefined) {
+        logger.warn('bccm-batch-push-skip', { reason: 'discord client not ready' });
+        return;
+      }
+      await runBccmBatchPush({
+        store: bccmStore,
+        logger,
+        ceiling: commandCeiling,
+        discord: bccmDiscordClient,
+        dryRun: config.get('BCCM_BATCH_PUSH_DRY_RUN'),
+      });
+    },
+  });
+
   // §29.6 — start the scheduler now the modules have registered their tasks.
   scheduler.start();
 
@@ -904,6 +960,19 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
       logger.warn('module-emoji-upload-failed', { error: String(err) });
     }
     const rest = new REST({ version: '10' }).setToken(config.get('BOT_TOKEN'));
+    // §17.7 — the BCCM batch push's Discord surface. `getRegistered` is the authority for what
+    // "new" means; `putCommands` is the idempotent bulk overwrite of the guild's command set.
+    bccmDiscordClient = {
+      getRegistered: async (guildId) =>
+        (await rest.get(Routes.applicationGuildCommands(applicationId, guildId))) as {
+          name: string;
+        }[],
+      putCommands: async (guildId, commands) => {
+        await rest.put(Routes.applicationGuildCommands(applicationId, guildId), {
+          body: commands,
+        });
+      },
+    };
     const commandDeployer = new CommandDeployer({
       registry: commandRegistry,
       logger,
