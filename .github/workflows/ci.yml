@@ -176,6 +176,11 @@ jobs:
       - name: Install (frozen lockfile)
         run: pnpm install --frozen-lockfile
 
+      - name: Build workspace packages
+        # The integration suite imports @workspace/swastik, whose exports resolve to the
+        # package's dist/ — unbuilt here, so the suite aborts with ERR_MODULE_NOT_FOUND.
+        run: pnpm -r --filter "./packages/**" --if-present run build
+
       - name: Apply migrations
         run: pnpm --filter @workspace/dumby migrate
 
