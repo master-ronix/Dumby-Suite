@@ -239,6 +239,8 @@ Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (rea
 - **Fix:** a single identity issuer allocates every identity number from the shared `identity_sequences` table (one atomic insert-or-increment per kind). The Credentials Service issues the developer number and the credential handle; Swastik, the deployment service, issues the build number and the license handle from the same sequence — coordinated, not independent. Swastik no longer mints a developer identity or a credential; it asks the Credentials Service and records what it is given.
 - **New:** `identity/identity-issuer.ts`; migration `create_identity_sequences`.
 - **Verification:** gate suite 25/25; repo-wide app typecheck 0 errors.
+- **Forward migration (2026-10-08):** the numeric-id change edits the original migrations, so a fresh database is integer; an existing one still carries the text columns and will not re-run them. Added `20260101000047_convert_identity_ids_to_integer` — a guarded, deterministic remap (first-party pinned to 1) that moves the foreign keys with the columns. Also fixed a migration-number collision: the identity-sequences migration moved `042 → 046` (it clashed with `042_add_persona_sealed_token`).
+- **Tests (2026-10-08):** the unit tests assumed string ids; updated to the numeric model and verified by typechecking `src` and `tests` together (0 errors). The suite could not run in the build sandbox (WASM OOM) and runs on the real toolchain.
 
 ---
 

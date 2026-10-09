@@ -17,8 +17,8 @@ const TRIGGER: DeploymentTrigger = {
 const BASE_INPUT: DeploymentRecordInput = {
   recordId: 'rec_1',
   triggeredBy: TRIGGER,
-  devId: 'dev_alpha',
-  buildId: 'build_1',
+  devId: 1,
+  buildId: 1,
   module: 'moderation',
   version: '1.0.0',
   validationOutcome: 'passed',
@@ -35,7 +35,7 @@ test('append-only store: records can be added and queried but not duplicated', (
   expect(record.healthCheckOutcome).toBe('passed');
   expect(record.deployedAt).toBeDefined();
   expect(store.find('rec_1')).toBe(record);
-  expect(store.assertRecorded('build_1')).toBe(record);
+  expect(store.assertRecorded(1)).toBe(record);
   expect(() => store.appendBuilt(BASE_INPUT)).toThrow(DuplicateDeploymentRecordError);
   expect(store.getAll()).toHaveLength(1);
   expect(() => store.assertRecorded('nonexistent')).toThrow(MissingDeploymentRecordError);
@@ -83,8 +83,8 @@ test('non-standard health check defaults to skipped, rollback defaults to none',
   const input: DeploymentRecordInput = {
     recordId: 'rec_6',
     triggeredBy: TRIGGER,
-    devId: 'dev_alpha',
-    buildId: 'build_1',
+    devId: 1,
+    buildId: 1,
     module: 'moderation',
     version: '1.0.0',
     validationOutcome: 'passed',

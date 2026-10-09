@@ -314,6 +314,15 @@ authority_scope: [history]
 
 ---
 
+### v5.8.1 — Forward Migration for the Numeric Ids + Test Alignment — 2026-10-08
+
+- 2026-10-08 · fix · verdict=PUSHED
+- The numeric-id change edited the original migrations, so a fresh database is created integer. An **existing** database still carries the text columns and will not re-run them: added forward migration `20260101000047_convert_identity_ids_to_integer`, which remaps the old text ids to numbers deterministically (first-party pinned to 1) and moves the foreign keys with them. It is guarded — a column already integer is left alone — so it is safe on both a fresh and an existing database.
+- Fixed a numbering collision: the identity-sequences migration was numbered `...042`, which clashes with the existing `...042_add_persona_sealed_token`; it is now `...046`.
+- The unit tests assumed string ids (`dev_first_party`, `build_1`, `dev_alpha`); updated to the numeric model. Verified by typechecking `src` **and** `tests` (0 errors). The suite itself could not be executed in the build sandbox (WASM out-of-memory), so it runs on the real toolchain.
+
+---
+
 ### 4. Cross-Version Defect Lifecycle
 
 <!-- One row per introduced defect: id · introduced · status · resolution. -->

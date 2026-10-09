@@ -16,7 +16,7 @@ import {
 } from '../../src/licensing/license-machine.js';
 
 function approvedLicense(): LicenseRecord {
-  return flowThroughApproval(createPendingLicense('lic_1', 'dev_alpha', 'admin'));
+  return flowThroughApproval(createPendingLicense('lic_1', 1, 'admin'));
 }
 
 function flowThroughApproval(license: LicenseRecord): LicenseRecord {
@@ -29,15 +29,15 @@ function flowThroughApproval(license: LicenseRecord): LicenseRecord {
 
 function approvedLicenseWithTier(
   tierClass: LicenseRecord['tierClass'],
-  subjectDevId = 'dev_alpha',
+  subjectDevId = 1,
 ): LicenseRecord {
   return flowThroughApproval(createPendingLicense('lic_1', subjectDevId, tierClass));
 }
 
 test('a new registration starts in pending and permits no deployment', () => {
-  const license = createPendingLicense('lic_1', 'dev_alpha');
+  const license = createPendingLicense('lic_1', 1);
   expect(license.state).toBe('pending');
-  expect(license.subjectDevId).toBe('dev_alpha');
+  expect(license.subjectDevId).toBe(1);
   expect(licensePermitsDeployment(license.state)).toBe(false);
 });
 
@@ -46,7 +46,7 @@ test('the full happy path traverses every legal edge', () => {
     transitionLicense(
       transitionLicense(
         transitionLicense(
-          transitionLicense(createPendingLicense('lic_1', 'dev_alpha'), 'under-review', {
+          transitionLicense(createPendingLicense('lic_1', 1), 'under-review', {
             actor: 'owner',
           }),
           'approved',
@@ -71,7 +71,7 @@ test('every non-terminal state may transition to revoked; revoked is terminal', 
   for (const state of NON_TERMINAL_LICENSE_STATES) {
     const license: LicenseRecord = {
       licenseId: 'lic_1',
-      subjectDevId: 'dev_alpha',
+      subjectDevId: 1,
       tierClass: 'standard',
       state,
     };
@@ -80,7 +80,7 @@ test('every non-terminal state may transition to revoked; revoked is terminal', 
   }
   expect(LEGAL_LICENSE_TRANSITIONS['revoked']).toHaveLength(0);
   const revoked = transitionLicense(
-    transitionLicense(createPendingLicense('lic_1', 'dev_alpha'), 'under-review', {
+    transitionLicense(createPendingLicense('lic_1', 1), 'under-review', {
       actor: 'owner',
     }),
     'revoked',
@@ -105,7 +105,7 @@ test('illegal edges throw and never change state', () => {
   for (const [from, to] of illegalEdges) {
     const fixture: LicenseRecord = {
       licenseId: 'lic_1',
-      subjectDevId: 'dev_alpha',
+      subjectDevId: 1,
       tierClass: 'standard',
       state: from,
     };
@@ -117,7 +117,7 @@ test('illegal edges throw and never change state', () => {
 
 test('suspended ⇄ restored is the temporary-intervention cycle', () => {
   const approved = transitionLicense(
-    transitionLicense(createPendingLicense('lic_1', 'dev_alpha'), 'under-review', {
+    transitionLicense(createPendingLicense('lic_1', 1), 'under-review', {
       actor: 'owner',
     }),
     'approved',
@@ -148,7 +148,7 @@ test('suspended ⇄ restored is the temporary-intervention cycle', () => {
 
 test('automated triggers are explicit: security finding suspends, malicious artifact revokes', () => {
   const approved = transitionLicense(
-    transitionLicense(createPendingLicense('lic_1', 'dev_alpha'), 'under-review', {
+    transitionLicense(createPendingLicense('lic_1', 1), 'under-review', {
       actor: 'owner',
     }),
     'approved',
@@ -178,7 +178,7 @@ test('only approved permits deployment and promotion', () => {
 });
 
 test('a license authorizes publication at its own tier and below', () => {
-  const license = createPendingLicense('lic_1', 'dev_alpha', 'standard');
+  const license = createPendingLicense('lic_1', 1, 'standard');
   expect(licenseAuthorizesTier(license, 'standard')).toBe(true);
   expect(licenseAuthorizesTier(license, 'marketplace')).toBe(true);
   expect(licenseAuthorizesTier(license, 'core')).toBe(false);
@@ -187,9 +187,9 @@ test('a license authorizes publication at its own tier and below', () => {
 });
 
 test('devId-license binding: manifest devId must equal the license subject, fail closed', () => {
-  const license = createPendingLicense('lic_1', 'dev_alpha');
-  expect(licenseMatchesManifestDevId(license, 'dev_alpha')).toBe(true);
-  expect(licenseMatchesManifestDevId(license, 'dev_beta')).toBe(false);
+  const license = createPendingLicense('lic_1', 1);
+  expect(licenseMatchesManifestDevId(license, 1)).toBe(true);
+  expect(licenseMatchesManifestDevId(license, 2)).toBe(false);
   expect(licenseMatchesManifestDevId(license, undefined)).toBe(false);
   expect(licenseMatchesManifestDevId(license, '')).toBe(false);
 });
@@ -197,23 +197,23 @@ test('devId-license binding: manifest devId must equal the license subject, fail
 test('licenseAuthorizesDeploy combines state, binding, and tier', () => {
   expect(
     licenseAuthorizesDeploy(approvedLicense(), {
-      manifestDevId: 'dev_alpha',
+      manifestDevId: 1,
       moduleTier: 'standard',
     }),
   ).toEqual([]);
   expect(
     licenseAuthorizesDeploy(approvedLicense(), {
-      manifestDevId: 'dev_beta',
+      manifestDevId: 2,
       moduleTier: 'standard',
     }).length,
   ).toBeGreaterThan(0);
   expect(
-    licenseAuthorizesDeploy(approvedLicense(), { manifestDevId: 'dev_alpha', moduleTier: 'admin' }),
+    licenseAuthorizesDeploy(approvedLicense(), { manifestDevId: 1, moduleTier: 'admin' }),
   ).toEqual([]);
 
-  const pending = createPendingLicense('lic_1', 'dev_alpha', 'core');
+  const pending = createPendingLicense('lic_1', 1, 'core');
   const violations = licenseAuthorizesDeploy(pending, {
-    manifestDevId: 'dev_alpha',
+    manifestDevId: 1,
     moduleTier: 'core',
   });
   expect(violations).toContain('license state "pending" is not approved');
@@ -221,7 +221,7 @@ test('licenseAuthorizesDeploy combines state, binding, and tier', () => {
 
 test('a marketplace license cannot authorize a core-tier module', () => {
   const violations = licenseAuthorizesDeploy(approvedLicenseWithTier('marketplace'), {
-    manifestDevId: 'dev_alpha',
+    manifestDevId: 1,
     moduleTier: 'core',
   });
   expect(violations.some((v) => v.includes('does not cover'))).toBe(true);
