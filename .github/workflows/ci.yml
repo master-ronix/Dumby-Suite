@@ -93,6 +93,9 @@ jobs:
         # Guards the deploy regression: `apps/main` runs with plain `node`, so every
         # workspace dependency it imports at runtime must resolve to compiled JS, not
         # raw .ts source. A missing build step fails the deploy, not the build itself.
+        # Run from apps/main: the workspace package is linked into apps/main/node_modules,
+        # not the repo root's, so resolving it from the root throws ERR_MODULE_NOT_FOUND.
+        working-directory: apps/main
         run: |
           node --input-type=module -e "await import('@workspace/swastik'); await import('@workspace/swastik/manifest'); await import('@workspace/swastik/validate'); console.log('workspace runtime resolution OK')"
 
