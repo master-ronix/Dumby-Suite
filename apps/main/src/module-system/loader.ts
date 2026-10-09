@@ -48,7 +48,6 @@ export class FatalModuleLoadError extends Error {
  * version differs: Core-tier surfaces take the framework's, everything else carries its own.
  */
 const FRAMEWORK_DEVELOPER = 'Quixotic Mnemonics';
-const FRAMEWORK_DEV_USERNAME = 'master_ronix';
 const FRAMEWORK_VERSION = '5.0.0';
 const FIRST_PARTY_DEV_ID = 'dev_first_party';
 

@@ -261,8 +261,7 @@ export class CoreRenderer {
 
     // items 6/7/8 - the identity band: a bold "Dumby Suite | <page>" title, then the developer.
     // item 2 - the attribution is the developer's registered username, not a static name.
-    const attribution =
-      input.devUsername !== undefined ? `@${input.devUsername}` : developer;
+    const attribution = input.devUsername !== undefined ? `@${input.devUsername}` : developer;
     components.push(createTitleBlock(input.surface, attribution));
     components.push(separator());
 
@@ -365,7 +364,8 @@ export class CoreRenderer {
     accent: string | undefined = undefined,
     topLevel: Component[] = [],
   ): ComponentsV2Message {
-    const color = accent !== undefined ? Number.parseInt(accent.replace('#', ''), 16) : DEFAULT_ACCENT_COLOR;
+    const color =
+      accent !== undefined ? Number.parseInt(accent.replace('#', ''), 16) : DEFAULT_ACCENT_COLOR;
     return buildComponentsV2([container(components, color), ...topLevel]);
   }
 

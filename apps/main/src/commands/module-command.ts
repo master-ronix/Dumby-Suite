@@ -78,13 +78,17 @@ export function toCommandDefinition(
             ...(options.identity.developer !== undefined
               ? { developer: options.identity.developer }
               : {}),
-            ...(options.identity.version !== undefined ? { version: options.identity.version } : {}),
+            ...(options.identity.version !== undefined
+              ? { version: options.identity.version }
+              : {}),
             ...(options.identity.displayName !== undefined
               ? { displayName: options.identity.displayName }
               : {}),
             ...(options.identity.accent !== undefined ? { accent: options.identity.accent } : {}),
             ...(options.identity.banner !== undefined ? { banner: options.identity.banner } : {}),
-            ...(options.identity.buildId !== undefined ? { buildId: options.identity.buildId } : {}),
+            ...(options.identity.buildId !== undefined
+              ? { buildId: options.identity.buildId }
+              : {}),
             ...(options.identity.devUsername !== undefined
               ? { devUsername: options.identity.devUsername }
               : {}),

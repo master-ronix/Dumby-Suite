@@ -521,9 +521,7 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
           const guild = discordClient?.guilds.cache.get(guildId);
           if (guild === undefined) return null;
           const isGuildOwner = guild.ownerId === userId;
-          const member = isGuildOwner
-            ? null
-            : await guild.members.fetch(userId).catch(() => null);
+          const member = isGuildOwner ? null : await guild.members.fetch(userId).catch(() => null);
           if (member === null && !isGuildOwner) return null;
           const rank = evaluateRank({
             isGuildOwner,
@@ -600,7 +598,11 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     config,
     logger,
   });
-  const bccmEffects = createBccmEffectHandlers({ knex: db.knex, registry: commandRegistry, logger });
+  const bccmEffects = createBccmEffectHandlers({
+    knex: db.knex,
+    registry: commandRegistry,
+    logger,
+  });
   const commandRouter = new CommandRouter(commandRegistry, logger, {
     devGuildId: config.get('DEV_GUILD_ID'),
     isModuleEnabledInGuild,
