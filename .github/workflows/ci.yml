@@ -57,6 +57,12 @@ jobs:
       - name: Install (frozen lockfile)
         run: pnpm install --frozen-lockfile
 
+      - name: Build workspace packages
+        # The app imports `@workspace/swastik` (and its subpaths) at runtime and in tests. Those
+        # exports resolve to the package's `dist/`, so the workspace packages must be built before
+        # the flow/unit suites run — otherwise they fail with ERR_MODULE_NOT_FOUND.
+        run: pnpm -r --filter "./packages/**" --if-present run build
+
       - name: Gate 1 — typecheck, strict (first gate)
         run: |
           pnpm typecheck
