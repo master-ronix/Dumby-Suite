@@ -1,5 +1,9 @@
 import { randomBytes } from 'node:crypto';
 import argon2 from 'argon2';
+import {
+  InMemoryIdentityIssuer,
+  type IdentityIssuer,
+} from '../identity/identity-issuer.js';
 import type {
   CredentialPurpose,
   CredentialRecord,
@@ -55,6 +59,8 @@ const argon2Hasher: CredentialHasher = {
 };
 
 export interface DeveloperCredentialServiceOptions {
+  /** §15.6/§22.8 — the shared identity issuer; the entry wires the Postgres one. */
+  readonly issuer?: IdentityIssuer;
   readonly hasher?: CredentialHasher;
   readonly keyIdBytes?: number;
   readonly secretBytes?: number;
@@ -68,20 +74,30 @@ export interface DeveloperCredentialServiceOptions {
  */
 export class DeveloperCredentialService {
   private readonly hasher: CredentialHasher;
-  private readonly keyIdBytes: number;
   private readonly secretBytes: number;
+  private readonly issuer: IdentityIssuer;
 
   constructor(
     private readonly store: CredentialStore,
     options: DeveloperCredentialServiceOptions = {},
   ) {
     this.hasher = options.hasher ?? argon2Hasher;
-    this.keyIdBytes = options.keyIdBytes ?? 16;
     this.secretBytes = options.secretBytes ?? 32;
+    // §15.6/§22.8 — the issuer allocates systematic, coordinated identity numbers.
+    this.issuer = options.issuer ?? new InMemoryIdentityIssuer();
+  }
+
+  /**
+   * §15.6/§22.8 — the Credentials Service issues the developer's identity number at registration.
+   * No other surface mints it; Swastik asks here and records what it is given.
+   */
+  async issueDeveloperId(): Promise<number> {
+    return this.issuer.issue('developer');
   }
 
   async issue(input: IssueCredentialInput): Promise<IssuedCredential> {
-    const keyId = `key_${randomBytes(this.keyIdBytes).toString('hex')}`;
+    // §22.8 — the credential handle is issued systematically too, not drawn at random.
+    const keyId = `key_${await this.issuer.issue('credential')}`;
     const secret = randomBytes(this.secretBytes).toString('hex');
     const credentialHash = await this.hasher.hash(secret);
     const devIdHash = input.devId === undefined ? null : await this.hasher.hash(String(input.devId));

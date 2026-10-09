@@ -20,6 +20,7 @@ import {
   CREDENTIAL_REFUSAL_BODY,
   CREDENTIAL_REFUSAL_STATUS,
 } from '../credentials/credential-refusal.js';
+import { PostgresIdentityIssuer } from '../identity/identity-issuer.js';
 
 const env = parseEnv(pickEnvKeys(process.env));
 const logger = createLogger(env.LOG_LEVEL);
@@ -37,7 +38,11 @@ const rootKey = rootKeyFromBase64('local', env.ENCRYPTION_ROOT_KEY);
 const sealedStore = new PostgresSealedCredentialStore(db.knex);
 const sealedCredentialService = new SealedCredentialService(sealedStore, rootKey);
 const credentialStore = new PostgresCredentialStore(db.knex);
-const credentialService = new DeveloperCredentialService(credentialStore);
+// §15.6/§22.8 — the shared identity issuer: this service issues developer numbers here.
+const identityIssuer = new PostgresIdentityIssuer(db.knex);
+const credentialService = new DeveloperCredentialService(credentialStore, {
+  issuer: identityIssuer,
+});
 
 const app = Fastify({ logger: false, bodyLimit: 4096 });
 
@@ -101,12 +106,15 @@ app.post<{ Body: { label: string; registeredBy: string; readable?: boolean } }>(
 );
 
 app.post<{
-  Body: { devId: number; label?: string; registeredBy: string; status?: 'pending' | 'active' };
+  Body: { label?: string; registeredBy: string; status?: 'pending' | 'active' };
 }>('/credentials/issue-devid', async (request, reply) => {
-  const { devId, label, registeredBy, status } = request.body;
-  if (!devId || !registeredBy) {
-    return reply.code(400).send({ error: 'devId and registeredBy are required' });
+  const { label, registeredBy, status } = request.body;
+  if (!registeredBy) {
+    return reply.code(400).send({ error: 'registeredBy is required' });
   }
+  // §15.6/§22.8 — the Credentials Service issues the developer's identity number; the caller
+  // records what it is given rather than minting one itself.
+  const devId = await credentialService.issueDeveloperId();
   const issued = await credentialService.issue({
     purpose: 'devId',
     devId,
@@ -121,6 +129,7 @@ app.post<{
   });
   logger.info('developer-credential-issued', { id: issued.keyId, status: issued.status });
   return reply.code(201).send({
+    devId,
     keyId: issued.keyId,
     secret: issued.secret,
     purpose: issued.purpose,

@@ -304,6 +304,16 @@ authority_scope: [history]
 
 ---
 
+### v5.8.0 — Systematic Identity & Credential Issuance (State B) — 2026-10-08
+
+- 2026-10-08 · migration-prompt 5.2.0 · item S9 · verdict=PUSHED
+- Work order: UR-20261008-008. ADR: ADR-017.
+- Corrected: UR-007 assigned numeric ids with a `max()+1` in the request handler — a race, and not an issuance system. Identity is now issued systematically by the service that owns it, from one shared atomic sequence (`identity_sequences`, one row per kind).
+- The **Credentials Service** issues the developer number (§15.6) and the credential handle (§22.8); **Swastik, the deployment service**, issues the build number (§15.8) and the license handle, drawing the same sequence, so the two are coordinated. Swastik mints no developer identity and no credential.
+- Verification: documentation gate suite 25/25; repo-wide app typecheck against real typings reports 0 errors.
+
+---
+
 ### 4. Cross-Version Defect Lifecycle
 
 <!-- One row per introduced defect: id · introduced · status · resolution. -->

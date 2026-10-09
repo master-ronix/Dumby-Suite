@@ -1,6 +1,6 @@
 import Fastify, { type FastifyReply } from 'fastify';
 import { isMainEntry } from './is-main-entry.js';
-import { randomBytes, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Redis } from 'ioredis';
@@ -40,6 +40,10 @@ import {
   type PromotionOutcome,
 } from '../module-system/promotion.js';
 import { buildDeploymentRecord, type PromotionResult } from '../licensing/deployment-records.js';
+import {
+  PostgresIdentityIssuer,
+  type IdentityIssuer,
+} from '../identity/identity-issuer.js';
 import { PostgresDeploymentRecordStore } from '../db/repositories/deployment-record.repository.js';
 import { HttpCredentialClient, type CredentialClient } from '../credentials/credential-client.js';
 import {
@@ -63,6 +67,8 @@ let liveVolume: string;
 let promotionLock: RedisLockStore;
 let lockRedis: Redis;
 let credentialClient: CredentialClient;
+// §15.8 — the deployment service issues build numbers from the shared identity sequence.
+let identityIssuer: IdentityIssuer;
 
 async function init(): Promise<void> {
   env = parseEnv(pickEnvKeys(process.env));
@@ -84,6 +90,9 @@ async function init(): Promise<void> {
     internalApiKey: env.INTERNAL_API_KEY,
     timeoutMs: env.CREDENTIALS_SERVICE_TIMEOUT_MS,
   });
+  // The same identity sequence the Credentials Service draws from, so build issuance is
+  // coordinated with credential issuance rather than minted independently.
+  identityIssuer = new PostgresIdentityIssuer(db.knex);
   modulesDir = env.MODULES_DIR;
   stagingVolume = env.SWASTIK_STAGING_VOLUME_PATH;
   liveVolume = env.SWASTIK_LIVE_VOLUME_PATH;
@@ -112,17 +121,6 @@ async function writeAudit(
     rejectionReason: outcome === 'rejected' ? String(detail['error'] ?? 'unknown') : null,
     metadata: JSON.stringify(detail),
   });
-}
-
-/**
- * UR-007 — buildId is a number: the next build number. Swastik assigns a fresh one per accepted
- * version (§15.8); it is not a string.
- */
-async function nextBuildNumber(): Promise<number> {
-  const row = (await db.knex('builds').max('buildId as m').first()) as
-    | { m?: number | string | null }
-    | undefined;
-  return Number(row?.m ?? 0) + 1;
 }
 
 /**
@@ -348,21 +346,18 @@ app.post('/swastik/developers/register', async (request, reply) => {
   if (!username) {
     return reply.code(400).send({ error: 'username is required' });
   }
-  // devId is a number (UR-007): the next developer number, assigned at registration.
-  const maxRow = (await db.knex('developers').max('devId as m').first()) as
-    | { m?: number | string | null }
-    | undefined;
-  const rawDevId = Number(maxRow?.m ?? 0) + 1;
-  // Issuance is delegated to the Credentials Service (§22.8). Swastik mints nothing: it receives
-  // a keyId plus a secret shown exactly once and binds the keyId to the developer row.
-  const issued = await credentialClient.issueDevId({ devId: rawDevId, registeredBy: username });
+  // Issuance is delegated to the Credentials Service (§22.8). Swastik mints nothing — not the
+  // developer identity and not the credential. It receives the issued devId plus a keyId and a
+  // secret shown exactly once, and binds the keyId to the developer row.
+  const issued = await credentialClient.issueDevId({ registeredBy: username });
+  const rawDevId = issued.devId;
   await db.knex('developers').insert({
     devId: rawDevId,
     username,
     approvalStatus: 'pending',
     credentialKeyId: issued.keyId,
   });
-  const pendingLicense = createPendingLicense(`lic_${randomBytes(16).toString('hex')}`, rawDevId);
+  const pendingLicense = createPendingLicense(`lic_${await identityIssuer.issue('license')}`, rawDevId);
   await db.knex('licenses').insert({
     licenseId: pendingLicense.licenseId,
     subjectDevId: pendingLicense.subjectDevId,
@@ -519,7 +514,7 @@ app.post('/swastik/modules/upload', async (request, reply) => {
       .code(409)
       .send({ error: `Compatibility Ledger refused staging: ${uploadGate.violations.join('; ')}` });
   }
-  const buildId = await nextBuildNumber();
+  const buildId = await identityIssuer.issue('build');
   const stagingDir = safeJoin(stagingVolume, safeModulePathSegment(moduleSlug, version));
   if (!existsSync(stagingDir)) mkdirSync(stagingDir, { recursive: true });
   const manifestPath = join(stagingDir, 'manifest.json');
@@ -795,7 +790,7 @@ app.post('/internal/deploy', async (request, reply) => {
     });
   }
 
-  const buildId = await nextBuildNumber();
+  const buildId = await identityIssuer.issue('build');
   const stagingDir = safeJoin(
     stagingVolume,
     safeModulePathSegment(safeModuleSlug, safeModuleVersion),

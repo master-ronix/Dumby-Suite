@@ -233,6 +233,15 @@ Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (rea
 
 ---
 
+### F-9 — Identity assigned ad hoc, not issued (FIXED — 2026-10-08)
+- **Work order:** UR-20261008-008. **ADR:** ADR-017.
+- **Fault:** UR-007 made the ids numeric but assigned them with a `max()+1` query in the request handler — a race between concurrent callers, and not an issuance system: the id was not produced by the service that owns identity.
+- **Fix:** a single identity issuer allocates every identity number from the shared `identity_sequences` table (one atomic insert-or-increment per kind). The Credentials Service issues the developer number and the credential handle; Swastik, the deployment service, issues the build number and the license handle from the same sequence — coordinated, not independent. Swastik no longer mints a developer identity or a credential; it asks the Credentials Service and records what it is given.
+- **New:** `identity/identity-issuer.ts`; migration `create_identity_sequences`.
+- **Verification:** gate suite 25/25; repo-wide app typecheck 0 errors.
+
+---
+
 ## Findings & Deviations Register
 
 1. **Application suite not run.** The environment has no installed dependencies, so the typecheck/lint/unit suite is pending on the real toolchain. The corpus gate suite (25/25) is green.
