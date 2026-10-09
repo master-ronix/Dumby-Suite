@@ -36,6 +36,7 @@ describe('unified command tree', () => {
       'command-ceiling.ts',
       'command-deployer.ts',
       'command-registry.ts',
+      'command-renames.ts',
       'command-router.ts',
       'module-command.ts',
     ]);

@@ -57,6 +57,7 @@ import { registerCoreFrameHandlers } from '../interactions/core-frame.handlers.j
 import { createPageDataProvider } from '../rendering/page-data.js';
 import { registerKnownGuilds } from '../discord/guild-registry.js';
 import { createBccmEffectHandlers } from '../commands/bccm-effects.js';
+import { effectiveCommandName, resolveEffectiveCommandNames } from '../commands/command-renames.js';
 import type { CommandInteraction } from '../commands/command-router.js';
 import { PersonaCommandBindingService } from '../personas/persona-command-binding.service.js';
 import {
@@ -762,16 +763,19 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
         // registered command names.
         const focused = interaction.options.getFocused(true);
         const query = String(focused.value).toLowerCase();
-        const choices = await interactionRegistry.runAutocomplete(
-          async () =>
-            commandRegistry
-              .all()
-              .map((command) => command.data.name)
-              .filter((name) => name.toLowerCase().includes(query))
-              .slice(0, 25)
-              .map((name) => ({ name, value: name })),
-          [],
-        );
+        const choices = await interactionRegistry.runAutocomplete(async () => {
+          // §2.5 / BCCM — a command's suggestion shows its CURRENT name (the applied rename when
+          // one exists), while the submitted value stays the registered command key.
+          const effective = await resolveEffectiveCommandNames(db.knex, interaction.guildId);
+          return commandRegistry
+            .all()
+            .map((command) => {
+              const key = command.data.name;
+              return { name: effectiveCommandName(effective, key), value: key };
+            })
+            .filter((choice) => choice.name.toLowerCase().includes(query))
+            .slice(0, 25);
+        }, []);
         try {
           await interaction.respond([...choices]);
         } catch (err) {
