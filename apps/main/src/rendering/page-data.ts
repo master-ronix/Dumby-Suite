@@ -192,7 +192,7 @@ export function createPageDataProvider(
       const icon = moduleIcon(entry.manifest.ui?.icon);
       for (const command of entry.manifest.commands) {
         lines.push(
-          `${icon} /${command.name}   ${entry.manifest.name} v${entry.manifest.version} — ${command.description}`,
+          `${icon} /${command.name}   ${entry.manifest.name} — ${command.description}`,
         );
       }
     }

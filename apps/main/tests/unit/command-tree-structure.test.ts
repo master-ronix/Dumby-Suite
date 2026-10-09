@@ -31,6 +31,7 @@ describe('unified command tree', () => {
       .sort();
 
     expect(commandFiles).toEqual([
+      'bccm-effects.ts',
       'collision-resolution.ts',
       'command-ceiling.ts',
       'command-deployer.ts',
