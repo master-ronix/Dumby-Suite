@@ -206,13 +206,16 @@ export class CommandRouter {
       // render so a rejected effect surfaces as a formal notice rather than a stale page.
       const effects =
         (
-          declaredResponse as {
-            effects?: readonly {
-              kind: string;
-              payload: Readonly<Record<string, unknown>>;
-            }[];
-          }
-        ).effects ?? [];
+          declaredResponse as
+            | {
+                effects?: readonly {
+                  kind: string;
+                  payload: Readonly<Record<string, unknown>>;
+                }[];
+              }
+            | null
+            | undefined
+        )?.effects ?? [];
       for (const effect of effects) {
         const effectHandler = this.options.effectHandlers?.[effect.kind];
         if (effectHandler === undefined) {
@@ -228,8 +231,9 @@ export class CommandRouter {
       // item 4 / ADR-013 — density is a per-page declaration; a page's density wins.
       const declaredDensityRaw = (declaredResponse as { data?: { density?: unknown } } | null)?.data
         ?.density;
-      const declaredPageData = (declaredResponse as { data?: Readonly<Record<string, unknown>> } | null)
-        ?.data;
+      const declaredPageData = (
+        declaredResponse as { data?: Readonly<Record<string, unknown>> } | null
+      )?.data;
       const declaredDensity =
         declaredDensityRaw === 'D' || declaredDensityRaw === 'M' || declaredDensityRaw === 'C'
           ? declaredDensityRaw
@@ -238,7 +242,9 @@ export class CommandRouter {
         ...identity,
         moduleId: def.moduleId,
         ...(def.identity?.developer !== undefined ? { developer: def.identity.developer } : {}),
-        ...(def.identity?.displayName !== undefined ? { displayName: def.identity.displayName } : {}),
+        ...(def.identity?.displayName !== undefined
+          ? { displayName: def.identity.displayName }
+          : {}),
         ...(def.identity?.accent !== undefined ? { accent: def.identity.accent } : {}),
         ...(def.identity?.banner !== undefined ? { banner: def.identity.banner } : {}),
         ...(def.identity?.buildId !== undefined ? { buildId: def.identity.buildId } : {}),
@@ -581,8 +587,18 @@ export class CommandRouter {
       return [
         [
           { customId: nav('home', 0), label: '⌂', style: 2, disabled: page === 0 },
-          { customId: nav('next', Math.min(page + 1, last)), label: 'next page', style: 2, disabled: page >= last },
-          { customId: nav('prev', Math.max(page - 1, 0)), label: 'previous page', style: 2, disabled: page <= 0 },
+          {
+            customId: nav('next', Math.min(page + 1, last)),
+            label: 'next page',
+            style: 2,
+            disabled: page >= last,
+          },
+          {
+            customId: nav('prev', Math.max(page - 1, 0)),
+            label: 'previous page',
+            style: 2,
+            disabled: page <= 0,
+          },
         ],
       ];
     }

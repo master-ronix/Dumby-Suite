@@ -53,7 +53,7 @@ describe('MR-2…MR-8 — Core-tier modules (single-command each)', () => {
         renderer,
       });
       expect(def.data.name).toBe(command);
-      const pageData = await def.execute({});
+      const pageData = await def.execute({}, { config: {}, data: {} });
       const message = renderer.render(renderer.normalizeHandlerResult(pageData, identity(slug)));
       expect(JSON.stringify(message)).toContain('Quixotic Mnemonics');
     });

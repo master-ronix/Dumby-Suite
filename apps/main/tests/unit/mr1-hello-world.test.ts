@@ -45,7 +45,7 @@ describe('MR-1 — hello-world module (Standard tier)', () => {
       renderer,
       config: { greeting: 'Hello, World!' },
     });
-    const pageData = await def.execute({});
+    const pageData = await def.execute({}, { config: { greeting: 'Hello, World!' }, data: {} });
     const descriptor = renderer.normalizeHandlerResult(pageData, identity);
     const message = renderer.render(descriptor);
     const serialized = JSON.stringify(message);

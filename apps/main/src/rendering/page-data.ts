@@ -68,10 +68,7 @@ export function createPageDataProvider(
 
     const discordRows: Array<readonly [string, string]> = [];
     if (client !== undefined) discordRows.push(['Gateway Ping', `${Math.round(client.ws.ping)}ms`]);
-    discordRows.push([
-      'Gateway Status',
-      client?.isReady() === true ? 'Connected' : 'Disconnected',
-    ]);
+    discordRows.push(['Gateway Status', client?.isReady() === true ? 'Connected' : 'Disconnected']);
     discordRows.push(['Shard Count', String(config.get('SHARD_COUNT'))]);
 
     const groups: Group[] = [
@@ -191,9 +188,7 @@ export function createPageDataProvider(
     for (const entry of moduleRegistry.all()) {
       const icon = moduleIcon(entry.manifest.ui?.icon);
       for (const command of entry.manifest.commands) {
-        lines.push(
-          `${icon} /${command.name}   ${entry.manifest.name} — ${command.description}`,
-        );
+        lines.push(`${icon} /${command.name}   ${entry.manifest.name} — ${command.description}`);
       }
     }
     lines.push(
@@ -265,12 +260,10 @@ export function createPageDataProvider(
 
   // item 17 — /modules lists only installed/enabled modules.
   async function installedModules(): Promise<PageData> {
-    const lines = moduleRegistry
-      .all()
-      .map((entry) => {
-        const icon = moduleIcon(entry.manifest.ui?.icon);
-        return `${icon} ${entry.manifest.name} (${entry.manifest.tier}) — ${entry.manifest.description}`;
-      });
+    const lines = moduleRegistry.all().map((entry) => {
+      const icon = moduleIcon(entry.manifest.ui?.icon);
+      return `${icon} ${entry.manifest.name} (${entry.manifest.tier}) — ${entry.manifest.description}`;
+    });
     lines.push('', 'Use the info and uninstall buttons beside a module to manage it.');
     return {
       title: 'Installed Modules',
