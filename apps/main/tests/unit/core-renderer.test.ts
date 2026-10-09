@@ -57,6 +57,28 @@ describe('CoreRenderer grammar', () => {
     expect(title).toContain('-# Developed by Quixotic Mnemonics');
   });
 
+  test('the module-page footer is `<name> [<id>]` and carries no attribution', () => {
+    const message = renderer.render({
+      surface: 'Hello World',
+      moduleId: 'hello-world',
+      sections: ['hi'],
+    });
+    const contents = textContents(message);
+    expect(contents).toContain('-# Hello World [hello-world]');
+    // the developer credit stays in the identity band, not the footer
+    expect(contents.some((content) => content.includes('Developed by'))).toBe(true);
+  });
+
+  test('a declared display name is used in the footer', () => {
+    const message = renderer.render({
+      surface: 'X',
+      moduleId: 'custom-slug',
+      displayName: 'Custom Name',
+      sections: ['hi'],
+    });
+    expect(textContents(message)).toContain('-# Custom Name [custom-slug]');
+  });
+
   test('defaults to Mode D for direct invocations', () => {
     const message = renderer.render({ surface: 'Dashboard', sections: ['a', 'b'] });
 

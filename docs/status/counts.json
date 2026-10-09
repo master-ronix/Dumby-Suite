@@ -11,7 +11,7 @@
   "license_states": 6,
   "core_commands": 8,
   "cross_module_patterns": 5,
-  "adrs": 14,
+  "adrs": 15,
   "ur_requests": 121,
   "program_urs": 31,
   "flaw_corrections": 88,

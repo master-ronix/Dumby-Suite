@@ -150,6 +150,14 @@ export interface RendererInteraction {
 
 const DEFAULT_DEVELOPER = 'Quixotic Mnemonics';
 
+/** The default display name for a module id: `hello-world` becomes `Hello World`. */
+function titleCaseModuleId(id: string): string {
+  return id
+    .split(/[-_]/)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
 export class InvalidRenderDescriptorError extends Error {
   constructor() {
     super('Command handler returned a value that is not a valid render descriptor');
@@ -276,10 +284,13 @@ export class CoreRenderer {
         components.push(textDisplay(section));
       });
     }
-    components.push(separator());
-
-    // item 9 - the footer: the module build id and the developer username.
-    components.push(textDisplay(this.footerLine(input.buildId, input.devUsername, developer)));
+    // ADR-015 (amends ADR-013) — the module-page footer is `<name> [<id>]` and nothing else; the
+    // developer attribution stays in the identity band above and is never repeated in the footer.
+    const footer = this.moduleFooter(input.displayName, input.moduleId);
+    if (footer !== undefined) {
+      components.push(separator());
+      components.push(textDisplay(footer));
+    }
 
     // items 10/11/15/17 - page-declared action controls. Interactive components are NOT valid
     // inside a Components v2 container; they are emitted as top-level action rows beside it.
@@ -369,15 +380,17 @@ export class CoreRenderer {
     return buildComponentsV2([container(components, color), ...topLevel]);
   }
 
-  private footerLine(
-    buildId: string | undefined,
-    devUsername: string | undefined,
-    developer: string,
-  ): string {
-    if (buildId !== undefined && devUsername !== undefined) {
-      return `-# ${buildId} · @${devUsername}`;
-    }
-    return `-# Developed by ${developer}`;
+  /**
+   * ADR-015 (amends ADR-013) — the module-page footer is the module's display name followed by
+   * its id in brackets, and nothing else. The developer attribution lives in the identity band.
+   */
+  private moduleFooter(
+    displayName: string | undefined,
+    moduleId: string | undefined,
+  ): string | undefined {
+    if (moduleId === undefined) return undefined;
+    const name = displayName ?? titleCaseModuleId(moduleId);
+    return `-# ${name} [${moduleId}]`;
   }
 
   private oneLineRender(surface: string, first: string): string {
