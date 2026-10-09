@@ -11,7 +11,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    # feature/dev auto-deploys to Railway production, so it must be gated too — this is the
+    # branch the migration incident reached production through (CI ran only on main before).
+    branches: [main, feature/dev]
   pull_request:
 
 permissions:
