@@ -20,6 +20,11 @@ const contracts = contractFiles.map((f) => {
     const j = readJson(path);
     id = j.$id || null;
     title = j.title || null;
+  } else if (f.endsWith('.yaml')) {
+    // YAML contracts carry no JSON $id; the path is the id and the top-level `title:` is the title.
+    id = path;
+    const m = readFileSync(path, 'utf8').match(/^\s*title:\s*(.+)$/m);
+    title = m ? m[1].trim() : null;
   }
   return { path, id, title, present: existsSync(path) };
 });

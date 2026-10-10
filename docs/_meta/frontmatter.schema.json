@@ -1,5 +1,6 @@
 {
   "$id": "docs/_meta/frontmatter.schema.json",
+  "$comment": "review_state and last_verified_commit are reserved for human attestation. The corpus is machine-verified only; these fields read pending-evidence / null by policy until a human review pass populates them. See docs/README.md, 'Verification status (policy)'.",
   "type": "object",
   "required": [
     "id",

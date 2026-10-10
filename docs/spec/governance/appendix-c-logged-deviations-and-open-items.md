@@ -43,6 +43,10 @@ Each item below is specified nowhere and owned by no request row or migration wo
 | 23 | Persona ids from a process-local counter | M9 residual |
 | 24 | i18n wiring + mandatory `en-US.json` Stage-11 validation | M9 residual |
 
+> **Ownership (UR-20261010-001 R10).** No row above is a silent unknown. Each is either owned by a
+> `deferred` capability in `status/capabilities.json` (CAP-001/002/003/007/008/009/011/013/015/016)
+> or explicitly deferred to the M9 residual tail of `migration-ledger.md`; none is unowned.
+
 ---
 
 Beyond these twenty-four, every capability specified in blueprint Parts V–IX

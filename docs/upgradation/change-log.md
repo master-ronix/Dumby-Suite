@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.3.0
+version: 5.5.0
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -13,7 +13,7 @@ authority_scope: [history]
 # DUMBY Documentation — Unified Change Log
 
 > **One project. One continuous history.**
-> Last recorded: 2026-10-06
+> Last recorded: 2026-10-10
 
 ---
 
@@ -33,13 +33,15 @@ authority_scope: [history]
 
 ## 2. Purpose
 
-<!-- Record every step of the chain into one continuous, evidence-verified history, so that an
-     item without a record here did not happen. -->
+Record every step of the chain into one continuous, evidence-verified history, so that an item
+without a record here did not happen. This document is the terminal sink of the trigger chain
+(`prompts/meta-prompt.md` → `prompts/entry.md` → `orchestration/master-prompt.md` /
+`migration/migration-prompt.md`); its entries are the chain's audit trail and the state of record.
 
 ## 3. Preconditions
 
-- <a chain step has completed>
-- <the step has produced its record line per its own §8>
+- a chain step has completed (activation, build / migration / enforcement, or a remediation pass)
+- the step has produced its record line per its own §8
 
 ## 4. Inputs
 
@@ -67,8 +69,8 @@ authority_scope: [history]
 
 ## 7. Acceptance Criteria
 
-<!-- Every chain step has exactly one record line; each entry uses the §1.5 controlled
-     vocabulary; no completed step's record is missing. -->
+Every chain step has exactly one record line; each entry uses the §1.5 controlled vocabulary; no
+completed step's record is missing.
 
 ## 8. Change-Log Record
 
@@ -78,38 +80,73 @@ authority_scope: [history]
 
 ## 9. Record
 
-> **Population status:** §3 carries the version history through v5.3.0. §1 (Scope & Method),
-> §2 (Master Version Table), §4 (Cross-Version Defect Lifecycle), and §5 (Open Items Carried
-> Forward) remain to be populated — recorded here so the empty sections are not mistaken for a
-> completed record.
+> **Population status:** §1–§5 are populated. §3 carries the version history through v5.5.1 and
+> the 2026-10-10 trigger-chain run.
 
 ### 1. Scope & Method
 
 #### 1.1 Scope
 
-<!-- What this log covers. -->
+This log covers the whole Dumby program — the corpus (`docs/`), the application (`apps/main/`),
+the module-authoring package (`packages/swastik/`), and the first-party modules
+(`packages/modules/`) — from the v1.0.0 original blueprint to the present. One project, one
+continuous history.
 
 #### 1.2 Method
 
-<!-- The evidence sources cross-checked for every entry. -->
+Every entry is cross-checked against evidence sources: the tree at working HEAD, the corpus gate
+suite (`docs/scripts/docs/check-*.mjs`), the reconciliation ledgers
+(`status/code-reconciliation.json`, `status/reconciliation.json`), and the live migration ledger
+(`migration-ledger.md`). A claim without a reproducible source is not recorded as fact.
 
 #### 1.3 The self-verification caveat (stated once, applies throughout)
 
-<!-- The standing caveat on self-verification reports. -->
+The corpus and the code are authored and verified by the same program, so a self-reported status
+is not independent evidence. Entries prefer recorded, reproducible evidence over self-declared
+status; where verification ran on a different toolchain (or not at all), the entry says so.
 
 #### 1.4 Content evidence over labels
 
-<!-- The rule that content evidence wins over filenames/self-declared headers. -->
+A file's name, header, or self-declared status never overrides what its content and the tree
+actually show. Where a label and the content disagree, the content is recorded and the divergence
+noted.
 
 #### 1.5 Entry template (controlled vocabulary)
 
-<!-- The fixed label set every version entry uses, in order. -->
+Every version entry uses this fixed label set, in order: `date` · `engine` (meta / master /
+migration prompt version) · `state` (Greenfield | Migration | Enforcement) · `handoff` · `result`
+(COMPLETE | PARTIAL | BLOCKED | DONE | unmet), followed by the entry body.
 
 ---
 
 ### 2. Master Version Table
 
-<!-- One row per version: version · date · lines · size · basis of verification. -->
+| Version | Date | Basis of verification |
+|---|---|---|
+| v1.0.0 — "UMDB Framework" (original blueprint) | — | corpus record |
+| v2.0.0 — Renamed to Dumby; 22-module catalog | — | corpus record |
+| v2.1.0 — Module depth completion | — | corpus record |
+| v3.0.0 — Tiered module system + TypeScript migration | — | corpus record |
+| v3.0.2 — Terminology sweep + backfill fix | — | corpus record |
+| v4.0.0 — 9-part restructure | — | corpus record |
+| v4.1.0 — Extensibility contract + reliability hardening | — | corpus record |
+| v4.2.0 — Security & compliance hardening | — | corpus record |
+| v4.3.0 — Catalog to illustrative-only; Power Engine | — | corpus record |
+| v4.4.0 — Power Engine panel, RBAC redesign, BCCM, CLAI, MTP, 404 mode, personas | — | corpus record |
+| v4.5.0 — Rosetta stone; Swastik; Credentials Service | — | corpus record |
+| v4.5.1 — Structure-enforced edition | — | corpus record |
+| v4.6.0 — Production-readiness edition | — | corpus record |
+| v4.6.1 — Build-engine remediation pass | — | corpus record |
+| v5.0.0 — Consolidated re-baseline | 2026-09 | gate suite + reconciliation ledger |
+| v5.1.0 — Governed trigger chain | — | chain documents |
+| v5.2.0 — Tri-state trigger chain & finding remediation | — | 23 gates green |
+| v5.3.0 — Documentation consistency pass | 2026-10-06 | 25 gates green |
+| v5.3.0 — Change-set migration (State B) | 2026-10-08 | 25 gates green; app toolchain pending |
+| v5.4.0 — Dashboard MODULE_ERROR fix | 2026-10-08 | live log |
+| v5.5.0 — Dashboard controls / attribution / icons | 2026-10-08 | 25 gates green |
+| v5.5.1 — UR-005 build fix | 2026-10-08 | push |
+
+Dates marked `—` are not recorded in the corpus; they are left blank rather than invented.
 
 ---
 
@@ -294,10 +331,38 @@ authority_scope: [history]
 
 ### 4. Cross-Version Defect Lifecycle
 
-<!-- One row per introduced defect: id · introduced · status · resolution. -->
+| Id | Introduced | Status | Resolution |
+|---|---|---|---|
+| D1 | v5.0.0 | resolved | dangling compliance ledger — `status/compliance.json` now derived by `gen-compliance.mjs` and gated (`check-compliance`) |
+| D2 | v5.0.0 | resolved | count contradiction ("fifty-four" vs twenty-four) corrected; `check-counts` verifies `logged_deviations` |
+| D3 | v5.0.0 | resolved | stale `docs/ur/` path corrected to `upgradation/` |
+| F1 | v5.0.0 | resolved | `status/code-reconciliation.json` re-verified at HEAD; the seven module-manifest rows `match` |
+| F2 | v5.0.0 | resolved | `tier-rules.test.ts` duplicate key removed; out-of-enum case added |
+| F3 | v5.0.0 | resolved | `capabilities.json` CAP-004/005 corrected; compliance regenerated |
+| F-4 | v5.3.0 | resolved | UR-004 `pageDataProvider` arity mismatch fixed (`page?: number`) |
+| F-5 | v5.3.0 | resolved | dashboard `COMPONENT_CUSTOM_ID_DUPLICATED` fixed (role-keyed nav ids) |
+| F-6 | v5.5.0 | resolved | `module-emoji-upload` null-application guard |
+| AF-1…AF-14 | v5.5.1 | remediated | corpus residual closure — UR-20261010-001 (see the 2026-10-10 entry) |
 
 ---
 
 ### 5. Open Items Carried Forward
 
-<!-- One row per carried open item: id · item · owner · status. -->
+| Id | Item | Owner | Status |
+|---|---|---|---|
+| OI-1 | Human attestation of the corpus (`review_state` / `last_verified_commit`) | Dumby Core Engineering | open (UR-20261008-001; UR-20261010-001 R4) |
+| OI-2 | Per-layer coverage floors (directive D-8.2) — config still blended | engineering | open |
+| OI-3 | Unverified surfaces: flow / integration / Docker / K8s (require live services) | engineering | open (GAP_MANIFEST F4) |
+| OI-4 | Default banner + default white icon assets | operator | open (asset dependency) |
+| OI-5 | Migration slices M10 / M14 / M16 | engineering | open (migration-ledger) |
+| OI-6 | 24 logged deviations (appendix-c) routed to M9 residual | framework-maintainers | open |
+| OI-7 | Branch-divergence decision (`main` vs `feature/dev`) | operator | open |
+
+### 5.1 Request dispositions (UR-20261010-001 R9)
+
+| Request | Disposition |
+|---|---|
+| UR-20261008-001 — human-attestation | Superseded-in-scope by UR-20261010-001 R4; the attestation **policy** is now stated (docs/README.md). The review pass itself remains open (OI-1). |
+| UR-20261009-001 — corpus re-anchoring (`main` @ `9e29e855`) | Executed-in-substance at `feature/dev` by UR-20261010-001 (R1/R2/R3). The branch-divergence decision remains open (OI-7). |
+| UR-20261009-002 — hardening / migration / rebrand | Executed (docs + code) across v5.3–v5.5; the interactive residuals are tracked (OI-5). |
+| UR-20261010-001 — corpus residual closure | Executed 2026-10-10 (see the entry above). |

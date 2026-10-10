@@ -1,12 +1,14 @@
 # GAP MANIFEST — Build-Engine Audit
 
-**Generated:** 2026-10-06
+**Generated:** 2026-10-06 · **Re-stated:** 2026-10-10
 **Protocol:** `docs/orchestration/master-prompt.md` §3 (Codebase State Detection & Audit Protocol)
 **Repository:** `master-ronix/Dumby-Suite`
-**Branch / ref:** `feature/dev` @ `b6ae1a6d860902274cd3c237d68c1c886687ba8b`
-**Codebase state:** State C — Enforcement (code present; work order INACTIVE)
-**Entry procedure followed:** `docs/prompts/entry.md` → `orchestration/master-prompt.md` (enforcement mode)
-**Run mode:** State C — audit (§3) → remediation (§4) → enforcement pass (§6), corpus-wide.
+**Branch / ref:** `feature/dev` @ `039da060c211d274242c1c60156b6b0eb41f6e21`
+**Codebase state:** State B — Migration (code present; work order ACTIVE)
+**Entry procedure followed:** `docs/prompts/entry.md` → `migration/migration-prompt.md` (migration mode)
+**Run mode:** State B — audit (§3) → state-of-record reconciliation (R12); the enforcement pass (§6) resumes when the work order is fully `DONE`.
+
+> **Supersession note (2026-10-10).** This manifest was generated 2026-10-06 as a **State C** run, when the work order was INACTIVE. The work order is now **ACTIVE** (request records present; `migration-ledger.md` carries open items M10/M14/M16), so the governing protocol is `migration/migration-prompt.md`. The classification table below is retained as the last full audit; its F4/F5 residuals remain open (see §2).
 
 ---
 
@@ -14,9 +16,9 @@
 
 - **Docs base path:** `docs/` (resolved once).
 - **Authority layer:** `docs/manifest.json` read; normative set = `blueprint/`, `spec/**` (10 departments), `contracts/` (9). `documentation/` is derived; `archive/**` is not current. Precedence is owned by `spec/governance/directive-charter-how-to-use-this-document.md` §0.2 and is cited, not restated.
-- **State probe (`apps/main/`):** contains code — 205 `.ts` source files, 18,464 LOC, 45 Knex migrations.
-- **Work-order probe:** `upgradation/UR-*.md` → **none present** (glob empty); `migration-ledger.md` (repo root) → an **unconstructed template** (all rows are placeholders `<ID>`/`<Title>`/`<status>`, no real items). ⇒ work order **INACTIVE**.
-- **Classification:** code present **and** work order INACTIVE → **State C — Enforcement**. `migration/migration-prompt.md` §0.0 work-order guard correctly refuses (no active work order); `master-prompt.md` enforcement mode governs.
+- **State probe (`apps/main/`):** contains code — 501 `.ts` source files, 45 Knex migrations.
+- **Work-order probe:** `upgradation/UR-*.md` → **present** (8 records); `migration-ledger.md` (repo root) → a **constructed ledger** with items not `DONE` (M10/M14/M16). ⇒ work order **ACTIVE**.
+- **Classification:** code present **and** work order ACTIVE → **State B — Migration**. `migration/migration-prompt.md` §0.0 work-order guard passes (an active work order exists).
 
 ---
 

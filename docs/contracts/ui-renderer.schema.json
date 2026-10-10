@@ -1,5 +1,6 @@
 {
   "$id": "contracts/ui-renderer.schema.json",
+  "title": "UI renderer schema \u2014 Components v2",
   "components_v2": {
     "Container": 17,
     "TextDisplay": 10,

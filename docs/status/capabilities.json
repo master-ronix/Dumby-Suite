@@ -10,7 +10,7 @@
   "capabilities": [
     {
       "id": "CAP-001",
-      "name": "Standalone `grants` DB table + migration — ABSENT — only the narrower `rbac_grants` (role/group/set-scoped) exists; the standalone `grants` table was never created.",
+      "name": "Standalone `grants` DB table + migration \u2014 ABSENT \u2014 only the narrower `rbac_grants` (role/group/set-scoped) exists; the standalone `grants` table was never created.",
       "status": "deferred",
       "spec_ref": null,
       "evidence": [],
@@ -20,7 +20,7 @@
     },
     {
       "id": "CAP-002",
-      "name": "`AnonymizationService` (production data anonymization) — ABSENT. No `AnonymizationService` found anywhere.",
+      "name": "`AnonymizationService` (production data anonymization) \u2014 ABSENT. No `AnonymizationService` found anywhere.",
       "status": "deferred",
       "spec_ref": null,
       "evidence": [],
@@ -30,7 +30,7 @@
     },
     {
       "id": "CAP-003",
-      "name": "/health slash command — Missing.",
+      "name": "/health slash command \u2014 Missing.",
       "status": "deferred",
       "spec_ref": null,
       "evidence": [],
@@ -40,7 +40,7 @@
     },
     {
       "id": "CAP-004",
-      "name": "Live CommandRouter — Fully Implemented — the single canonical router at src/commands/command-router.ts, constructed in bootstrap, registered as CORE_TOKENS.CommandRouter, and dispatched through the full middleware pipeline with the permission resolver and collision resolution.",
+      "name": "Live CommandRouter \u2014 Fully Implemented \u2014 the single canonical router at src/commands/command-router.ts, constructed in bootstrap, registered as CORE_TOKENS.CommandRouter, and dispatched through the full middleware pipeline with the permission resolver and collision resolution.",
       "status": "implemented",
       "spec_ref": null,
       "evidence": [
@@ -54,7 +54,7 @@
     },
     {
       "id": "CAP-005",
-      "name": "Spec-complete CommandRouter / registry (`src/commands/`) — Fully Implemented — the canonical command system is live (zero dead code); the router is wired to bootstrap and is the only CommandRouter implementation in the tree.",
+      "name": "Spec-complete CommandRouter / registry (`src/commands/`) \u2014 Fully Implemented \u2014 the canonical command system is live (zero dead code); the router is wired to bootstrap and is the only CommandRouter implementation in the tree.",
       "status": "implemented",
       "spec_ref": null,
       "evidence": [
@@ -64,11 +64,11 @@
       ],
       "source": "spec/reference/appendix-implementation-status-audit-register.md#L169",
       "owner": "framework-maintainers",
-      "title": "Spec-complete CommandRouter / registry (`src/commands/` — the canonical command system)"
+      "title": "Spec-complete CommandRouter / registry (`src/commands/` \u2014 the canonical command system)"
     },
     {
       "id": "CAP-006",
-      "name": "18-Stage Bootstrap (Delivered, Spec-Match) — Fully Implemented. The 18-stage bootstrap starts a health server before module loading, separates queue Redis from cache Redis, creates a frozen root container before spawning a child container for modules. Wired with real Redis, PostgreSQL (Knex), discord.js, and Fastify.",
+      "name": "18-Stage Bootstrap (Delivered, Spec-Match) \u2014 Fully Implemented. The 18-stage bootstrap starts a health server before module loading, separates queue Redis from cache Redis, creates a frozen root container before spawning a child container for modules. Wired with real Redis, PostgreSQL (Knex), discord.js, and Fastify.",
       "status": "implemented",
       "spec_ref": null,
       "evidence": [],
@@ -78,7 +78,7 @@
     },
     {
       "id": "CAP-007",
-      "name": "`PowerEngineService` class missing — ABSENT — only the generic dispatcher wrapper exists; no `PowerEngineService` class.",
+      "name": "`PowerEngineService` class missing \u2014 ABSENT \u2014 only the generic dispatcher wrapper exists; no `PowerEngineService` class.",
       "status": "deferred",
       "spec_ref": null,
       "evidence": [],
@@ -88,9 +88,9 @@
     },
     {
       "id": "CAP-008",
-      "name": "ESLint Rule dumby/no-orphaned-closures (Static Leak Guard) — ABSENT — proposed; justified by rigid module structure (§10.3) letting the linter know where onUnload lives.",
+      "name": "ESLint Rule dumby/no-orphaned-closures (Static Leak Guard) \u2014 ABSENT \u2014 proposed; justified by rigid module structure (\u00a710.3) letting the linter know where onUnload lives.",
       "status": "deferred",
-      "spec_ref": "§10.3",
+      "spec_ref": "\u00a710.3",
       "evidence": [],
       "source": "spec/reference/appendix-implementation-status-audit-register.md#L281",
       "owner": "framework-maintainers",
@@ -98,7 +98,7 @@
     },
     {
       "id": "CAP-009",
-      "name": "ITimerService DI Token (Forbid Raw setTimeout/setInterval in Modules) — ABSENT — proposed.",
+      "name": "ITimerService DI Token (Forbid Raw setTimeout/setInterval in Modules) \u2014 ABSENT \u2014 proposed.",
       "status": "deferred",
       "spec_ref": null,
       "evidence": [],
@@ -108,7 +108,7 @@
     },
     {
       "id": "CAP-010",
-      "name": "Manifest Contract (hardcoded/hardcodeGuildId/visibility triad) — Fully Implemented (per docs) — 28+ required/optional fields; compile-time provides-contract checking via TS types.",
+      "name": "Manifest Contract (hardcoded/hardcodeGuildId/visibility triad) \u2014 Fully Implemented (per docs) \u2014 28+ required/optional fields; compile-time provides-contract checking via TS types.",
       "status": "implemented",
       "spec_ref": null,
       "evidence": [],
@@ -118,17 +118,17 @@
     },
     {
       "id": "CAP-011",
-      "name": "Server-Driven UI (SDUI) — UIResponse Schema Replacing interaction.reply — ABSENT — proposed; document currently gives modules total freedom over interaction.reply (§12.4 RemindCommand builds custom embed).",
+      "name": "Server-Driven UI (SDUI) \u2014 UIResponse Schema Replacing interaction.reply \u2014 ABSENT \u2014 proposed; document currently gives modules total freedom over interaction.reply (\u00a712.4 RemindCommand builds custom embed).",
       "status": "deferred",
-      "spec_ref": "§12.4",
+      "spec_ref": "\u00a712.4",
       "evidence": [],
       "source": "spec/reference/appendix-implementation-status-audit-register.md#L374",
       "owner": "framework-maintainers",
-      "title": "Server-Driven UI (SDUI) — UIResponse Schema Replacing interaction.reply"
+      "title": "Server-Driven UI (SDUI) \u2014 UIResponse Schema Replacing interaction.reply"
     },
     {
       "id": "CAP-012",
-      "name": "Seven-Layer Permission Engine (PermissionResolver) — Fully Implemented and wired into every command dispatch through the middleware pipeline.",
+      "name": "Seven-Layer Permission Engine (PermissionResolver) \u2014 Fully Implemented and wired into every command dispatch through the middleware pipeline.",
       "status": "implemented",
       "spec_ref": null,
       "evidence": [],
@@ -138,7 +138,7 @@
     },
     {
       "id": "CAP-013",
-      "name": "Core-Owned InteractionRegistry with Action ID Prefixing — ABSENT — proposed alongside SDUI.",
+      "name": "Core-Owned InteractionRegistry with Action ID Prefixing \u2014 ABSENT \u2014 proposed alongside SDUI.",
       "status": "deferred",
       "spec_ref": null,
       "evidence": [],
@@ -148,7 +148,7 @@
     },
     {
       "id": "CAP-014",
-      "name": "Observability (Pino + prom-client + OpenTelemetry, one correlationId) — Fully Implemented (per docs) — logger-level redaction; unconditional sampling of error traces.",
+      "name": "Observability (Pino + prom-client + OpenTelemetry, one correlationId) \u2014 Fully Implemented (per docs) \u2014 logger-level redaction; unconditional sampling of error traces.",
       "status": "implemented",
       "spec_ref": null,
       "evidence": [],
@@ -158,7 +158,7 @@
     },
     {
       "id": "CAP-015",
-      "name": "Worker-Thread Sandboxing for Untrusted Marketplace Modules — ABSENT (V2/deferred).",
+      "name": "Worker-Thread Sandboxing for Untrusted Marketplace Modules \u2014 ABSENT (V2/deferred).",
       "status": "deferred",
       "spec_ref": null,
       "evidence": [],
@@ -168,7 +168,7 @@
     },
     {
       "id": "CAP-016",
-      "name": "Container securityContext / fsGroup for non-root access — ABSENT — no documented `securityContext`/`fsGroup` tuning for the module volume.",
+      "name": "Container securityContext / fsGroup for non-root access \u2014 ABSENT \u2014 no documented `securityContext`/`fsGroup` tuning for the module volume.",
       "status": "deferred",
       "spec_ref": null,
       "evidence": [],
@@ -178,14 +178,15 @@
     },
     {
       "id": "CAP-017",
-      "name": "Ecosystem Flow Suite — the bootstrap→shutdown coordination spine (§37.8–§37.13)",
+      "name": "Ecosystem Flow Suite \u2014 the bootstrap\u2192shutdown coordination spine (\u00a737.8\u2013\u00a737.13)",
       "status": "specified",
-      "spec_ref": "§37.8",
+      "spec_ref": "\u00a737.8",
       "evidence": [
         "apps/main/tests/flow/"
       ],
       "source": "spec/lifecycle/testing-architecture-qa.md#37.8",
-      "owner": "framework-maintainers"
+      "owner": "framework-maintainers",
+      "title": "Ecosystem Flow Suite (bootstrap\u2192shutdown coordination spine)"
     }
   ]
 }

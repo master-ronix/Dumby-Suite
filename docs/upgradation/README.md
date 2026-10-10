@@ -85,6 +85,10 @@ sovereignty over a command's Discord-bit gate.
 the RBAC requirements) must not be modified. Changes to the program are new request
 records raised under their own IDs — never edits to frozen ones.
 
+> **Frozen-inbox quarantine.** The retired `docs/ur/` path persists only inside the frozen
+> `_inbox/` records; it must never be quoted forward into the live corpus. The live request
+> directory is `upgradation/`.
+
 ---
 
 ## UR detection (dynamic)
