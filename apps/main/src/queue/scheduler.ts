@@ -72,10 +72,14 @@ export class Scheduler {
   }
 
   private cronToMs(cron: string): number {
-    const parts = cron.split(' ');
-    if (parts[0]?.startsWith('*/')) {
-      const minutes = parseInt(parts[0].slice(2), 10);
+    const [minute, hour] = cron.split(' ');
+    if (minute?.startsWith('*/')) {
+      const minutes = parseInt(minute.slice(2), 10);
       return minutes * 60_000;
+    }
+    if (hour?.startsWith('*/')) {
+      const hours = parseInt(hour.slice(2), 10);
+      return hours * 3_600_000;
     }
     return 60_000;
   }

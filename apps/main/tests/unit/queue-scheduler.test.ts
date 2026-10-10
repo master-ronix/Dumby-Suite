@@ -38,9 +38,12 @@ describe('Scheduler', () => {
     });
     scheduler.register(makeTask('task-a', '*/1'));
     scheduler.register(makeTask('task-b', '*/15'));
+    scheduler.register(makeTask('task-c', '0 */12 * * *'));
     const registered = (scheduler as unknown as { tasks: Map<string, ScheduledTask> }).tasks;
     expect(registered.get('task-a')?.intervalMs).toBe(60_000);
     expect(registered.get('task-b')?.intervalMs).toBe(900_000);
+    // An hour-field interval means hours, not the 60s fallback (the BCCM batch push is 12h).
+    expect(registered.get('task-c')?.intervalMs).toBe(43_200_000);
   });
 
   test('tick executes the task under the lock and releases it', async () => {
