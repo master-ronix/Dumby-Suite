@@ -6,11 +6,11 @@
 > continued, never restarted.
 
 - **Created:** 2026-10-08
-- **Last updated:** 2026-10-08 · **Current item:** M10/M12/M14/M16 (partial) · **Next action:** wire the interactive controls (search, install dropdown, info/uninstall buttons) and the autocomplete source
+- **Last updated:** 2026-10-10 · **Current item:** M10/M14/M16 (partial) · **Next action:** land the remaining slices — the /browse text-input search modal + >25-option paging (M10), the private info embed (M14), the page-switch divider + uninstall effect (M16) — then run the app toolchain (Node ≥ 22) to gate them
 - **Protocol:** `docs/migration/migration-prompt.md` v5.2.0
 - **Coverage map:** the change-set brief (18 items) → one owning item each (M0–M17)
 - **Record shapes:** `docs/migration/ledger-template.md` §3 (item) and §4 (slice)
-- **Reconciliation:** pending — application typecheck/tests not yet run in this environment
+- **Reconciliation:** R12 executed 2026-10-10 against HEAD `039da060` — see "State-of-Record Reconciliation (R12)" below
 
 ---
 
@@ -30,11 +30,11 @@
 | M9 | Marketplace core flow | DONE |
 | M10 | Search bar + 25-option handling | IN-PROGRESS |
 | M11 | Remove separate core-module dashboard pages | DONE |
-| M12 | BCCM rename bug + required argument + reset | IN-PROGRESS |
+| M12 | BCCM rename bug + required argument + reset | DONE |
 | M13 | Module-specific dashboard pages | DONE |
-| M14 | Marketplace main content (info control) | DONE |
+| M14 | Marketplace main content (info control) | PARTIAL |
 | M15 | Queue page rewrite | DONE |
-| M16 | /modules page (info/uninstall + paging) | DONE |
+| M16 | /modules page (info/uninstall + paging) | PARTIAL |
 | M17 | Hello standard-tier page cleanup | DONE |
 | MR-1 | Docs residual — attribution contradiction | DONE |
 | MR-2 | Docs residual — ADR-010 blurple retention | DONE |
@@ -103,9 +103,8 @@ Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (rea
 - **Evidence:** the dashboard declares no core sub-pages; only standard-tier modules carry a page.
 
 ### M12 — BCCM rename bug + required argument + reset
-- **Status:** IN-PROGRESS
-- **Evidence:** the `/queue` command argument is now required; a `reset` action is added and accepted by the effect handler.
-- **Residual:** the autocomplete-source fix (suggestions reflecting the current, renamed name) is the remaining slice; it belongs to the autocomplete provider.
+- **Status:** DONE (R12, 2026-10-10)
+- **Evidence:** the `/queue` command argument is `required: true`; a `reset` boolean is declared and mapped to the `reset` action; the action is accepted (`bccm-effects.ts`) and handled (`bccm-batch-push.ts`); the autocomplete source now resolves the current (renamed) name via `resolveEffectiveCommandNames` (`bootstrap.ts`). All three sub-parts present in the tree at HEAD `039da060`.
 
 ### M13 — Module-specific dashboard pages
 - **Status:** DONE
@@ -218,3 +217,26 @@ Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (rea
 1. **Application suite not run.** The environment has no installed dependencies, so the typecheck/lint/unit suite is pending on the real toolchain. The corpus gate suite (25/25) is green.
 2. **Latent array holes.** `browse.command.ts` and `modules.command.ts` carried a trailing `,,` (a sparse-array hole); both were rewritten during this pass.
 3. **Asset dependency.** The default banner and default white icon are still to be supplied; the framework defaults apply until they arrive.
+
+---
+
+## State-of-Record Reconciliation (R12) — 2026-10-10 (Trigger-Chain Run, State B)
+
+> Executed by `prompts/meta-prompt.md` → `prompts/entry.md` → `migration/migration-prompt.md` §3.0.2,
+> against working HEAD `039da060` (the tree, not the frozen snapshot).
+
+**Work-order probe:** ACTIVE — request records present and this ledger carries items not `DONE`.
+**State:** State B — Migration.
+
+| Item | Ledger (before) | R12 verdict (tree) | Evidence | Residual / next slice |
+|------|-----------------|--------------------|----------|-----------------------|
+| M10 | IN-PROGRESS | PARTIAL | `command-router.ts` mints `dumby:act:<inv>:search:browse`; `page-data.ts` returns the installable `modules` list | text-input search modal; >25-option paging |
+| M12 | IN-PROGRESS | DONE | required arg + `reset` + autocomplete source (`resolveEffectiveCommandNames`) all present | — |
+| M14 | DONE (summary) / IN-PROGRESS (record) | PARTIAL | content lists modules with icon + name + description; per-module `info` control minted | private (ephemeral) info embed |
+| M16 | DONE (summary) / IN-PROGRESS (record) | PARTIAL | list + `info`/`uninstall/disable` buttons + nav paging row present | page-switch divider; uninstall effect wiring |
+
+**Corrections applied:** M12 → DONE (summary + item record). M14, M16 summary rows aligned to PARTIAL to match their item records and the tree. The summary/item-record contradiction is recorded, not hidden.
+
+**Verification limit.** The application toolchain (`tsc` / `vitest`) was not run — the workspace requires Node ≥ 22 and this environment provides Node 20.20.2 with no installed dependencies. Every verdict above is a tree-inspection verdict, not a toolchain-verified one; the landed slices stay toolchain-unverified until the app suite runs.
+
+**Resume note.** Next session: land the remaining slices (M10 modal + paging; M14 ephemeral embed; M16 divider + uninstall effect), then run `pnpm --filter @workspace/dumby typecheck` and the unit suite on Node ≥ 22 to close the items. The corpus gate suite is green (25/25).
