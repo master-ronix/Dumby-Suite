@@ -292,22 +292,25 @@ export class CoreRenderer {
       components.push(textDisplay(footer));
     }
 
-    // items 10/11/15/17 - page-declared action controls. Interactive components are NOT valid
-    // inside a Components v2 container; they are emitted as top-level action rows beside it.
-    const topLevel: Component[] = [];
+    // items 3/10/11/15/17 - page-declared action controls render INSIDE the container, at the
+    // bottom, below the footer's divider (item 3). An ActionRow is a valid child of a Components v2
+    // container, so the navigation controls sit within the frame rather than beside it.
     const actions = input.actions;
     if (actions !== undefined) {
+      const rows: Component[] = [];
       for (const row of actions) {
         if (row.length === 0) continue;
-        topLevel.push(
+        rows.push(
           actionRow(row.map((b) => button(b.customId, b.label, b.style ?? 2, b.disabled ?? false))),
         );
       }
+      if (rows.length > 0) {
+        components.push(separator());
+        components.push(...rows);
+      }
     }
-    // item 1 - a divider separates the footer (build id · dev username) from the action controls.
-    if (topLevel.length > 0) components.push(separator());
 
-    return this.frame(components, input.accent, topLevel);
+    return this.frame(components, input.accent);
   }
 
   renderNotice(input: FormalNoticeDescriptor): ComponentsV2Message {

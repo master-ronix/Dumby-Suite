@@ -329,6 +329,28 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 
 ---
 
+### v5.5.2 — Dashboard Page Upgrade (UR-20261011-001) — 2026-10-11
+
+- 2026-10-11 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- Work order: `UR-20261011-001` (Dashboard page upgrade, nine clauses). One page per request.
+- **Landed (tree):** DP-1 navigation button grammar (`Next page` / `Previous page` / `Info` /
+  `Uninstall/disable` / `Search` / `First page`); DP-2 the Home control uses the filled house glyph;
+  DP-3 the navigation row renders inside the container, below the footer's divider; DP-4 the module
+  icon sits beside every module command list (main and module pages); DP-5 the default module icon
+  asset is regenerated; DP-7 a standard-tier module page resolves its own banner and footer (the
+  `hello-world` page now shows the default banner, not the dashboard's); DP-8 module pages list only
+  their own commands under the guild's current (BCCM-effective) name and status.
+- **Unchanged:** DP-6 — the main page combines all core-tier commands; core-tier modules keep no
+  page of their own.
+- **Confirmed:** DP-9 — `apps/main/assets/dashboard-banner.png` (amber) and
+  `apps/main/assets/dumby-banner.png` (grayscale default) are the framework assets, byte-identical
+  to the supplied artifacts.
+- **Verification:** the corpus gate suite is green (25/25; `check-ur` detects 9 records). The
+  application typecheck/lint/unit suite was **not** run — the authoring environment has no Node ≥ 22
+  and no installed dependencies, so the clauses are tree-verified, not toolchain-verified.
+
+---
+
 ### 4. Cross-Version Defect Lifecycle
 
 | Id | Introduced | Status | Resolution |

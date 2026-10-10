@@ -5,6 +5,11 @@ import type { DbClient } from '../db/client.js';
 import type { Logger } from '../logging/logger.js';
 import type { ModuleRegistry } from '../module-system/registry.js';
 import { moduleIcon } from './module-icons.js';
+import {
+  effectiveCommandName,
+  resolveCommandStatuses,
+  resolveEffectiveCommandNames,
+} from '../commands/command-renames.js';
 
 export interface PageDataDeps {
   getClient: () => Client | undefined;
@@ -30,6 +35,13 @@ const formatUptime = (seconds: number): string => {
   const minutes = Math.floor((seconds % 3600) / 60);
   return `${days}d ${hours}h ${minutes}m`;
 };
+
+/** The display name for a module id: `hello-world` becomes `Hello World`. */
+const titleCaseId = (id: string): string =>
+  id
+    .split(/[-_]/)
+    .map((part) => (part.length > 0 ? part[0]!.toUpperCase() + part.slice(1) : part))
+    .join(' ');
 
 /**
  * §1.7 — the host side of the page-data channel. A module cannot see the running system, so every
@@ -199,10 +211,12 @@ export function createPageDataProvider(
     return { title: 'Grant Access — Step 1: Select Command', lines };
   }
 
-  // UR-004 items 1/2/3 — page 0 is the main dashboard (core commands); page 1..n is each
-  // standard-tier module's page. item 5 — only the main page shows each command's module icon
-  // (declared custom emoji, else the framework's default white icon); a module page does not.
-  async function dashboard(page: number): Promise<PageData> {
+  // item 6 — page 0 is the main dashboard (every core-tier module's commands, combined); page 1..n
+  // is each STANDARD-tier module's own page. A core-tier module never gets its own page.
+  // items 4/5/8 — every module command list carries the module icon asset beside it (the main page
+  // and every module page alike), and a module page lists only that module's commands, under their
+  // CURRENT (BCCM-effective) name and status.
+  async function dashboard(page: number, guildId: string | null): Promise<PageData> {
     const all = moduleRegistry.all();
     const standard = all.filter((entry) => entry.manifest.tier === 'standard');
     const pageTotal = 1 + standard.length;
@@ -210,18 +224,28 @@ export function createPageDataProvider(
     if (page >= 1 && page <= standard.length) {
       const entry = standard[page - 1];
       if (entry !== undefined) {
-        // items 4/5/14 - a module page shows only its registered commands: no heading (the frame's
-        // title already names the page) and no module icon beside them.
+        const effective = await resolveEffectiveCommandNames(db.knex, guildId);
+        const statuses = await resolveCommandStatuses(db.knex, guildId);
+        const icon = moduleIcon(entry.manifest.ui?.icon);
+        const lines = entry.manifest.commands.map((command) => {
+          const current = effectiveCommandName(effective, command.name);
+          const status = statuses.get(command.name) ?? 'enabled';
+          const suffix = status === 'disabled' ? '  · disabled' : '';
+          return `${icon} \`/${current}\`${suffix}`;
+        });
+        // item 7 — the page names its owning module, so the frame carries THAT module's banner,
+        // footer and identity (the hello-world page shows the default banner, not the dashboard's).
         return {
-          lines: entry.manifest.commands.map((command) => `\`/${command.name}\``),
+          lines,
           pageTotal,
           page,
+          pageModuleId: entry.manifest.name,
+          pageModuleName: entry.manifest.ui?.displayName ?? titleCaseId(entry.manifest.name),
         };
       }
     }
 
-    // item 5 - only the main dashboard page shows each core command's module icon: the declared
-    // custom emoji, else the framework's default white icon.
+    // item 6 - the main page combines every CORE-tier module's commands, each with its module icon.
     const lines: string[] = [];
     for (const entry of all) {
       if (entry.manifest.tier !== 'core') continue;
@@ -230,7 +254,6 @@ export function createPageDataProvider(
         lines.push(`${icon} \`/${command.name}\``);
       }
     }
-    // item 4 - no per-page heading; the frame's "Dumby Suite | Dashboard" title already names it.
     return { lines, pageTotal, page: 0 };
   }
 
@@ -283,7 +306,7 @@ export function createPageDataProvider(
       case 'permit':
         return permit();
       case 'dashboard':
-        return dashboard(page);
+        return dashboard(page, guildId);
       case 'browse':
         return marketplace();
       case 'modules':

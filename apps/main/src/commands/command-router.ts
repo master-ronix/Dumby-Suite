@@ -238,15 +238,32 @@ export class CommandRouter {
         declaredDensityRaw === 'D' || declaredDensityRaw === 'M' || declaredDensityRaw === 'C'
           ? declaredDensityRaw
           : undefined;
+      // item 7 — a STANDARD-tier module's page under the dashboard carries THAT module's identity
+      // (its banner, footer and title), not the dashboard's. page-data names the owning module; a
+      // page without one is the dashboard's own main page. The hello-world page therefore shows the
+      // default banner, not the dashboard banner.
+      const pageModuleId =
+        typeof declaredPageData?.['pageModuleId'] === 'string'
+          ? (declaredPageData['pageModuleId'] as string)
+          : undefined;
+      const pageModuleName =
+        typeof declaredPageData?.['pageModuleName'] === 'string'
+          ? (declaredPageData['pageModuleName'] as string)
+          : undefined;
       const render = this.renderer.normalizeHandlerResult(declaredResponse, {
         ...identity,
-        moduleId: def.moduleId,
+        ...(pageModuleName !== undefined ? { surface: pageModuleName } : {}),
+        moduleId: pageModuleId ?? def.moduleId,
         ...(def.identity?.developer !== undefined ? { developer: def.identity.developer } : {}),
-        ...(def.identity?.displayName !== undefined
+        ...(pageModuleId === undefined && def.identity?.displayName !== undefined
           ? { displayName: def.identity.displayName }
           : {}),
-        ...(def.identity?.accent !== undefined ? { accent: def.identity.accent } : {}),
-        ...(def.identity?.banner !== undefined ? { banner: def.identity.banner } : {}),
+        ...(pageModuleId === undefined && def.identity?.accent !== undefined
+          ? { accent: def.identity.accent }
+          : {}),
+        ...(pageModuleId === undefined && def.identity?.banner !== undefined
+          ? { banner: def.identity.banner }
+          : {}),
         ...(def.identity?.buildId !== undefined ? { buildId: def.identity.buildId } : {}),
         ...(def.identity?.devUsername !== undefined
           ? { devUsername: def.identity.devUsername }
@@ -586,16 +603,16 @@ export class CommandRouter {
       const nav = (role: string, n: number): string => `dumby:nav:${invokerId}:${role}:${n}`;
       return [
         [
-          { customId: nav('home', 0), label: '⌂', style: 2, disabled: page === 0 },
+          { customId: nav('home', 0), label: '🏠', style: 2, disabled: page === 0 },
           {
             customId: nav('next', Math.min(page + 1, last)),
-            label: 'next page',
+            label: 'Next page',
             style: 2,
             disabled: page >= last,
           },
           {
             customId: nav('prev', Math.max(page - 1, 0)),
-            label: 'previous page',
+            label: 'Previous page',
             style: 2,
             disabled: page <= 0,
           },
@@ -606,19 +623,19 @@ export class CommandRouter {
     if (commandName === 'modules') {
       for (const id of ids) {
         rows.push([
-          { customId: mint('info', id), label: 'info', style: 2 },
-          { customId: mint('uninstall', id), label: 'uninstall/disable', style: 4 },
+          { customId: mint('info', id), label: 'Info', style: 2 },
+          { customId: mint('uninstall', id), label: 'Uninstall/disable', style: 4 },
         ]);
       }
       rows.push([
-        { customId: mint('next', 'modules'), label: 'next page', style: 2 },
-        { customId: mint('prev', 'modules'), label: 'previous page', style: 2 },
-        { customId: mint('first', 'modules'), label: 'first page', style: 2 },
+        { customId: mint('next', 'modules'), label: 'Next page', style: 2 },
+        { customId: mint('prev', 'modules'), label: 'Previous page', style: 2 },
+        { customId: mint('first', 'modules'), label: 'First page', style: 2 },
       ]);
     } else if (commandName === 'browse') {
-      rows.push([{ customId: mint('search', 'browse'), label: '🔍 search', style: 2 }]);
+      rows.push([{ customId: mint('search', 'browse'), label: '🔍 Search', style: 2 }]);
       for (const id of ids) {
-        rows.push([{ customId: mint('info', id), label: `info: ${id}`, style: 2 }]);
+        rows.push([{ customId: mint('info', id), label: `Info: ${id}`, style: 2 }]);
       }
     }
     return rows;

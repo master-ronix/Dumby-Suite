@@ -6,7 +6,7 @@
 > continued, never restarted.
 
 - **Created:** 2026-10-08
-- **Last updated:** 2026-10-10 · **Current item:** M10/M14/M16 (partial) · **Next action:** land the remaining slices — the /browse text-input search modal + >25-option paging (M10), the private info embed (M14), the page-switch divider + uninstall effect (M16) — then run the app toolchain (Node ≥ 22) to gate them
+- **Last updated:** 2026-10-11 · **Current item:** Dashboard page upgrade (UR-20261011-001, DP-1…DP-9) · M10/M14/M16 still open · **Next action:** land the remaining slices — the /browse text-input search modal + >25-option paging (M10), the private info embed (M14), the page-switch divider + uninstall effect (M16) — then run the app toolchain (Node ≥ 22) to gate them
 - **Protocol:** `docs/migration/migration-prompt.md` v5.2.0
 - **Coverage map:** the change-set brief (18 items) → one owning item each (M0–M17)
 - **Record shapes:** `docs/migration/ledger-template.md` §3 (item) and §4 (slice)
@@ -240,3 +240,27 @@ Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (rea
 **Verification limit.** The application toolchain (`tsc` / `vitest`) was not run — the workspace requires Node ≥ 22 and this environment provides Node 20.20.2 with no installed dependencies. Every verdict above is a tree-inspection verdict, not a toolchain-verified one; the landed slices stay toolchain-unverified until the app suite runs.
 
 **Resume note.** Next session: land the remaining slices (M10 modal + paging; M14 ephemeral embed; M16 divider + uninstall effect), then run `pnpm --filter @workspace/dumby typecheck` and the unit suite on Node ≥ 22 to close the items. The corpus gate suite is green (25/25).
+
+---
+
+## Dashboard Page Upgrade (UR-20261011-001) — 2026-10-11
+
+> A separate, page-scoped work order (one page per request). Coordinated with `UR-20261011-001` and
+> recorded in `upgradation/change-log.md`.
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-1 | Navigation button grammar (title-case labels) | DONE (tree; toolchain-unverified) |
+| DP-2 | Home control icon weight | DONE (tree; toolchain-unverified) |
+| DP-3 | Navigation controls moved inside the container, below the footer divider | DONE (tree; toolchain-unverified) |
+| DP-4 | Module icon beside every module command list (main + module pages) | DONE (tree; toolchain-unverified) |
+| DP-5 | Regenerated default module icon asset | DONE (asset) |
+| DP-6 | Core commands combined; core modules keep no own page | UNCHANGED (already correct) |
+| DP-7 | Module-page identity (own banner/footer; default banner fallback) | DONE (tree; toolchain-unverified) |
+| DP-8 | Module pages list only own commands, BCCM-effective name + status | DONE (tree; toolchain-unverified) |
+| DP-9 | Banner assets confirmed (dashboard amber + default grayscale) | DONE (byte-identical) |
+
+**Verification limit.** The application toolchain (`tsc` / `vitest`) was not run in the authoring
+environment (Node ≥ 22 unavailable; dependencies not installed). Every `DONE (tree)` verdict is a
+tree-inspection verdict; run `pnpm --filter @workspace/dumby typecheck` and the unit suite on the
+real toolchain to close the items.
