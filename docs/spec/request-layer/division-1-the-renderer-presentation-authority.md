@@ -67,12 +67,12 @@ Four dynamic slots fill the static frame. The Renderer owns the resolution of ev
 
 | Slot | Resolved from | Content |
 |---|---|---|
-| **Accent** | Renderer (fixed) | The official accent colour, blurple `#5865F2` |
+| **Accent** | Renderer (fixed) | The official accent colour, amber `#FFCA6D` |
 | **Banner** | Module or framework assets directory | 1280×720 banner image (Media Gallery type 12) |
 | **Module identity** | Module manifest (`devId`, name, version, logo) | Logo emoji, module name, version, developer |
 | **Content** | Command schema + handler output | Page-specific sections (per-command divisions below) |
 
-**Accent slot.** The official accent colour is blurple `#5865F2` — a single official value. It is a property of the Dumby interface, not of individual modules: dividers, footer rules, the buffer indicator, the formal notice marker, and default banner gradients are all rendered in `#5865F2`. Module visual identity is carried by the banner and module identity slots. Modules do not override the accent.
+**Accent slot.** The official accent colour is amber `#FFCA6D` — the framework default. It is a property of the Dumby interface, not of individual modules: dividers, footer rules, the buffer indicator, the formal notice marker, and default banner gradients are all rendered in `#FFCA6D`. Module visual identity is carried by the banner and module identity slots. Modules do not override the framework chrome accent; a module may declare its own accent for its own pages (ADR-012), falling back to amber `#FFCA6D`.
 
 **Banner slot.** A 1280×720 image (YouTube thumbnail dimensions, 16:9 aspect ratio) served as a full-width media gallery. Every module's manifest declares its assets directory; if the directory contains no banner, the Renderer generates one using the official accent colour as a gradient background with the module's logo emoji and name centred (§11.5).
 
@@ -108,7 +108,7 @@ The attribution line appears directly below the title and is repeated in the foo
 
 ### 1.6 Official Accent Colour
 
-The official accent colour of the Dumby interface is blurple, `#5865F2`. It is the single official value: every accent element on every renderer-issued surface — dividers, footer rules, buffer indicators, notice markers, default banner gradients, and button accent styling — uses it. The accent is fixed by the framework and is not a configurable or per-module property.
+The official accent colour of the Dumby interface is amber, `#FFCA6D`. It is the framework default: every accent element on every renderer-issued surface — dividers, footer rules, buffer indicators, notice markers, default banner gradients, and button accent styling — uses it. The accent is amber by default; a module may declare its own accent for its own pages (ADR-012).
 
 ### 1.7 Authoring Model: Schemas In, Renders Out
 
@@ -153,7 +153,7 @@ A migration window applies per ADR-001 (docs/adr/). Within the window, modules s
   check: "Every surface is issued by the Renderer using the Components v2 grammar (Container/TextDisplay/Separator/ActionRow)"
   test: tests/integration/renderer-grammar.spec.ts
 - id: ACC-REQ-0004-2
-  check: "The accent is the single non-configurable blurple #5865F2 and titles follow the A4 grammar"
+  check: "The accent defaults to amber #FFCA6D (a module may declare its own, ADR-012) and titles follow the renderer grammar"
   test: tests/unit/renderer-accent-title.spec.ts
 - id: ACC-REQ-0004-3
   check: "Classic embeds are banned: no `EmbedBuilder`/`MessageEmbed` import passes the lint/grep gate"

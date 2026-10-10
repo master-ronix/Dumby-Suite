@@ -211,7 +211,7 @@ export function buildComponentsV2(components: Component[]): ComponentsV2Message 
   };
 }
 
-export const DEFAULT_ACCENT_COLOR = 0x5865f2;
+export const DEFAULT_ACCENT_COLOR = 0xffca6d;
 
 export function createBannerMediaGallery(bannerUrl: string): MediaGalleryComponent {
   return mediaGallery(bannerUrl, 'Dumby banner');
@@ -228,19 +228,14 @@ export function getDefaultBannerUrl(
 export function createTitleBlock(
   pageName: string,
   developer = 'Quixotic Mnemonics',
-  version?: string,
 ): TextDisplayComponent {
-  const title = `Dumby | ${pageName}`;
-  const attribution = version
-    ? `-# Developed by ${developer} v${version}`
-    : `-# Developed by ${developer}`;
-  return textDisplay(`${title}\n${attribution}`);
+  return textDisplay(`**Dumby Suite | ${pageName}**\n-# Developed by ${developer}`);
 }
 
 export function createMarketplaceTitleBlock(
   developer = 'Quixotic Mnemonics',
 ): TextDisplayComponent {
-  return textDisplay(`Dumby | Marketplace\n-# Developed by ${developer}`);
+  return textDisplay(`**Dumby Suite | Marketplace**\n-# Developed by ${developer}`);
 }
 
 export function createSectionHeader(emoji: string, title: string): TextDisplayComponent {

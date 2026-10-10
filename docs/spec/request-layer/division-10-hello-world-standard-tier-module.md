@@ -166,7 +166,7 @@ export async function onUnload() {
 
 ### 10.8 Assets
 
-**banner.png:** A 1280×720 image with the official accent colour (`#5865F2`) gradient, the hello-world module logo emoji, and the module name "Hello World" centred.
+**banner.png:** A 1280×720 image with the official accent colour (`#FFCA6D`) gradient, the hello-world module logo emoji, and the module name "Hello World" centred.
 
 **logo.png:** A simple module logo image that can be rendered as an emoji-format icon in Discord.
 

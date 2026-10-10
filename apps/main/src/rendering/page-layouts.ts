@@ -76,7 +76,10 @@ function genericSections(page: string, data: Readonly<Record<string, unknown>>):
   return [primary, `-# ${meta}`];
 }
 
-export function pageSections(page: string, data: Readonly<Record<string, unknown>>): readonly string[] {
+export function pageSections(
+  page: string,
+  data: Readonly<Record<string, unknown>>,
+): readonly string[] {
   const structured = renderStructured(data);
   return structured === null ? genericSections(page, data) : [structured];
 }

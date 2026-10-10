@@ -177,10 +177,10 @@ describe('snowflake helpers', () => {
 });
 
 describe('shared constants', () => {
-  test('the single official accent token is the canonical blurple', () => {
-    // ADR-001 / renderer grammar: one accent token (#5865F2) everywhere. The legacy
+  test('the default official accent token is amber', () => {
+    // ADR-001 / renderer grammar: one accent token (#FFCA6D) everywhere. The legacy
     // multi-colour palette and EMBED_COLORS were removed (Appendix C #21).
-    expect(DEFAULT_ACCENT_COLOR).toBe(0x5865f2);
+    expect(DEFAULT_ACCENT_COLOR).toBe(0xffca6d);
   });
 
   test('durations are internally consistent', () => {

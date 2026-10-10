@@ -189,6 +189,92 @@ authority_scope: [history]
 
 ---
 
+### v5.3.0 — Change-Set Migration (State B) — 2026-10-08
+
+- 2026-10-08 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met
+- 2026-10-08 · migration-prompt 5.2.0 · items M0–M17 · verdict=PARTIAL
+- Landed DONE: M0 branding (amber accent), M1 version removal, M2 dashboard dynamic registry, M3 density per page, M4 per-module banner/accent, M5 default banner for existing modules, M6 footer grammar, M7 dashboard-only dropdown, M8 module logo icon field, M9 marketplace core flow, M11 core sub-pages removed, M13 module pages, M15 queue page rewrite, M17 hello page cleanup.
+- Landed DONE (docs residuals): MR-1 attribution finalised (ADR-013); MR-2 ADR-010 blurple removed.
+- In progress: M10 search bar and 25-option handling; M12 autocomplete-source fix (required argument and reset action landed); M14 marketplace info surface; M16 /modules buttons and paging.
+- Superseding decisions recorded: ADR-012 (accent amber, per-module accent) supersedes ADR-010; ADR-013 (no version on surfaces, module footer grammar, dashboard-only page switch, per-page density) supersedes ADR-009.
+- Ledger: the live migration ledger at the repository root was constructed for this run; the scope fence was held per item.
+- Verification: documentation gate suite 25/25 green; application typecheck, lint and unit suite pending on the real toolchain (no installed dependencies in the build environment).
+
+---
+
+### v5.3.0 — Change-Set Migration, Interactive Tranche (State B) — 2026-10-08
+
+- 2026-10-08 · migration-prompt 5.2.0 · items M10/M12/M14/M16 · verdict=PARTIAL→LANDED
+- Work order recorded as UR-20261008-002 (renderer/dashboard/module change set).
+- Landed: page-declared action buttons in the renderer; /modules info+uninstall and paging controls; /browse search and info controls; the interaction registry handles the `dumby:act:` prefix.
+- Landed: the default module banner asset wired as the served default.
+- Tracked: the /browse search text-input modal; the ephemeral info embed; the M12 autocomplete source.
+- Verification: documentation gate suite 25/25 green; application typecheck/lint/unit pending on the real toolchain.
+
+---
+
+### v5.3.0 — Dashboard Visual Corrections (State B) — 2026-10-08
+
+- 2026-10-08 · migration-prompt 5.2.0 · item S4 · verdict=DONE
+- Work order: UR-20261008-003 (dashboard page visual corrections), one page per request.
+- Landed: commands-only dashboard list with module emoji and backticks; no core sub-pages; bold `Dumby Suite | <page>` title with the developer line beneath; footer `<build id> · @<dev username>`; Home/Next/Previous buttons replacing the dropdown.
+- Verification: documentation gate suite 25/25 green; application typecheck/lint/unit pending on the real toolchain.
+
+---
+
+### v5.3.0 — Dashboard Round 2: Icon Fallback & Standard Module Pages (State B) — 2026-10-08
+
+- 2026-10-08 · migration-prompt 5.2.0 · item S5 · verdict=DONE
+- Work order: UR-20261008-004.
+- Landed: project-wide default module icon fallback; standard-tier modules carry their own pages under the dashboard (main page lists core commands); Next/Previous page navigate to the standard module pages (first is Hello World with its `hello` command).
+- Verification: documentation gate suite 25/25 green; application typecheck/lint/unit pending on the real toolchain.
+
+---
+
+### v5.3.0 — Deploy-blocking Typecheck Fix (UR-20261008-004) — 2026-10-08
+
+- 2026-10-08 · fix · verdict=DONE
+- The UR-004 pagination change passed a third argument to `pageDataProvider` while its option type still declared two parameters; `tsc` failed at both call sites in `command-router.ts`. The option signature now accepts `page?: number`.
+- Stale unit-test expectations from the grammar change (title/footer) were corrected in the same pass.
+- Note: the local documentation gates do not run `tsc`; the app typecheck runs on the real toolchain.
+
+---
+
+### v5.3.0 — Dashboard Runtime Error: Diagnostics + Render Fallback — 2026-10-08
+
+- 2026-10-08 · fix · verdict=IN PROGRESS
+- The dashboard raised a `MODULE_ERROR` at runtime and the cause could not be read from the log tool (structured fields not surfaced). The router `catch` now embeds the error text and stack in the log message; the final render now retries once without the action controls if the payload is rejected.
+- Root cause still open; the next deploy's `command-execution-error: …` line will name it.
+
+---
+
+### v5.4.0 — Dashboard MODULE_ERROR: duplicate custom_id (State B) — 2026-10-08
+
+- 2026-10-08 · fix · verdict=CONFIRMED (deployment `e3153d69`; no `command-render-fallback` from 22:19)
+- Root cause (live log): `COMPONENT_CUSTOM_ID_DUPLICATED`. The dashboard nav buttons were keyed on their target page, so on page 0 Home and Previous both minted `…:page:0`. Fixed by keying each button on its role (`home` / `next:<n>` / `prev:<n>`) and disabling a control with no target; the nav handler now reads the role.
+- The project-wide default module icon is applied at every module-icon surface (dashboard, permit, marketplace, installed modules).
+- F-5 is not closed until a dashboard open logs no `command-render-fallback` line.
+
+---
+
+### v5.5.0 — Dashboard: Control Placement, Registered Attribution, Module Icons & Page Headings (State B) — 2026-10-08
+
+- 2026-10-08 · migration-prompt 5.2.0 · item S6 · verdict=PUSHED (build fixed; pending deploy)
+- Work order: UR-20261008-005. ADR: ADR-014.
+- Landed: (1) the page's action controls render below the footer, after a divider; (2) the developer attribution resolves to the platform-registered username, not a static name; (3) a module's icon is a custom Discord emoji named by `ui.icon`, with the framework's default white icon (bundled, uploaded once as an application emoji) when a module names none — the per-module emoji hardcode is removed; (4) a dashboard page carries no in-content heading; (5) only the main dashboard page shows each command's module icon.
+- Verification: documentation gate suite 25/25 green; application typecheck/lint/unit pending on the real toolchain.
+
+---
+
+### v5.5.1 — UR-005 Build Fix: nullable `client.application` — 2026-10-08
+
+- 2026-10-08 · fix · verdict=PUSHED
+- `d2f4d8e` stopped at typecheck: `TS18047: 'application' is possibly 'null'` at `rendering/module-emoji-upload.ts` lines 19/28 (discord.js types `client.application` as `Application | null`).
+- The guard now checks null as well as undefined; a missing application is a skip (logged `module-emoji-upload-failed`, `reason: application-unavailable`) and the unicode fallback applies.
+- The three new files were type-checked against real discord.js 14.17 typings before this push.
+
+---
+
 ### 4. Cross-Version Defect Lifecycle
 
 <!-- One row per introduced defect: id · introduced · status · resolution. -->

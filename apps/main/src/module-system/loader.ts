@@ -1,6 +1,7 @@
 import type { Container } from '../di/container.js';
 import type { Logger } from '../logging/logger.js';
 import { topologicalLoadOrder, classifyLoadFailures, type ModuleNode } from './topo-sort.js';
+import { resolveRegisteredDeveloper } from './developer-registry.js';
 import { validateTierRules } from './tier-rules.js';
 import { checkModuleAgainstPolicy, type SecurityPolicy } from './policy-lockfile.js';
 import type { ModuleRegistry } from './registry.js';
@@ -118,7 +119,21 @@ export class ModuleLoader {
                 toCommandDefinition(declaration, {
                   moduleId: mod.manifest.name,
                   identity: {
-                    surface: `Dumby | ${mod.manifest.name}`,
+                    surface: `Dumby Suite | ${mod.manifest.name}`,
+                    buildId: mod.manifest.buildId,
+                    devUsername:
+                      mod.manifest.ui?.devUsername ??
+                      resolveRegisteredDeveloper(mod.manifest.devId) ??
+                      mod.manifest.devId,
+                    ...(mod.manifest.ui?.displayName !== undefined
+                      ? { displayName: mod.manifest.ui.displayName }
+                      : {}),
+                    ...(mod.manifest.ui?.accent !== undefined
+                      ? { accent: mod.manifest.ui.accent }
+                      : {}),
+                    ...(mod.manifest.ui?.banner !== undefined
+                      ? { banner: mod.manifest.ui.banner }
+                      : {}),
                     developer:
                       mod.manifest.devId === undefined || mod.manifest.devId === FIRST_PARTY_DEV_ID
                         ? FRAMEWORK_DEVELOPER

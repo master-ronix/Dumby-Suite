@@ -9,8 +9,8 @@ export interface BccmEffectDeps {
   logger: Logger;
 }
 
-/** §6.4 — the four BCCM action types. */
-const ACTIONS = new Set(['rename', 'alias', 'disable', 'enable']);
+/** §6.4 / item 13 — the BCCM action types, including the reset that reverts a command's name. */
+const ACTIONS = new Set(['rename', 'alias', 'disable', 'enable', 'reset']);
 
 export type EffectHandler = (
   payload: Readonly<Record<string, unknown>>,

@@ -14,6 +14,8 @@ import {
   type NavigationControl,
   type NavigationOption,
   type NoticeReasonCode,
+  type PageActionRow,
+  type RenderDescriptor,
   type RenderIdentity,
   type RenderMode,
   derivePageSections,
@@ -86,6 +88,8 @@ export interface CommandRouterOptions {
   pageDataProvider?: (
     moduleId: string,
     guildId: string | null,
+    /** UR-004 — the dashboard page index (0 = main; 1..n = the standard module pages). */
+    page?: number,
   ) => Promise<Readonly<Record<string, unknown>>>;
   /**
    * §6.7 — performs the side effects a handler declares. Keyed by effect kind; an undeclared kind
@@ -118,7 +122,7 @@ export class CommandRouter {
 
   async dispatch(
     interaction: CommandInteraction,
-    options: { mode?: RenderMode } = {},
+    options: { mode?: RenderMode; page?: number } = {},
   ): Promise<void> {
     const name = interaction.commandName;
     const identity: RenderIdentity = { surface: this.pageTitle(name) };
@@ -179,7 +183,12 @@ export class CommandRouter {
             this.renderer.createReadOnlyInteraction(interaction),
             {
               config: def.moduleConfig ?? {},
-              data: (await this.options.pageDataProvider?.(def.moduleId, interaction.guildId)) ?? {},
+              data:
+                (await this.options.pageDataProvider?.(
+                  def.moduleId,
+                  interaction.guildId,
+                  options.page,
+                )) ?? {},
             },
           );
         },
@@ -197,13 +206,16 @@ export class CommandRouter {
       // render so a rejected effect surfaces as a formal notice rather than a stale page.
       const effects =
         (
-          declaredResponse as {
-            effects?: readonly {
-              kind: string;
-              payload: Readonly<Record<string, unknown>>;
-            }[];
-          }
-        ).effects ?? [];
+          declaredResponse as
+            | {
+                effects?: readonly {
+                  kind: string;
+                  payload: Readonly<Record<string, unknown>>;
+                }[];
+              }
+            | null
+            | undefined
+        )?.effects ?? [];
       for (const effect of effects) {
         const effectHandler = this.options.effectHandlers?.[effect.kind];
         if (effectHandler === undefined) {
@@ -216,13 +228,35 @@ export class CommandRouter {
         await effectHandler(effect.payload, interaction);
       }
 
+      // item 4 / ADR-013 — density is a per-page declaration; a page's density wins.
+      const declaredDensityRaw = (declaredResponse as { data?: { density?: unknown } } | null)?.data
+        ?.density;
+      const declaredPageData = (
+        declaredResponse as { data?: Readonly<Record<string, unknown>> } | null
+      )?.data;
+      const declaredDensity =
+        declaredDensityRaw === 'D' || declaredDensityRaw === 'M' || declaredDensityRaw === 'C'
+          ? declaredDensityRaw
+          : undefined;
       const render = this.renderer.normalizeHandlerResult(declaredResponse, {
         ...identity,
+        moduleId: def.moduleId,
         ...(def.identity?.developer !== undefined ? { developer: def.identity.developer } : {}),
-        ...(def.identity?.version !== undefined ? { version: def.identity.version } : {}),
+        ...(def.identity?.displayName !== undefined
+          ? { displayName: def.identity.displayName }
+          : {}),
+        ...(def.identity?.accent !== undefined ? { accent: def.identity.accent } : {}),
+        ...(def.identity?.banner !== undefined ? { banner: def.identity.banner } : {}),
+        ...(def.identity?.buildId !== undefined ? { buildId: def.identity.buildId } : {}),
+        ...(def.identity?.devUsername !== undefined
+          ? { devUsername: def.identity.devUsername }
+          : {}),
         ...(options.mode !== undefined ? { mode: options.mode } : {}),
-        navigation: this.navigationControl(name, interaction.user.id),
-        modeControl: this.modeControl(name, interaction.user.id),
+        ...(declaredDensity !== undefined ? { mode: declaredDensity } : {}),
+        // items 10/11/15/17 - page-declared action controls; the dashboard's nav is Home/Next/Prev.
+        ...(name === 'dashboard' || name === 'modules' || name === 'browse'
+          ? { actions: this.pageActions(name, declaredPageData, interaction.user.id, options.page) }
+          : {}),
       });
       // A page whose data the effects just changed is re-derived, so the render shows the result
       // of the action rather than the state it was gathered in.
@@ -230,12 +264,16 @@ export class CommandRouter {
         const pageName = (declaredResponse as { page?: string }).page;
         if (pageName !== undefined) {
           const fresh =
-            (await this.options.pageDataProvider?.(def.moduleId, interaction.guildId)) ?? {};
+            (await this.options.pageDataProvider?.(
+              def.moduleId,
+              interaction.guildId,
+              options.page,
+            )) ?? {};
           render.sections = derivePageSections(pageName, fresh);
         }
       }
 
-      await this.renderer.editFinal(interaction, render);
+      await this.editFinalWithFallback(interaction, render);
       this.logger.info('command-executed', {
         command: name,
         moduleId: def.moduleId,
@@ -245,11 +283,16 @@ export class CommandRouter {
         durationMs: Date.now() - start,
       });
     } catch (err) {
-      this.logger.error('command-execution-error', {
+      // Diagnostic: the log tool does not always surface a log's structured `error` field, so the
+      // message string carries the error text (and the stack) directly.
+      const message = err instanceof Error ? err.message : String(err);
+      const stack = err instanceof Error ? err.stack : undefined;
+      this.logger.error(`command-execution-error: ${message}`, {
         command: name,
         moduleId: def.moduleId,
         userId: interaction.user.id,
         error: String(err),
+        ...(stack !== undefined ? { stack } : {}),
       });
       await this.renderer.editNotice(interaction, {
         ...identity,
@@ -441,6 +484,28 @@ export class CommandRouter {
     }, this.followupAlarmMs);
   }
 
+  /**
+   * Renders the final page. If the payload is rejected (most likely the action controls — a
+   * Components v2 container rejecting the action row), drop the controls and retry once, so the
+   * page stays usable while the underlying error is logged for diagnosis.
+   */
+  private async editFinalWithFallback(
+    interaction: CommandInteraction,
+    render: RenderDescriptor,
+  ): Promise<void> {
+    try {
+      await this.renderer.editFinal(interaction, render);
+    } catch (err) {
+      this.logger.warn(
+        `command-render-fallback: ${err instanceof Error ? err.message : String(err)}`,
+        { command: interaction.commandName, error: String(err) },
+      );
+      const withoutActions: RenderDescriptor = { ...render };
+      Reflect.deleteProperty(withoutActions, 'actions');
+      await this.renderer.editFinal(interaction, withoutActions);
+    }
+  }
+
   private reasonFromRejection(reason: string): NoticeReasonCode {
     const normalized = reason.toLowerCase();
     if (normalized.includes('maintenance')) return 'MAINTENANCE';
@@ -487,6 +552,76 @@ export class CommandRouter {
       };
     });
     return { customId: `dumby:nav:${invokerId}:${current}`, options };
+  }
+
+  /**
+   * items 11/15/17 - the page-declared action controls. /modules carries a per-module info +
+   * uninstall pair and a paging row; /browse carries a search control and a per-module info
+   * control. Every customId is minted `dumby:act:<invoker>:<action>:<target>` so the interaction
+   * registry's invoker re-check holds.
+   */
+  private pageActions(
+    commandName: string,
+    data: Readonly<Record<string, unknown>> | undefined,
+    invokerId: string,
+    page = 0,
+  ): readonly PageActionRow[] {
+    const raw = Array.isArray(data?.['modules']) ? (data['modules'] as unknown[]) : [];
+    const ids = raw
+      .map((m) => (typeof m === 'object' && m !== null ? (m as { id?: unknown }).id : undefined))
+      .filter((id): id is string => typeof id === 'string');
+    const rows: PageActionRow[] = [];
+    const mint = (action: string, target: string): string =>
+      `dumby:act:${invokerId}:${action}:${target}`;
+
+    // UR-004 items 2/3 - the dashboard's navigation is Home (icon-only) / Next page / Previous
+    // page; Next/Previous move between the main page (page 0) and the standard module pages.
+    if (commandName === 'dashboard') {
+      const total = typeof data?.['pageTotal'] === 'number' ? (data['pageTotal'] as number) : 1;
+      const last = Math.max(total - 1, 0);
+      // F-5 — each control's customId must be unique within the message. Keying every button on
+      // its target page made Home and Previous collide on page 0 (both `...:page:0`), which Discord
+      // rejects as COMPONENT_CUSTOM_ID_DUPLICATED. The role now forms part of the id, and a control
+      // with no target (Previous on page 0, Next on the last page) is disabled instead of colliding.
+      const nav = (role: string, n: number): string => `dumby:nav:${invokerId}:${role}:${n}`;
+      return [
+        [
+          { customId: nav('home', 0), label: '⌂', style: 2, disabled: page === 0 },
+          {
+            customId: nav('next', Math.min(page + 1, last)),
+            label: 'next page',
+            style: 2,
+            disabled: page >= last,
+          },
+          {
+            customId: nav('prev', Math.max(page - 1, 0)),
+            label: 'previous page',
+            style: 2,
+            disabled: page <= 0,
+          },
+        ],
+      ];
+    }
+
+    if (commandName === 'modules') {
+      for (const id of ids) {
+        rows.push([
+          { customId: mint('info', id), label: 'info', style: 2 },
+          { customId: mint('uninstall', id), label: 'uninstall/disable', style: 4 },
+        ]);
+      }
+      rows.push([
+        { customId: mint('next', 'modules'), label: 'next page', style: 2 },
+        { customId: mint('prev', 'modules'), label: 'previous page', style: 2 },
+        { customId: mint('first', 'modules'), label: 'first page', style: 2 },
+      ]);
+    } else if (commandName === 'browse') {
+      rows.push([{ customId: mint('search', 'browse'), label: '🔍 search', style: 2 }]);
+      for (const id of ids) {
+        rows.push([{ customId: mint('info', id), label: `info: ${id}`, style: 2 }]);
+      }
+    }
+    return rows;
   }
 
   /** §1.2 — one minted customId per density mode, each carrying the page it applies to. */

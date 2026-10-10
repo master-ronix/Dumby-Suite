@@ -39,20 +39,44 @@ function frame(message: ComponentsV2Message): ContainerComponent {
 const renderer = new CoreRenderer();
 
 describe('CoreRenderer grammar', () => {
-  test('every render is a Components V2 message with the official blurple accent', () => {
+  test('every render is a Components V2 message with the official amber accent', () => {
     const message = renderer.render({ surface: 'Health', summary: 'all systems nominal' });
 
     expect(message.flags).toBe(32768);
     expect(frame(message).type).toBe(ComponentType.CONTAINER);
-    expect(frame(message).accent_color).toBe(0x5865f2);
+    expect(frame(message).accent_color).toBe(0xffca6d);
   });
 
   test('the title carries the module identity and the attribution occupies its own line', () => {
     const message = renderer.render({ surface: 'Health', summary: 'ok' });
 
-    const title = textContents(message).find((content) => content.startsWith('Dumby | Health'));
+    const title = textContents(message).find((content) =>
+      content.startsWith('**Dumby Suite | Health**'),
+    );
     expect(title).toBeDefined();
-    expect(title).toContain('-# Developed by Quixotic Mnemonics v5.0.0');
+    expect(title).toContain('-# Developed by Quixotic Mnemonics');
+  });
+
+  test('the module-page footer is `<name> [<id>]` and carries no attribution', () => {
+    const message = renderer.render({
+      surface: 'Hello World',
+      moduleId: 'hello-world',
+      sections: ['hi'],
+    });
+    const contents = textContents(message);
+    expect(contents).toContain('-# Hello World [hello-world]');
+    // the developer credit stays in the identity band, not the footer
+    expect(contents.some((content) => content.includes('Developed by'))).toBe(true);
+  });
+
+  test('a declared display name is used in the footer', () => {
+    const message = renderer.render({
+      surface: 'X',
+      moduleId: 'custom-slug',
+      displayName: 'Custom Name',
+      sections: ['hi'],
+    });
+    expect(textContents(message)).toContain('-# Custom Name [custom-slug]');
   });
 
   test('defaults to Mode D for direct invocations', () => {
@@ -104,8 +128,8 @@ describe('CoreRenderer grammar', () => {
   test('mode changes density, never the reported surface', () => {
     const d = textContents(renderer.render({ surface: 'Health', mode: 'D', summary: 'ok' }));
     const c = textContents(renderer.render({ surface: 'Health', mode: 'C', summary: 'ok' }));
-    expect(d.some((content) => content.includes('Dumby | Health'))).toBe(true);
-    expect(c.some((content) => content.includes('Dumby | Health'))).toBe(true);
+    expect(d.some((content) => content.includes('Dumby Suite | Health'))).toBe(true);
+    expect(c.some((content) => content.includes('Dumby Suite | Health'))).toBe(true);
   });
 
   test('rejects a descriptor with no sections and no summary', () => {
@@ -124,8 +148,8 @@ describe('CoreRenderer buffer embed', () => {
     const message = renderer.renderBuffer({ surface: 'Health' });
 
     const contents = textContents(message);
-    expect(frame(message).accent_color).toBe(0x5865f2);
-    expect(contents.some((content) => content.startsWith('Dumby | Health'))).toBe(true);
+    expect(frame(message).accent_color).toBe(0xffca6d);
+    expect(contents.some((content) => content.startsWith('**Dumby Suite | Health**'))).toBe(true);
     expect(contents.some((content) => content.includes('Preparing Health'))).toBe(true);
   });
 
@@ -155,7 +179,7 @@ describe('CoreRenderer formal notice frame', () => {
     });
 
     const contents = textContents(message);
-    expect(frame(message).accent_color).toBe(0x5865f2);
+    expect(frame(message).accent_color).toBe(0xffca6d);
     expect(contents.some((content) => content.includes('reason: RATE_LIMITED'))).toBe(true);
     expect(contents.some((content) => content.includes('trace: tr_abc123'))).toBe(true);
   });

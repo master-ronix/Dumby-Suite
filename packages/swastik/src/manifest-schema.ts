@@ -98,6 +98,17 @@ export const declaredServiceSchema = z
   })
   .strict();
 
+/** §1.3 / ADR-012 / ADR-013 — a module's declared UI identity: banner, accent, logo icon, name. */
+export const moduleUiSchema = z
+  .object({
+    banner: z.string().min(1).optional(),
+    accent: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'accent must be a #RRGGBB hex colour').optional(),
+    icon: z.string().min(1).optional(),
+    displayName: z.string().min(1).optional(),
+    devUsername: z.string().min(1).optional(),
+  })
+  .strict();
+
 const commonManifestFields = {
   name: z
     .string()
@@ -132,6 +143,7 @@ const commonManifestFields = {
   config: z.record(z.string(), z.unknown()).default({}),
   eventsCatalog: z.array(eventCatalogEntrySchema).default([]),
   dashboardSchema: z.record(z.string(), z.unknown()).optional(),
+  ui: moduleUiSchema.optional(),
   crossModuleReads: z.array(crossModuleReadSchema).default([]),
 };
 

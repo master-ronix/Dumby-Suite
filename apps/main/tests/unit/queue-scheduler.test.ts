@@ -38,9 +38,31 @@ describe('Scheduler', () => {
     });
     scheduler.register(makeTask('task-a', '*/1'));
     scheduler.register(makeTask('task-b', '*/15'));
+    scheduler.register(makeTask('task-c', '0 */12 * * *'));
     const registered = (scheduler as unknown as { tasks: Map<string, ScheduledTask> }).tasks;
     expect(registered.get('task-a')?.intervalMs).toBe(60_000);
     expect(registered.get('task-b')?.intervalMs).toBe(900_000);
+    // An hour-field interval means hours, not the 60s fallback (the BCCM batch push is 12h).
+    expect(registered.get('task-c')?.intervalMs).toBe(43_200_000);
+  });
+
+  test('a calendar cron resolves to its next occurrence, not the 60s fallback', () => {
+    const scheduler = new Scheduler({
+      logger: { info: vi.fn(), error: vi.fn() } as never,
+      lockStore: makeLockStore().store,
+    });
+    const next = (
+      scheduler as unknown as { nextDelayMs: (cron: string, from: number) => number }
+    ).nextDelayMs.bind(scheduler);
+    const from = Date.parse('2026-10-31T12:00:00Z');
+
+    // '0 3 1 * *' = 03:00 UTC on the 1st → the next is 15h away, not 60s.
+    expect(next('0 3 1 * *', from)).toBe(15 * 60 * 60 * 1000);
+    // '0 3 * * *' = 03:00 UTC daily → also 15h away.
+    expect(next('0 3 * * *', from)).toBe(15 * 60 * 60 * 1000);
+    // Interval forms still repeat on their fixed period.
+    expect(next('*/15 * * * *', from)).toBe(900_000);
+    expect(next('0 */12 * * *', from)).toBe(43_200_000);
   });
 
   test('tick executes the task under the lock and releases it', async () => {

@@ -4,6 +4,7 @@ import type { ConfigService } from '../config/config.service.js';
 import type { DbClient } from '../db/client.js';
 import type { Logger } from '../logging/logger.js';
 import type { ModuleRegistry } from '../module-system/registry.js';
+import { moduleIcon } from './module-icons.js';
 
 export interface PageDataDeps {
   getClient: () => Client | undefined;
@@ -39,7 +40,7 @@ const formatUptime = (seconds: number): string => {
  */
 export function createPageDataProvider(
   deps: PageDataDeps,
-): (moduleId: string, guildId: string | null) => Promise<PageData> {
+): (moduleId: string, guildId: string | null, page?: number) => Promise<PageData> {
   const { getClient, moduleRegistry, db, redis, config, logger } = deps;
 
   async function health(): Promise<PageData> {
@@ -67,10 +68,7 @@ export function createPageDataProvider(
 
     const discordRows: Array<readonly [string, string]> = [];
     if (client !== undefined) discordRows.push(['Gateway Ping', `${Math.round(client.ws.ping)}ms`]);
-    discordRows.push([
-      'Gateway Status',
-      client?.isReady() === true ? 'Connected' : 'Disconnected',
-    ]);
+    discordRows.push(['Gateway Status', client?.isReady() === true ? 'Connected' : 'Disconnected']);
     discordRows.push(['Shard Count', String(config.get('SHARD_COUNT'))]);
 
     const groups: Group[] = [
@@ -171,23 +169,26 @@ export function createPageDataProvider(
     const pending = entries.length;
     return {
       title: 'Pending Command Queue Actions',
-      lines: [
-        'Batch window: changes are batched and pushed within the 12–13 hour window (§15.8)',
-        '',
-        ...(pending === 0 ? ['No pending queue actions.'] : entries),
-        '',
-        `Total queued: ${pending}   |   Next batch push: within 12–13h`,
+      groups: [
+        {
+          name: 'Batch',
+          rows: [
+            ['Window', 'changes are batched and pushed within the 12–13 hour window (§15.8)'],
+            ['Total queued', String(pending)],
+            ['Next batch push', 'within 12–13h'],
+          ],
+        },
       ],
+      lines: pending === 0 ? ['No pending queue actions.'] : entries,
     };
   }
 
   async function permit(): Promise<PageData> {
     const lines: string[] = ['Choose a module command to manage grant access:', ''];
     for (const entry of moduleRegistry.all()) {
+      const icon = moduleIcon(entry.manifest.ui?.icon);
       for (const command of entry.manifest.commands) {
-        lines.push(
-          `📦 /${command.name}   ${entry.manifest.name} v${entry.manifest.version} — ${command.description}`,
-        );
+        lines.push(`${icon} /${command.name}   ${entry.manifest.name} — ${command.description}`);
       }
     }
     lines.push(
@@ -198,7 +199,80 @@ export function createPageDataProvider(
     return { title: 'Grant Access — Step 1: Select Command', lines };
   }
 
-  return async (moduleId: string, guildId: string | null): Promise<PageData> => {
+  // UR-004 items 1/2/3 — page 0 is the main dashboard (core commands); page 1..n is each
+  // standard-tier module's page. item 5 — only the main page shows each command's module icon
+  // (declared custom emoji, else the framework's default white icon); a module page does not.
+  async function dashboard(page: number): Promise<PageData> {
+    const all = moduleRegistry.all();
+    const standard = all.filter((entry) => entry.manifest.tier === 'standard');
+    const pageTotal = 1 + standard.length;
+
+    if (page >= 1 && page <= standard.length) {
+      const entry = standard[page - 1];
+      if (entry !== undefined) {
+        // items 4/5/14 - a module page shows only its registered commands: no heading (the frame's
+        // title already names the page) and no module icon beside them.
+        return {
+          lines: entry.manifest.commands.map((command) => `\`/${command.name}\``),
+          pageTotal,
+          page,
+        };
+      }
+    }
+
+    // item 5 - only the main dashboard page shows each core command's module icon: the declared
+    // custom emoji, else the framework's default white icon.
+    const lines: string[] = [];
+    for (const entry of all) {
+      if (entry.manifest.tier !== 'core') continue;
+      const icon = moduleIcon(entry.manifest.ui?.icon);
+      for (const command of entry.manifest.commands) {
+        lines.push(`${icon} \`/${command.name}\``);
+      }
+    }
+    // item 4 - no per-page heading; the frame's "Dumby Suite | Dashboard" title already names it.
+    return { lines, pageTotal, page: 0 };
+  }
+
+  // items 10/11/15 — /browse is marketplace discovery: only installable modules are offered.
+  async function marketplace(): Promise<PageData> {
+    const installable = moduleRegistry
+      .all()
+      .filter((entry) => entry.manifest.tier === 'marketplace');
+    const lines: string[] = [
+      'Search for a module with the search bar, then select one to install.',
+      '',
+    ];
+    if (installable.length === 0) {
+      lines.push('No marketplace modules are available to install.');
+    } else {
+      for (const entry of installable) {
+        const icon = moduleIcon(entry.manifest.ui?.icon);
+        lines.push(`${icon} ${entry.manifest.name} — ${entry.manifest.description}`);
+      }
+    }
+    return {
+      title: 'Marketplace',
+      lines,
+      modules: installable.map((entry) => ({ id: entry.manifest.name })),
+    };
+  }
+
+  // item 17 — /modules lists only installed/enabled modules.
+  async function installedModules(): Promise<PageData> {
+    const lines = moduleRegistry.all().map((entry) => {
+      const icon = moduleIcon(entry.manifest.ui?.icon);
+      return `${icon} ${entry.manifest.name} (${entry.manifest.tier}) — ${entry.manifest.description}`;
+    });
+    lines.push('', 'Use the info and uninstall buttons beside a module to manage it.');
+    return {
+      title: 'Installed Modules',
+      lines,
+      modules: moduleRegistry.all().map((entry) => ({ id: entry.manifest.name })),
+    };
+  }
+
+  return async (moduleId: string, guildId: string | null, page = 0): Promise<PageData> => {
     switch (moduleId) {
       case 'health':
         return health();
@@ -208,6 +282,12 @@ export function createPageDataProvider(
         return queue(guildId);
       case 'permit':
         return permit();
+      case 'dashboard':
+        return dashboard(page);
+      case 'browse':
+        return marketplace();
+      case 'modules':
+        return installedModules();
       default:
         return {};
     }

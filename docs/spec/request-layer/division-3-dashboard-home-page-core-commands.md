@@ -39,7 +39,7 @@ The `/dashboard` command is the single entry point to the entire Dumby user-faci
 │  [Dumby banner image — sourced from the framework's      │
 │   own assets directory. If no banner is available, the   │
 │   Renderer generates a default banner in the official    │
-│   accent colour (#5865F2).]                              │
+│   accent colour (#FFCA6D).]                              │
 │                                                           │
 ├─────────────────────────────────────────────────────────┤
 │                                                           │
@@ -78,7 +78,7 @@ The `/dashboard` command is the single entry point to the entire Dumby user-faci
 
 **Size:** YouTube thumbnail dimensions (1280×720 pixels, 16:9 aspect ratio).
 **Source:** The framework's own assets directory. The manifest declares the path to the assets directory where the banner, logo, and description are stored.
-**Fallback:** If no banner is available in the assets directory, the Renderer generates a default banner: the official accent colour (`#5865F2`) as a gradient background with the Dumby logo and name centred.
+**Fallback:** If no banner is available in the assets directory, the Renderer generates a default banner: the official accent colour (`#FFCA6D`) as a gradient background with the Dumby logo and name centred.
 **For module pages:** Every module page's banner comes from the module's manifest-declared assets directory. If no banner is available, the Renderer generates one in the official accent colour with the module's logo emoji and name centred. The accent is the framework's; module identity is carried by the logo and name.
 
 ### 3.5 Title & Attribution
@@ -163,7 +163,7 @@ This applies to all frames in this document. No command or component sends a new
 
 When a module does not provide assets (banner, logo, description) through its manifest's assets directory path:
 
-- **Default banner:** the Renderer generates a banner in the official accent colour (`#5865F2`) as a gradient background with the module's logo emoji and name centred.
+- **Default banner:** the Renderer generates a banner in the official accent colour (`#FFCA6D`) as a gradient background with the module's logo emoji and name centred.
 - **Default logo emoji:** a generic module emoji (`📦`).
 - **Default description:** the module's manifest `description` field (1–120 characters, required in the manifest).
 

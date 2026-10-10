@@ -11,7 +11,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    # feature/dev auto-deploys to Railway production, so it must be gated too — this is the
+    # branch the migration incident reached production through (CI ran only on main before).
+    branches: [main, feature/dev]
   pull_request:
 
 permissions:
@@ -55,6 +57,12 @@ jobs:
       - name: Install (frozen lockfile)
         run: pnpm install --frozen-lockfile
 
+      - name: Build workspace packages
+        # The app imports `@workspace/swastik` (and its subpaths) at runtime and in tests. Those
+        # exports resolve to the package's `dist/`, so the workspace packages must be built before
+        # the flow/unit suites run — otherwise they fail with ERR_MODULE_NOT_FOUND.
+        run: pnpm -r --filter "./packages/**" --if-present run build
+
       - name: Gate 1 — typecheck, strict (first gate)
         run: |
           pnpm typecheck
@@ -85,6 +93,9 @@ jobs:
         # Guards the deploy regression: `apps/main` runs with plain `node`, so every
         # workspace dependency it imports at runtime must resolve to compiled JS, not
         # raw .ts source. A missing build step fails the deploy, not the build itself.
+        # Run from apps/main: the workspace package is linked into apps/main/node_modules,
+        # not the repo root's, so resolving it from the root throws ERR_MODULE_NOT_FOUND.
+        working-directory: apps/main
         run: |
           node --input-type=module -e "await import('@workspace/swastik'); await import('@workspace/swastik/manifest'); await import('@workspace/swastik/validate'); console.log('workspace runtime resolution OK')"
 
@@ -164,6 +175,11 @@ jobs:
 
       - name: Install (frozen lockfile)
         run: pnpm install --frozen-lockfile
+
+      - name: Build workspace packages
+        # The integration suite imports @workspace/swastik, whose exports resolve to the
+        # package's dist/ — unbuilt here, so the suite aborts with ERR_MODULE_NOT_FOUND.
+        run: pnpm -r --filter "./packages/**" --if-present run build
 
       - name: Apply migrations
         run: pnpm --filter @workspace/dumby migrate

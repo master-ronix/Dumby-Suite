@@ -133,6 +133,9 @@ const baseEnvSchema = z
     MTP_MEMORY_TOKEN_THRESHOLD_BYTES: z.coerce.number().int().positive().default(52_428_800),
 
     CORE_ADMIN_EVAL_ENABLED: z.coerce.boolean().default(false),
+    // §17.7 BCCM — the batch push defaults to dry-run: it logs the batch it would send and
+    // changes nothing until an operator turns this off.
+    BCCM_BATCH_PUSH_DRY_RUN: z.coerce.boolean().default(true),
   })
   .strict();
 

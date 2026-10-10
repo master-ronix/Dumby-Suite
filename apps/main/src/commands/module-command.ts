@@ -66,13 +66,32 @@ export function toCommandDefinition(
         }
       : {}),
     moduleConfig: options.config ?? {},
-    ...(options.identity.developer !== undefined || options.identity.version !== undefined
+    ...(options.identity.developer !== undefined ||
+    options.identity.version !== undefined ||
+    options.identity.displayName !== undefined ||
+    options.identity.accent !== undefined ||
+    options.identity.banner !== undefined ||
+    options.identity.buildId !== undefined ||
+    options.identity.devUsername !== undefined
       ? {
           identity: {
             ...(options.identity.developer !== undefined
               ? { developer: options.identity.developer }
               : {}),
-            ...(options.identity.version !== undefined ? { version: options.identity.version } : {}),
+            ...(options.identity.version !== undefined
+              ? { version: options.identity.version }
+              : {}),
+            ...(options.identity.displayName !== undefined
+              ? { displayName: options.identity.displayName }
+              : {}),
+            ...(options.identity.accent !== undefined ? { accent: options.identity.accent } : {}),
+            ...(options.identity.banner !== undefined ? { banner: options.identity.banner } : {}),
+            ...(options.identity.buildId !== undefined
+              ? { buildId: options.identity.buildId }
+              : {}),
+            ...(options.identity.devUsername !== undefined
+              ? { devUsername: options.identity.devUsername }
+              : {}),
           },
         }
       : {}),

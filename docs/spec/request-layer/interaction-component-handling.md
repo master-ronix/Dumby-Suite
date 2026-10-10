@@ -145,7 +145,7 @@ Static grammar — Components v2
   footer       the standard footer: framework identity, module identity, timestamp
 
 Dynamic slots
-  accent       the single official accent colour, blurple #5865F2 (ADR-010) — one
+  accent       the single official accent colour, amber #FFCA6D (ADR-010) — one
                value, everywhere
   banner       an optional per-module banner image, declared in the module's identity,
                never per-command
@@ -209,7 +209,7 @@ at 13 minutes.
   `FOLLOWUP_ALARM_MS = 13 * 60 * 1000`).
 - The component-v2 builders and the accent token:
   `apps/main/src/shared/utils/components-v2.ts`, `src/shared/constants/colors.ts`
-  (`0x5865f2`).
+  (`0xffca6d`).
 
 Divergences are recorded in `status/code-reconciliation.json`.
 

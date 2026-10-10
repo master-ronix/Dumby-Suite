@@ -294,7 +294,7 @@ DIAGRAM 17-C — From keypress to response
     hierarchy, and calls the Discord REST API. It never constructs a payload — it
     returns a schema-conformant declaration.
  9. The Renderer validates the declaration, fills the static Components v2 grammar
-    and the dynamic slots (accent blurple #5865F2, banner, module identity, content),
+    and the dynamic slots (accent amber #FFCA6D, banner, module identity, content),
     and edits the buffer embed held since receipt into the final render.
 10. Discord displays the response; the metrics histogram and counter update; the
     interaction context is discarded.

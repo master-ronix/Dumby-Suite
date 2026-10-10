@@ -262,8 +262,11 @@ export async function loadModulesFromTierVolumes(
   for (const volumeName of MODULE_VOLUME_NAMES) {
     const volumePath = join(modulesDir, volumeName);
     if (!existsSync(volumePath)) {
-      logger.warn('module-tier-volume-missing', { modulesDir, volumeName, volumePath });
-      continue;
+      // A tier volume that is simply absent — a deployment that ships no external modules — is a
+      // normal state, not a fault: lay down the (empty) directory and carry on. A real mount
+      // overlays it, so this is a no-op wherever the volume is configured (e.g. K8s).
+      mkdirSync(volumePath, { recursive: true });
+      logger.info('module-tier-volume-empty', { modulesDir, volumeName, volumePath });
     }
 
     for (const entry of readdirSync(volumePath).sort()) {

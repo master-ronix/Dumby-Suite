@@ -23,7 +23,15 @@ export interface CommandDefinition {
   /** §1.7 — the module's manifest config, handed to the handler as `context.config`. */
   moduleConfig?: Readonly<Record<string, unknown>>;
   /** §1.5/§11.6 — the module's attribution for the identity band. */
-  identity?: { readonly developer?: string; readonly version?: string };
+  identity?: {
+    readonly developer?: string;
+    readonly version?: string;
+    readonly displayName?: string;
+    readonly accent?: string;
+    readonly banner?: string;
+    readonly buildId?: string;
+    readonly devUsername?: string;
+  };
 }
 
 export class CommandCollisionError extends Error {

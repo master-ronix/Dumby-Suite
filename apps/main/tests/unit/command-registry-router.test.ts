@@ -528,7 +528,7 @@ describe('CommandRouter', () => {
     expect(interaction.editReply).toHaveBeenCalledTimes(1);
     expect((firstReply(interaction) as { flags?: number }).flags).toBe(IS_COMPONENTS_V2);
     expect(lastEditText(interaction)).toContain('Pong');
-    expect(lastEditText(interaction)).toContain('Dumby | Ping');
+    expect(lastEditText(interaction)).toContain('Dumby Suite | Ping');
   });
 
   test('maps a handler returning nothing to a Done final render', async () => {

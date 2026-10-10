@@ -4,6 +4,7 @@ import type { ComponentInteraction, InteractionRegistry } from './interaction-re
 
 const MODE_PREFIX = 'dumby:mode:';
 const NAV_PREFIX = 'dumby:nav:';
+const ACT_PREFIX = 'dumby:act:';
 
 const isRenderMode = (value: string | undefined): value is RenderMode =>
   value === 'D' || value === 'M' || value === 'C';
@@ -55,13 +56,45 @@ export function registerCoreFrameHandlers(deps: {
     },
   });
 
+  // items 11/15/17 - page-declared action controls: paging re-enters the router; info and
+  // uninstall re-render the page (edit-in-place), so the surface stays one message.
+  registry.register({
+    customIdPrefix: ACT_PREFIX,
+    parse: (customId) => {
+      const parts = customId.split(':');
+      return { action: parts[3], target: parts[4] };
+    },
+    execute: async (interaction, context) => {
+      const { action, target } = context as { action?: string; target?: string };
+      if (action === undefined || target === undefined) return;
+      if (action === 'next' || action === 'prev' || action === 'first' || action === 'search') {
+        await router.dispatch(asPageInteraction(interaction, target));
+        return;
+      }
+      if (action === 'info' || action === 'uninstall') {
+        await router.dispatch(asPageInteraction(interaction, 'modules'));
+      }
+    },
+  });
+
   registry.register({
     customIdPrefix: NAV_PREFIX,
-    parse: (customId) => ({ page: customId.split(':')[3] }),
+    parse: (customId) => {
+      const parts = customId.split(':');
+      return { target: parts[3], page: parts[4] };
+    },
     execute: async (interaction, context) => {
-      const { page } = context as { page?: string };
-      const target = interaction.values?.[0] ?? page;
+      const { target, page } = context as { target?: string; page?: string };
       if (target === undefined) return;
+      // F-5 — numeric navigation (home / next / prev, and the legacy `page`) carries the target
+      // page index in the fourth segment; any other target is a page name from the dropdown.
+      if (target === 'home' || target === 'next' || target === 'prev' || target === 'page') {
+        const n = target === 'home' ? 0 : Number(page);
+        await router.dispatch(asPageInteraction(interaction, 'dashboard'), {
+          page: Number.isFinite(n) ? n : 0,
+        });
+        return;
+      }
       await router.dispatch(asPageInteraction(interaction, target));
     },
   });

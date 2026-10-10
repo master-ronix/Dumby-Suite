@@ -22,8 +22,7 @@ prefix-command ban terminal rather than aspirational — there is no route aroun
 
 **One static grammar, four dynamic slots.** Every render is built from a Components v2 frame
 (container, dividers, title/subtitle, footer), filled through dynamic slots: the accent, a
-banner, the module identity, and the content. The accent is a single official value — blurple
-`#5865F2` — everywhere, never per-command. Titles follow one grammar (the "A4" title and
+banner, the module identity, and the content. The accent is amber `#FFCA6D` by default, declared per page by the module author (ADR-012). Titles follow one grammar (the "A4" title and
 attribution grammar), so a surface title carries the module identity and attribution lives in
 the footer/subtitle slot.
 

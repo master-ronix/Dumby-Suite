@@ -7,7 +7,6 @@ import {
   createTitleBlock,
   DEFAULT_ACCENT_COLOR,
   separator,
-  stringSelect,
   textDisplay,
   type Component,
   type ComponentsV2Message,
@@ -34,6 +33,18 @@ export interface RenderIdentity {
   surface: string;
   developer?: string;
   version?: string;
+  /** ADR-013 — the owning module; the module-page footer is `<name> [<id>]`. */
+  moduleId?: string;
+  /** ADR-013 — the module's declared display name (defaults to the title-cased id). */
+  displayName?: string;
+  /** ADR-012 — the module's declared accent (defaults to amber). */
+  accent?: string;
+  /** ADR-012 — the module's declared banner URL. */
+  banner?: string;
+  /** item 9 — the module build id shown in the footer. */
+  buildId?: string;
+  /** item 9 — the module developer username shown in the footer. */
+  devUsername?: string;
 }
 
 export interface NavigationOption {
@@ -55,6 +66,18 @@ export interface ModeControl {
   readonly customIds: Readonly<Record<RenderMode, string>>;
 }
 
+/** item 11/15/17 — a page-declared action button (info, uninstall, paging, search). */
+export interface PageActionButton {
+  readonly customId: string;
+  readonly label: string;
+  readonly style?: 1 | 2 | 3 | 4;
+  /** A no-op control (e.g. Previous on page 0) is disabled rather than given a colliding id. */
+  readonly disabled?: boolean;
+}
+
+/** item 17 — one action row; Discord shows up to five buttons per row. */
+export type PageActionRow = readonly PageActionButton[];
+
 export interface RenderDescriptor extends RenderIdentity {
   mode?: RenderMode;
   sections?: readonly string[];
@@ -69,6 +92,8 @@ export interface RenderDescriptor extends RenderIdentity {
   navigation?: NavigationControl;
   /** §1.2 — the footer density control. */
   modeControl?: ModeControl;
+  /** item 11/15/17 — page-declared action buttons rendered below the footer. */
+  actions?: readonly PageActionRow[];
 }
 
 /**
@@ -124,7 +149,14 @@ export interface RendererInteraction {
 }
 
 const DEFAULT_DEVELOPER = 'Quixotic Mnemonics';
-const DEFAULT_VERSION = '5.0.0';
+
+/** The default display name for a module id: `hello-world` becomes `Hello World`. */
+function titleCaseModuleId(id: string): string {
+  return id
+    .split(/[-_]/)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
 
 export class InvalidRenderDescriptorError extends Error {
   constructor() {
@@ -142,10 +174,15 @@ export class DirectInteractionResponseError extends Error {
 
 export class CoreRenderer {
   private readonly bannerUrl: string | undefined;
+  private readonly bannersByModule: Readonly<Record<string, string>>;
 
-  /** §1.3 / §11.5 - the banner every Mode D page opens with; omitted means no banner slot. */
-  constructor(options: { bannerUrl?: string } = {}) {
+  /**
+   * §1.3 / §11.5 - the Mode D banner. `bannersByModule` lets a specific module (the dashboard,
+   * item 6) carry its own banner; every other module falls back to `bannerUrl` (the default).
+   */
+  constructor(options: { bannerUrl?: string; bannersByModule?: Record<string, string> } = {}) {
     this.bannerUrl = options.bannerUrl;
+    this.bannersByModule = options.bannersByModule ?? {};
   }
 
   createTraceId(): string {
@@ -193,11 +230,7 @@ export class CoreRenderer {
 
   renderBuffer(identity: RenderIdentity): ComponentsV2Message {
     return this.frame([
-      createTitleBlock(
-        identity.surface,
-        identity.developer ?? DEFAULT_DEVELOPER,
-        identity.version ?? DEFAULT_VERSION,
-      ),
+      createTitleBlock(identity.surface, identity.developer ?? DEFAULT_DEVELOPER),
       separator(),
       textDisplay(`⏳ Preparing ${identity.surface}…`),
     ]);
@@ -222,18 +255,22 @@ export class CoreRenderer {
     }
 
     const developer = input.developer ?? DEFAULT_DEVELOPER;
-    const version = input.version ?? DEFAULT_VERSION;
     const components: Component[] = [];
 
     // §1.2 / §1.3 / §1.4 - the banner slot opens the frame, and is present in Mode D only.
-    const bannerUrl = input.banner ?? this.bannerUrl;
+    // item 6 - a module's own banner wins; then the default. The dashboard carries its own.
+    const moduleBanner =
+      input.moduleId !== undefined ? this.bannersByModule[input.moduleId] : undefined;
+    const bannerUrl = input.banner ?? moduleBanner ?? this.bannerUrl;
     if (mode === 'D' && bannerUrl !== undefined) {
       components.push(createBannerMediaGallery(bannerUrl));
       components.push(separator());
     }
 
-    // §1.2 / §1.5 - the identity band: the title and its attribution line.
-    components.push(createTitleBlock(input.surface, developer, version));
+    // items 6/7/8 - the identity band: a bold "Dumby Suite | <page>" title, then the developer.
+    // item 2 - the attribution is the developer's registered username, not a static name.
+    const attribution = input.devUsername !== undefined ? `@${input.devUsername}` : developer;
+    components.push(createTitleBlock(input.surface, attribution));
     components.push(separator());
 
     // §1.2 / §1.4 - the content slot, rendered at the page's density.
@@ -247,43 +284,30 @@ export class CoreRenderer {
         components.push(textDisplay(section));
       });
     }
-    components.push(separator());
-
-    // §1.2 / §3.3 - the footer repeats the attribution and carries the D/M/C density control.
-    components.push(textDisplay(`-# Developed by ${developer} v${version}`));
-    const modeControl = input.modeControl;
-    if (modeControl !== undefined) {
-      components.push(
-        actionRow(
-          (['D', 'M', 'C'] as const).map((value) =>
-            button(modeControl.customIds[value], value, mode === value ? 1 : 2),
-          ),
-        ),
-      );
-    }
-
-    // §11.3 - the navigation dropdown sits below the footer, and is omitted in Mode C.
-    const navigation = input.navigation;
-    if (mode !== 'C' && navigation !== undefined && navigation.options.length > 0) {
+    // ADR-015 (amends ADR-013) — the module-page footer is `<name> [<id>]` and nothing else; the
+    // developer attribution stays in the identity band above and is never repeated in the footer.
+    const footer = this.moduleFooter(input.displayName, input.moduleId);
+    if (footer !== undefined) {
       components.push(separator());
-      components.push(
-        actionRow([
-          stringSelect(
-            navigation.customId,
-            navigation.options.map((option) => ({
-              label: option.label,
-              value: option.value,
-              ...(option.description !== undefined ? { description: option.description } : {}),
-              ...(option.emoji !== undefined ? { emoji: option.emoji } : {}),
-              ...(option.default !== undefined ? { default: option.default } : {}),
-            })),
-            'Navigate to:',
-          ),
-        ]),
-      );
+      components.push(textDisplay(footer));
     }
 
-    return this.frame(components);
+    // items 10/11/15/17 - page-declared action controls. Interactive components are NOT valid
+    // inside a Components v2 container; they are emitted as top-level action rows beside it.
+    const topLevel: Component[] = [];
+    const actions = input.actions;
+    if (actions !== undefined) {
+      for (const row of actions) {
+        if (row.length === 0) continue;
+        topLevel.push(
+          actionRow(row.map((b) => button(b.customId, b.label, b.style ?? 2, b.disabled ?? false))),
+        );
+      }
+    }
+    // item 1 - a divider separates the footer (build id · dev username) from the action controls.
+    if (topLevel.length > 0) components.push(separator());
+
+    return this.frame(components, input.accent, topLevel);
   }
 
   renderNotice(input: FormalNoticeDescriptor): ComponentsV2Message {
@@ -291,11 +315,7 @@ export class CoreRenderer {
     const explanation = input.explanation ?? this.defaultNoticeExplanation(input.reason);
 
     return this.frame([
-      createTitleBlock(
-        input.surface,
-        input.developer ?? DEFAULT_DEVELOPER,
-        input.version ?? DEFAULT_VERSION,
-      ),
+      createTitleBlock(input.surface, input.developer ?? DEFAULT_DEVELOPER),
       separator(),
       textDisplay(
         [
@@ -327,7 +347,7 @@ export class CoreRenderer {
       return {
         surface: result.surface,
         ...(result.developer !== undefined ? { developer: result.developer } : {}),
-        ...(result.version !== undefined ? { version: result.version } : {}),
+        ...(result.moduleId !== undefined ? { moduleId: result.moduleId } : {}),
         ...(result.mode !== undefined ? { mode: result.mode } : {}),
         ...(result.sections !== undefined ? { sections: result.sections } : {}),
         ...(result.summary !== undefined ? { summary: result.summary } : {}),
@@ -350,8 +370,27 @@ export class CoreRenderer {
     return 'MODULE_ERROR';
   }
 
-  private frame(components: Parameters<typeof container>[0]): ComponentsV2Message {
-    return buildComponentsV2([container(components, DEFAULT_ACCENT_COLOR)]);
+  private frame(
+    components: Parameters<typeof container>[0],
+    accent: string | undefined = undefined,
+    topLevel: Component[] = [],
+  ): ComponentsV2Message {
+    const color =
+      accent !== undefined ? Number.parseInt(accent.replace('#', ''), 16) : DEFAULT_ACCENT_COLOR;
+    return buildComponentsV2([container(components, color), ...topLevel]);
+  }
+
+  /**
+   * ADR-015 (amends ADR-013) — the module-page footer is the module's display name followed by
+   * its id in brackets, and nothing else. The developer attribution lives in the identity band.
+   */
+  private moduleFooter(
+    displayName: string | undefined,
+    moduleId: string | undefined,
+  ): string | undefined {
+    if (moduleId === undefined) return undefined;
+    const name = displayName ?? titleCaseModuleId(moduleId);
+    return `-# ${name} [${moduleId}]`;
   }
 
   private oneLineRender(surface: string, first: string): string {

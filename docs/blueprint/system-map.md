@@ -301,7 +301,7 @@ The operator's and member's experience is **composed**, never assembled ad hoc. 
 surface a user sees is issued by the core **Renderer** against one grammar:
 
 - one static frame (Components v2) — container, dividers, title/subtitle, footer;
-- four dynamic slots — accent (fixed blurple `#5865F2`), banner, module identity,
+- four dynamic slots — accent (fixed amber `#FFCA6D`), banner, module identity,
   content;
 - three density modes — D (detailed), M (medium), C (compact);
 - a buffer-then-render lifecycle — every interaction is answered instantly, then edited
@@ -370,7 +370,7 @@ the gap.** Each row's evidence is a path under `apps/main/`.
 | 12-stage middleware pipeline | yes | yes — 12 built-ins with priorities −20…90 | `src/middleware/built-in/*.ts` |
 | One dispatch path (pipeline invoked on every dispatch) | yes | **gap** — the pipeline exists, but the live router must invoke it on every dispatch | `src/commands/command-router.ts` vs `src/middleware/middleware-pipeline.ts` |
 | Seven-layer permission engine | yes | exists; must be resolved on the live request path (a registered-but-never-resolved resolver is a wiring defect) | `src/permissions/resolver.ts` |
-| One presentation path (Renderer) | yes | yes — a single core renderer; accent `0x5865f2` | `src/rendering/core-renderer.ts`, `src/shared/constants/colors.ts` |
+| One presentation path (Renderer) | yes | yes — a single core renderer; accent `0xffca6d` | `src/rendering/core-renderer.ts`, `src/shared/constants/colors.ts` |
 | Five sanctioned cross-module patterns | yes | enumerated in §14; enforcement target is the Swastik static analyzer | `spec/modules/inter-module-communication-and-contracts.md` |
 | Tier-at-rest volumes | yes | yes — env-driven | `src/config/env.schema.ts` (`MODULES_DIR`, `SWASTIK_*_VOLUME_PATH`) |
 | One canonical command tree | yes | **gap** — a second command subsystem must be wired as the live router or consolidated into it (one-canonical-path rule, P13) | `src/commands/` |

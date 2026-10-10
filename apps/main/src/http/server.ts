@@ -42,6 +42,8 @@ const ADMIN_PATH_PREFIX = '/admin/';
  * external host. One image serves every page (the same banner on every module page).
  */
 const BANNER_ASSET = new URL('../../assets/dumby-banner.png', import.meta.url);
+/** item 6 — the dashboard's own banner; every other module uses the default above. */
+const DASHBOARD_BANNER_ASSET = new URL('../../assets/dashboard-banner.png', import.meta.url);
 
 export function buildApiServer(options: BuildServerOptions): FastifyInstance {
   const app = Fastify({ logger: false });
@@ -97,6 +99,18 @@ export function buildApiServer(options: BuildServerOptions): FastifyInstance {
         .send(bytes);
     } catch {
       return reply.code(404).send({ error: 'banner asset not found' });
+    }
+  });
+
+  app.get('/assets/dashboard-banner.png', async (_req, reply) => {
+    try {
+      const bytes = await readFile(DASHBOARD_BANNER_ASSET);
+      return reply
+        .header('content-type', 'image/png')
+        .header('cache-control', 'public, max-age=86400')
+        .send(bytes);
+    } catch {
+      return reply.code(404).send({ error: 'dashboard banner asset not found' });
     }
   });
 
