@@ -250,17 +250,17 @@ Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (rea
 
 | Item | Clause | Status |
 |------|--------|--------|
-| DP-1 | Navigation button grammar (title-case labels) | DONE (tree; toolchain-unverified) |
-| DP-2 | Home control icon weight | DONE (tree; toolchain-unverified) |
-| DP-3 | Navigation controls moved inside the container, below the footer divider | DONE (tree; toolchain-unverified) |
-| DP-4 | Module icon beside every module command list (main + module pages) | DONE (tree; toolchain-unverified) |
+| DP-1 | Navigation button grammar (title-case labels) | DONE (CI-verified) |
+| DP-2 | Home control icon weight | DONE (CI-verified) |
+| DP-3 | Navigation controls moved inside the container, below the footer divider | DONE (CI-verified) |
+| DP-4 | Module icon beside every module command list (main + module pages) | DONE (CI-verified) |
 | DP-5 | Regenerated default module icon asset | DONE (asset) |
 | DP-6 | Core commands combined; core modules keep no own page | UNCHANGED (already correct) |
-| DP-7 | Module-page identity (own banner/footer; default banner fallback) | DONE (tree; toolchain-unverified) |
-| DP-8 | Module pages list only own commands, BCCM-effective name + status | DONE (tree; toolchain-unverified) |
+| DP-7 | Module-page identity (own banner/footer; default banner fallback) | DONE (CI-verified) |
+| DP-8 | Module pages list only own commands, BCCM-effective name + status | DONE (CI-verified) |
 | DP-9 | Banner assets confirmed (dashboard amber + default grayscale) | DONE (byte-identical) |
 
-**Verification limit.** The application toolchain (`tsc` / `vitest`) was not run in the authoring
-environment (Node ≥ 22 unavailable; dependencies not installed). Every `DONE (tree)` verdict is a
-tree-inspection verdict; run `pnpm --filter @workspace/dumby typecheck` and the unit suite on the
-real toolchain to close the items.
+**Verification.** The application suite was verified in **CI** on `3faa1b16`: Gate 1 strict
+typecheck, lint, format, the flow suite, Gate 4 unit tests, the live-Postgres+Redis integration job,
+and the Docker build — all green. (The first push `8caac653` failed only Gate 4, on one unit test
+that asserted the pre-change module-page behaviour; it was updated to the new arrangement.)

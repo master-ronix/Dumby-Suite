@@ -346,8 +346,11 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   `apps/main/assets/dumby-banner.png` (grayscale default) are the framework assets, byte-identical
   to the supplied artifacts.
 - **Verification:** the corpus gate suite is green (25/25; `check-ur` detects 9 records). The
-  application typecheck/lint/unit suite was **not** run — the authoring environment has no Node ≥ 22
-  and no installed dependencies, so the clauses are tree-verified, not toolchain-verified.
+  application suite was verified in **CI**: on the first push (`8caac653`) Gate 4 failed on one unit
+  test that asserted the pre-change module-page behaviour (no icon); the test was updated to the new
+  arrangement (`3faa1b16`), after which **CI is fully green** — Gate 1 strict typecheck, lint,
+  format, the flow suite, Gate 4 unit tests, the live-Postgres+Redis integration job, and the Docker
+  build. The clauses are now toolchain-verified.
 
 ---
 
