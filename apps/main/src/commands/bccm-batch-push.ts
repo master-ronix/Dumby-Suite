@@ -139,12 +139,12 @@ export async function runBccmBatchPush(deps: BccmBatchPushDeps): Promise<BccmBat
 
     if (dryRun) {
       // Dry-run is log-only: the queue, the rename view and the daily tally are all left untouched.
-      logger.info('bccm-batch-dry-run', {
-        guildId,
-        pending: entries.length,
-        desired,
-        newNames: fresh,
-      });
+      // The summary is in the message as well as the context, so it reads in a log viewer that
+      // renders only `msg`.
+      logger.info(
+        `bccm-batch-dry-run guild=${guildId} pending=${entries.length} new=${fresh.length}`,
+        { guildId, pending: entries.length, desired, newNames: fresh },
+      );
       guilds.push({ ...base, sent: false, skippedReason: 'dry-run' });
       continue;
     }
@@ -175,6 +175,11 @@ export async function runBccmBatchPush(deps: BccmBatchPushDeps): Promise<BccmBat
     guilds.push({ ...base, sent: true });
   }
 
-  logger.info('bccm-batch-push-complete', { dryRun, guilds: guilds.length });
+  const sent = guilds.filter((g) => g.sent).length;
+  logger.info(`bccm-batch-push-complete dryRun=${dryRun} guilds=${guilds.length} sent=${sent}`, {
+    dryRun,
+    guilds: guilds.length,
+    sent,
+  });
   return { dryRun, guilds };
 }
