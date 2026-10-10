@@ -1,6 +1,7 @@
 {
   "name": "health",
   "version": "1.0.0",
+  "ui": { "icon": "dumby_health" },
   "description": "Displays comprehensive system health and diagnostic information.",
   "tier": "core",
   "hardcoded": false,

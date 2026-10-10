@@ -20,6 +20,7 @@ import {
   type RenderMode,
   derivePageSections,
 } from '../rendering/core-renderer.js';
+import { customEmojiParts } from '../rendering/module-icons.js';
 import { PersonaOccupiedError } from '../personas/persona.js';
 
 export interface CommandInteraction {
@@ -603,7 +604,13 @@ export class CommandRouter {
       const nav = (role: string, n: number): string => `dumby:nav:${invokerId}:${role}:${n}`;
       return [
         [
-          { customId: nav('home', 0), label: '🏠', style: 2, disabled: page === 0 },
+          {
+            customId: nav('home', 0),
+            label: '',
+            emoji: customEmojiParts('dumby_home') ?? { name: '🏠' },
+            style: 2,
+            disabled: page === 0,
+          },
           {
             customId: nav('next', Math.min(page + 1, last)),
             label: 'Next page',

@@ -260,6 +260,14 @@ Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (rea
 | DP-8 | Module pages list only own commands, BCCM-effective name + status | DONE (CI-verified) |
 | DP-9 | Banner assets confirmed (dashboard amber + default grayscale) | DONE (byte-identical) |
 
+**Corrections (UR-20261011-002, 2026-10-11):**
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-10 | Core module logo icons on the main page (per-module, not one shared default) | DONE (tree) |
+| DP-11 | Generated bold white Home icon (replaces the emoji substitution) | DONE (asset) |
+| DP-12 | Module-page default-banner fallback + versioned banner URLs | DONE (tree) |
+
 **Verification.** The application suite was verified in **CI** on `3faa1b16`: Gate 1 strict
 typecheck, lint, format, the flow suite, Gate 4 unit tests, the live-Postgres+Redis integration job,
 and the Docker build — all green. (The first push `8caac653` failed only Gate 4, on one unit test

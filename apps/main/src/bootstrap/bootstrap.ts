@@ -414,9 +414,12 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   const renderer = new CoreRenderer(
     publicDomain !== undefined && publicDomain !== ''
       ? {
-          bannerUrl: `https://${publicDomain}/assets/dumby-banner.png`,
-          // item 6 - the dashboard carries its own banner; every other module uses the default.
-          bannersByModule: { dashboard: `https://${publicDomain}/assets/dashboard-banner.png` },
+          // item 3 — a `?v=` token busts any cached copy: Discord caches media-gallery images and the
+          // asset route is served with a long max-age, so a URL that ever resolved differently would
+          // otherwise stick. A module page (hello-world) uses the grayscale default below; only the
+          // dashboard carries its own banner.
+          bannerUrl: `https://${publicDomain}/assets/dumby-banner.png?v=2`,
+          bannersByModule: { dashboard: `https://${publicDomain}/assets/dashboard-banner.png?v=2` },
         }
       : {},
   );

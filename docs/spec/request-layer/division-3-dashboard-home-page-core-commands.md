@@ -191,10 +191,12 @@ If any asset is missing, the default value for that asset is used. The manifest 
   `First page`, `Info`, `Uninstall/disable`, `Search`.
 - **Navigation placement.** The navigation row renders **inside** the frame, at the bottom, **below
   the footer's divider**.
-- **Home control.** The Home control carries the filled house glyph.
-- **Command lists.** Every dashboard page — the main page and every module page — carries the module
-  icon beside each command. The icon is the module's declared `ui.icon`; the framework's default
-  module icon asset when none is declared.
+- **Home control.** The Home control carries a generated **bold white house icon** (a bundled asset,
+  uploaded as an application emoji), not a text glyph.
+- **Command lists.** On the **main page**, each core-tier module's command carries **that module's
+  own logo icon** beside it. On a **module-specific page**, the command carries the framework's
+  **default white icon**. The icon is the module's declared `ui.icon`; the framework default when
+  none is declared.
 - **Core vs standard.** The main page lists the commands of **all core-tier modules combined**; only
   **standard-tier** modules carry their own page. A core-tier module never has its own page.
 - **Module-page identity.** A standard-tier module's page resolves **that module's** banner, icon,

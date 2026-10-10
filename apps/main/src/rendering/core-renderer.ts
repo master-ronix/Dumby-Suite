@@ -73,6 +73,8 @@ export interface PageActionButton {
   readonly style?: 1 | 2 | 3 | 4;
   /** A no-op control (e.g. Previous on page 0) is disabled rather than given a colliding id. */
   readonly disabled?: boolean;
+  /** item 2 — an optional custom-emoji icon (the Home control's bold house). */
+  readonly emoji?: { name: string; id?: string };
 }
 
 /** item 17 — one action row; Discord shows up to five buttons per row. */
@@ -301,7 +303,9 @@ export class CoreRenderer {
       for (const row of actions) {
         if (row.length === 0) continue;
         rows.push(
-          actionRow(row.map((b) => button(b.customId, b.label, b.style ?? 2, b.disabled ?? false))),
+          actionRow(
+            row.map((b) => button(b.customId, b.label, b.style ?? 2, b.disabled ?? false, b.emoji)),
+          ),
         );
       }
       if (rows.length > 0) {

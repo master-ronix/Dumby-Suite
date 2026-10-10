@@ -1,6 +1,7 @@
 {
   "name": "persona",
   "version": "1.0.0",
+  "ui": { "icon": "dumby_persona" },
   "description": "View activated personas and their command inventory.",
   "tier": "core",
   "hardcoded": false,

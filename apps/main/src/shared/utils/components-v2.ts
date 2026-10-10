@@ -70,7 +70,8 @@ export interface ButtonComponent extends ComponentBase {
   type: typeof ComponentType.BUTTON;
   style: 1 | 2 | 3 | 4 | 5;
   custom_id: string;
-  label: string;
+  /** item 2 — omitted for an icon-only control (the Home button). */
+  label?: string;
   disabled?: boolean;
   emoji?: { name: string; id?: string; animated?: boolean };
 }
@@ -180,17 +181,20 @@ export function button(
   label: string,
   style: 1 | 2 | 3 | 4 | 5 = 2,
   disabled = false,
-  emoji?: string,
+  emoji?: string | { name: string; id?: string },
 ): ButtonComponent {
   const result: ButtonComponent = {
     type: ComponentType.BUTTON,
     style,
     custom_id: customId,
-    label,
     disabled,
   };
+  // item 2 — an icon-only control (the Home button) omits the label and carries a custom emoji.
+  if (label !== '') {
+    result.label = label;
+  }
   if (emoji !== undefined) {
-    result.emoji = { name: emoji };
+    result.emoji = typeof emoji === 'string' ? { name: emoji } : emoji;
   }
   return result;
 }

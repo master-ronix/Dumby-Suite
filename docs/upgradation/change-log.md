@@ -354,6 +354,24 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 
 ---
 
+### v5.5.3 — Dashboard Iconography & Fallback Corrections (UR-20261011-002) — 2026-10-11
+
+- 2026-10-11 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- Work order: `UR-20261011-002` (corrects `UR-20261011-001`).
+- **C1 iconography:** each core-tier module now declares its own `ui.icon` and a bundled white
+  line-art logo (dashboard / health / browse / queue / persona / permit / modules), uploaded once as
+  `dumby_<slug>`; the main page shows each core module's own logo, while a module page keeps the
+  default white icon.
+- **C2 Home icon:** a generated bold white house asset (`apps/main/assets/home-icon.png`) is uploaded
+  as `dumby_home` and carried as the Home control's emoji (an icon-only button), not the `🏷` glyph.
+- **C3 module-page banner:** a module page resolves the module's own banner when declared, else the
+  framework default (grayscale) — never the dashboard's; the banner URLs are versioned (`?v=2`) so a
+  cached image cannot pin the wrong banner to a URL.
+- **Verification:** the corpus gate suite is green (25/25; `check-ur` detects 10 records). The
+  application suite is pending CI on this push.
+
+---
+
 ### 4. Cross-Version Defect Lifecycle
 
 | Id | Introduced | Status | Resolution |

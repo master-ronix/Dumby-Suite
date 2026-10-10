@@ -1,6 +1,7 @@
 {
   "name": "queue",
   "version": "1.0.0",
+  "ui": { "icon": "dumby_queue" },
   "description": "Manage BCCM command queue actions \u2014 submit, view, edit, and cancel pending command changes.",
   "tier": "core",
   "hardcoded": false,
