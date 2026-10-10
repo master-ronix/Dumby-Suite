@@ -178,10 +178,15 @@ describe('page-data provider', () => {
     expect(data['pageTotal']).toBe(2);
   });
 
-  test('dashboard page 1 renders the standard module page with only its commands', async () => {
+  test('dashboard page 1 renders the standard module page with its commands, icon and identity', async () => {
     const provider = createPageDataProvider(makeDeps());
     const data = await provider('dashboard', null, 1);
-    expect(data['lines']).toEqual(['`/hello`']);
+    // item 4 — the module icon sits beside every module command list, module pages included.
+    expect(data['lines']).toEqual(['⬜ `/hello`']);
+    // item 7 — the page names its owning module, so the frame resolves THAT module's identity
+    // (its banner and footer), not the dashboard's.
+    expect(data['pageModuleId']).toBe('hello-world');
+    expect(data['pageModuleName']).toBe('Hello World');
   });
 
   test('dashboard page out of range falls back to the main page', async () => {
