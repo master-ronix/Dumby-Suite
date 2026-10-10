@@ -973,6 +973,18 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
         });
       },
     };
+    // §17.7 — run the batch once shortly after boot: it converges any batch left pending by the
+    // previous deploy, and in dry-run it makes the output visible without waiting for the 12h
+    // cycle. Unref'd so it never holds the process open.
+    setTimeout(() => {
+      void runBccmBatchPush({
+        store: bccmStore,
+        logger,
+        ceiling: commandCeiling,
+        discord: bccmDiscordClient as BccmDiscordClient,
+        dryRun: config.get('BCCM_BATCH_PUSH_DRY_RUN'),
+      });
+    }, 30_000).unref();
     const commandDeployer = new CommandDeployer({
       registry: commandRegistry,
       logger,
