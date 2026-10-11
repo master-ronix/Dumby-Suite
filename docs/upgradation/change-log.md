@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.12
+version: 5.5.15
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,66 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.15 — Modules Enablement Read & Developer Attribution (UR-20261011-015) — 2026-10-11
+
+- 2026-10-11 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- Work order: `UR-20261011-015` (root-cause correction from the operator's live-surface screenshots).
+- **Defect A — attribution.** `module-system/developer-registry.ts` mapped `dev_first_party` to the
+  operator handle `master_ronix`, so pages rendered `@master_ronix` while the Info card rendered
+  `Quixotic Mnemonics`. **Fix (R1):** the first-party ids resolve to `Quixotic Mnemonics` and the
+  identity band renders the value verbatim (no `@`), matching SPEC-04-REQUEST-LAYER §1.5/§11.6.
+- **Defect B — enablement read.** `bootstrap.ts`'s `isModuleEnabledForGuild` returned `false` for a
+  missing `guild_module_states` row, so an enabled-by-default standard module reported "Disabled" in
+  its card while the listing (tier default) still showed it and `/browse` offered nothing — the exact
+  contradiction in the screenshots; the event gate also dropped that module's events. **Fix (R2):**
+  it now defaults by tier and overrides by row, matching `isModuleEnabledInGuild` and `pageData`'s
+  `enabledStates`.
+- **Regression tests:** `developer-registry.test.ts` (new); a no-`@` case in `core-renderer.test.ts`.
+- **Verification:** `typecheck` and `lint` green locally; `test:unit` pending CI (WebAssembly
+  unavailable in the examination environment).
+
+---
+
+### v5.5.14 — Codebase Interception: BCCM Dry-Run Env Coercion (UR-20261011-014) — 2026-10-11
+
+- 2026-10-11 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- Work order: `UR-20261011-014` (code correction from the codebase interception).
+- **The defect:** `z.coerce.boolean()` in `apps/main/src/config/env.schema.ts` is `Boolean(value)`, so
+  the env string `"false"` coerced to `true`. On `BCCM_BATCH_PUSH_DRY_RUN` (`.env.example`: *"Set
+  false to send"*) the dry-run could never be turned off, so the **BCCM batch push never ran and a
+  disabled module's commands were never deregistered on Discord** — the root cause of the
+  `UR-20261011-013` S2 symptom. The same class would silently force `DATABASE_SSL` / `REDIS_TLS` on.
+- **The fix (R1):** a strict `envBool(def)` helper (true/1/yes/on → true; other non-empty → false;
+  blank/unset → default) replaces `z.coerce.boolean()` on all five fields. **Regression tests (R2):**
+  `tests/unit/env-schema.test.ts` gains three cases.
+- **The verdict (R3):** the `/modules` feature code of `UR-20261011-009/010/011` is fully implemented
+  at HEAD (fallback/decoration split, ephemeral Mode-M Info card, developer-by-name, Home target,
+  disable/enable state write + EventRouter gate + BCCM enqueue + `@everyone` deny override). The
+  operator's live symptoms trace to configuration/deployment, not missing code.
+- **Verification:** `typecheck` and `lint` green locally; `test:unit` pending CI (WebAssembly
+  unavailable in the interception environment). No change to the dry-run default.
+
+---
+
+### v5.5.13 — Documentation Corpus Governance Remediation (UR-20261011-012) — 2026-10-11
+
+- 2026-10-11 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (docs)
+- Work order: `UR-20261011-012` (docs governance; corrects the drifted registers, pointers and side
+  ledgers). **Documentation-only** — no `apps/main/src` file is touched.
+- **F1:** `upgradation/README.md` no longer claims the dynamic probe finds zero records; the register
+  is restated as provenance-only and the count is read from the probe, never prose. **F2:** the UR
+  count is no longer restated in prose. **F3/F8:** `AGENTS.md` names only live authority paths and the
+  counted 15 ADRs. **F4:** `status/code-reconciliation.json` is re-pointed to HEAD `8355ba4f` and
+  `check-code-reconciliation` now fails on an unresolvable / non-ancestor commit and warns when behind
+  HEAD. **F5:** `GAP_MANIFEST.md` is made self-consistent (one live coverage figure, one HEAD ref) and
+  marked point-in-time. **F6:** `migration-ledger.md` current item is current. **F7:** `apps/main/docs/`
+  is declared out-of-corpus and `check-corpus-boundary` guards the boundary. **F9:** `check-side-docs`
+  guards the side documents against count and HEAD drift.
+- **Verification:** the corpus gate suite is green (27 gates); `check-ur` reads the live count from
+  the probe. No application change; the application suite is unaffected.
 
 ---
 
