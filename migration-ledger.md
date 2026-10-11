@@ -295,6 +295,14 @@ Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (rea
 | DP-26 | Discover control carries the word Discover | DONE (tree) |
 | DP-27 | Home control (white home emoji) returns to the dashboard home | DONE (tree) |
 
+**Corrections (UR-20261011-005, 2026-10-11):**
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-28 | No extra dividers between the browse content blocks | DONE (tree) |
+| DP-29 | Discover + Home kept together, adjacent to the title | DONE (tree) |
+| DP-30 | Home returns to the /browse main view (resets the search) | DONE (tree) |
+
 **Verification.** The application suite was verified in **CI** on `3faa1b16`: Gate 1 strict
 typecheck, lint, format, the flow suite, Gate 4 unit tests, the live-Postgres+Redis integration job,
 and the Docker build — all green. (The first push `8caac653` failed only Gate 4, on one unit test

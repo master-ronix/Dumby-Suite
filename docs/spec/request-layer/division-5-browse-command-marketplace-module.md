@@ -167,6 +167,17 @@ The Marketplace is a framework-level surface: its title names the surface, and i
 - **Install dropdown.** The install dropdown is **always present**; when no modules are available it
   is a **disabled** placeholder, so the control never disappears.
 
+### 5.14 Browse Page Corrections (UR-20261011-005) — the current arrangements
+
+> **Authority.** The operator's final authority (UR-20261011-005, 11/10/2026); supersedes §5.13 where
+> they conflict.
+
+- **No extra dividers.** The content blocks (the control row, the title, the listing, the dropdown)
+  carry **no introduced dividers** between them.
+- **Control row.** Discover and Home remain together as one row, placed adjacent to the title.
+- **Home.** The Home control returns to the **/browse** main view — resetting any search back to the
+  available-modules listing — not the dashboard home.
+
 ## Contract
 - `contracts/rbac.enums.json`
 - `contracts/commands.json`

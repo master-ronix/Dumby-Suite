@@ -693,7 +693,7 @@ export class CommandRouter {
           style: 2,
         },
         {
-          customId: `dumby:nav:${invokerId}:home:0`,
+          customId: `dumby:act:${invokerId}:home:browse`,
           label: '',
           emoji: customEmojiParts('dumby_home') ?? { name: '🏠' },
           style: 2,

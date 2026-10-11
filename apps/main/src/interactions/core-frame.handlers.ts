@@ -74,7 +74,14 @@ export function registerCoreFrameHandlers(deps: CoreFrameHandlerDeps): void {
     execute: async (interaction, context) => {
       const { action, target } = context as { action?: string; target?: string };
       if (action === undefined || target === undefined) return;
-      if (action === 'next' || action === 'prev' || action === 'first' || action === 'search') {
+      if (
+        action === 'next' ||
+        action === 'prev' ||
+        action === 'first' ||
+        action === 'search' ||
+        action === 'home'
+      ) {
+        // item 4 — `home` returns to the TARGET page's own main view (e.g. /browse with no query).
         await router.dispatch(asPageInteraction(interaction, target));
         return;
       }

@@ -304,8 +304,8 @@ export class CoreRenderer {
       components.push(textDisplay(this.condensedRender(sections)));
     } else if (hasBlocks) {
       // item 8 — richer blocks: a Section (text with an inline accessory), a text block, or a Select.
-      input.blocks?.forEach((block, index) => {
-        if (index > 0) components.push(separator());
+      input.blocks?.forEach((block) => {
+        // item 3 — no extra dividers between blocks; the page's own bands already separate them.
         if (block.kind === 'text') {
           components.push(textDisplay(block.content));
         } else if (block.kind === 'section') {

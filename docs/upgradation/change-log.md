@@ -406,6 +406,19 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 
 ---
 
+### v5.5.6 — Browse Page Corrections (UR-20261011-005) — 2026-10-11
+
+- 2026-10-11 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- Work order: `UR-20261011-005` (corrects `UR-20261011-004`).
+- **C1:** the extra dividers between the browse content blocks are removed (the buttons, the title and
+  the dropdown are no longer separated by introduced dividers). **C2:** the Discover and Home controls
+  stay together as one row, adjacent to the title. **C3:** the Home control returns to the **/browse**
+  main view (resetting any search), not the dashboard home.
+- **Verification:** the corpus gate suite is green (25/25; `check-ur` detects 13 records). The
+  application suite is pending CI; the interaction paths require a live run.
+
+---
+
 ### 4. Cross-Version Defect Lifecycle
 
 | Id | Introduced | Status | Resolution |
