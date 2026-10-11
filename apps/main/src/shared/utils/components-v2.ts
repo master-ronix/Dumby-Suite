@@ -60,6 +60,7 @@ export interface StringSelectComponent extends ComponentBase {
   placeholder?: string;
   min_values?: number;
   max_values?: number;
+  disabled?: boolean;
   options: Array<{
     label: string;
     value: string;
@@ -161,6 +162,7 @@ export function stringSelect(
     default?: boolean;
   }>,
   placeholder?: string,
+  disabled?: boolean,
 ): StringSelectComponent {
   const result: StringSelectComponent = {
     type: ComponentType.STRING_SELECT,
@@ -187,6 +189,9 @@ export function stringSelect(
   };
   if (placeholder !== undefined) {
     result.placeholder = placeholder;
+  }
+  if (disabled !== undefined) {
+    result.disabled = disabled;
   }
   return result;
 }

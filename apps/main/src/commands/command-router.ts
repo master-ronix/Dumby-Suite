@@ -682,19 +682,31 @@ export class CommandRouter {
     const defaultIcon = customEmojiParts('dumby_module');
 
     const blocks: RenderBlock[] = [];
-    // item 2/4/7 — the Discover control, at the top, where the removed heading was.
+    // items 2/4/5 — the control row: Discover (magnifier + "Discover") and Home, at the top.
     blocks.push({
-      kind: 'section',
+      kind: 'row',
+      buttons: [
+        {
+          customId: `dumby:discover:${invokerId}:browse`,
+          label: 'Discover',
+          emoji: customEmojiParts('dumby_discover') ?? { name: '🔍' },
+          style: 2,
+        },
+        {
+          customId: `dumby:nav:${invokerId}:home:0`,
+          label: '',
+          emoji: customEmojiParts('dumby_home') ?? { name: '🏠' },
+          style: 2,
+        },
+      ],
+    });
+    // item 3 — the bold title, below the controls.
+    blocks.push({
+      kind: 'text',
       content:
         query === ''
-          ? 'Discover new modules to install.'
-          : `Search results for **${query}** (${modules.length}) —`,
-      accessory: {
-        customId: `dumby:discover:${invokerId}:browse`,
-        label: '',
-        emoji: customEmojiParts('dumby_discover') ?? { name: '🔍' },
-        style: 2,
-      },
+          ? '**Explore new modules to install**'
+          : `**Search results for ${query}** (${modules.length})`,
     });
     // item 8 — one Section per module, with the Info control IN-LINE after its name.
     for (const m of modules) {
@@ -707,20 +719,30 @@ export class CommandRouter {
         accessory: { customId: `dumby:info:${invokerId}:${m.id}`, label: 'Info', style: 2 },
       });
     }
-    // item 3/9 — the install dropdown; selecting an option installs that module.
-    if (modules.length > 0) {
-      blocks.push({
-        kind: 'select',
-        customId: `dumby:act:${invokerId}:install:browse`,
-        placeholder: 'Select a module to install…',
-        options: modules.map((m) => ({
-          label: String(m.name ?? m.id),
-          value: m.id,
-          description: String(m.description ?? '').slice(0, 100),
-          ...(defaultIcon !== undefined ? { emoji: defaultIcon } : {}),
-        })),
-      });
-    }
+    // item 1/3/9 — the install dropdown. It is present even when the list is empty (a disabled
+    // placeholder), so the control never silently disappears; selecting an option installs it.
+    blocks.push({
+      kind: 'select',
+      customId: `dumby:act:${invokerId}:install:browse`,
+      placeholder:
+        modules.length === 0 ? 'No modules available to install' : 'Select a module to install…',
+      disabled: modules.length === 0,
+      options:
+        modules.length === 0
+          ? [
+              {
+                label: 'No modules available',
+                value: '__none__',
+                description: 'No marketplace modules are available to install.',
+              },
+            ]
+          : modules.map((m) => ({
+              label: String(m.name ?? m.id),
+              value: m.id,
+              description: String(m.description ?? '').slice(0, 100),
+              ...(defaultIcon !== undefined ? { emoji: defaultIcon } : {}),
+            })),
+    });
     return blocks;
   }
 

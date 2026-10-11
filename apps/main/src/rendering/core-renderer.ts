@@ -89,11 +89,13 @@ export type PageActionRow = readonly PageActionButton[];
 export type RenderBlock =
   | { readonly kind: 'text'; readonly content: string }
   | { readonly kind: 'section'; readonly content: string; readonly accessory: PageActionButton }
+  | { readonly kind: 'row'; readonly buttons: readonly PageActionButton[] }
   | {
       readonly kind: 'select';
       readonly customId: string;
       readonly placeholder: string;
       readonly options: readonly NavigationOption[];
+      readonly disabled?: boolean;
     };
 
 export interface RenderDescriptor extends RenderIdentity {
@@ -314,6 +316,14 @@ export class CoreRenderer {
               button(a.customId, a.label, a.style ?? 2, a.disabled ?? false, a.emoji),
             ),
           );
+        } else if (block.kind === 'row') {
+          components.push(
+            actionRow(
+              block.buttons.map((b) =>
+                button(b.customId, b.label, b.style ?? 2, b.disabled ?? false, b.emoji),
+              ),
+            ),
+          );
         } else {
           components.push(
             actionRow([
@@ -326,6 +336,7 @@ export class CoreRenderer {
                   ...(o.emoji !== undefined ? { emoji: o.emoji } : {}),
                 })),
                 block.placeholder,
+                block.disabled,
               ),
             ]),
           );

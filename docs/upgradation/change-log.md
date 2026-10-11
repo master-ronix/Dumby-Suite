@@ -391,6 +391,21 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 
 ---
 
+### v5.5.5 — Browse Page Corrections (UR-20261011-004) — 2026-10-11
+
+- 2026-10-11 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- Work order: `UR-20261011-004` (corrects `UR-20261011-003`).
+- **C1:** the install dropdown is always present — a disabled placeholder select when the available
+  set is empty, so the control never disappears. **C2:** the Discover and Home controls moved from
+  in-line after the title to a control row before it. **C3:** the title is bold —
+  `Explore new modules to install`. **C4:** the Discover control carries the word Discover. **C5:** a
+  Home control (the white home emoji) beside Discover returns to the dashboard home.
+- **Mechanism:** `RenderBlock` gained a `row` kind; `StringSelect` gained a `disabled` field.
+- **Verification:** the corpus gate suite is green (25/25; `check-ur` detects 12 records). The
+  application suite is pending CI; the interaction paths require a live run.
+
+---
+
 ### 4. Cross-Version Defect Lifecycle
 
 | Id | Introduced | Status | Resolution |

@@ -285,6 +285,16 @@ Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (rea
 | DP-21 | Inline Info control per module (Section accessory), ephemeral | DONE (tree) |
 | DP-22 | Dropdown option installs the module (guild_module_states) | DONE (tree) |
 
+**Corrections (UR-20261011-004, 2026-10-11):**
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-23 | Install dropdown always present (disabled placeholder when empty) | DONE (tree) |
+| DP-24 | Discover + Home controls moved to a row before the title | DONE (tree) |
+| DP-25 | Bold title "Explore new modules to install" | DONE (tree) |
+| DP-26 | Discover control carries the word Discover | DONE (tree) |
+| DP-27 | Home control (white home emoji) returns to the dashboard home | DONE (tree) |
+
 **Verification.** The application suite was verified in **CI** on `3faa1b16`: Gate 1 strict
 typecheck, lint, format, the flow suite, Gate 4 unit tests, the live-Postgres+Redis integration job,
 and the Docker build — all green. (The first push `8caac653` failed only Gate 4, on one unit test

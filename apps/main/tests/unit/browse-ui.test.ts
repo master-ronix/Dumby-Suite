@@ -65,9 +65,17 @@ describe('renderer — content blocks', () => {
         { kind: 'text', content: 'hello' },
         { kind: 'section', content: 'mod', accessory: { customId: 'c', label: 'Info', style: 2 } },
         {
+          kind: 'row',
+          buttons: [
+            { customId: 'b1', label: 'Discover', style: 2 },
+            { customId: 'b2', label: '', style: 2, emoji: { name: 'home', id: '1' } },
+          ],
+        },
+        {
           kind: 'select',
           customId: 's',
           placeholder: 'pick',
+          disabled: true,
           options: [{ label: 'a', value: 'a', description: 'd', emoji: '⬜' }],
         },
       ],

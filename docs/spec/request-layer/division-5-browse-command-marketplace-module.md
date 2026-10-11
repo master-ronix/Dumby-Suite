@@ -154,6 +154,19 @@ The Marketplace is a framework-level surface: its title names the surface, and i
 - **Install dropdown.** A String Select at the bottom of the frame lists the shown modules; selecting
   one installs it for the guild.
 
+### 5.13 Browse Page Corrections (UR-20261011-004) — the current arrangements
+
+> **Authority.** The operator's final authority (UR-20261011-004, 11/10/2026); supersedes §5.12 where
+> they conflict.
+
+- **Control row.** A row at the top of the content carries **Discover** (the magnifier icon plus the
+  word "Discover") and **Home** (the framework's white home icon, returning to the dashboard home).
+  *(A Discord Section renders its accessory on the right, so the controls sit in a row above the
+  title rather than left of it — a platform constraint.)*
+- **Title.** The content title is bold: `Explore new modules to install`.
+- **Install dropdown.** The install dropdown is **always present**; when no modules are available it
+  is a **disabled** placeholder, so the control never disappears.
+
 ## Contract
 - `contracts/rbac.enums.json`
 - `contracts/commands.json`
