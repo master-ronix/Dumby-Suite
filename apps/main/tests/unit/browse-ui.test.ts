@@ -1,4 +1,5 @@
 import { describe, expect, test, vi } from 'vitest';
+import { MessageFlags } from 'discord.js';
 import {
   button,
   section,
@@ -122,7 +123,9 @@ describe('interaction registry — acknowledge modes', () => {
     });
     const i = mkInteraction('y:y:u:z');
     await reg.dispatch(i as never);
-    expect(i.deferReply).toHaveBeenCalledWith({ ephemeral: true });
+    // UR-20261011-016 R3 — `ephemeral: true` is deprecated in discord.js; the registry uses the
+    // Ephemeral message flag.
+    expect(i.deferReply).toHaveBeenCalledWith({ flags: MessageFlags.Ephemeral });
   });
 
   test("ack 'update' (default) uses the acknowledge callback", async () => {

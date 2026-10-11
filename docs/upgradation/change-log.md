@@ -512,6 +512,11 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 - **R3 — `ephemeral` deprecation:** every `deferReply({ ephemeral: … })` is replaced by
   `flags: MessageFlags.Ephemeral` (`interaction-registry.ts`, `middleware/built-in/defer.ts`,
   `bootstrap.ts`); the structural `deferReply` types now carry `flags?: number | bigint`.
+- **R3 (tests) — the second deploy's actual failure.** The `ephemeral` → `flags` change broke two
+  existing `deferReply` assertions (`browse-ui.test.ts` expected `{ ephemeral: true }`;
+  `middleware.test.ts` expected `{ ephemeral: false }`), which failed **Gate 4 `test:coverage`** and
+  skipped the `1a74d30` deploy. Both are updated to the `flags` form (and the public case to
+  `undefined`), plus a new `Ephemeral` case.
 - **Verification:** `typecheck`, `lint`, `format` green locally; the corpus gate suite 27/27. CI is the
   deploy gate.
 

@@ -1,4 +1,5 @@
 import { test, expect, vi, describe } from 'vitest';
+import { MessageFlags } from 'discord.js';
 import type { Logger } from '../../src/logging/logger.js';
 import { MiddlewarePipeline } from '../../src/middleware/middleware-pipeline.js';
 import { MiddlewareRejectError } from '../../src/middleware/base-middleware.js';
@@ -619,8 +620,22 @@ describe('DeferMiddleware', () => {
     const ctx = makeCtx();
     ctx.meta['interaction'] = { deferReply };
     await mw.execute(ctx, async () => {});
-    expect(deferReply).toHaveBeenCalledWith({ ephemeral: false });
+    // UR-20261011-016 R3 — a public defer omits the option (no deprecated `ephemeral: false`).
+    expect(deferReply).toHaveBeenCalledWith(undefined);
     expect(ctx.meta['deferred']).toBe(true);
+  });
+
+  test('defers with the Ephemeral flag when isEphemeral is true', async () => {
+    const config = {
+      requiresDefer: vi.fn().mockReturnValue(true),
+      isEphemeral: vi.fn().mockReturnValue(true),
+    };
+    const mw = new DeferMiddleware(config);
+    const deferReply = vi.fn().mockResolvedValue(undefined);
+    const ctx = makeCtx();
+    ctx.meta['interaction'] = { deferReply };
+    await mw.execute(ctx, async () => {});
+    expect(deferReply).toHaveBeenCalledWith({ flags: MessageFlags.Ephemeral });
   });
 
   test('does not call deferReply when requiresDefer is false', async () => {

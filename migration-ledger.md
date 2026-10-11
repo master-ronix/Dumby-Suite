@@ -448,6 +448,7 @@ them. Acceptance ids: `ACC-UR-024-1…4`.
 | DP-81 | `env-schema.test.ts` is Prettier-clean (Gate 3 format) (R1) | DONE (format) |
 | DP-82 | `check-code-reconciliation` freshness tolerates a shallow checkout — warns when the commit is absent, fails only on a non-ancestor (R2) | DONE |
 | DP-83 | `deferReply({ ephemeral })` → `flags: MessageFlags.Ephemeral` at all three sites (R3) | DONE (typecheck+lint) |
+| DP-84 | `deferReply` test assertions updated to the `flags` form (Gate 4 fix) (R3) | DONE (CI) |
 
 **Verification.** `typecheck` and `lint` green locally; `format` green; the corpus gate suite 27/27
 (incl. the fixed freshness gate). Acceptance ids: `ACC-UR-026-1…5`.
