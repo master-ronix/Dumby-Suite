@@ -111,7 +111,9 @@ export function registerCoreFrameHandlers(deps: CoreFrameHandlerDeps): void {
           await uninstallModule(target, interaction.guildId, interaction.user.id);
         }
         if (moduleInfo !== undefined) {
-          await interaction.editReply(await moduleInfo(target, interaction.guildId));
+          await interaction.editReply(
+            await moduleInfo(target, interaction.guildId, interaction.user.id),
+          );
         }
         return;
       }
@@ -166,7 +168,9 @@ export function registerCoreFrameHandlers(deps: CoreFrameHandlerDeps): void {
     execute: async (interaction, context) => {
       const { moduleId } = context as { moduleId?: string };
       if (moduleId === undefined || moduleInfo === undefined) return;
-      await interaction.editReply(await moduleInfo(moduleId, interaction.guildId));
+      await interaction.editReply(
+        await moduleInfo(moduleId, interaction.guildId, interaction.user.id),
+      );
     },
   });
 
