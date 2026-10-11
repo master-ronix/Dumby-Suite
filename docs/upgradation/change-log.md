@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.0
+version: 5.5.7
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -13,7 +13,7 @@ authority_scope: [history]
 # DUMBY Documentation — Unified Change Log
 
 > **One project. One continuous history.**
-> Last recorded: 2026-10-10
+> Last recorded: 2026-10-11
 
 ---
 
@@ -416,6 +416,22 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   main view (resetting any search), not the dashboard home.
 - **Verification:** the corpus gate suite is green (25/25; `check-ur` detects 13 records). The
   application suite is pending CI; the interaction paths require a live run.
+
+---
+
+### v5.5.7 — Browse: Home in the Install Dropdown (UR-20261011-006) — 2026-10-11
+
+- 2026-10-11 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- Work order: `UR-20261011-006` (corrects `UR-20261011-005`).
+- **C1:** the Home function becomes a **permanent first option** of the install dropdown (the
+  framework's white home icon; sentinel `__home__`); selecting it returns to the **/browse** main
+  view and installs nothing. **C2:** the standalone **Home button is removed** from the control row,
+  leaving **Discover** only. **C3:** the caps are reconciled — the per-page module listing caps at
+  **24** (`MARKETPLACE_MODULE_CAP`) and the dropdown at **25** (`INSTALL_DROPDOWN_CAP`), reserving one
+  slot for Home, so the listing and the dropdown stay in sync. The dropdown is now **always
+  enabled** (the permanent Home option retires the empty-state disabled placeholder).
+- **Verification:** the corpus gate suite is green; the application suite is pending CI; the
+  interaction paths require a live run.
 
 ---
 

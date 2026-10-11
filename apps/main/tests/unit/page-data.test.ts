@@ -212,6 +212,21 @@ describe('page-data provider', () => {
     expect((miss['modules'] as unknown[]).length).toBe(0);
   });
 
+  test('marketplace caps the per-page listing at 24 (one dropdown slot reserved for Home)', async () => {
+    const many = Array.from({ length: 30 }, (_, i) =>
+      mod(`mp-${String(i).padStart(2, '0')}`, 'marketplace', ['x']),
+    );
+    const bigRegistry = {
+      all: () => [mod('health', 'core', ['health']), ...many],
+    } as unknown as PageDataDeps['moduleRegistry'];
+    const provider = createPageDataProvider(makeDeps({ moduleRegistry: bigRegistry }));
+    const data = await provider('browse', null);
+    // UR-20261011-006 — the install dropdown's permanent Home option takes one of the 25 slots,
+    // so the per-page module listing caps at 24; `total` still reports every match.
+    expect((data['modules'] as unknown[]).length).toBe(24);
+    expect(data['total']).toBe(30);
+  });
+
   test('marketplace reports none when there are no marketplace modules', async () => {
     const emptyRegistry = {
       all: () => [mod('health', 'core', ['health'])],

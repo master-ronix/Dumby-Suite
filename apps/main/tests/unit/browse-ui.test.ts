@@ -179,5 +179,13 @@ describe('core-frame handlers — discover / info / install', () => {
     );
     expect(installed).toEqual(['hello-world']);
     expect(dispatched).toContain('browse');
+
+    // UR-20261011-006 — selecting the dropdown's permanent Home option installs nothing and
+    // re-renders the browse main view.
+    await act?.execute(
+      { user: { id: 'u' }, guildId: 'g', values: ['__home__'] },
+      act.parse('dumby:act:u:install:browse'),
+    );
+    expect(installed).toEqual(['hello-world']);
   });
 });

@@ -15,3 +15,13 @@ export const DISCORD_LIMITS = {
   EmbedFooterText: 2048,
   EmbedAuthorName: 256,
 } as const;
+
+// UR-20261011-006 — the /browse install dropdown's fixed caps. Discord caps a String Select at 25
+// options; one slot is reserved for the permanent Home entry, so the per-page module listing caps
+// at 24 and the listing and the dropdown stay in sync (24 modules + Home = 25 options).
+export const INSTALL_DROPDOWN_CAP = 25;
+export const MARKETPLACE_MODULE_CAP = INSTALL_DROPDOWN_CAP - 1;
+
+/** UR-20261011-006 — the install dropdown's permanent Home option; selecting it returns to the
+ *  /browse main view (a search reset) and installs nothing. */
+export const HOME_SELECT_VALUE = '__home__';

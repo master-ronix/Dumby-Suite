@@ -303,6 +303,16 @@ Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (rea
 | DP-29 | Discover + Home kept together, adjacent to the title | DONE (tree) |
 | DP-30 | Home returns to the /browse main view (resets the search) | DONE (tree) |
 
+**Corrections (UR-20261011-006, 2026-10-11):**
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-31 | Home becomes a permanent first option of the install dropdown | DONE (tree) |
+| DP-32 | The standalone Home button is removed (Discover only) | DONE (tree) |
+| DP-33 | Selecting Home in the dropdown returns to the /browse main view, installs nothing | DONE (tree) |
+| DP-34 | Per-page module listing caps at 24; dropdown caps at 25 (one slot reserved for Home) | DONE (tree) |
+| DP-35 | The install dropdown is always enabled (permanent Home retires the disabled placeholder) | DONE (tree) |
+
 **Verification.** The application suite was verified in **CI** on `3faa1b16`: Gate 1 strict
 typecheck, lint, format, the flow suite, Gate 4 unit tests, the live-Postgres+Redis integration job,
 and the Docker build — all green. (The first push `8caac653` failed only Gate 4, on one unit test

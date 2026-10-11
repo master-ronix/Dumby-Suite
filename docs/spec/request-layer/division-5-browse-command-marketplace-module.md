@@ -178,6 +178,24 @@ The Marketplace is a framework-level surface: its title names the surface, and i
 - **Home.** The Home control returns to the **/browse** main view — resetting any search back to the
   available-modules listing — not the dashboard home.
 
+### 5.15 Browse Page — Home in the Install Dropdown (UR-20261011-006) — the current arrangements
+
+> **Authority.** The operator's final authority (UR-20261011-006, 11/10/2026); supersedes §5.14
+> where they conflict.
+
+- **Home is a permanent dropdown option.** The install **String Select** carries a permanent
+  **Home** entry in its **first slot**, above every module option (the framework's white home icon;
+  sentinel value `__home__`). Selecting it returns to the **/browse** main view — resetting any
+  search — and installs nothing.
+- **The Home button is removed.** The control row carries **Discover** only; the dropdown is the
+  Home control's sole surface.
+- **The dropdown is always enabled.** Because the permanent Home option is always present, the
+  control always has a selectable entry; the former empty-state disabled placeholder is retired.
+- **The caps are reconciled.** The install dropdown holds at most **25** options
+  (`INSTALL_DROPDOWN_CAP` — Discord's String Select limit) and the per-page module listing holds at
+  most **24** modules (`MARKETPLACE_MODULE_CAP`), reserving one dropdown slot for Home, so the
+  listing and the dropdown stay in sync (24 modules + Home = 25 options).
+
 ## Contract
 - `contracts/rbac.enums.json`
 - `contracts/commands.json`

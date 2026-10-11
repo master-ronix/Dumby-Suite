@@ -2,6 +2,7 @@ import type { CommandInteraction, CommandRouter } from '../commands/command-rout
 import type { RenderMode } from '../rendering/core-renderer.js';
 import type { ComponentInteraction, InteractionRegistry } from './interaction-registry.js';
 import { textInputModal } from '../shared/utils/components-v2.js';
+import { HOME_SELECT_VALUE } from '../shared/constants/index.js';
 
 const MODE_PREFIX = 'dumby:mode:';
 const NAV_PREFIX = 'dumby:nav:';
@@ -93,7 +94,13 @@ export function registerCoreFrameHandlers(deps: CoreFrameHandlerDeps): void {
         // item 9 — selecting a module in the install dropdown installs it, then the page re-renders
         // so the installed module drops out of the available list.
         const selected = interaction.values?.[0];
-        if (selected !== undefined && installModule !== undefined) {
+        // UR-20261011-006 — the dropdown's permanent first option is Home: selecting it returns to
+        // the browse main view (a search reset) and installs nothing.
+        if (
+          selected !== undefined &&
+          selected !== HOME_SELECT_VALUE &&
+          installModule !== undefined
+        ) {
           await installModule(selected, interaction.guildId, interaction.user.id);
         }
         await router.dispatch(asPageInteraction(interaction, 'browse'));

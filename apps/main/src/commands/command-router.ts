@@ -22,6 +22,11 @@ import {
   derivePageSections,
 } from '../rendering/core-renderer.js';
 import { customEmojiParts } from '../rendering/module-icons.js';
+import {
+  HOME_SELECT_VALUE,
+  INSTALL_DROPDOWN_CAP,
+  MARKETPLACE_MODULE_CAP,
+} from '../shared/constants/index.js';
 import type { ComponentsV2Message } from '../shared/utils/components-v2.js';
 import { PersonaOccupiedError } from '../personas/persona.js';
 
@@ -680,9 +685,11 @@ export class CommandRouter {
       );
     const query = typeof data?.['query'] === 'string' ? (data['query'] as string) : '';
     const defaultIcon = customEmojiParts('dumby_module');
+    const homeIcon = customEmojiParts('dumby_home');
 
     const blocks: RenderBlock[] = [];
-    // items 2/4/5 — the control row: Discover (magnifier + "Discover") and Home, at the top.
+    // UR-20261011-006 (item 2) — the control row carries Discover only; the Home control now lives
+    // in the install dropdown as its permanent first option.
     blocks.push({
       kind: 'row',
       buttons: [
@@ -690,12 +697,6 @@ export class CommandRouter {
           customId: `dumby:discover:${invokerId}:browse`,
           label: 'Discover',
           emoji: customEmojiParts('dumby_discover') ?? { name: '🔍' },
-          style: 2,
-        },
-        {
-          customId: `dumby:act:${invokerId}:home:browse`,
-          label: '',
-          emoji: customEmojiParts('dumby_home') ?? { name: '🏠' },
           style: 2,
         },
       ],
@@ -719,29 +720,29 @@ export class CommandRouter {
         accessory: { customId: `dumby:info:${invokerId}:${m.id}`, label: 'Info', style: 2 },
       });
     }
-    // item 1/3/9 — the install dropdown. It is present even when the list is empty (a disabled
-    // placeholder), so the control never silently disappears; selecting an option installs it.
+    // UR-20261011-006 (items 1/3/9) — the install dropdown carries the permanent Home option in its
+    // first slot, above every module option; selecting it returns to the browse main view. Because
+    // Home is always selectable the dropdown is always enabled, so the former empty-state disabled
+    // placeholder is retired. One slot is reserved for Home, so the module options cap at
+    // MARKETPLACE_MODULE_CAP and the whole option list caps at INSTALL_DROPDOWN_CAP.
+    const homeOption: NavigationOption = {
+      label: 'Home',
+      value: HOME_SELECT_VALUE,
+      description: 'Return to the browse main view.',
+      ...(homeIcon !== undefined ? { emoji: homeIcon } : {}),
+    };
+    const moduleOptions: NavigationOption[] = modules.slice(0, MARKETPLACE_MODULE_CAP).map((m) => ({
+      label: String(m.name ?? m.id),
+      value: m.id,
+      description: String(m.description ?? '').slice(0, 100),
+      ...(defaultIcon !== undefined ? { emoji: defaultIcon } : {}),
+    }));
     blocks.push({
       kind: 'select',
       customId: `dumby:act:${invokerId}:install:browse`,
       placeholder:
-        modules.length === 0 ? 'No modules available to install' : 'Select a module to install…',
-      disabled: modules.length === 0,
-      options:
-        modules.length === 0
-          ? [
-              {
-                label: 'No modules available',
-                value: '__none__',
-                description: 'No marketplace modules are available to install.',
-              },
-            ]
-          : modules.map((m) => ({
-              label: String(m.name ?? m.id),
-              value: m.id,
-              description: String(m.description ?? '').slice(0, 100),
-              ...(defaultIcon !== undefined ? { emoji: defaultIcon } : {}),
-            })),
+        modules.length === 0 ? 'No modules to install — Home' : 'Select a module to install…',
+      options: [homeOption, ...moduleOptions].slice(0, INSTALL_DROPDOWN_CAP),
     });
     return blocks;
   }

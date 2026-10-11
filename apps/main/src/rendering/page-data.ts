@@ -4,6 +4,7 @@ import type { ConfigService } from '../config/config.service.js';
 import type { DbClient } from '../db/client.js';
 import type { Logger } from '../logging/logger.js';
 import type { ModuleRegistry } from '../module-system/registry.js';
+import { MARKETPLACE_MODULE_CAP } from '../shared/constants/index.js';
 import { moduleIcon } from './module-icons.js';
 import {
   effectiveCommandName,
@@ -259,7 +260,9 @@ export function createPageDataProvider(
 
   // items 1/5/6 — /browse is marketplace discovery. No in-content heading (the frame title already
   // names the surface — item 1). It lists the available, not-installed marketplace modules (item 5);
-  // with a search query (item 5b) it lists only the name/description matches, capped at 25 (item 6).
+  // with a search query (item 5b) it lists only the name/description matches. The listing caps at
+  // MARKETPLACE_MODULE_CAP (UR-20261011-006): one dropdown slot is reserved for the permanent Home
+  // entry, so the listing and the install dropdown stay in sync within Discord's 25-option ceiling.
   async function marketplace(query?: string): Promise<PageData> {
     const available = moduleRegistry.all().filter((entry) => entry.manifest.tier === 'marketplace');
     const q = (query ?? '').trim().toLowerCase();
@@ -271,7 +274,7 @@ export function createPageDataProvider(
               entry.manifest.name.toLowerCase().includes(q) ||
               entry.manifest.description.toLowerCase().includes(q),
           );
-    const shown = matched.slice(0, 25);
+    const shown = matched.slice(0, MARKETPLACE_MODULE_CAP);
     const modules = shown.map((entry) => ({
       id: entry.manifest.name,
       name: entry.manifest.name,
