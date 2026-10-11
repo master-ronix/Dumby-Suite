@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.12
+version: 5.5.13
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,25 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.13 — Documentation Corpus Governance Remediation (UR-20261011-012) — 2026-10-11
+
+- 2026-10-11 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (docs)
+- Work order: `UR-20261011-012` (docs governance; corrects the drifted registers, pointers and side
+  ledgers). **Documentation-only** — no `apps/main/src` file is touched.
+- **F1:** `upgradation/README.md` no longer claims the dynamic probe finds zero records; the register
+  is restated as provenance-only and the count is read from the probe, never prose. **F2:** the UR
+  count is no longer restated in prose. **F3/F8:** `AGENTS.md` names only live authority paths and the
+  counted 15 ADRs. **F4:** `status/code-reconciliation.json` is re-pointed to HEAD `8355ba4f` and
+  `check-code-reconciliation` now fails on an unresolvable / non-ancestor commit and warns when behind
+  HEAD. **F5:** `GAP_MANIFEST.md` is made self-consistent (one live coverage figure, one HEAD ref) and
+  marked point-in-time. **F6:** `migration-ledger.md` current item is current. **F7:** `apps/main/docs/`
+  is declared out-of-corpus and `check-corpus-boundary` guards the boundary. **F9:** `check-side-docs`
+  guards the side documents against count and HEAD drift.
+- **Verification:** the corpus gate suite is green (27 gates); `check-ur` reads the live count from
+  the probe. No application change; the application suite is unaffected.
 
 ---
 

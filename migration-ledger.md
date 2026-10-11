@@ -6,7 +6,7 @@
 > continued, never restarted.
 
 - **Created:** 2026-10-08
-- **Last updated:** 2026-10-11 · **Current item:** Dashboard page upgrade (UR-20261011-001, DP-1…DP-9) · M10/M14/M16 still open · **Next action:** land the remaining slices — the /browse text-input search modal + >25-option paging (M10), the private info embed (M14), the page-switch divider + uninstall effect (M16) — then run the app toolchain (Node ≥ 22) to gate them
+- **Last updated:** 2026-10-11 · **Current item:** /modules corrections & disable enforcement (UR-20261011-013, DP-60…DP-73) · M10/M14/M16 still open · **Next action:** execute the /modules corrections (UR-20261011-013) — the fallback/decoration split, the formal ephemeral Info card, developer-by-name, the `/modules` Home target, and the disable/enable enforcement (deny override + BCCM + dispatch gate + `/browse` re-enable) — then run the app toolchain (Node ≥ 22) to gate them
 - **Protocol:** `docs/migration/migration-prompt.md` v5.2.0
 - **Coverage map:** the change-set brief (18 items) → one owning item each (M0–M17)
 - **Record shapes:** `docs/migration/ledger-template.md` §3 (item) and §4 (slice)
@@ -38,6 +38,7 @@
 | M17 | Hello standard-tier page cleanup | DONE |
 | MR-1 | Docs residual — attribution contradiction | DONE |
 | MR-2 | Docs residual — ADR-010 blurple retention | DONE |
+| M18 | /modules corrections & disable enforcement (UR-20261011-013) | REOPENED |
 
 Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (reason)`.
 
@@ -366,3 +367,34 @@ Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (rea
 typecheck, lint, format, the flow suite, Gate 4 unit tests, the live-Postgres+Redis integration job,
 and the Docker build — all green. (The first push `8caac653` failed only Gate 4, on one unit test
 that asserted the pre-change module-page behaviour; it was updated to the new arrangement.)
+
+---
+
+## Modules Corrections & Disable Enforcement (UR-20261011-013) — 2026-10-11
+
+> A correction work order. The operator reports that the DP-41…DP-59 arrangements above were
+> written to the tree (`DONE (tree)`) but **do not behave as specified on a live surface**. These
+> items therefore **re-open** the corresponding DP rows; the specification (§9.10–§9.12) is
+> authority, and the code is the gap to close. Coordinated with `upgradation/change-log.md`.
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-60 | Fallback logo is `dumby_module_fallback`; the white square is the command decoration only (R1) | REOPENED |
+| DP-61 | Listing renders name + title-cased tier + `-#` description, cleanly (R2) | REOPENED |
+| DP-62 | Per-module Info control sits in-line after each module; button rows removed (R3) | REOPENED |
+| DP-63 | Uninstall/disable is an icon-only control inside the Info card (`dumby_uninstall`, no label) (R4) | REOPENED |
+| DP-64 | `/modules` navigation matches the other surfaces' grammar (R5) | REOPENED |
+| DP-65 | Info card is always ephemeral (R6) | REOPENED |
+| DP-66 | `/modules` Home returns to `/modules` page 0, not the dashboard (R7) | REOPENED |
+| DP-67 | Info card renders as a single Mode M/C block (R8) | REOPENED |
+| DP-68 | Info card carries no per-field dividers/separators (R9) | REOPENED |
+| DP-69 | Every Info field is meaningful (no filler, no raw tokens) (R10) | REOPENED |
+| DP-70 | Developer resolved by name (first-party → Quixotic Mnemonics); never the raw `devId` (R11) | REOPENED |
+| DP-71 | Disable writes an instant `@everyone` deny override + BCCM enqueue + dispatch gate (R12) | REOPENED |
+| DP-72 | Disabled Standard module offered in `/browse` as "Previously installed" and re-enables via the dropdown (R12) | REOPENED |
+| DP-73 | A core module's Info renders no uninstall/disable control (R13) | REOPENED |
+
+**Observed violations (operator, 2026-10-11):** the Info card reports a module disabled while the
+module stays listed in `/modules`, its command stays registered/loaded in the guild, its dashboard
+page stays registered, and it is not offered in `/browse` for re-install. Acceptance ids:
+`ACC-UR-023-1…14` (see `upgradation/UR-20261011-013.md`).

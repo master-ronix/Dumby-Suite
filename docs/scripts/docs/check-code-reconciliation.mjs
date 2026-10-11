@@ -1,5 +1,6 @@
 // Gate: docs<->code reconciliation ledger is well-formed and internally consistent.
 import { readFileSync } from 'node:fs';
+import { execSync } from 'node:child_process';
 const d = JSON.parse(readFileSync('status/code-reconciliation.json', 'utf8'));
 const allow = new Set(d.verdicts);
 let bad = 0;
@@ -16,4 +17,33 @@ for (const [k, v] of Object.entries(d.counts)) {
   else if ((tally[k] ?? 0) !== v) { console.error(`FAIL: count ${k} ${v} != ${tally[k] ?? 0}`); bad++; }
 }
 if (bad) process.exit(1);
+
+// Freshness (UR-20261011-012 R4): when a git work tree is present, the recorded verified_commit
+// must resolve as a commit here and be an ancestor of HEAD. A ledger merely *behind* HEAD is
+// warned, not failed — an unrelated commit must not break the corpus gate; re-verification is a
+// deliberate act. A dangling or ahead commit is a defect and fails.
+try {
+  execSync('git rev-parse --git-dir', { stdio: 'ignore' });
+  if (d.verified_commit) {
+    try {
+      execSync(`git cat-file -e ${d.verified_commit}^{commit}`, { stdio: 'ignore' });
+    } catch {
+      console.error(`FAIL: verified_commit ${d.verified_commit} does not resolve as a commit in this repository`);
+      process.exit(1);
+    }
+    try {
+      execSync(`git merge-base --is-ancestor ${d.verified_commit} HEAD`, { stdio: 'ignore' });
+    } catch {
+      console.error(`FAIL: verified_commit ${d.verified_commit} is not an ancestor of HEAD`);
+      process.exit(1);
+    }
+    const head = execSync('git rev-parse HEAD', { stdio: 'ignore' }).toString().trim();
+    if (head !== d.verified_commit) {
+      console.warn(`WARN: reconciliation verified at ${d.verified_commit.slice(0, 7)}; HEAD is ${head.slice(0, 7)} — re-verify when the code moves`);
+    }
+  }
+} catch {
+  /* no git work tree (e.g. a bare export) — freshness is not checkable here */
+}
+
 console.log(`OK: code-reconciliation (${d.facts.length} facts, counts consistent)`);
