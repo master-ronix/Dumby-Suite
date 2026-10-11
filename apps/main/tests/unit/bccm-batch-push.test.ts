@@ -3,6 +3,7 @@ import type { CommandCeilingService } from '../../src/commands/command-ceiling.j
 import {
   applyBatch,
   newNames,
+  resolveCommandPayloads,
   runBccmBatchPush,
   type BccmBatchStore,
   type BccmDiscordClient,
@@ -236,5 +237,33 @@ describe('bccm batch push — failure modes', () => {
     expect(store.renames).toEqual([{ guildId: 'g1', commandKey: 'ban', newName: 'timeout' }]);
     // Distinct names in the window — the same name is not counted twice.
     expect(await store.dailyUsed('g1', Date.now())).toBe(1);
+  });
+});
+
+describe('resolveCommandPayloads', () => {
+  const registry = {
+    get: (name: string) =>
+      name === 'hello'
+        ? { data: { name: 'hello', description: 'Says hello', type: 1 } }
+        : undefined,
+  };
+
+  test('sends the full registered definition, not just the name', () => {
+    expect(resolveCommandPayloads(['hello'], registry)).toEqual([
+      { name: 'hello', description: 'Says hello', type: 1 },
+    ]);
+  });
+
+  test('keeps the requested name when it differs from the registered one (a rename)', () => {
+    const renamed = { get: () => ({ data: { name: 'old', description: 'D' } }) };
+    expect(resolveCommandPayloads(['new'], renamed)).toEqual([{ name: 'new', description: 'D' }]);
+  });
+
+  test('falls back to a minimal valid object and reports an unresolved name', () => {
+    const seen: string[] = [];
+    expect(resolveCommandPayloads(['ghost'], registry, (n) => seen.push(n))).toEqual([
+      { name: 'ghost', description: 'ghost' },
+    ]);
+    expect(seen).toEqual(['ghost']);
   });
 });

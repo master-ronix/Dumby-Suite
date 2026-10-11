@@ -54,6 +54,36 @@ export interface BccmBatchPushDeps {
   now?: () => number;
 }
 
+/** UR-20261011-023 — the minimal registry shape the payload builder needs. */
+export interface CommandDefinitionLike {
+  data: object;
+}
+export interface CommandLookup {
+  get(name: string): CommandDefinitionLike | undefined;
+}
+
+/**
+ * UR-20261011-023 — Discord's bulk overwrite needs a FULL command object (a `name` AND a
+ * `description`); sending `{ name }` alone is rejected with a 400, which is what made the first
+ * real BCCM push fail. Resolve each desired name to its registered definition, keeping the
+ * requested name (a rename target is not a registry key, so it falls back to a minimal valid
+ * object and is reported).
+ */
+export function resolveCommandPayloads(
+  names: readonly string[],
+  registry: CommandLookup,
+  onUnresolved?: (name: string) => void,
+): object[] {
+  return names.map((name) => {
+    const definition = registry.get(name);
+    if (definition === undefined) {
+      onUnresolved?.(name);
+      return { name, description: name };
+    }
+    return { ...definition.data, name };
+  });
+}
+
 /**
  * The desired command set for a guild: the registered set with the batch's renames, aliases and
  * disables applied. A rename changes what a command is called, never how it is invoked (§17.8).

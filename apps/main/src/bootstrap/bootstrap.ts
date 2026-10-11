@@ -100,7 +100,11 @@ import { LiveGatewayAdapter } from '../discord/gateway.live-adapter.js';
 import { CommandDeployer } from '../commands/command-deployer.js';
 import { CommandCeilingService } from '../commands/command-ceiling.js';
 import { createKnexBccmStore } from '../commands/bccm-batch-push-store.js';
-import { runBccmBatchPush, type BccmDiscordClient } from '../commands/bccm-batch-push.js';
+import {
+  resolveCommandPayloads,
+  runBccmBatchPush,
+  type BccmDiscordClient,
+} from '../commands/bccm-batch-push.js';
 import { CoreRenderer } from '../rendering/core-renderer.js';
 import { customEmojiParts, moduleIcon, UNINSTALL_ICON_NAME } from '../rendering/module-icons.js';
 import { developerName } from '../rendering/developer-identity.js';
@@ -1239,9 +1243,17 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
           name: string;
         }[],
       putCommands: async (guildId, commands) => {
-        await rest.put(Routes.applicationGuildCommands(applicationId, guildId), {
-          body: commands,
-        });
+        // UR-20261011-023 — Discord's bulk overwrite needs a FULL command object (a `name` AND a
+        // `description`); a body of `{ name }` alone is rejected, which is what made the first real
+        // BCCM push fail with `bccm-batch-put-failed` and `sent=0`. Resolve each desired name to its
+        // registered definition, keeping the requested name (a rename target is not a registry key,
+        // so it falls back to a minimal valid object and is logged).
+        const body = resolveCommandPayloads(
+          commands.map((command) => command.name),
+          commandRegistry,
+          (name) => logger.warn('bccm-batch-command-unresolved', { guildId, name }),
+        );
+        await rest.put(Routes.applicationGuildCommands(applicationId, guildId), { body });
       },
     };
     // UR-20261011-011 — the instant command-access override: on a module disable, write a DENY
@@ -1338,7 +1350,11 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     }
     // Twelve tables foreign-key onto `guilds`, so every guild-scoped write needs the guild row to
     // exist first. Register the guilds we are already in before anything touches guild state.
-    await registerKnownGuilds(discordClient, db, logger);
+    // UR-20261011-023 — a guild that joins after boot gets its commands immediately, rather than
+    // waiting for the next deploy (the boot deploy only covers the guilds known at that moment).
+    await registerKnownGuilds(discordClient, db, logger, (guildId) =>
+      commandDeployer.deployForGuild(guildId),
+    );
 
     logger.info('discord-client-ready', {
       applicationId,
@@ -1413,6 +1429,15 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
           logger,
           defaultGuildId: config.get('DEV_GUILD_ID'),
           tokens: commandPermissionTokens,
+          // UR-20261011-023 — the dashboard lists every guild the bot is in, each with its own
+          // Authorize link, so authorization is per guild rather than fixed to the dev guild.
+          listGuilds: async () => {
+            const rows = await db
+              .knex('guilds')
+              .select<{ id: string; name: string }[]>('id', 'name')
+              .whereNull('deletedAt');
+            return rows.map((row) => ({ id: row.id, name: row.name }));
+          },
         }
       : undefined,
     // Appendix C #18 — the MDIS module-delivery and operational-tooling surfaces.

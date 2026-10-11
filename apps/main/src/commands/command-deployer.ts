@@ -125,6 +125,53 @@ export class CommandDeployer {
     });
   }
 
+  /**
+   * UR-20261011-023 — register ONE guild's commands. Called when a guild joins, so a new guild does
+   * not wait for the next boot: the boot deploy only covers the guilds known at that moment, and a
+   * guild joining afterwards would otherwise have no commands at all.
+   */
+  async deployForGuild(guildId: string): Promise<void> {
+    const { registry, logger, config, rest } = this.deps;
+    if (rest === undefined) return;
+    const commands = registry.all();
+    if (commands.length === 0) return;
+
+    // Development registers EVERY command to the development guild, and nothing elsewhere.
+    if (config.nodeEnv === 'development') {
+      if (guildId !== config.devGuildId) return;
+      await rest.put(Routes.applicationGuildCommands(config.applicationId, guildId), { body: [] });
+      await rest.put(Routes.applicationGuildCommands(config.applicationId, guildId), {
+        body: commands.map((c) => this.apiPayload(c)),
+      });
+      logger.info('command-deployer-dev-registered', { commandCount: commands.length, guildId });
+      return;
+    }
+
+    const admin = commands.filter((c) => this.tierOf(c) === 'admin');
+    const guildScoped = commands.filter((c) => isGuildScopedTier(this.tierOf(c)));
+    const desired: unknown[] = [];
+    if (guildId === config.devGuildId) {
+      desired.push(...admin.map((c) => ({ ...c.data, default_member_permissions: '0' })));
+    }
+    if (this.deps.enabledGuildResolver !== undefined) {
+      const byModule = new Map<string, CommandDefinition[]>();
+      for (const command of guildScoped) {
+        const list = byModule.get(command.moduleId) ?? [];
+        list.push(command);
+        byModule.set(command.moduleId, list);
+      }
+      for (const [moduleSlug, moduleCommands] of byModule) {
+        const guildIds = await this.deps.enabledGuildResolver(moduleSlug);
+        if (guildIds.includes(guildId)) desired.push(...moduleCommands.map((c) => c.data));
+      }
+    }
+    await rest.put(Routes.applicationGuildCommands(config.applicationId, guildId), { body: [] });
+    await rest.put(Routes.applicationGuildCommands(config.applicationId, guildId), {
+      body: desired,
+    });
+    logger.info('command-deployer-guild-registered', { guildId, commandCount: desired.length });
+  }
+
   /** The REST payload for a command: admin-tier commands carry a deny-by-default permission. */
   private apiPayload(command: CommandDefinition): unknown {
     return this.tierOf(command) === 'admin'

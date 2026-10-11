@@ -59,6 +59,25 @@ test('GET /dashboard shows the connect state for each token status', async () =>
   }
 });
 
+test('GET /dashboard lists every guild with its own authorize link', async () => {
+  const app = Fastify();
+  registerOAuthRoutes(app, {
+    client: makeClient() as never,
+    logger,
+    defaultGuildId: 'g1',
+    tokens: makeTokens('active') as never,
+    listGuilds: async () => [
+      { id: 'g1', name: 'Old Server' },
+      { id: 'g2', name: 'New Server' },
+    ],
+  });
+  const res = await app.inject({ method: 'GET', url: '/dashboard' });
+  expect(res.statusCode).toBe(200);
+  expect(res.body).toContain('Old Server');
+  expect(res.body).toContain('New Server');
+  expect(res.body).toContain('/auth/authorize?guild=g2');
+});
+
 test('GET /auth/authorize mints a state cookie and redirects to Discord', async () => {
   const res = await build(makeClient(), makeTokens()).inject({
     method: 'GET',

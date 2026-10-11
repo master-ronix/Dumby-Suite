@@ -11,13 +11,20 @@ import type { CommandPermissionTokenService } from '../../commands/command-permi
 export const OAUTH_STATE_COOKIE = 'dumby_oauth_state';
 export const OAUTH_GUILD_COOKIE = 'dumby_oauth_guild';
 
+export interface OAuthGuildSummary {
+  id: string;
+  name: string;
+}
+
 export interface OAuthRoutesDeps {
   client: DiscordOAuth2Client;
   logger: Logger;
-  /** The guild the dashboard's button authorizes for. */
+  /** The guild the dashboard's default button authorizes for. */
   defaultGuildId: string;
   /** Present when the token store is wired; absent the flow still runs but stores nothing. */
   tokens?: CommandPermissionTokenService | undefined;
+  /** UR-20261011-023 — the guilds the bot is in, so the dashboard can authorize per guild. */
+  listGuilds?: (() => Promise<readonly OAuthGuildSummary[]>) | undefined;
 }
 
 /** Manage Guild (0x20) or Administrator (0x8). */
@@ -149,21 +156,34 @@ export function registerOAuthRoutes(app: FastifyInstance, deps: OAuthRoutesDeps)
   app.get('/oauth/callback', handleCallback);
 
   app.get('/dashboard', async (_req, reply) => {
-    const status = tokens === undefined ? 'none' : await tokens.status(defaultGuildId);
-    const line =
+    const statusOf = (guildId: string): Promise<string> =>
+      tokens === undefined ? Promise.resolve('none') : tokens.status(guildId);
+    const line = (status: string): string =>
       status === 'active'
-        ? '<p class="ok">Connected — module disables hide commands instantly.</p>'
+        ? '<span class="ok">Connected — module disables hide commands instantly.</span>'
         : status === 'revoked'
-          ? '<p class="bad">Authorization revoked. Re-authorize to restore instant hiding.</p>'
+          ? '<span class="bad">Authorization revoked. Re-authorize to restore instant hiding.</span>'
           : status === 'expired'
-            ? '<p class="warn">Token expired and cannot refresh. Re-authorize.</p>'
-            : '<p class="warn">Not connected. Disabling a module still works, but commands are hidden on the next queue window rather than instantly.</p>';
+            ? '<span class="warn">Token expired and cannot refresh. Re-authorize.</span>'
+            : '<span class="warn">Not connected — commands are hidden on the next queue window, not instantly.</span>';
+
+    // UR-20261011-023 — one row per guild, each with its own Authorize link. The token is per guild,
+    // so authorizing covers only the guild named in the link.
+    const guilds =
+      deps.listGuilds === undefined ? [{ id: defaultGuildId, name: '' }] : await deps.listGuilds();
+    const rows = await Promise.all(
+      guilds.map(async (guild) => {
+        const status = await statusOf(guild.id);
+        const label = guild.name === '' ? guild.id : guild.name;
+        return `<p><a class="btn" href="/auth/authorize?guild=${encodeURIComponent(guild.id)}">Authorize</a> <strong>${label}</strong><br><span class="mono">${guild.id} · ${line(status)}</span></p>`;
+      }),
+    );
     return reply.type('text/html').send(
       page(
         'Dumby Suite',
-        `<h1>Dumby Suite</h1><p class="sub">Command permissions dashboard</p>${line}
-<p><a class="btn" href="/auth/authorize?guild=${encodeURIComponent(defaultGuildId)}">Authorize Dumby</a></p>
-<p class="mono">Guild ${defaultGuildId} · status ${status}</p>`,
+        `<h1>Dumby Suite</h1><p class="sub">Command permissions dashboard</p>
+<p class="sub">Authorizing a guild lets Dumby hide a disabled module's commands there instantly. Do it once per guild.</p>
+${rows.join('\n')}`,
       ),
     );
   });

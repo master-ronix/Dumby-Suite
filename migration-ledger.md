@@ -6,7 +6,7 @@
 > continued, never restarted.
 
 - **Created:** 2026-10-08
-- **Last updated:** 2026-10-11 · **Current item:** OAuth route coverage + callback alias (UR-20261011-022, executed) · **Next action:** set the OAUTH_* variables on Railway, press Authorize Dumby on /dashboard, and read the next bccm-batch-put-failed for its cause
+- **Last updated:** 2026-10-11 · **Current item:** New-guild deploy, per-guild auth, BCCM payload fix (UR-20261011-023, executed) · **Next action:** set NODE_ENV=production on Railway and authorize each guild from /dashboard
 - **Protocol:** `docs/migration/migration-prompt.md` v5.2.0
 - **Coverage map:** the change-set brief (18 items) → one owning item each (M0–M17)
 - **Record shapes:** `docs/migration/ledger-template.md` §3 (item) and §4 (slice)
@@ -49,6 +49,7 @@
 | M26 | BCCM put-failure observability + UR-020 test-assertion correction (UR-20261011-021) | DONE (typecheck+lint+format) |
 | M27 | OAuth route coverage + callback alias (UR-20261011-022) | DONE (typecheck+lint+format) |
 | M28 | OAuth state-cookie path widened to `/` so the callback alias receives it (UR-20261011-022 v1.1) | DONE |
+| M29 | New-guild command deploy, per-guild authorization, BCCM full-object payload (UR-20261011-023) | DONE (typecheck+lint+format) |
 
 Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (reason)`.
 
@@ -549,3 +550,15 @@ Acceptance ids: `ACC-UR-028-1…5`.
 | DP-104 | Callback served at `/auth/callback` and `/oauth/callback` | DONE |
 
 **Verification.** `typecheck`, `lint`, `format` green locally. Acceptance ids: `ACC-UR-032-1…4`.
+
+---
+
+## New-Guild Deploy, Per-Guild Auth, BCCM Payload (UR-20261011-023) — 2026-10-11
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-105 | `deployForGuild` + `onGuildJoin`, so a joining guild gets commands at once | DONE |
+| DP-106 | `/dashboard` lists every guild with its own Authorize link + status | DONE |
+| DP-107 | BCCM sends full command objects (`description` required by Discord) | DONE |
+
+**Verification.** `typecheck`, `lint`, `format` green locally. Acceptance ids: `ACC-UR-033-1…4`.

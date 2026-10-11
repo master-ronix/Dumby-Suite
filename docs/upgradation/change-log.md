@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.24
+version: 5.5.25
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,20 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.25 — New-Guild Deploy, Per-Guild Auth, BCCM Payload (UR-20261011-023) — 2026-10-11
+
+- 2026-10-11 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- Work order: `UR-20261011-023`.
+- A new guild had no commands: `NODE_ENV` defaults to `development`, where the deployer registers only
+  to `DEV_GUILD_ID`; and even in production a guild joining after boot got none until the next deploy.
+  Added `CommandDeployer.deployForGuild` + an `onGuildJoin` callback on `GuildCreate`.
+- `/dashboard` now lists every guild with its own Authorize link and status (authorization is per guild).
+- Found the `bccm-batch-put-failed` cause: the BCCM sent `{ name }` only, and Discord's bulk overwrite
+  requires a `description`. Added `resolveCommandPayloads` (full objects, rename-aware, minimal fallback).
+- **Verification:** `typecheck`, `lint`, `format` green; corpus gates 27/27.
 
 ---
 
