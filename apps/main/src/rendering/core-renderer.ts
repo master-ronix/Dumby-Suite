@@ -270,7 +270,9 @@ export class CoreRenderer {
   render(input: RenderDescriptor): ComponentsV2Message {
     const mode = input.mode ?? 'D';
     const sections = input.sections ?? (input.summary ? [input.summary] : []);
-    if (sections.length === 0) {
+    // item 8 — a page may carry content as blocks (sections/select) instead of plain sections.
+    const hasBlocks = input.blocks !== undefined && input.blocks.length > 0;
+    if (sections.length === 0 && !hasBlocks) {
       throw new InvalidRenderDescriptorError();
     }
 
@@ -298,9 +300,9 @@ export class CoreRenderer {
       components.push(textDisplay(this.oneLineRender(input.surface, sections[0] ?? input.surface)));
     } else if (mode === 'M') {
       components.push(textDisplay(this.condensedRender(sections)));
-    } else if (input.blocks !== undefined && input.blocks.length > 0) {
+    } else if (hasBlocks) {
       // item 8 — richer blocks: a Section (text with an inline accessory), a text block, or a Select.
-      input.blocks.forEach((block, index) => {
+      input.blocks?.forEach((block, index) => {
         if (index > 0) components.push(separator());
         if (block.kind === 'text') {
           components.push(textDisplay(block.content));
