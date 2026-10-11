@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.20
+version: 5.5.21
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,22 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.21 — Durable Command-Permission Tokens (UR-20261011-020) — 2026-10-11
+
+- 2026-10-11 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- Work order: `UR-20261011-020`.
+- Confirmed: the command-permissions endpoint needs a **user** Bearer token
+  (`applications.commands.permissions.update`), obtainable with a refresh token only via the
+  **authorization-code grant**; the refresh response returns a fresh refresh token, so the latest is
+  stored (safe whether or not Discord rotates).
+- Added `guild_command_permission_tokens` (sealed access/refresh credential ids), `/auth/callback`
+  (state + code exchange + Manage Server check + store), `/dashboard` (Authorize Dumby button + status),
+  and a 6-hourly refresh task that rotates the refresh token and marks a revoked/expired grant.
+- The command-permissions write resolves stored token → env token → current behaviour (state + BCCM).
+- **Verification:** `typecheck`, `lint`, `format` green; corpus gates 27/27.
 
 ---
 

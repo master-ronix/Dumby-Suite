@@ -1,9 +1,19 @@
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import type { Logger } from '../../logging/logger.js';
+import { OAuth2RefreshError } from '../../commands/command-permission-tokens.js';
 
 export const DISCORD_AUTHORIZE_URL = 'https://discord.com/oauth2/authorize';
 export const DISCORD_TOKEN_URL = 'https://discord.com/api/oauth2/token';
 export const DISCORD_ME_URL = 'https://discord.com/api/users/@me';
+export const DISCORD_USER_GUILDS_URL = 'https://discord.com/api/users/@me/guilds';
+
+/** §19.7 / UR-20261011-020 — the scope the command-permissions endpoint requires. */
+export const COMMAND_PERMISSION_SCOPE = 'applications.commands.permissions.update';
+
+export interface DiscordOAuth2Guild {
+  id: string;
+  permissions: string;
+}
 
 export interface OAuth2Config {
   clientId: string;
@@ -125,6 +135,55 @@ export class DiscordOAuth2Client {
       expiresIn: raw.expires_in ?? 0,
       refreshToken: raw.refresh_token,
     };
+  }
+
+  /**
+   * UR-20261011-020 — exchange a refresh token for a fresh access token. Discord returns a new
+   * `refresh_token` alongside the access token; the caller must persist whatever comes back, because
+   * reusing a superseded refresh token is refused. A 400/401 means the authorization is gone.
+   */
+  async refreshToken(
+    refreshToken: string,
+  ): Promise<{ accessToken: string; refreshToken?: string | undefined; expiresIn: number }> {
+    const body = new URLSearchParams({
+      client_id: this.config.clientId,
+      client_secret: this.config.clientSecret,
+      grant_type: 'refresh_token',
+      refresh_token: refreshToken,
+    });
+    const response = await this.fetchImpl(DISCORD_TOKEN_URL, {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body,
+    });
+    if (!response.ok) {
+      this.logger.warn('oauth2-refresh-failed', { status: response.status });
+      throw new OAuth2RefreshError(
+        `OAuth2 refresh failed with status ${response.status}`,
+        response.status,
+      );
+    }
+    const raw = (await response.json()) as RawTokenResponse;
+    if (typeof raw.access_token !== 'string') {
+      throw new Error('OAuth2 refresh returned no access_token');
+    }
+    return {
+      accessToken: raw.access_token,
+      refreshToken: raw.refresh_token,
+      expiresIn: raw.expires_in ?? 0,
+    };
+  }
+
+  /** §19.7 — the guilds the authorizing user is in, with their permission bitfields. */
+  async fetchGuilds(accessToken: string): Promise<DiscordOAuth2Guild[]> {
+    const response = await this.fetchImpl(DISCORD_USER_GUILDS_URL, {
+      headers: { authorization: `Bearer ${accessToken}` },
+    });
+    if (!response.ok) {
+      this.logger.error('oauth2-guilds-fetch-failed', { status: response.status });
+      throw new Error(`OAuth2 guilds fetch failed with status ${response.status}`);
+    }
+    return (await response.json()) as DiscordOAuth2Guild[];
   }
 
   async fetchUser(accessToken: string): Promise<DiscordOAuth2User> {

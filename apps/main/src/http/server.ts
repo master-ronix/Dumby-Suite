@@ -18,7 +18,7 @@ import {
   registerOperationalRoutes,
   type OperationalRoutesDeps,
 } from '../operational/operational.routes.js';
-import type { DiscordOAuth2Client } from './oauth/oauth2-client.js';
+import type { OAuthRoutesDeps } from './routes/oauth.routes.js';
 
 export interface BuildServerOptions {
   logger: Logger;
@@ -27,7 +27,7 @@ export interface BuildServerOptions {
   config: ConfigService;
   adminDeps: AdminRoutesDeps;
   /** §19.7 — present only when the Discord OAuth2 dashboard credentials are configured. */
-  oauth2Client?: DiscordOAuth2Client | undefined;
+  oauthDeps?: OAuthRoutesDeps | undefined;
   /** Appendix C #18 — the MDIS module-delivery surface. */
   mdisDeps?: MdisRoutesDeps;
   /** Appendix C #18 — the operational tooling surface. */
@@ -86,8 +86,8 @@ export function buildApiServer(options: BuildServerOptions): FastifyInstance {
   if (options.operationalDeps !== undefined) {
     registerOperationalRoutes(app, options.operationalDeps);
   }
-  if (options.oauth2Client !== undefined) {
-    registerOAuthRoutes(app, options.oauth2Client);
+  if (options.oauthDeps !== undefined) {
+    registerOAuthRoutes(app, options.oauthDeps);
   }
 
   app.get('/assets/dumby-banner.png', async (_req, reply) => {

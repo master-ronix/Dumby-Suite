@@ -38,6 +38,7 @@ describe('unified command tree', () => {
       'command-access.ts',
       'command-ceiling.ts',
       'command-deployer.ts',
+      'command-permission-tokens.ts',
       'command-registry.ts',
       'command-renames.ts',
       'command-router.ts',

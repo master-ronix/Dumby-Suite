@@ -6,7 +6,7 @@
 > continued, never restarted.
 
 - **Created:** 2026-10-08
-- **Last updated:** 2026-10-11 · **Current item:** Self-describing warnings (UR-20261011-019, executed) · **Next action:** set `DISCORD_COMMAND_PERMISSIONS_TOKEN` and `BCCM_BATCH_PUSH_DRY_RUN=false` on Railway, then re-verify disable/enable live
+- **Last updated:** 2026-10-11 · **Current item:** Durable command-permission tokens (UR-20261011-020, executed) · **Next action:** set the OAUTH_* variables on Railway, press Authorize Dumby on /dashboard, then re-verify disable/enable live
 - **Protocol:** `docs/migration/migration-prompt.md` v5.2.0
 - **Coverage map:** the change-set brief (18 items) → one owning item each (M0–M17)
 - **Record shapes:** `docs/migration/ledger-template.md` §3 (item) and §4 (slice)
@@ -45,6 +45,7 @@
 | M22 | Disable-button root cause — guild_module_states partial-index upsert (UR-20261011-017) | DONE (typecheck+lint+format) |
 | M23 | Disable-flow corrections — Mode C confirmation, Bearer command-permissions, /browse control removal, owner rank (UR-20261011-018) | DONE (typecheck+lint+format) |
 | M24 | Self-describing warnings — fold runtime detail into the message string (UR-20261011-019) | DONE (typecheck+lint+format) |
+| M25 | Durable command-permission tokens — dashboard authorization, sealed storage, automatic refresh (UR-20261011-020) | DONE (typecheck+lint+format) |
 
 Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (reason)`.
 
@@ -505,3 +506,21 @@ Acceptance ids: `ACC-UR-028-1…5`.
 | DP-95 | provenance warning carries its reason | DONE |
 
 **Verification.** `typecheck`, `lint`, `format` green locally. Acceptance ids: `ACC-UR-029-1…3`.
+
+---
+
+## Durable Command-Permission Tokens (UR-20261011-020) — 2026-10-11
+
+> Discord requires a **user** Bearer token (`applications.commands.permissions.update`) for the
+> command-permissions endpoint, obtainable with a refresh token only via the authorization-code grant;
+> its refresh response rotates the refresh token, so the latest must be stored.
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-96 | `guild_command_permission_tokens` table — sealed access/refresh credential ids | DONE |
+| DP-97 | `/auth/callback` — state check, code exchange, Manage Server check, store | DONE |
+| DP-98 | `/dashboard` — Authorize Dumby button + connection status | DONE |
+| DP-99 | Scheduled refresh (every 6h, 24h lead) with rotation + revoked/expired state | DONE |
+| DP-100 | Resolution: stored token → env token → current behaviour | DONE |
+
+**Verification.** `typecheck`, `lint`, `format` green locally. Acceptance ids: `ACC-UR-030-1…5`.

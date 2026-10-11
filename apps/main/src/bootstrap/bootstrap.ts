@@ -40,6 +40,11 @@ import { OperationalService } from '../operational/operational.service.js';
 import { PowerEngineDispatcher } from '../http/power-engine-dispatcher.js';
 import { loadModulesFromTierVolumes } from '../module-system/swastik-loader.js';
 import { PostgresBuildStore } from '../db/repositories/build.repository.js';
+import { rootKeyFromBase64 } from '../crypto/envelope.js';
+import { PostgresSealedCredentialStore } from '../db/repositories/sealed-credential.repository.js';
+import { SealedCredentialService } from '../credentials/sealed-credential.service.js';
+import { PostgresCommandPermissionTokenStore } from '../db/repositories/command-permission-token.repository.js';
+import { CommandPermissionTokenService } from '../commands/command-permission-tokens.js';
 import { PostgresGrantWriter } from '../db/repositories/rbac-grant.repository.js';
 import { BuildSignatureVerifier } from '../module-system/build-signing.js';
 import { createPublicKey } from 'node:crypto';
@@ -859,6 +864,27 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   });
   container.registerValue(CORE_TOKENS.OAuth2, oauth2Client);
   logger.info('oauth2-client-state', { configured: oauth2Client.isConfigured() });
+  // UR-20261011-020 — the per-guild command-permission token store. Values are sealed at rest with
+  // the same envelope root key the credentials service uses, so a database dump never yields a
+  // usable token. The service is inert until the dashboard's Authorize flow stores one, and the
+  // command-permissions write falls back to the static env token when it holds nothing.
+  const commandPermissionTokens = new CommandPermissionTokenService({
+    store: new PostgresCommandPermissionTokenStore(db.knex),
+    sealer: new SealedCredentialService(
+      new PostgresSealedCredentialStore(db.knex),
+      rootKeyFromBase64('local', config.get('ENCRYPTION_ROOT_KEY')),
+    ),
+    refresher: oauth2Client,
+    logger,
+  });
+  scheduler.register({
+    name: 'command-permission-token-refresh',
+    cron: '0 */6 * * *',
+    execute: async () => {
+      const result = await commandPermissionTokens.refreshDue();
+      logger.info('command-permission-token-refresh-complete', result);
+    },
+  });
   // §28.5 — the MTP artificial-token cost model. Both MTP_*_TOKEN_THRESHOLD_BYTES keys were
   // previously declared and read by no code; they are the memory/bandwidth charge thresholds.
   const mtpTokens = new MtpTokenCalculator({
@@ -1237,10 +1263,12 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
         return;
       }
       // §17.6 — the instant override (Server Settings → Integrations) needs a Bearer token; the
-      // token/Bearer mechanics live in `command-access.ts` so they are unit-tested. Absent the
-      // token, the state write + BCCM deregistration still apply.
+      // token/Bearer mechanics live in `command-access.ts` so they are unit-tested. UR-20261011-020
+      // — prefer the dashboard-authorized per-guild token, fall back to the operator's static env
+      // token, and absent both keep the current behaviour (state write + BCCM deregistration).
+      const storedToken = await commandPermissionTokens.resolveAccessToken(guildId);
       const applied = await setGuildCommandPermissions({
-        token: config.get('DISCORD_COMMAND_PERMISSIONS_TOKEN'),
+        token: storedToken ?? config.get('DISCORD_COMMAND_PERMISSIONS_TOKEN'),
         applicationId,
         guildId,
         registered,
@@ -1379,7 +1407,14 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     progress,
     metrics,
     config,
-    oauth2Client: oauth2Client.isConfigured() ? oauth2Client : undefined,
+    oauthDeps: oauth2Client.isConfigured()
+      ? {
+          client: oauth2Client,
+          logger,
+          defaultGuildId: config.get('DEV_GUILD_ID'),
+          tokens: commandPermissionTokens,
+        }
+      : undefined,
     // Appendix C #18 — the MDIS module-delivery and operational-tooling surfaces.
     mdisDeps: { service: new MdisService(moduleRegistry, new PostgresModuleInstallStore(db.knex)) },
     operationalDeps: {
