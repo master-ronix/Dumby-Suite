@@ -25,3 +25,6 @@ export const MARKETPLACE_MODULE_CAP = INSTALL_DROPDOWN_CAP - 1;
 /** UR-20261011-006 — the install dropdown's permanent Home option; selecting it returns to the
  *  /browse main view (a search reset) and installs nothing. */
 export const HOME_SELECT_VALUE = '__home__';
+
+/** UR-20261011-009 — the /modules page size: how many installed modules render per page. */
+export const MODULES_PAGE_SIZE = 6;

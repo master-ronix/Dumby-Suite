@@ -190,6 +190,28 @@ Dumby | {ModuleName}
 
 ---
 
+### 9.10 Modules Page Rework (UR-20261011-009) — the current arrangements
+
+> **Authority.** The operator's final authority (UR-20261011-009, 11/10/2026); supersedes the earlier
+> clauses of this Division where they conflict.
+
+- **Fallback logo vs decoration.** A module that declares no `ui.icon` shows the framework **fallback
+  logo** (`module-fallback-icon.png`, `dumby_module_fallback`). The white-square asset (`dumby_module`)
+  is NOT a logo fallback: it is the neutral **command decoration** beside each command on the
+  dashboard's **module-specific page**.
+- **Clean listing.** The listing leads with a compact header (`Installed Modules · N`) and renders
+  each module as a **Section** — its logo, bold name and **title-cased tier** on the heading, its
+  description as `-#` subtext. It is paginated (`MODULES_PAGE_SIZE`).
+- **Inline Info.** Each module carries an **Info** control in-line after it (a Section accessory). The
+  former per-module Uninstall/disable button rows and the instruction line are removed.
+- **Detail card.** The Info control returns the module's detail card **privately (ephemeral)**, always.
+  The card carries an **icon-only** uninstall/disable control (a bold white trash icon,
+  `dumby_uninstall`, no label), **disabled** for a core-tier module (never uninstallable) and for an
+  uninstalled/disabled marketplace-tier module. Selecting it disables the module for the guild and
+  refreshes the card in place.
+- **Navigation.** The `/modules` navigation row matches the dashboard's — an **icon-only Home** (to
+  the dashboard home) plus **Next page** / **Previous page** — with a control disabled at its bound.
+
 ## Contract
 - `contracts/rbac.enums.json`
 - `contracts/commands.json`

@@ -149,12 +149,16 @@ describe('core-frame handlers — discover / info / install', () => {
       },
     };
     const installed: string[] = [];
+    const uninstalled: string[] = [];
     registerCoreFrameHandlers({
       registry: registry as never,
       router: router as never,
       moduleInfo: (id) => ({ info: id }),
       installModule: async (id) => {
         installed.push(id);
+      },
+      uninstallModule: async (id) => {
+        uninstalled.push(id);
       },
     });
     const find = (p: string) => handlers.find((h) => h.customIdPrefix === p);
@@ -194,5 +198,15 @@ describe('core-frame handlers — discover / info / install', () => {
       act.parse('dumby:act:u:refresh:health'),
     );
     expect(dispatched).toContain('health');
+
+    // UR-20261011-009 — the module detail card's uninstall control disables the module and
+    // refreshes the card in place (no page navigation).
+    const cardReply = vi.fn(async () => {});
+    await act?.execute(
+      { user: { id: 'u' }, guildId: 'g', editReply: cardReply },
+      act.parse('dumby:act:u:uninstall:hello-world'),
+    );
+    expect(uninstalled).toEqual(['hello-world']);
+    expect(cardReply).toHaveBeenCalled();
   });
 });

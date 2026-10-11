@@ -199,7 +199,9 @@ describe('page-data provider', () => {
     const provider = createPageDataProvider(makeDeps());
     const data = await provider('dashboard', null, 0);
     const lines = data['lines'] as string[];
-    expect(lines).toContain('⬜ `/health`');
+    // UR-20261011-009 — a module with no declared logo shows the framework FALLBACK logo (📦),
+    // not the white-square decoration (which is only for a module page's own command list).
+    expect(lines).toContain('📦 `/health`');
     expect(data['pageTotal']).toBe(2);
   });
 
@@ -268,6 +270,26 @@ describe('page-data provider', () => {
     const data = await provider('modules', null);
     expect(data['title']).toBe('Installed Modules');
     expect((data['modules'] as unknown[]).length).toBe(4);
+  });
+
+  test('installedModules paginates the module list (UR-20261011-009)', async () => {
+    const many = Array.from({ length: 15 }, (_, i) =>
+      mod(`mp-${String(i).padStart(2, '0')}`, 'marketplace', ['x']),
+    );
+    const bigRegistry = {
+      all: () => many,
+    } as unknown as PageDataDeps['moduleRegistry'];
+    const provider = createPageDataProvider(makeDeps({ moduleRegistry: bigRegistry }));
+    const first = await provider('modules', null, 0);
+    expect(first['pageTotal']).toBe(3);
+    expect((first['modules'] as unknown[]).length).toBe(6);
+    const second = await provider('modules', null, 1);
+    expect(second['page']).toBe(1);
+    expect((second['modules'] as unknown[]).length).toBe(6);
+    // an out-of-range page clamps to the last page rather than rendering empty
+    const clamped = await provider('modules', null, 9);
+    expect(clamped['page']).toBe(2);
+    expect((clamped['modules'] as unknown[]).length).toBe(3);
   });
 
   test('an unknown module id yields empty page data', async () => {

@@ -95,6 +95,7 @@ import { CommandCeilingService } from '../commands/command-ceiling.js';
 import { createKnexBccmStore } from '../commands/bccm-batch-push-store.js';
 import { runBccmBatchPush, type BccmDiscordClient } from '../commands/bccm-batch-push.js';
 import { CoreRenderer } from '../rendering/core-renderer.js';
+import { customEmojiParts, UNINSTALL_ICON_NAME } from '../rendering/module-icons.js';
 import { ensureDefaultModuleEmoji } from '../rendering/module-emoji-upload.js';
 import {
   InteractionRegistry,
@@ -628,19 +629,65 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   });
   // §2.4 / §11.3 - the frame's own interactive controls: the D/M/C density control and the
   // navigation dropdown. Registered after the router exists, since each re-enters it.
-  const moduleInfoPayload = (moduleId: string): unknown => {
+  // UR-20261011-009 — whether a module is enabled for a guild (a marketplace module the admin
+  // installed, or a standard module they have not disabled). Absent state reads as not-enabled.
+  const isModuleEnabledForGuild = async (
+    guildId: string | null,
+    moduleId: string,
+  ): Promise<boolean> => {
+    if (guildId === null) return false;
+    try {
+      const row = await db
+        .knex('guild_module_states')
+        .where({ guildId, moduleSlug: moduleId })
+        .first();
+      return row !== undefined && row !== null && (row as { enabled?: unknown }).enabled === true;
+    } catch (err) {
+      logger.warn('module-enabled-check-failed', { moduleId, guildId, error: String(err) });
+      return false;
+    }
+  };
+  const TIER_LABEL: Readonly<Record<string, string>> = {
+    admin: 'Admin',
+    core: 'Core',
+    standard: 'Standard',
+    marketplace: 'Marketplace',
+  };
+  // item 8 — the module detail card: the module's facts plus its uninstall/disable control
+  // (UR-20261011-009). Core modules cannot be uninstalled; an uninstalled/disabled marketplace
+  // module shows the control disabled.
+  const moduleInfoPayload = async (
+    moduleId: string,
+    guildId: string | null,
+    invokerId: string,
+  ): Promise<unknown> => {
     const entry = moduleRegistry.get(moduleId);
     if (entry === undefined) {
       return renderer.render({ surface: 'Module', sections: [`No module named ${moduleId}.`] });
     }
     const m = entry.manifest;
+    const isCore = m.tier === 'core';
+    const isMarketplace = m.tier === 'marketplace';
+    const enabledForGuild = await isModuleEnabledForGuild(guildId, moduleId);
+    const uninstallable = !isCore && (!isMarketplace || enabledForGuild);
     return renderer.render({
       surface: m.ui?.displayName ?? m.name,
       moduleId: m.name,
       sections: [
         `**${m.name}** — ${m.description}`,
-        `Tier: ${m.tier} · Version: ${m.version}`,
+        `Tier: ${TIER_LABEL[m.tier] ?? m.tier} · Version: ${m.version}`,
         `Developer: ${m.devId}`,
+      ],
+      actions: [
+        [
+          {
+            customId: `dumby:act:${invokerId}:uninstall:${m.name}`,
+            label: '',
+            emoji: customEmojiParts(UNINSTALL_ICON_NAME) ?? { name: '🗑️' },
+            style: 4,
+            disabled: !uninstallable,
+          },
+        ],
       ],
     });
   };
@@ -658,12 +705,27 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
       .merge({ enabled: true, state: 'active', updatedAt: db.knex.fn.now() });
     logger.info('marketplace-module-installed', { moduleId, guildId, userId });
   };
+  // UR-20261011-009 — the detail card's uninstall/disable control disables the module for the guild.
+  const uninstallModule = async (
+    moduleId: string,
+    guildId: string | null,
+    userId: string,
+  ): Promise<void> => {
+    if (guildId === null || moduleRegistry.get(moduleId) === undefined) return;
+    await db
+      .knex('guild_module_states')
+      .insert({ guildId, moduleSlug: moduleId, enabled: false, state: 'disabled' })
+      .onConflict(['guildId', 'moduleSlug'])
+      .merge({ enabled: false, state: 'disabled', updatedAt: db.knex.fn.now() });
+    logger.info('module-uninstalled', { moduleId, guildId, userId });
+  };
 
   registerCoreFrameHandlers({
     registry: interactionRegistry,
     router: commandRouter,
-    moduleInfo: (moduleId) => moduleInfoPayload(moduleId),
+    moduleInfo: (moduleId, guildId, invokerId) => moduleInfoPayload(moduleId, guildId, invokerId),
     installModule,
+    uninstallModule,
   });
   container.registerValue(CORE_TOKENS.EventBus, eventBus);
   container.registerValue(CORE_TOKENS.EventRouter, eventRouter);

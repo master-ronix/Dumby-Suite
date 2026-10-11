@@ -4,8 +4,8 @@ import type { ConfigService } from '../config/config.service.js';
 import type { DbClient } from '../db/client.js';
 import type { Logger } from '../logging/logger.js';
 import type { ModuleRegistry } from '../module-system/registry.js';
-import { MARKETPLACE_MODULE_CAP } from '../shared/constants/index.js';
-import { moduleIcon } from './module-icons.js';
+import { MARKETPLACE_MODULE_CAP, MODULES_PAGE_SIZE } from '../shared/constants/index.js';
+import { commandDecorationIcon, moduleIcon } from './module-icons.js';
 import {
   effectiveCommandName,
   resolveCommandStatuses,
@@ -267,7 +267,9 @@ export function createPageDataProvider(
       if (entry !== undefined) {
         const effective = await resolveEffectiveCommandNames(db.knex, guildId);
         const statuses = await resolveCommandStatuses(db.knex, guildId);
-        const icon = moduleIcon(entry.manifest.ui?.icon);
+        // UR-20261011-009 — a module page's command list carries the neutral white-square
+        // DECORATION (not a module logo), so the list reads as "this module's commands".
+        const icon = commandDecorationIcon();
         const lines = entry.manifest.commands.map((command) => {
           const current = effectiveCommandName(effective, command.name);
           const status = statuses.get(command.name) ?? 'enabled';
@@ -332,18 +334,24 @@ export function createPageDataProvider(
     return { lines, modules, query: query ?? '', total: matched.length };
   }
 
-  // item 17 — /modules lists only installed/enabled modules.
-  async function installedModules(): Promise<PageData> {
-    const lines = moduleRegistry.all().map((entry) => {
-      const icon = moduleIcon(entry.manifest.ui?.icon);
-      return `${icon} ${entry.manifest.name} (${entry.manifest.tier}) — ${entry.manifest.description}`;
-    });
-    lines.push('', 'Use the info and uninstall buttons beside a module to manage it.');
-    return {
-      title: 'Installed Modules',
-      lines,
-      modules: moduleRegistry.all().map((entry) => ({ id: entry.manifest.name })),
-    };
+  // item 17 — /modules lists installed/enabled modules, one page at a time (UR-20261011-009). The
+  // page renders as content blocks (a Section per module, each with an inline Info control); `lines`
+  // remains for the condensed (M/C) fallback.
+  async function installedModules(page = 0): Promise<PageData> {
+    const all = moduleRegistry.all();
+    const total = all.length;
+    const pageTotal = Math.max(1, Math.ceil(total / MODULES_PAGE_SIZE));
+    const current = Math.min(Math.max(page, 0), pageTotal - 1);
+    const slice = all.slice(current * MODULES_PAGE_SIZE, (current + 1) * MODULES_PAGE_SIZE);
+    const modules = slice.map((entry) => ({
+      id: entry.manifest.name,
+      name: entry.manifest.ui?.displayName ?? titleCaseId(entry.manifest.name),
+      tier: entry.manifest.tier,
+      description: entry.manifest.description,
+      icon: moduleIcon(entry.manifest.ui?.icon),
+    }));
+    const lines = modules.map((m) => `${m.icon} ${m.name} (${m.tier}) — ${m.description}`);
+    return { title: 'Installed Modules', lines, modules, page: current, pageTotal, total };
   }
 
   return async (
@@ -366,7 +374,7 @@ export function createPageDataProvider(
       case 'browse':
         return marketplace(query);
       case 'modules':
-        return installedModules();
+        return installedModules(page);
       default:
         return {};
     }

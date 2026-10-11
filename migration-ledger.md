@@ -328,6 +328,17 @@ Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (rea
 | DP-39 | Refresh control in-line with the headline (generated white circular-arrow icon) | DONE (asset + tree) |
 | DP-40 | Overall state = worst subsystem (gateway/db down → down; cache down → degraded) | DONE (tree) |
 
+**Modules rework (UR-20261011-009, 2026-10-11):**
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-41 | New fallback logo asset; white square is now the dashboard module-page command decoration | DONE (asset + tree) |
+| DP-42 | Clean listing: per-module Section (logo, name, title-cased tier, description subtext) | DONE (tree) |
+| DP-43 | Inline Info control per module; per-module uninstall rows + instruction line removed | DONE (tree) |
+| DP-44 | Uninstall/disable moved into the module card; icon-only new white icon; disabled for core / uninstalled marketplace | DONE (asset + tree) |
+| DP-45 | /modules navigation matches the dashboard (Home / Next / Previous); list paginated | DONE (tree) |
+| DP-46 | Module Info card is always ephemeral | DONE (tree) |
+
 **Verification.** The application suite was verified in **CI** on `3faa1b16`: Gate 1 strict
 typecheck, lint, format, the flow suite, Gate 4 unit tests, the live-Postgres+Redis integration job,
 and the Docker build — all green. (The first push `8caac653` failed only Gate 4, on one unit test

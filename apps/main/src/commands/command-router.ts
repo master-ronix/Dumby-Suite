@@ -23,6 +23,7 @@ import {
 } from '../rendering/core-renderer.js';
 import { customEmojiParts } from '../rendering/module-icons.js';
 import { healthBlocks } from '../rendering/health-blocks.js';
+import { modulesBlocks } from '../rendering/modules-blocks.js';
 import {
   HOME_SELECT_VALUE,
   INSTALL_DROPDOWN_CAP,
@@ -282,16 +283,17 @@ export class CommandRouter {
           : {}),
         ...(options.mode !== undefined ? { mode: options.mode } : {}),
         ...(declaredDensity !== undefined ? { mode: declaredDensity } : {}),
-        // items 8/9 — /browse renders richer blocks (inline Info sections + the install dropdown);
-        // the dashboard's nav is Home/Next/Prev. The health blocks attach only when the page data
-        // carries the health shape, so a command named `health` that returns a plain render is
-        // left untouched.
+        // items 8/9 — /browse and /modules render richer blocks (inline Info sections, the install
+        // dropdown, the /modules listing); the dashboard's nav is Home/Next/Prev. Each block set
+        // attaches only when the page data carries its shape, so a command that returns a plain
+        // render is left untouched.
         ...(name === 'browse'
           ? { blocks: this.browseBlocks(declaredPageData, interaction.user.id) }
           : name === 'health' && Array.isArray(declaredPageData?.['groups'])
             ? { blocks: healthBlocks(declaredPageData, interaction.user.id) }
-            : name === 'dashboard' || name === 'modules'
+            : name === 'modules' && Array.isArray(declaredPageData?.['modules'])
               ? {
+                  blocks: modulesBlocks(declaredPageData, interaction.user.id),
                   actions: this.pageActions(
                     name,
                     declaredPageData,
@@ -299,7 +301,16 @@ export class CommandRouter {
                     options.page,
                   ),
                 }
-              : {}),
+              : name === 'dashboard'
+                ? {
+                    actions: this.pageActions(
+                      name,
+                      declaredPageData,
+                      interaction.user.id,
+                      options.page,
+                    ),
+                  }
+                : {}),
       });
       // A page whose data the effects just changed is re-derived, so the render shows the result
       // of the action rather than the state it was gathered in.
@@ -598,10 +609,10 @@ export class CommandRouter {
   }
 
   /**
-   * items 11/15/17 - the page-declared action controls. /modules carries a per-module info +
-   * uninstall pair and a paging row; /browse carries a search control and a per-module info
-   * control. Every customId is minted `dumby:act:<invoker>:<action>:<target>` so the interaction
-   * registry's invoker re-check holds.
+   * items 11/15/17 - the page-declared action controls. /modules and /dashboard carry the same
+   * navigation row (an icon-only Home plus Next / Previous page); /browse's controls live in its
+   * content blocks. Every customId is minted `dumby:act:<invoker>:<action>:<target>[:<page>]` or
+   * `dumby:nav:<invoker>:<role>:<n>` so the interaction registry's invoker re-check holds.
    */
   private pageActions(
     commandName: string,
@@ -609,14 +620,6 @@ export class CommandRouter {
     invokerId: string,
     page = 0,
   ): readonly PageActionRow[] {
-    const raw = Array.isArray(data?.['modules']) ? (data['modules'] as unknown[]) : [];
-    const ids = raw
-      .map((m) => (typeof m === 'object' && m !== null ? (m as { id?: unknown }).id : undefined))
-      .filter((id): id is string => typeof id === 'string');
-    const rows: PageActionRow[] = [];
-    const mint = (action: string, target: string): string =>
-      `dumby:act:${invokerId}:${action}:${target}`;
-
     // UR-004 items 2/3 - the dashboard's navigation is Home (icon-only) / Next page / Previous
     // page; Next/Previous move between the main page (page 0) and the standard module pages.
     if (commandName === 'dashboard') {
@@ -652,20 +655,38 @@ export class CommandRouter {
       ];
     }
 
+    // UR-20261011-009 — /modules carries the SAME navigation row as the dashboard. The per-module
+    // Info control now sits in-line on each module (a Section accessory) and the uninstall/disable
+    // control lives in the module's detail card, so there are no per-module button rows here.
     if (commandName === 'modules') {
-      for (const id of ids) {
-        rows.push([
-          { customId: mint('info', id), label: 'Info', style: 2 },
-          { customId: mint('uninstall', id), label: 'Uninstall/disable', style: 4 },
-        ]);
-      }
-      rows.push([
-        { customId: mint('next', 'modules'), label: 'Next page', style: 2 },
-        { customId: mint('prev', 'modules'), label: 'Previous page', style: 2 },
-        { customId: mint('first', 'modules'), label: 'First page', style: 2 },
-      ]);
+      const total = typeof data?.['pageTotal'] === 'number' ? (data['pageTotal'] as number) : 1;
+      const last = Math.max(total - 1, 0);
+      const paged = (action: string, n: number): string =>
+        `dumby:act:${invokerId}:${action}:modules:${n}`;
+      return [
+        [
+          {
+            customId: `dumby:nav:${invokerId}:home:0`,
+            label: '',
+            emoji: customEmojiParts('dumby_home') ?? { name: '🏠' },
+            style: 2,
+          },
+          {
+            customId: paged('next', Math.min(page + 1, last)),
+            label: 'Next page',
+            style: 2,
+            disabled: page >= last,
+          },
+          {
+            customId: paged('prev', Math.max(page - 1, 0)),
+            label: 'Previous page',
+            style: 2,
+            disabled: page <= 0,
+          },
+        ],
+      ];
     }
-    return rows;
+    return [];
   }
 
   /**

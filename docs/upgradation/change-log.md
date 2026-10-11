@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.9
+version: 5.5.10
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -458,6 +458,24 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   (generated bold white circular-arrow icon, `dumby_refresh`) sits in-line with the headline and
   re-runs the report. **C3:** every existing data point is preserved. Overall state = the worst
   subsystem (gateway/database down → `down`; cache down → `degraded`).
+- **Verification:** the corpus gate suite is green; the application suite is pending CI; the
+  interaction paths require a live run.
+
+---
+
+### v5.5.10 — Modules Page Rework (UR-20261011-009) — 2026-10-11
+
+- 2026-10-11 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- Work order: `UR-20261011-009` (extends `UR-20261011-008`).
+- **C1:** a new **fallback logo** (`dumby_module_fallback`, bold white cube) is the fallback for a
+  module with no icon; the white square (`dumby_module`) becomes the **command decoration** on the
+  dashboard's module page. **C2:** the listing renders each module as a clean Section (logo, bold
+  name, title-cased tier, description subtext). **C3:** the per-module **Info** control is now an
+  in-line Section accessory; the uninstall rows and instruction line are removed. **C4:** the module
+  detail card carries an **icon-only** uninstall/disable control (new bold white trash icon,
+  `dumby_uninstall`, no label), disabled for core and for an uninstalled/disabled marketplace module;
+  selecting it disables the module and refreshes the card. **C5:** the `/modules` nav matches the
+  dashboard (Home / Next / Previous) and the list is paginated. **C6:** the Info card stays ephemeral.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
 

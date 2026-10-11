@@ -1,14 +1,21 @@
 import { readFile } from 'node:fs/promises';
 import type { Client } from 'discord.js';
 import type { Logger } from '../logging/logger.js';
-import { DEFAULT_MODULE_ICON_NAME, registerModuleEmoji } from './module-icons.js';
+import {
+  COMMAND_DECORATION_ICON_NAME,
+  FALLBACK_MODULE_ICON_NAME,
+  registerModuleEmoji,
+  UNINSTALL_ICON_NAME,
+} from './module-icons.js';
 
 /**
  * items 1/2/5 — the framework's bundled icon assets. Each is uploaded once as an application emoji
  * and registered under its name, so a page can reference it as `<:name:id>`:
  *
- *   - `dumby_module`  — the default white module icon; the fallback for any module that declares none
- *                       (item 5), and the icon shown on a MODULE page's command list.
+ *   - `dumby_module`  — the white-square DECORATION beside each command in a module's own command
+ *                       list on the dashboard's module page (UR-20261011-009; not a logo).
+ *   - `dumby_module_fallback` — the fallback LOGO for a module that declares no `ui.icon`.
+ *   - `dumby_uninstall` — the module-detail card's uninstall / disable control icon.
  *   - `dumby_home`    — the Home control's bold white icon (item 2).
  *   - `dumby_discover`— the Discover control's bold white magnifier (item 2).
  *   - `dumby_refresh` — the health page's Refresh control's bold white circular arrow.
@@ -16,7 +23,9 @@ import { DEFAULT_MODULE_ICON_NAME, registerModuleEmoji } from './module-icons.js
  *                       command on the dashboard main page.
  */
 const ICON_ASSETS: ReadonlyArray<readonly [string, string]> = [
-  [DEFAULT_MODULE_ICON_NAME, '../../assets/default-module-icon.png'],
+  [COMMAND_DECORATION_ICON_NAME, '../../assets/default-module-icon.png'],
+  [FALLBACK_MODULE_ICON_NAME, '../../assets/module-fallback-icon.png'],
+  [UNINSTALL_ICON_NAME, '../../assets/uninstall-icon.png'],
   ['dumby_home', '../../assets/home-icon.png'],
   ['dumby_discover', '../../assets/discover-icon.png'],
   ['dumby_refresh', '../../assets/refresh-icon.png'],

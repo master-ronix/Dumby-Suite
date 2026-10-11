@@ -42,14 +42,16 @@ function asPageInteraction(
 export interface CoreFrameHandlerDeps {
   registry: InteractionRegistry;
   router: CommandRouter;
-  /** item 8 — builds the private (ephemeral) info payload for a module id. */
-  moduleInfo?: (moduleId: string) => unknown;
+  /** item 8 — builds the private (ephemeral) module-detail card for a module id. */
+  moduleInfo?: (moduleId: string, guildId: string | null) => unknown | Promise<unknown>;
   /** item 9 — installs a marketplace module for the guild (the install-dropdown action). */
   installModule?: (moduleId: string, guildId: string | null, userId: string) => Promise<void>;
+  /** UR-20261011-009 — disables/uninstalls a module for the guild (the detail card's control). */
+  uninstallModule?: (moduleId: string, guildId: string | null, userId: string) => Promise<void>;
 }
 
 export function registerCoreFrameHandlers(deps: CoreFrameHandlerDeps): void {
-  const { registry, router, moduleInfo, installModule } = deps;
+  const { registry, router, moduleInfo, installModule, uninstallModule } = deps;
 
   registry.register({
     customIdPrefix: MODE_PREFIX,
@@ -64,16 +66,20 @@ export function registerCoreFrameHandlers(deps: CoreFrameHandlerDeps): void {
     },
   });
 
-  // items 11/15/17 - page-declared action controls: paging re-enters the router; info and
-  // uninstall re-render the page (edit-in-place), so the surface stays one message.
+  // items 11/15/17 - page-declared action controls: paging re-enters the router; the module detail
+  // card's uninstall control re-renders that card in place.
   registry.register({
     customIdPrefix: ACT_PREFIX,
     parse: (customId) => {
       const parts = customId.split(':');
-      return { action: parts[3], target: parts[4] };
+      return { action: parts[3], target: parts[4], page: parts[5] };
     },
     execute: async (interaction, context) => {
-      const { action, target } = context as { action?: string; target?: string };
+      const { action, target, page } = context as {
+        action?: string;
+        target?: string;
+        page?: string;
+      };
       if (action === undefined || target === undefined) return;
       if (
         action === 'next' ||
@@ -86,11 +92,23 @@ export function registerCoreFrameHandlers(deps: CoreFrameHandlerDeps): void {
         // item 4 — `home` returns to the TARGET page's own main view (e.g. /browse with no query).
         // UR-20261011-008 — `refresh` re-dispatches the TARGET page, re-running its handler so the
         // health report re-gathers its data (the health page's Refresh control).
-        await router.dispatch(asPageInteraction(interaction, target));
+        // UR-20261011-009 — a trailing page segment pages the target surface (the /modules nav).
+        const n = Number(page);
+        await router.dispatch(
+          asPageInteraction(interaction, target),
+          page !== undefined && Number.isFinite(n) ? { page: n } : undefined,
+        );
         return;
       }
-      if (action === 'info' || action === 'uninstall') {
-        await router.dispatch(asPageInteraction(interaction, 'modules'));
+      if (action === 'uninstall') {
+        // UR-20261011-009 — the module detail card's uninstall/disable control: disable the module
+        // for the guild, then refresh the card in place so its control reflects the new state.
+        if (uninstallModule !== undefined) {
+          await uninstallModule(target, interaction.guildId, interaction.user.id);
+        }
+        if (moduleInfo !== undefined) {
+          await interaction.editReply(await moduleInfo(target, interaction.guildId));
+        }
         return;
       }
       if (action === 'install') {
@@ -133,7 +151,7 @@ export function registerCoreFrameHandlers(deps: CoreFrameHandlerDeps): void {
     },
   });
 
-  // item 8 — the inline Info control returns a private (ephemeral) info payload; ack: 'ephemeral'.
+  // item 6/8 — the module detail card is ALWAYS private (ephemeral); ack: 'ephemeral'.
   registry.register({
     customIdPrefix: 'dumby:info:',
     ack: 'ephemeral',
@@ -144,7 +162,7 @@ export function registerCoreFrameHandlers(deps: CoreFrameHandlerDeps): void {
     execute: async (interaction, context) => {
       const { moduleId } = context as { moduleId?: string };
       if (moduleId === undefined || moduleInfo === undefined) return;
-      await interaction.editReply(moduleInfo(moduleId));
+      await interaction.editReply(await moduleInfo(moduleId, interaction.guildId));
     },
   });
 
