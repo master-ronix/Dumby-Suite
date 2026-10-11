@@ -339,6 +339,18 @@ Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (rea
 | DP-45 | /modules navigation matches the dashboard (Home / Next / Previous); list paginated | DONE (tree) |
 | DP-46 | Module Info card is always ephemeral | DONE (tree) |
 
+**Info card & lifecycle (UR-20261011-010, 2026-10-11):**
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-47 | /modules Home returns to /modules page 0 (not the dashboard) | DONE (tree) |
+| DP-48 | Info card renders at Mode M, banner-less, single block (no per-field dividers) | DONE (tree) |
+| DP-49 | Info card carries meaningful fields (name+tier, description, developer, version, status, commands) | DONE (tree) |
+| DP-50 | Developer resolved by name (first-party → Quixotic Mnemonics), never the raw devId | DONE (tree) |
+| DP-51 | Disable/enable function: state write + dispatch gate + BCCM command enqueue | DONE (tree) |
+| DP-52 | /browse lists installable + re-enableable modules (disabled standard = "Previously installed") | DONE (tree) |
+| DP-53 | No uninstall control rendered on a core module's Info | DONE (tree) |
+
 **Verification.** The application suite was verified in **CI** on `3faa1b16`: Gate 1 strict
 typecheck, lint, format, the flow suite, Gate 4 unit tests, the live-Postgres+Redis integration job,
 and the Docker build — all green. (The first push `8caac653` failed only Gate 4, on one unit test

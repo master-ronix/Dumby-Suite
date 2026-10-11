@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.10
+version: 5.5.11
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -476,6 +476,23 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   `dumby_uninstall`, no label), disabled for core and for an uninstalled/disabled marketplace module;
   selecting it disables the module and refreshes the card. **C5:** the `/modules` nav matches the
   dashboard (Home / Next / Previous) and the list is paginated. **C6:** the Info card stays ephemeral.
+- **Verification:** the corpus gate suite is green; the application suite is pending CI; the
+  interaction paths require a live run.
+
+---
+
+### v5.5.11 — Modules Info Card & Lifecycle (UR-20261011-010) — 2026-10-11
+
+- 2026-10-11 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- Work order: `UR-20261011-010` (extends `UR-20261011-009`).
+- **C2:** `/modules` Home returns to `/modules` page 0, not the dashboard. **C3/C4:** the Info card
+  renders at **Mode M** (banner-less) as a **single block**, no per-field dividers. **C5:** the card
+  carries meaningful fields (name+tier, description, developer, version, status, commands). **C6:**
+  the developer resolves by **name** (`developerName`, first-party → Quixotic Mnemonics), never the raw
+  `devId`. **C7/C8:** disable/enable **function** — a `guild_module_states` write that gates dispatch
+  immediately plus a **BCCM** enqueue of the module's commands; `/browse` lists installable +
+  re-enableable modules (a disabled standard module reads "Previously installed"). **C9:** a core
+  module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
 

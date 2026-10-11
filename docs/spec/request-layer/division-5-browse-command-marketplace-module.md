@@ -206,6 +206,19 @@ The Marketplace is a framework-level surface: its title names the surface, and i
   Discover appears on the **same line as the title**. The standalone control row above the title is
   removed.
 
+### 5.17 Browse Catalogue — Installable & Re-enableable (UR-20261011-010) — the current arrangements
+
+> **Authority.** The operator's final authority (UR-20261011-010, 11/10/2026); supersedes §5.12–§5.16
+> where they conflict.
+
+- **Catalogue scope.** `/browse` lists what the guild can **install or re-enable**: **marketplace**
+  modules not enabled for the guild, and **standard** modules the guild has **disabled** (relisted as
+  **"Previously installed"**, §13.2). Core and Admin modules are never listed. Selecting an entry in
+  the install dropdown writes `guild_module_states` (`enabled:true, state:'active'`) and enqueues the
+  module's commands for re-registration on the guild command change queue (BCCM).
+- **"Previously installed" marker.** A disabled standard module carries the subtext note
+  `Previously installed — select to re-enable`.
+
 ## Contract
 - `contracts/rbac.enums.json`
 - `contracts/commands.json`

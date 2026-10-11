@@ -655,9 +655,9 @@ export class CommandRouter {
       ];
     }
 
-    // UR-20261011-009 — /modules carries the SAME navigation row as the dashboard. The per-module
-    // Info control now sits in-line on each module (a Section accessory) and the uninstall/disable
-    // control lives in the module's detail card, so there are no per-module button rows here.
+    // UR-20261011-009/010 — /modules carries the SAME navigation row as the dashboard. Home
+    // returns to THIS page's main view (/modules page 0, resetting paging) — not the dashboard —
+    // exactly as Home on every other surface returns to that surface's own main view.
     if (commandName === 'modules') {
       const total = typeof data?.['pageTotal'] === 'number' ? (data['pageTotal'] as number) : 1;
       const last = Math.max(total - 1, 0);
@@ -666,7 +666,7 @@ export class CommandRouter {
       return [
         [
           {
-            customId: `dumby:nav:${invokerId}:home:0`,
+            customId: paged('home', 0),
             label: '',
             emoji: customEmojiParts('dumby_home') ?? { name: '🏠' },
             style: 2,
@@ -703,12 +703,25 @@ export class CommandRouter {
     const modules = raw
       .map((m) =>
         typeof m === 'object' && m !== null
-          ? (m as { id?: unknown; name?: unknown; description?: unknown; icon?: unknown })
+          ? (m as {
+              id?: unknown;
+              name?: unknown;
+              description?: unknown;
+              icon?: unknown;
+              note?: unknown;
+            })
           : {},
       )
       .filter(
-        (m): m is { id: string; name?: unknown; description?: unknown; icon?: unknown } =>
-          typeof m.id === 'string',
+        (
+          m,
+        ): m is {
+          id: string;
+          name?: unknown;
+          description?: unknown;
+          icon?: unknown;
+          note?: unknown;
+        } => typeof m.id === 'string',
       );
     const query = typeof data?.['query'] === 'string' ? (data['query'] as string) : '';
     const defaultIcon = customEmojiParts('dumby_module');
@@ -736,9 +749,12 @@ export class CommandRouter {
       const name = String(m.name ?? m.id);
       const description = String(m.description ?? '');
       const icon = typeof m.icon === 'string' ? m.icon : '';
+      // UR-20261011-010 — a "Previously installed" module (a disabled standard module) carries a
+      // subtext note so the listing reads as a re-enable, not a fresh install.
+      const note = typeof m.note === 'string' && m.note !== '' ? `\n-# ${m.note}` : '';
       blocks.push({
         kind: 'section',
-        content: `${icon} **${name}** — ${description}`.trim(),
+        content: `${icon} **${name}** — ${description}${note}`.trim(),
         accessory: { customId: `dumby:info:${invokerId}:${m.id}`, label: 'Info', style: 2 },
       });
     }

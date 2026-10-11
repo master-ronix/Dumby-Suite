@@ -212,6 +212,29 @@ Dumby | {ModuleName}
 - **Navigation.** The `/modules` navigation row matches the dashboard's — an **icon-only Home** (to
   the dashboard home) plus **Next page** / **Previous page** — with a control disabled at its bound.
 
+### 9.11 Modules Info Card & Lifecycle (UR-20261011-010) — the current arrangements
+
+> **Authority.** The operator's final authority (UR-20261011-010, 11/10/2026); supersedes §9.5–§9.7
+> and §9.10 where they conflict.
+
+- **Info card.** The module Info control returns a **formal, banner-less** card rendered at **medium
+  density (Mode M)** as a **single content block** — no per-field dividers. It carries the module
+  logo and display name with its tier, the description, and the meaningful facts: **developer**
+  (resolved by NAME, never the raw `devId`), **version**, **status**, and the **command inventory**.
+- **Developer attribution.** Framework-shipped / first-party modules attribute to **Quixotic
+  Mnemonics**; the raw `devId` is never shown as the developer.
+- **No control on core.** A **core** module's Info renders **no** uninstall/disable control — core is
+  permanently loaded and never uninstallable (§13.2).
+- **Disable / enable.** The card's uninstall control (Standard/Marketplace) is a **state write** to
+  `guild_module_states` (`enabled:false, state:'disabled'`), which short-circuits the module's
+  dispatch immediately (§13.7) and **enqueues its commands on the guild command change queue (BCCM)**
+  for batched Discord deregistration (§6.4/§17.7). The disabled module relists in `/browse` as
+  **"Previously installed"** and is re-enabled through the `/browse` dropdown (the inverse: state
+  `enabled:true` + a BCCM re-registration enqueue). Per §15.3 a toggle is a **state change**, not an
+  unload — it does not tear the module down fleet-wide.
+- **Navigation.** The `/modules` **Home** control returns to **`/modules` page 0** (this surface's own
+  main view), not the dashboard; Next/Previous page the listing.
+
 ## Contract
 - `contracts/rbac.enums.json`
 - `contracts/commands.json`

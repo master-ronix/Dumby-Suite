@@ -95,7 +95,8 @@ import { CommandCeilingService } from '../commands/command-ceiling.js';
 import { createKnexBccmStore } from '../commands/bccm-batch-push-store.js';
 import { runBccmBatchPush, type BccmDiscordClient } from '../commands/bccm-batch-push.js';
 import { CoreRenderer } from '../rendering/core-renderer.js';
-import { customEmojiParts, UNINSTALL_ICON_NAME } from '../rendering/module-icons.js';
+import { customEmojiParts, moduleIcon, UNINSTALL_ICON_NAME } from '../rendering/module-icons.js';
+import { developerName } from '../rendering/developer-identity.js';
 import { ensureDefaultModuleEmoji } from '../rendering/module-emoji-upload.js';
 import {
   InteractionRegistry,
@@ -653,9 +654,10 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     standard: 'Standard',
     marketplace: 'Marketplace',
   };
-  // item 8 — the module detail card: the module's facts plus its uninstall/disable control
-  // (UR-20261011-009). Core modules cannot be uninstalled; an uninstalled/disabled marketplace
-  // module shows the control disabled.
+  // UR-20261011-010 — the module detail card (item 8): a formal, meaningful, banner-less card.
+  // It renders at MEDIUM density (no banner, no per-field dividers) as a single content block, and
+  // attributes the developer by NAME (not the raw `devId`). A CORE module carries NO uninstall
+  // control at all — it can never be uninstalled (§13.2).
   const moduleInfoPayload = async (
     moduleId: string,
     guildId: string | null,
@@ -670,28 +672,74 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     const isMarketplace = m.tier === 'marketplace';
     const enabledForGuild = await isModuleEnabledForGuild(guildId, moduleId);
     const uninstallable = !isCore && (!isMarketplace || enabledForGuild);
+    const displayName = m.ui?.displayName ?? m.name;
+    const status = isCore
+      ? 'Core — always enabled'
+      : enabledForGuild
+        ? 'Enabled'
+        : 'Disabled — re-enable from /browse';
+    const commands =
+      m.commands.length === 0
+        ? 'none'
+        : m.commands.map((command) => `\`/${command.name}\``).join(', ');
+    const block = [
+      `${moduleIcon(m.ui?.icon)} **${displayName}** · ${TIER_LABEL[m.tier] ?? m.tier}`,
+      `-# ${m.description}`,
+      '',
+      `**Developer**  ${developerName(m.devId)}`,
+      `**Version**  ${m.version}`,
+      `**Status**  ${status}`,
+      `**Commands**  ${m.commands.length} — ${commands}`,
+    ].join('\n');
     return renderer.render({
-      surface: m.ui?.displayName ?? m.name,
-      moduleId: m.name,
-      sections: [
-        `**${m.name}** — ${m.description}`,
-        `Tier: ${TIER_LABEL[m.tier] ?? m.tier} · Version: ${m.version}`,
-        `Developer: ${m.devId}`,
-      ],
-      actions: [
-        [
-          {
-            customId: `dumby:act:${invokerId}:uninstall:${m.name}`,
-            label: '',
-            emoji: customEmojiParts(UNINSTALL_ICON_NAME) ?? { name: '🗑️' },
-            style: 4,
-            disabled: !uninstallable,
-          },
-        ],
-      ],
+      surface: displayName,
+      mode: 'M',
+      sections: [block],
+      ...(isCore
+        ? {}
+        : {
+            actions: [
+              [
+                {
+                  customId: `dumby:act:${invokerId}:uninstall:${m.name}`,
+                  label: '',
+                  emoji: customEmojiParts(UNINSTALL_ICON_NAME) ?? { name: '🗑️' },
+                  style: 4,
+                  disabled: !uninstallable,
+                },
+              ],
+            ],
+          }),
     });
   };
-  // item 9 — the install dropdown enables the selected module for the guild (guild_module_states).
+  // UR-20261011-010 — a module's commands are enqueued on the guild command change queue (BCCM,
+  // §6.4/§17.7) so their Discord deregistration / re-registration is batched, while the state write
+  // makes them non-dispatchable immediately through the router's guild enablement gate (§13.7).
+  const enqueueModuleCommandChanges = async (
+    moduleId: string,
+    guildId: string,
+    userId: string,
+    action: 'disable' | 'enable',
+  ): Promise<void> => {
+    const entry = moduleRegistry.get(moduleId);
+    if (entry === undefined || entry.manifest.commands.length === 0) return;
+    await db.knex('guild_command_queue').insert(
+      entry.manifest.commands.map((command) => ({
+        guildId,
+        commandKey: command.name,
+        payload: { action, submittedBy: userId },
+        status: 'pending',
+      })),
+    );
+    logger.info('bccm-module-command-change-queued', {
+      moduleId,
+      guildId,
+      action,
+      count: entry.manifest.commands.length,
+    });
+  };
+  // item 9 — the install/enable action enables the module for the guild (guild_module_states) and
+  // queues its commands' re-registration (BCCM).
   const installModule = async (
     moduleId: string,
     guildId: string | null,
@@ -703,20 +751,25 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
       .insert({ guildId, moduleSlug: moduleId, enabled: true, state: 'active' })
       .onConflict(['guildId', 'moduleSlug'])
       .merge({ enabled: true, state: 'active', updatedAt: db.knex.fn.now() });
+    await enqueueModuleCommandChanges(moduleId, guildId, userId, 'enable');
     logger.info('marketplace-module-installed', { moduleId, guildId, userId });
   };
-  // UR-20261011-009 — the detail card's uninstall/disable control disables the module for the guild.
+  // UR-20261011-010 — the detail card's uninstall/disable control disables the module for the guild
+  // (state write), queues its commands' deregistration (BCCM), and relists it in /browse. A CORE
+  // module is never uninstallable (§13.2), so it is refused here as well as in the card.
   const uninstallModule = async (
     moduleId: string,
     guildId: string | null,
     userId: string,
   ): Promise<void> => {
-    if (guildId === null || moduleRegistry.get(moduleId) === undefined) return;
+    const entry = moduleRegistry.get(moduleId);
+    if (guildId === null || entry === undefined || entry.manifest.tier === 'core') return;
     await db
       .knex('guild_module_states')
       .insert({ guildId, moduleSlug: moduleId, enabled: false, state: 'disabled' })
       .onConflict(['guildId', 'moduleSlug'])
       .merge({ enabled: false, state: 'disabled', updatedAt: db.knex.fn.now() });
+    await enqueueModuleCommandChanges(moduleId, guildId, userId, 'disable');
     logger.info('module-uninstalled', { moduleId, guildId, userId });
   };
 

@@ -239,6 +239,25 @@ describe('page-data provider', () => {
     expect((miss['modules'] as unknown[]).length).toBe(0);
   });
 
+  test('marketplace lists a disabled standard module as previously installed (UR-20261011-010)', async () => {
+    const statesKnex = ((table: string) => ({
+      where: () => ({
+        whereNull: () => ({
+          select: async (): Promise<unknown[]> =>
+            table === 'guild_module_states'
+              ? [{ moduleSlug: 'hello-world', enabled: false, state: 'disabled' }]
+              : [],
+        }),
+      }),
+    })) as unknown as Dict;
+    statesKnex['raw'] = async (): Promise<unknown[]> => [{}];
+    const provider = createPageDataProvider(makeDeps({ db: { knex: statesKnex } }));
+    const data = await provider('browse', 'guild-1');
+    const mods = data['modules'] as Array<{ id: string; note?: string }>;
+    expect(mods.map((m) => m.id)).toContain('hello-world');
+    expect(mods.find((m) => m.id === 'hello-world')?.note).toBeDefined();
+  });
+
   test('marketplace caps the per-page listing at 24 (one dropdown slot reserved for Home)', async () => {
     const many = Array.from({ length: 30 }, (_, i) =>
       mod(`mp-${String(i).padStart(2, '0')}`, 'marketplace', ['x']),

@@ -5,6 +5,7 @@ import type { DbClient } from '../db/client.js';
 import type { Logger } from '../logging/logger.js';
 import type { ModuleRegistry } from '../module-system/registry.js';
 import { MARKETPLACE_MODULE_CAP, MODULES_PAGE_SIZE } from '../shared/constants/index.js';
+import { defaultEnabledForTier } from '../module-system/tier-rules.js';
 import { commandDecorationIcon, moduleIcon } from './module-icons.js';
 import {
   effectiveCommandName,
@@ -305,8 +306,36 @@ export function createPageDataProvider(
   // with a search query (item 5b) it lists only the name/description matches. The listing caps at
   // MARKETPLACE_MODULE_CAP (UR-20261011-006): one dropdown slot is reserved for the permanent Home
   // entry, so the listing and the install dropdown stay in sync within Discord's 25-option ceiling.
-  async function marketplace(query?: string): Promise<PageData> {
-    const available = moduleRegistry.all().filter((entry) => entry.manifest.tier === 'marketplace');
+  async function marketplace(query?: string, guildId?: string | null): Promise<PageData> {
+    const all = moduleRegistry.all();
+    // UR-20261011-010 — the catalogue lists what a guild can INSTALL or RE-ENABLE: marketplace
+    // modules not enabled for the guild, and standard modules the guild has disabled
+    // ("Previously Installed", §13.2). Core/Admin are never listed.
+    const enabledBySlug = new Map<string, boolean>();
+    if (guildId) {
+      try {
+        const rows = await db
+          .knex('guild_module_states')
+          .where({ guildId })
+          .whereNull('deletedAt')
+          .select<{ moduleSlug: string; enabled: boolean; state: string }[]>(
+            'moduleSlug',
+            'enabled',
+            'state',
+          );
+        for (const row of rows) {
+          enabledBySlug.set(String(row.moduleSlug), row.enabled === true && row.state === 'active');
+        }
+      } catch (err) {
+        logger.warn('page-data-module-states-unavailable', { guildId, error: String(err) });
+      }
+    }
+    const available = all.filter((entry) => {
+      const tier = entry.manifest.tier;
+      if (tier !== 'marketplace' && tier !== 'standard') return false;
+      const enabled = enabledBySlug.get(entry.manifest.name) ?? defaultEnabledForTier(tier);
+      return !enabled;
+    });
     const q = (query ?? '').trim().toLowerCase();
     const matched =
       q === ''
@@ -322,6 +351,10 @@ export function createPageDataProvider(
       name: entry.manifest.name,
       description: entry.manifest.description,
       icon: moduleIcon(entry.manifest.ui?.icon),
+      // A disabled STANDARD module is "Previously Installed": selecting it re-enables it.
+      ...(entry.manifest.tier === 'standard'
+        ? { note: 'Previously installed — select to re-enable' }
+        : {}),
     }));
     const lines: string[] =
       modules.length === 0
@@ -372,7 +405,7 @@ export function createPageDataProvider(
       case 'dashboard':
         return dashboard(page, guildId);
       case 'browse':
-        return marketplace(query);
+        return marketplace(query, guildId);
       case 'modules':
         return installedModules(page);
       default:
