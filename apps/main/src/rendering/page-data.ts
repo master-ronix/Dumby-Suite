@@ -261,9 +261,7 @@ export function createPageDataProvider(
   // names the surface — item 1). It lists the available, not-installed marketplace modules (item 5);
   // with a search query (item 5b) it lists only the name/description matches, capped at 25 (item 6).
   async function marketplace(query?: string): Promise<PageData> {
-    const available = moduleRegistry
-      .all()
-      .filter((entry) => entry.manifest.tier === 'marketplace');
+    const available = moduleRegistry.all().filter((entry) => entry.manifest.tier === 'marketplace');
     const q = (query ?? '').trim().toLowerCase();
     const matched =
       q === ''
