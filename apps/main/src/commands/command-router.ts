@@ -283,10 +283,12 @@ export class CommandRouter {
         ...(options.mode !== undefined ? { mode: options.mode } : {}),
         ...(declaredDensity !== undefined ? { mode: declaredDensity } : {}),
         // items 8/9 — /browse renders richer blocks (inline Info sections + the install dropdown);
-        // the dashboard's nav is Home/Next/Prev.
+        // the dashboard's nav is Home/Next/Prev. The health blocks attach only when the page data
+        // carries the health shape, so a command named `health` that returns a plain render is
+        // left untouched.
         ...(name === 'browse'
           ? { blocks: this.browseBlocks(declaredPageData, interaction.user.id) }
-          : name === 'health'
+          : name === 'health' && Array.isArray(declaredPageData?.['groups'])
             ? { blocks: healthBlocks(declaredPageData, interaction.user.id) }
             : name === 'dashboard' || name === 'modules'
               ? {
