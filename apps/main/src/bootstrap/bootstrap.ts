@@ -58,6 +58,8 @@ import { createPageDataProvider } from '../rendering/page-data.js';
 import { registerKnownGuilds } from '../discord/guild-registry.js';
 import { createBccmEffectHandlers } from '../commands/bccm-effects.js';
 import { effectiveCommandName, resolveEffectiveCommandNames } from '../commands/command-renames.js';
+import { setGuildCommandPermissions } from '../commands/command-access.js';
+import { disableConfirmationDescriptor } from '../rendering/confirmations.js';
 import type { CommandInteraction } from '../commands/command-router.js';
 import { PersonaCommandBindingService } from '../personas/persona-command-binding.service.js';
 import {
@@ -746,21 +748,10 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   // UR-20261011-018 — the formal Compact (Mode C) confirmation shown after a module is disabled:
   // a single identity line plus the outcome, per the operator's request for a professional result
   // at Compact density.
-  const moduleDisableConfirmation = async (
-    moduleId: string,
-    guildId: string | null,
-  ): Promise<unknown> => {
-    const entry = moduleRegistry.get(moduleId);
-    const displayName = entry?.manifest.ui?.displayName ?? entry?.manifest.name ?? moduleId;
-    const commands =
-      entry === undefined || entry.manifest.commands.length === 0
-        ? 'its commands'
-        : entry.manifest.commands.map((command) => `\`/${command.name}\``).join(', ');
-    void guildId;
+  const moduleDisableConfirmation = async (moduleId: string): Promise<unknown> => {
     return renderer.render({
-      surface: displayName,
+      ...disableConfirmationDescriptor(moduleId, moduleRegistry.get(moduleId)),
       mode: 'C',
-      summary: `✅ **${displayName}** disabled — ${commands} are hidden and queued for deregistration. Re-enable it from /browse.`,
     });
   };
   // UR-20261011-010 — a module's commands are enqueued on the guild command change queue (BCCM,
@@ -1107,10 +1098,9 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
           // §9.6 — the rank function reads the guild owner as OWNER, ahead of any permission bit.
           // Omitting it made a guild owner who lacks an explicit Administrator bit evaluate as
           // RESTRICTED and get a spurious FORBIDDEN (UR-20261011-018).
-          ...((interaction as unknown as { guild?: { ownerId?: string } | null }).guild?.ownerId ===
-          interaction.user.id
-            ? { isGuildOwner: true }
-            : {}),
+          isGuildOwner:
+            (interaction as unknown as { guild?: { ownerId?: string } | null }).guild?.ownerId ===
+            interaction.user.id,
         };
         void commandRouter.dispatch(commandInteraction).catch(async (err) => {
           logger.error('interaction-dispatch-failed', {
@@ -1148,27 +1138,6 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
       }
 
       if (interaction.isButton() || interaction.isStringSelectMenu()) {
-        const componentMember = (
-          interaction as unknown as {
-            member?: {
-              permissions?: { has: (p: string) => boolean };
-              roles?: { cache?: { keys: () => IterableIterator<string> } };
-            } | null;
-          }
-        ).member;
-        const componentMemberPermissions = componentMember?.permissions
-          ? [
-              'Administrator',
-              'ManageChannels',
-              'ManageGuild',
-              'ModerateMembers',
-              'BanMembers',
-              'KickMembers',
-            ].filter((p) => componentMember.permissions?.has(p) === true)
-          : undefined;
-        const componentIsGuildOwner =
-          (interaction as unknown as { guild?: { ownerId?: string } | null }).guild?.ownerId ===
-          interaction.user.id;
         const componentInteraction = {
           id: interaction.id,
           customId: interaction.customId,
@@ -1191,15 +1160,6 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
               }
             : {}),
           ...(interaction.isStringSelectMenu() ? { values: interaction.values } : {}),
-          // UR-20261011-018 — a component that re-enters the router carries the same member context
-          // a command does, so the rank/permission check sees the real actor rather than RESTRICTED.
-          ...(componentMemberPermissions !== undefined
-            ? { memberPermissions: componentMemberPermissions }
-            : {}),
-          ...(componentMember?.roles?.cache
-            ? { memberRoles: [...componentMember.roles.cache.keys()] }
-            : {}),
-          ...(componentIsGuildOwner ? { isGuildOwner: true } : {}),
           ...(interaction.showModal !== undefined
             ? {
                 showModal: interaction.showModal.bind(interaction) as unknown as (
@@ -1270,50 +1230,18 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
         logger.warn('command-access-read-failed', { moduleId, guildId, error: String(err) });
         return;
       }
-      // §17.6 — the per-guild command-permission override (Server Settings → Integrations) can ONLY
-      // be written with a Bearer token carrying `applications.commands.permissions.update`; a bot
-      // token is rejected (403 "Bots cannot use this endpoint"). The bot cannot mint that token, so
-      // it is provisioned by the operator. Absent, the state write + BCCM deregistration still apply.
-      const bearer = config.get('DISCORD_COMMAND_PERMISSIONS_TOKEN');
-      if (bearer === '') {
-        logger.warn('command-access-token-missing', {
-          moduleId,
-          guildId,
-          note: 'set DISCORD_COMMAND_PERMISSIONS_TOKEN to hide/restrict commands instantly; BCCM deregistration still applies',
-        });
-        return;
-      }
-      let applied = 0;
-      for (const command of registered) {
-        if (!names.has(command.name)) continue;
-        try {
-          const res = await fetch(
-            `https://discord.com/api/v10/applications/${applicationId}/guilds/${guildId}/commands/${command.id}/permissions`,
-            {
-              method: 'PUT',
-              headers: { Authorization: `Bearer ${bearer}`, 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                permissions: [{ id: guildId, type: 1, permission: allowed }],
-              }),
-            },
-          );
-          if (res.ok) applied += 1;
-          else
-            logger.warn('command-access-set-failed', {
-              moduleId,
-              guildId,
-              command: command.name,
-              status: res.status,
-            });
-        } catch (err) {
-          logger.warn('command-access-set-failed', {
-            moduleId,
-            guildId,
-            command: command.name,
-            error: String(err),
-          });
-        }
-      }
+      // §17.6 — the instant override (Server Settings → Integrations) needs a Bearer token; the
+      // token/Bearer mechanics live in `command-access.ts` so they are unit-tested. Absent the
+      // token, the state write + BCCM deregistration still apply.
+      const applied = await setGuildCommandPermissions({
+        token: config.get('DISCORD_COMMAND_PERMISSIONS_TOKEN'),
+        applicationId,
+        guildId,
+        registered,
+        commandNames: names,
+        allowed,
+        logger,
+      });
       logger.info('module-command-access-set', { moduleId, guildId, allowed, applied });
     };
     // §17.7 — run the batch once shortly after boot: it converges any batch left pending by the

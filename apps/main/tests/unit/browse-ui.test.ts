@@ -215,4 +215,62 @@ describe('core-frame handlers — discover / info / install', () => {
     expect(uninstalled).toEqual(['hello-world']);
     expect(cardReply).toHaveBeenCalled();
   });
+
+  test('the uninstall control renders the Compact confirmation when the host provides one', async () => {
+    const handlers: Array<{
+      customIdPrefix: string;
+      parse: (c: string) => unknown;
+      execute: (i: unknown, c: unknown) => Promise<void>;
+    }> = [];
+    const registry = { register: (h: (typeof handlers)[number]) => handlers.push(h) };
+    const router = { dispatch: async () => {} };
+    const uninstalled: string[] = [];
+    const confirmed: string[] = [];
+    registerCoreFrameHandlers({
+      registry: registry as never,
+      router: router as never,
+      moduleInfo: (id) => ({ info: id }),
+      uninstallModule: async (id) => {
+        uninstalled.push(id);
+      },
+      disableConfirmation: (id) => {
+        confirmed.push(id);
+        return { confirm: id };
+      },
+    });
+    const act = handlers.find((h) => h.customIdPrefix === 'dumby:act:');
+    const editReply = vi.fn(async () => {});
+    await act?.execute(
+      { user: { id: 'u' }, guildId: 'g', editReply },
+      act.parse('dumby:act:u:uninstall:hello-world'),
+    );
+    expect(uninstalled).toEqual(['hello-world']);
+    expect(confirmed).toEqual(['hello-world']);
+    expect(editReply).toHaveBeenCalled();
+  });
+
+  test('the mode control re-dispatches the page in the requested density, and ignores an unknown one', async () => {
+    const handlers: Array<{
+      customIdPrefix: string;
+      parse: (c: string) => unknown;
+      execute: (i: unknown, c: unknown) => Promise<void>;
+    }> = [];
+    const registry = { register: (h: (typeof handlers)[number]) => handlers.push(h) };
+    const calls: Array<{ name: string; mode?: string }> = [];
+    const router = {
+      dispatch: async (i: { commandName: string }, opts?: { mode?: string }) => {
+        calls.push({
+          name: i.commandName,
+          ...(opts?.mode !== undefined ? { mode: opts.mode } : {}),
+        });
+      },
+    };
+    registerCoreFrameHandlers({ registry: registry as never, router: router as never });
+    const mode = handlers.find((h) => h.customIdPrefix === 'dumby:mode:');
+    const interaction = { user: { id: 'u' }, guildId: 'g', editReply: async () => {} };
+    await mode?.execute(interaction, mode.parse('dumby:mode:u:C:health'));
+    expect(calls).toEqual([{ name: 'health', mode: 'C' }]);
+    await mode?.execute(interaction, mode.parse('dumby:mode:u:Z:health'));
+    expect(calls).toHaveLength(1);
+  });
 });
