@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.19
+version: 5.5.20
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,19 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.20 — Self-Describing Warnings (UR-20261011-019) — 2026-10-11
+
+- 2026-10-11 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- Work order: `UR-20261011-019` (the operator's "yes, do option 1").
+- `discord-client-error` / `discord-client-warn`, `build-signing-key-invalid` (both arming sites) and
+  `module-provenance-unverified` now put their detail in the **message string**, because the operator's
+  log viewer drops the structured fields — the same workaround `command-execution-error` already uses.
+- The signing-key message now states the remedy (a single-line PEM with escaped newlines).
+- No behaviour change; structured fields retained.
+- **Verification:** `typecheck`, `lint`, `format` green.
 
 ---
 

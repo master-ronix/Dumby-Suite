@@ -51,12 +51,14 @@ export function buildDiscordClient(options: BuildClientOptions): Client {
 
   const client = new Client(clientOptions);
 
+  // The log viewer does not always surface a log's structured fields, so the message string carries
+  // the text directly — the same workaround `command-execution-error` uses.
   client.on('error', (err) => {
-    options.logger.error('discord-client-error', { error: String(err) });
+    options.logger.error(`discord-client-error: ${String(err)}`, { error: String(err) });
   });
 
   client.on('warn', (msg) => {
-    options.logger.warn('discord-client-warn', { message: msg });
+    options.logger.warn(`discord-client-warn: ${msg}`, { message: msg });
   });
 
   return client;

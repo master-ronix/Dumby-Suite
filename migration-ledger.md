@@ -6,7 +6,7 @@
 > continued, never restarted.
 
 - **Created:** 2026-10-08
-- **Last updated:** 2026-10-11 · **Current item:** Disable-flow corrections (UR-20261011-018, executed) · **Next action:** set `DISCORD_COMMAND_PERMISSIONS_TOKEN` and `BCCM_BATCH_PUSH_DRY_RUN=false` on Railway, then re-verify disable/enable live
+- **Last updated:** 2026-10-11 · **Current item:** Self-describing warnings (UR-20261011-019, executed) · **Next action:** set `DISCORD_COMMAND_PERMISSIONS_TOKEN` and `BCCM_BATCH_PUSH_DRY_RUN=false` on Railway, then re-verify disable/enable live
 - **Protocol:** `docs/migration/migration-prompt.md` v5.2.0
 - **Coverage map:** the change-set brief (18 items) → one owning item each (M0–M17)
 - **Record shapes:** `docs/migration/ledger-template.md` §3 (item) and §4 (slice)
@@ -44,6 +44,7 @@
 | M21 | Deploy-gate corrections — CI green + ephemeral deprecation (UR-20261011-016) | DONE (typecheck+lint+format) |
 | M22 | Disable-button root cause — guild_module_states partial-index upsert (UR-20261011-017) | DONE (typecheck+lint+format) |
 | M23 | Disable-flow corrections — Mode C confirmation, Bearer command-permissions, /browse control removal, owner rank (UR-20261011-018) | DONE (typecheck+lint+format) |
+| M24 | Self-describing warnings — fold runtime detail into the message string (UR-20261011-019) | DONE (typecheck+lint+format) |
 
 Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (reason)`.
 
@@ -489,3 +490,18 @@ do update set …`. Acceptance ids: `ACC-UR-027-1…5`.
 
 **Verification.** `typecheck`, `lint`, `format` green locally; the ConfigMap gate unchanged (27 keys).
 Acceptance ids: `ACC-UR-028-1…5`.
+
+---
+
+## Self-Describing Warnings (UR-20261011-019) — 2026-10-11
+
+> `discord-client-error`, `build-signing-key-invalid` and `module-provenance-unverified` carried their
+> detail only in structured fields the operator's log viewer drops.
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-93 | client error/warn messages carry the text (mirrors `command-execution-error`) | DONE |
+| DP-94 | signing-key warning carries the `createPublicKey` error + the PEM remedy | DONE |
+| DP-95 | provenance warning carries its reason | DONE |
+
+**Verification.** `typecheck`, `lint`, `format` green locally. Acceptance ids: `ACC-UR-029-1…3`.

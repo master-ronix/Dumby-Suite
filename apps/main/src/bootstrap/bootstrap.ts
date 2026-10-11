@@ -215,7 +215,10 @@ export async function bootstrapWorker(): Promise<void> {
       verifier.registerKey(buildSigningKeyId, createPublicKey(buildSigningPrivateKey));
     } catch (err) {
       provenanceGuardArmed = false;
-      logger.warn('build-signing-key-invalid', { error: String(err) });
+      logger.warn(
+        `build-signing-key-invalid: ${String(err)} — BUILD_SIGNING_PRIVATE_KEY must be a single-line PEM with escaped newlines`,
+        { error: String(err) },
+      );
     }
   }
   await loadModulesFromTierVolumes({
@@ -886,7 +889,10 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
       verifier.registerKey(buildSigningKeyId, createPublicKey(buildSigningPrivateKey));
     } catch (err) {
       provenanceGuardArmed = false;
-      logger.warn('build-signing-key-invalid', { error: String(err) });
+      logger.warn(
+        `build-signing-key-invalid: ${String(err)} — BUILD_SIGNING_PRIVATE_KEY must be a single-line PEM with escaped newlines`,
+        { error: String(err) },
+      );
     }
   }
   const discoveredModules = await loadModulesFromTierVolumes({
