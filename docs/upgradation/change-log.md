@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.18
+version: 5.5.19
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -498,6 +498,16 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 
 ---
 
+### v5.5.19 — Record correction (UR-20261011-018 v1.1) — 2026-10-11
+
+- 2026-10-11 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (docs)
+- Retracts the UR-018 §6 claim that `persona.repository.ts` binds `guild_persona_bindings` on a
+  `moduleSlug` key the table lacks — the migration `20260101000034_align_persona_model.ts` provides
+  both the column and the `(guildId, moduleSlug)` primary key, so the binding is correct.
+- Records that `CommandRouter.navigationControl` and the renderer's `navigation?` field are dead code.
+
+---
+
 ### v5.5.18 — Disable-Flow Corrections (UR-20261011-018) — 2026-10-11
 
 - 2026-10-11 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
@@ -514,8 +524,10 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   renders on the `/modules` card only.
 - **R4 — owner rank.** Both interaction adapters now pass `isGuildOwner` (the component adapter also
   passes member context), so a guild owner is not mis-ranked to RESTRICTED.
-- **Residual recorded, not fixed:** `persona.repository.ts` binds `guild_persona_bindings` with a
-  `moduleSlug` column that table does not have — the same class of mismatch as UR-20261011-017.
+- **Retraction:** an earlier draft claimed `persona.repository.ts` binds `guild_persona_bindings` on a
+  `moduleSlug` key the table lacks. Verified **false** — migration `20260101000034` gives the table a
+  `moduleSlug` column and a `(guildId, moduleSlug)` primary key. No defect. (`navigationControl` is
+  likewise dead code; the "navigation dropdown" has no code path.)
 - **Test assertions** updated for the surface-carrying `dumby:info:` customId
   (`modules-blocks.test.ts`, `browse-ui.test.ts`) — the two unit failures that skipped the deploy.
 - **Coverage:** the new logic is kept out of `bootstrap.ts` (0% covered): the Bearer-token path lives
