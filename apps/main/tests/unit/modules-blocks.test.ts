@@ -39,7 +39,7 @@ describe('modulesBlocks', () => {
     expect(String(sections[0]?.['content'])).toContain('System health');
     const accessory = sections[0]?.['accessory'] as Any;
     expect(accessory['label']).toBe('Info');
-    expect(accessory['customId']).toBe('dumby:info:u1:health');
+    expect(accessory['customId']).toBe('dumby:info:u1:modules:health');
   });
 
   test('shows the page indicator only when there is more than one page', () => {

@@ -516,6 +516,8 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   passes member context), so a guild owner is not mis-ranked to RESTRICTED.
 - **Residual recorded, not fixed:** `persona.repository.ts` binds `guild_persona_bindings` with a
   `moduleSlug` column that table does not have — the same class of mismatch as UR-20261011-017.
+- **Test assertions** updated for the surface-carrying `dumby:info:` customId
+  (`modules-blocks.test.ts`, `browse-ui.test.ts`) — the two unit failures that skipped the deploy.
 - **Verification:** `typecheck`, `lint`, `format` green; the ConfigMap gate unchanged (27 keys).
 
 ---

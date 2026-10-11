@@ -176,7 +176,10 @@ describe('core-frame handlers — discover / info / install', () => {
 
     const info = find('dumby:info:');
     const editReply = vi.fn(async () => {});
-    await info?.execute({ user: { id: 'u' }, editReply }, info.parse('dumby:info:u:hello-world'));
+    await info?.execute(
+      { user: { id: 'u' }, editReply },
+      info.parse('dumby:info:u:browse:hello-world'),
+    );
     expect(editReply).toHaveBeenCalled();
 
     const act = find('dumby:act:');
