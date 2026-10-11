@@ -43,7 +43,11 @@ export interface CoreFrameHandlerDeps {
   registry: InteractionRegistry;
   router: CommandRouter;
   /** item 8 — builds the private (ephemeral) module-detail card for a module id. */
-  moduleInfo?: (moduleId: string, guildId: string | null) => unknown | Promise<unknown>;
+  moduleInfo?: (
+    moduleId: string,
+    guildId: string | null,
+    invokerId: string,
+  ) => unknown | Promise<unknown>;
   /** item 9 — installs a marketplace module for the guild (the install-dropdown action). */
   installModule?: (moduleId: string, guildId: string | null, userId: string) => Promise<void>;
   /** UR-20261011-009 — disables/uninstalls a module for the guild (the detail card's control). */
