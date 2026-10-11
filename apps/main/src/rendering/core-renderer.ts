@@ -292,8 +292,10 @@ export class CoreRenderer {
     }
 
     // items 6/7/8 - the identity band: a bold "Dumby Suite | <page>" title, then the developer.
-    // item 2 - the attribution is the developer's registered username, not a static name.
-    const attribution = input.devUsername !== undefined ? `@${input.devUsername}` : developer;
+    // UR-20261011-013 R11 - the band shows the developer's display NAME, not a handle: the spec
+    // band is "Developed by Quixotic Mnemonics", with no '@'. The registered value is the display
+    // name, so it is rendered verbatim.
+    const attribution = input.devUsername ?? developer;
     components.push(createTitleBlock(input.surface, attribution));
     components.push(separator());
 

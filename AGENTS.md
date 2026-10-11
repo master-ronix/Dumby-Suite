@@ -106,13 +106,19 @@ for `src/modules/register-all.ts`, reference the retired path and currently matc
 
 ## Spec docs (authority order)
 
-`docs/blueprint.md` is the architectural authority; `docs/directive.md` translates it into
-imperative `D-<part>.<rule>` rules; `docs/interface.md` governs the Discord/dashboard surfaces.
-Record decisions in `docs/change-log.md` and `docs/adr/` (ADR-001 … 011). `docs/directory.md`
+The restructured corpus under `docs/` is the authority, in this order: `docs/blueprint/` (the
+architectural wiring) → `docs/spec/governance/` (the imperative `D-<part>.<rule>` rules and the
+single normative precedence list) → `docs/spec/request-layer/` (the Discord/dashboard surfaces) →
+`docs/spec/**` by department. Record decisions in `docs/upgradation/change-log.md` and
+`docs/adr/` (**15** ADRs, ADR-001 … ADR-015). `docs/spec/architecture/directory-file-structure.md`
 specifies the *intended* full tree — it lists CI pipelines, husky, changesets and similar that are
 not all present, so trust the tree over it. `apps/main/docs/architecture/README.md` is a fast
-orientation. These spec files are large — read the relevant section rather than the whole file.
-`docs/ur/` holds the consolidated re-baseline request.
+orientation; note that `apps/main/docs/` is an application-local, **non-normative** set and is
+**outside the corpus and its gates** (see `docs/README.md`). These spec files are large — read the
+relevant section rather than the whole file. The pre-restructure source records (`blueprint.md`,
+`directive.md`, `interface.md`, `directory.md`) live frozen under `docs/_inbox/`; the frozen
+request records live under `docs/upgradation/`. This file is itself point-in-time — verify a path
+against the tree before trusting it.
 
 ## CI & supply chain
 

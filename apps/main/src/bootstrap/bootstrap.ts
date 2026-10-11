@@ -647,15 +647,24 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     moduleId: string,
   ): Promise<boolean> => {
     if (guildId === null) return false;
+    // UR-20261011-013 R12 — a per-guild row is an OVERRIDE; its ABSENCE means the tier default
+    // (a standard module is enabled by default, §13). Returning `false` for a missing row made the
+    // Info card report an enabled standard module as "Disabled" while the listing — which uses the
+    // tier default — still showed it: the exact contradiction the operator reported, and the event
+    // gate (below) silently dropped that module's events. Match `isModuleEnabledInGuild` and
+    // `page-data`'s `enabledStates` exactly: default by tier, override by row.
+    const tier = moduleRegistry.get(moduleId)?.manifest.tier ?? 'marketplace';
     try {
       const row = await db
         .knex('guild_module_states')
         .where({ guildId, moduleSlug: moduleId })
-        .first();
-      return row !== undefined && row !== null && (row as { enabled?: unknown }).enabled === true;
+        .whereNull('deletedAt')
+        .first<{ enabled?: unknown; state?: unknown }>();
+      if (row === undefined || row === null) return defaultEnabledForTier(tier);
+      return row.enabled === true && row.state === 'active';
     } catch (err) {
       logger.warn('module-enabled-check-failed', { moduleId, guildId, error: String(err) });
-      return false;
+      return defaultEnabledForTier(tier);
     }
   };
   // The event router's gate uses the (moduleId, guildId) order.

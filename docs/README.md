@@ -17,6 +17,12 @@ Supporting: `contracts/` (machine-readable interfaces) · `status/` (ledgers) ·
 pre-restructure source records the corpus was derived from) · `orchestration/ migration/
 upgradation/ prompts/` (build & migration assets) · `_generated/` (generated index).
 
+**Boundary.** `apps/main/docs/` (adr · api · architecture · compliance · privacy · runbooks ·
+security) is an application-local, **non-normative** set. It is **outside this corpus and its
+gates**; nothing there is an authority. The single normative ADR series is `adr/` (ADR-001 …
+ADR-015). `check-corpus-boundary` guards this boundary; `apps/main/docs/` carries no corpus
+front-matter and makes no normative claim.
+
 ## Reading paths
 
 - **Human:** `blueprint/system-map.md` (how it fits) → `documentation/` (what it is) → the
@@ -30,7 +36,7 @@ upgradation/ prompts/` (build & migration assets) · `_generated/` (generated in
 ## Verification
 
 Every source heading is mapped to a target file, and a gate verifies each heading is actually
-present in its target (`status/coverage-ledger.json`, 2,246 rows). Run all 25 gates from `docs/`:
+present in its target (`status/coverage-ledger.json`, 2,246 rows). Run all 27 gates from `docs/`:
 
 ```
 cd docs
@@ -40,7 +46,7 @@ for g in scripts/docs/check-*.mjs; do node "$g"; done
 CI runs the same loop: `.github/workflows/docs-gates.yml` at the **repository root** executes
 every gate on any change under `docs/` (a `.github/` nested under `docs/` would be inert).
 
-Gates (25): manifest · coverage · **ledger-content** · frontmatter · contracts · **compliance** · counts · no-restatement · archive-guard · **asset-adaptation** · status-evidence · anchors · anchor-paths · **edges** · acceptance · reconciliation · code-reconciliation · **entities** · **terminology** · **authority** · **facts** · **normative-markers** · **chain** · **chain-states** · **ur**.
+Gates (27): manifest · coverage · **ledger-content** · frontmatter · contracts · **compliance** · counts · no-restatement · archive-guard · **asset-adaptation** · status-evidence · anchors · anchor-paths · **edges** · acceptance · reconciliation · code-reconciliation · **entities** · **terminology** · **authority** · **facts** · **normative-markers** · **chain** · **chain-states** · **corpus-boundary** · **side-docs** · **ur**.
 
 **Verification status (policy).** These gates are structural: they prove the corpus is internally
 consistent and single-sourced, not that a human has reviewed every section. Per-file

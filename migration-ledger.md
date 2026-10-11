@@ -6,7 +6,7 @@
 > continued, never restarted.
 
 - **Created:** 2026-10-08
-- **Last updated:** 2026-10-11 · **Current item:** Dashboard page upgrade (UR-20261011-001, DP-1…DP-9) · M10/M14/M16 still open · **Next action:** land the remaining slices — the /browse text-input search modal + >25-option paging (M10), the private info embed (M14), the page-switch divider + uninstall effect (M16) — then run the app toolchain (Node ≥ 22) to gate them
+- **Last updated:** 2026-10-11 · **Current item:** Modules enablement read & developer attribution (UR-20261011-015, DP-79…DP-80, executed) · **Next action:** re-verify the /modules surfaces on a live run and author the D-8.2 per-layer coverage tests (OI-2)
 - **Protocol:** `docs/migration/migration-prompt.md` v5.2.0
 - **Coverage map:** the change-set brief (18 items) → one owning item each (M0–M17)
 - **Record shapes:** `docs/migration/ledger-template.md` §3 (item) and §4 (slice)
@@ -38,6 +38,9 @@
 | M17 | Hello standard-tier page cleanup | DONE |
 | MR-1 | Docs residual — attribution contradiction | DONE |
 | MR-2 | Docs residual — ADR-010 blurple retention | DONE |
+| M18 | /modules corrections & disable enforcement (UR-20261011-013) | REOPENED |
+| M19 | Codebase interception — BCCM dry-run env coercion (UR-20261011-014) | DONE (typecheck+lint) |
+| M20 | Modules enablement read + developer attribution root-cause (UR-20261011-015) | DONE (typecheck+lint) |
 
 Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (reason)`.
 
@@ -366,3 +369,68 @@ Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (rea
 typecheck, lint, format, the flow suite, Gate 4 unit tests, the live-Postgres+Redis integration job,
 and the Docker build — all green. (The first push `8caac653` failed only Gate 4, on one unit test
 that asserted the pre-change module-page behaviour; it was updated to the new arrangement.)
+
+---
+
+## Modules Corrections & Disable Enforcement (UR-20261011-013) — 2026-10-11
+
+> A correction work order. The operator reports that the DP-41…DP-59 arrangements above were
+> written to the tree (`DONE (tree)`) but **do not behave as specified on a live surface**. These
+> items therefore **re-open** the corresponding DP rows; the specification (§9.10–§9.12) is
+> authority, and the code is the gap to close. Coordinated with `upgradation/change-log.md`.
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-60 | Fallback logo is `dumby_module_fallback`; the white square is the command decoration only (R1) | REOPENED |
+| DP-61 | Listing renders name + title-cased tier + `-#` description, cleanly (R2) | REOPENED |
+| DP-62 | Per-module Info control sits in-line after each module; button rows removed (R3) | REOPENED |
+| DP-63 | Uninstall/disable is an icon-only control inside the Info card (`dumby_uninstall`, no label) (R4) | REOPENED |
+| DP-64 | `/modules` navigation matches the other surfaces' grammar (R5) | REOPENED |
+| DP-65 | Info card is always ephemeral (R6) | REOPENED |
+| DP-66 | `/modules` Home returns to `/modules` page 0, not the dashboard (R7) | REOPENED |
+| DP-67 | Info card renders as a single Mode M/C block (R8) | REOPENED |
+| DP-68 | Info card carries no per-field dividers/separators (R9) | REOPENED |
+| DP-69 | Every Info field is meaningful (no filler, no raw tokens) (R10) | REOPENED |
+| DP-70 | Developer resolved by name (first-party → Quixotic Mnemonics); never the raw `devId` (R11) | REOPENED |
+| DP-71 | Disable writes an instant `@everyone` deny override + BCCM enqueue + dispatch gate (R12) | REOPENED |
+| DP-72 | Disabled Standard module offered in `/browse` as "Previously installed" and re-enables via the dropdown (R12) | REOPENED |
+| DP-73 | A core module's Info renders no uninstall/disable control (R13) | REOPENED |
+
+**Observed violations (operator, 2026-10-11):** the Info card reports a module disabled while the
+module stays listed in `/modules`, its command stays registered/loaded in the guild, its dashboard
+page stays registered, and it is not offered in `/browse` for re-install. Acceptance ids:
+`ACC-UR-023-1…14` (see `upgradation/UR-20261011-013.md`).
+
+---
+
+## Codebase Interception (UR-20261011-014) — 2026-10-11
+
+> A code-correction work order from the codebase-level interception. It fixes one genuine defect and
+> records the implementation verdict for the /modules path.
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-74 | `envBool` replaces `z.coerce.boolean()` on all five env fields — the string `"false"` no longer reads as `true` (R1) | DONE (typecheck+lint) |
+| DP-75 | Regression tests for boolean env parsing (`env-schema.test.ts`) (R2) | DONE (CI) |
+| DP-76 | /modules implementation verdict recorded — UR-009/010/011 are implemented at HEAD; the S2 symptom is the BCCM dry-run env defect | DONE |
+
+**Verification.** `typecheck` and `lint` green locally (Node 20.20.2; the workspace declares Node ≥ 22).
+`test:unit` and `tsx` could not run in the interception environment (WebAssembly unavailable); CI runs
+them. Acceptance ids: `ACC-UR-024-1…4`.
+
+---
+
+## Modules Enablement Read & Developer Attribution (UR-20261011-015) — 2026-10-11
+
+> Root-cause corrections found from the operator's live-surface screenshots. The /modules features
+> are present; two functions carried wrong semantics.
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-77 | First-party developer attribution resolves to `Quixotic Mnemonics`, not the `@master_ronix` handle (R1) | DONE (typecheck+lint) |
+| DP-78 | `isModuleEnabledForGuild` falls back to the tier default for a missing row (card/listing/browse/event-gate now agree) (R2) | DONE (typecheck+lint) |
+| DP-79 | Regression tests: `developer-registry.test.ts`, `core-renderer.test.ts` no-`@` case (R1) | DONE (CI) |
+| DP-80 | Verdict recorded: the two defects reproduce the operator's screenshots (S1/S4) | DONE |
+
+**Verification.** `typecheck` and `lint` green locally; `test:unit` in CI. Acceptance ids:
+`ACC-UR-025-1…6`.

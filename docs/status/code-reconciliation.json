@@ -1,8 +1,9 @@
 {
   "$id": "docs/status/code-reconciliation.json",
   "title": "Docs \u2194 Code reconciliation",
-  "note": "Every row compares what the NEW documentation asserts against the actual source in master-ronix/Dumby-Suite (apps/main at 039da060c211d274242c1c60156b6b0eb41f6e21, branch feature/dev). Standing rule: the specification is authority; where the code is narrower, the code is the gap to close.",
-  "verified_commit": "039da060c211d274242c1c60156b6b0eb41f6e21",
+  "note": "Every row compares what the NEW documentation asserts against the actual source in master-ronix/Dumby-Suite (apps/main at 8355ba4f824269a714e22edef21797a602ab6800, branch feature/dev). Standing rule: the specification is authority; where the code is narrower, the code is the gap to close.",
+  "verified_commit": "8355ba4f824269a714e22edef21797a602ab6800",
+  "verified_branch": "feature/dev",
   "verdicts": [
     "match",
     "doc-incomplete",
@@ -17,7 +18,7 @@
       "code_truth": "releaseStatus is required and is z.enum(['private','public'])",
       "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
       "verdict": "match",
-      "resolution": "Re-verified against HEAD 039da060c211d274242c1c60156b6b0eb41f6e21 \u2014 the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
+      "resolution": "Re-verified against HEAD 8355ba4f824269a714e22edef21797a602ab6800 \u2014 the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
     },
     {
       "id": "REC-002",
@@ -26,7 +27,7 @@
       "code_truth": "the schema carries a required visibility enum (['public','unlisted','private'])",
       "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
       "verdict": "match",
-      "resolution": "Re-verified against HEAD 039da060c211d274242c1c60156b6b0eb41f6e21 \u2014 the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
+      "resolution": "Re-verified against HEAD 8355ba4f824269a714e22edef21797a602ab6800 \u2014 the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
     },
     {
       "id": "REC-003",
@@ -53,7 +54,7 @@
       "code_truth": "the schema requires name, version, description, tier, hardcoded, devId, buildId, visibility and releaseStatus \u2014 matching the contract's required list",
       "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
       "verdict": "match",
-      "resolution": "Re-verified against HEAD 039da060c211d274242c1c60156b6b0eb41f6e21 \u2014 the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
+      "resolution": "Re-verified against HEAD 8355ba4f824269a714e22edef21797a602ab6800 \u2014 the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
     },
     {
       "id": "REC-006",
@@ -152,7 +153,7 @@
       "code_truth": "22 CORE_TOKENS declared (Logger, Config, Db, EventBus, Cache, Queue, ModuleRegistry, PermissionResolver, Metrics, I18n, CommandRegistry, CommandRouter, Renderer, InteractionRegistry, CommandCeilingService, CollisionResolutionService, Personas, EventRouter, Scheduler, AdminEvalGate, OAuth2, MtpTokens)",
       "code_ref": "apps/main/src/di/tokens.ts",
       "verdict": "match",
-      "resolution": "Re-verified against HEAD 039da060c211d274242c1c60156b6b0eb41f6e21 \u2014 the registry declares 22 core tokens (I18n added since the earlier 21-token count); the docs count and list now match the code."
+      "resolution": "Re-verified against HEAD 8355ba4f824269a714e22edef21797a602ab6800 \u2014 the registry declares 22 core tokens (I18n added since the earlier 21-token count); the docs count and list now match the code."
     },
     {
       "id": "REC-018",
@@ -169,7 +170,7 @@
       "code_truth": "marketplaceCategory is a closed five-value enum ('audio'|'community'|'security'|'integrations'|'utility')",
       "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
       "verdict": "match",
-      "resolution": "Re-verified against HEAD 039da060c211d274242c1c60156b6b0eb41f6e21 \u2014 the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
+      "resolution": "Re-verified against HEAD 8355ba4f824269a714e22edef21797a602ab6800 \u2014 the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
     },
     {
       "id": "REC-020",
@@ -178,7 +179,7 @@
       "code_truth": "depends: array of {token,version}; provides: array of {token,contract}; services: array of {token,class,lifetime,deps}",
       "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
       "verdict": "match",
-      "resolution": "Re-verified against HEAD 039da060c211d274242c1c60156b6b0eb41f6e21 \u2014 the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
+      "resolution": "Re-verified against HEAD 8355ba4f824269a714e22edef21797a602ab6800 \u2014 the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
     },
     {
       "id": "REC-021",
@@ -187,7 +188,7 @@
       "code_truth": "devId and buildId are both required",
       "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
       "verdict": "match",
-      "resolution": "Re-verified against HEAD 039da060c211d274242c1c60156b6b0eb41f6e21 \u2014 the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
+      "resolution": "Re-verified against HEAD 8355ba4f824269a714e22edef21797a602ab6800 \u2014 the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
     },
     {
       "id": "REC-022",
@@ -196,7 +197,7 @@
       "code_truth": "required: z.boolean().default(false)",
       "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
       "verdict": "match",
-      "resolution": "Re-verified against HEAD 039da060c211d274242c1c60156b6b0eb41f6e21 \u2014 the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
+      "resolution": "Re-verified against HEAD 8355ba4f824269a714e22edef21797a602ab6800 \u2014 the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
     }
   ],
   "counts": {
