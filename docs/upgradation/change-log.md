@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.22
+version: 5.5.23
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,19 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.23 — OAuth Route Coverage & Callback Alias (UR-20261011-022) — 2026-10-11
+
+- 2026-10-11 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- Work order: `UR-20261011-022`.
+- The 60eb7c1 CI run passed all 961 tests but failed the branch-coverage gate at 64.87% (threshold 65%),
+  with `http/routes/oauth.routes.ts` at 0% branch coverage. Added `oauth-routes.test.ts` (Fastify
+  inject: dashboard statuses, authorize cookies, callback state/missing-code/success/not-permitted/
+  failure) and an unreadable-refresh-token case, so the routes are covered.
+- The callback handler is now registered at both `/auth/callback` and the older `/oauth/callback`.
+- **Verification:** `typecheck`, `lint`, `format` green; corpus gates 27/27.
 
 ---
 

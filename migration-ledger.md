@@ -6,7 +6,7 @@
 > continued, never restarted.
 
 - **Created:** 2026-10-08
-- **Last updated:** 2026-10-11 · **Current item:** BCCM put-failure observability (UR-20261011-021, executed) · **Next action:** set the OAUTH_* variables on Railway, press Authorize Dumby on /dashboard, and read the next bccm-batch-put-failed for its cause
+- **Last updated:** 2026-10-11 · **Current item:** OAuth route coverage + callback alias (UR-20261011-022, executed) · **Next action:** set the OAUTH_* variables on Railway, press Authorize Dumby on /dashboard, and read the next bccm-batch-put-failed for its cause
 - **Protocol:** `docs/migration/migration-prompt.md` v5.2.0
 - **Coverage map:** the change-set brief (18 items) → one owning item each (M0–M17)
 - **Record shapes:** `docs/migration/ledger-template.md` §3 (item) and §4 (slice)
@@ -47,6 +47,7 @@
 | M24 | Self-describing warnings — fold runtime detail into the message string (UR-20261011-019) | DONE (typecheck+lint+format) |
 | M25 | Durable command-permission tokens — dashboard authorization, sealed storage, automatic refresh (UR-20261011-020) | DONE (typecheck+lint+format) |
 | M26 | BCCM put-failure observability + UR-020 test-assertion correction (UR-20261011-021) | DONE (typecheck+lint+format) |
+| M27 | OAuth route coverage + callback alias (UR-20261011-022) | DONE (typecheck+lint+format) |
 
 Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (reason)`.
 
@@ -536,3 +537,14 @@ Acceptance ids: `ACC-UR-028-1…5`.
 | DP-102 | UR-020 refresh tests assert the intended near-expiry behaviour | DONE |
 
 **Verification.** `typecheck`, `lint`, `format` green locally. Acceptance ids: `ACC-UR-031-1…3`.
+
+---
+
+## OAuth Route Coverage (UR-20261011-022) — 2026-10-11
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-103 | OAuth routes exercised via Fastify inject (0% → covered) | DONE |
+| DP-104 | Callback served at `/auth/callback` and `/oauth/callback` | DONE |
+
+**Verification.** `typecheck`, `lint`, `format` green locally. Acceptance ids: `ACC-UR-032-1…4`.

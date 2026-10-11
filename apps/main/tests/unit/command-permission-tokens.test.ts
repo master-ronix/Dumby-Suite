@@ -146,6 +146,22 @@ describe('CommandPermissionTokenService', () => {
     expect(await service.status('g5')).toBe('revoked');
   });
 
+  test('refreshDue marks revoked when the stored refresh token is unreadable', async () => {
+    const { service, sealer } = makeService();
+    await service.connect('g7', 'u7', {
+      accessToken: 'a',
+      refreshToken: 'r',
+      expiresIn: 2,
+      scope: COMMAND_PERMISSION_SCOPE,
+    });
+    sealer.read.mockImplementationOnce(async () => {
+      throw new Error('gone');
+    });
+    const result = await service.refreshDue();
+    expect(result.revoked).toBe(1);
+    expect(await service.status('g7')).toBe('revoked');
+  });
+
   test('refreshDue skips a token that is not yet near expiry', async () => {
     const { service, refresher } = makeService();
     await service.connect('g6', 'u6', {

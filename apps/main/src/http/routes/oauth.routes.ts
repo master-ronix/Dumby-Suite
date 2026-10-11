@@ -1,4 +1,4 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { Logger } from '../../logging/logger.js';
 import {
   COMMAND_PERMISSION_SCOPE,
@@ -66,7 +66,7 @@ export function registerOAuthRoutes(app: FastifyInstance, deps: OAuthRoutesDeps)
     return reply.redirect(client.authorizeUrl(state, scopes));
   });
 
-  app.get('/auth/callback', async (req, reply) => {
+  const handleCallback = async (req: FastifyRequest, reply: FastifyReply): Promise<unknown> => {
     const query = req.query as { code?: string; state?: string };
     const cookies = parseCookies(req.headers.cookie);
     const expected = cookies[OAUTH_STATE_COOKIE];
@@ -140,7 +140,11 @@ export function registerOAuthRoutes(app: FastifyInstance, deps: OAuthRoutesDeps)
           ),
         );
     }
-  });
+  };
+  app.get('/auth/callback', handleCallback);
+  // UR-20261011-020 — also accept the older `/oauth/callback` path, so a redirect URI already
+  // registered under it in the Developer Portal keeps working without a change there.
+  app.get('/oauth/callback', handleCallback);
 
   app.get('/dashboard', async (_req, reply) => {
     const status = tokens === undefined ? 'none' : await tokens.status(defaultGuildId);
