@@ -35,6 +35,7 @@ describe('unified command tree', () => {
       'bccm-batch-push.ts',
       'bccm-effects.ts',
       'collision-resolution.ts',
+      'command-access.ts',
       'command-ceiling.ts',
       'command-deployer.ts',
       'command-registry.ts',

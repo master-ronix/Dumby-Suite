@@ -521,6 +521,8 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 - **Coverage:** the new logic is kept out of `bootstrap.ts` (0% covered): the Bearer-token path lives
   in `command-access.ts` and the confirmation in `confirmations.ts`, both fully unit-tested, and the
   unused component-path member context was removed. This restores the branch gate (65%).
+- **Structure test:** `command-access.ts` added to the canonical `src/commands/` list in
+  `command-tree-structure.test.ts`.
 - **Verification:** `typecheck`, `lint`, `format` green; the ConfigMap gate unchanged (27 keys).
 
 ---
