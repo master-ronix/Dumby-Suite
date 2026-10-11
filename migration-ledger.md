@@ -6,7 +6,7 @@
 > continued, never restarted.
 
 - **Created:** 2026-10-08
-- **Last updated:** 2026-10-11 · **Current item:** New-guild deploy, per-guild auth, BCCM payload fix (UR-20261011-023, executed) · **Next action:** set NODE_ENV=production on Railway and authorize each guild from /dashboard
+- **Last updated:** 2026-10-11 · **Current item:** Non-blocking boot command deploy (UR-20261011-024, executed) · **Next action:** authorize each guild from /dashboard, then flip BCCM_BATCH_PUSH_DRY_RUN=false and watch for sent>0
 - **Protocol:** `docs/migration/migration-prompt.md` v5.2.0
 - **Coverage map:** the change-set brief (18 items) → one owning item each (M0–M17)
 - **Record shapes:** `docs/migration/ledger-template.md` §3 (item) and §4 (slice)
@@ -51,6 +51,7 @@
 | M28 | OAuth state-cookie path widened to `/` so the callback alias receives it (UR-20261011-022 v1.1) | DONE |
 | M29 | New-guild command deploy, per-guild authorization, BCCM full-object payload (UR-20261011-023) | DONE (typecheck+lint+format) |
 | M30 | BCCM name validation (drop an invalid name, which fails the whole bulk overwrite) + `applied=N` in the hide log (UR-20261011-023 v1.1) | DONE |
+| M31 | Boot command deploy moved off the readiness path (UR-20261011-024) | DONE |
 
 Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (reason)`.
 

@@ -1342,25 +1342,24 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
         return allRows.map((row) => row.id).filter((id) => !disabled.has(id));
       },
     });
-    // A failed command-registration must NOT take the bot offline. The client has already
-    // logged in (Stage 15) and the gateway connection is independent of command deployment;
-    // crashing here would drop a healthy bot every time the Discord REST call hiccups.
-    try {
-      await commandDeployer.deploy();
-    } catch (err) {
+    // Twelve tables foreign-key onto `guilds`, so every guild-scoped write needs the guild row to
+    // exist first — and the deployer's enabled-guild resolver reads that table, so the guilds are
+    // registered BEFORE the deploy. UR-20261011-023 — a guild that joins after boot gets its
+    // commands immediately, rather than waiting for the next deploy.
+    await registerKnownGuilds(discordClient, db, logger, (guildId) =>
+      commandDeployer.deployForGuild(guildId),
+    );
+    // UR-20261011-024 — the command deploy runs in the BACKGROUND. Per-guild registration is
+    // rate-limited (two bulk-overwrite calls per guild) and was blocking readiness for minutes on
+    // every restart. The gateway connection is independent of command deployment, so the bot is
+    // functional while its commands propagate; a failure is logged, never fatal.
+    void commandDeployer.deploy().catch((err: unknown) => {
       logger.error('command-deploy-failed', {
         error: String(err),
         applicationId,
         devGuildId: config.get('DEV_GUILD_ID'),
       });
-    }
-    // Twelve tables foreign-key onto `guilds`, so every guild-scoped write needs the guild row to
-    // exist first. Register the guilds we are already in before anything touches guild state.
-    // UR-20261011-023 — a guild that joins after boot gets its commands immediately, rather than
-    // waiting for the next deploy (the boot deploy only covers the guilds known at that moment).
-    await registerKnownGuilds(discordClient, db, logger, (guildId) =>
-      commandDeployer.deployForGuild(guildId),
-    );
+    });
 
     logger.info('discord-client-ready', {
       applicationId,
