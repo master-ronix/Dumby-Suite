@@ -58,7 +58,8 @@ function makeService(overrides: Any = {}) {
     refresher,
     logger,
     now: () => clock,
-    refreshLeadMs: 1000,
+    // Large enough that the 2-second fixtures count as "near expiry" and the 7-day one does not.
+    refreshLeadMs: 1_000_000,
     ...overrides,
   } as never);
   return {

@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.21
+version: 5.5.22
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,18 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.22 — BCCM Put-Failure Observability (UR-20261011-021) — 2026-10-11
+
+- 2026-10-11 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- Work order: `UR-20261011-021`.
+- `bccm-batch-put-failed` now puts the error text (which for a Discord API error includes the HTTP
+  status and code) in the message string, and names the status — the same pattern UR-019 used.
+- Corrected the two UR-020 `refreshDue` tests: their fixtures expired in 2s while the lead was 1000ms,
+  so the loop correctly skipped them; the lead is now 1_000_000ms.
+- **Verification:** `typecheck`, `lint`, `format` green.
 
 ---
 

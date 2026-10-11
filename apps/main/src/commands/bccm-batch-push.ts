@@ -165,7 +165,14 @@ export async function runBccmBatchPush(deps: BccmBatchPushDeps): Promise<BccmBat
         continue;
       }
       await store.dropReservations(guildId, fresh);
-      logger.error('bccm-batch-put-failed', { guildId, error: String(err) });
+      // The log viewer drops a record's structured fields, so the message string carries the error
+      // text — which for a Discord API error includes the HTTP status and code — directly (the
+      // `command-execution-error` pattern), with the status also named when the error carries one.
+      const status = (err as { status?: number }).status;
+      logger.error(
+        `bccm-batch-put-failed guild=${guildId}${status === undefined ? '' : ` status=${status}`}: ${String(err)}`,
+        { guildId, error: String(err) },
+      );
       guilds.push({ ...base, sent: false, skippedReason: 'put-failed' });
       continue;
     }
