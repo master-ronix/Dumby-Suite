@@ -59,8 +59,10 @@ export function registerOAuthRoutes(app: FastifyInstance, deps: OAuthRoutesDeps)
     const guildId = query.guild ?? defaultGuildId;
     const state = generateOAuthState();
     const cookies = [
-      `${OAUTH_STATE_COOKIE}=${state}; HttpOnly; Secure; SameSite=Lax; Path=/auth; Max-Age=600`,
-      `${OAUTH_GUILD_COOKIE}=${guildId}; HttpOnly; Secure; SameSite=Lax; Path=/auth; Max-Age=600`,
+      // Path=/ so the callback leg receives them at BOTH /auth/callback and /oauth/callback; a
+      // narrower path would silently drop them on the alias and fail the state check.
+      `${OAUTH_STATE_COOKIE}=${state}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=600`,
+      `${OAUTH_GUILD_COOKIE}=${guildId}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=600`,
     ];
     reply.header('set-cookie', cookies);
     return reply.redirect(client.authorizeUrl(state, scopes));

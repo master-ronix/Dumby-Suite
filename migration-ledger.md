@@ -48,6 +48,7 @@
 | M25 | Durable command-permission tokens — dashboard authorization, sealed storage, automatic refresh (UR-20261011-020) | DONE (typecheck+lint+format) |
 | M26 | BCCM put-failure observability + UR-020 test-assertion correction (UR-20261011-021) | DONE (typecheck+lint+format) |
 | M27 | OAuth route coverage + callback alias (UR-20261011-022) | DONE (typecheck+lint+format) |
+| M28 | OAuth state-cookie path widened to `/` so the callback alias receives it (UR-20261011-022 v1.1) | DONE |
 
 Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (reason)`.
 

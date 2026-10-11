@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.23
+version: 5.5.24
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,17 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.24 — OAuth state-cookie path (UR-20261011-022 v1.1) — 2026-10-11
+
+- 2026-10-11 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- Found while reviewing the Developer Portal screenshots: the authorize leg set `dumby_oauth_state` /
+  `dumby_oauth_guild` with `Path=/auth`, so a browser reaching the `/oauth/callback` alias would not
+  send them and the state check would fail there. The unit test missed it because it injects the cookie
+  header directly. The cookies are now `Path=/`.
+- **Verification:** `typecheck`, `lint`, `format` green; corpus gates 27/27.
 
 ---
 

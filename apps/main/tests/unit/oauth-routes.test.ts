@@ -69,6 +69,8 @@ test('GET /auth/authorize mints a state cookie and redirects to Discord', async 
   const cookie = String(res.headers['set-cookie']);
   expect(cookie).toContain('dumby_oauth_state=');
   expect(cookie).toContain('dumby_oauth_guild=g1');
+  // Path=/ so the callback leg receives the cookies on both /auth/callback and /oauth/callback.
+  expect(cookie).toContain('Path=/');
 });
 
 test('GET /auth/callback rejects a mismatched state and a missing code', async () => {
