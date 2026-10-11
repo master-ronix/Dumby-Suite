@@ -93,6 +93,8 @@ export interface CommandRouterOptions {
     guildId: string | null,
     /** UR-004 — the dashboard page index (0 = main; 1..n = the standard module pages). */
     page?: number,
+    /** item 5b — the /browse search query, when one was submitted. */
+    query?: string,
   ) => Promise<Readonly<Record<string, unknown>>>;
   /**
    * §6.7 — performs the side effects a handler declares. Keyed by effect kind; an undeclared kind
