@@ -319,6 +319,15 @@ Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (rea
 |------|--------|--------|
 | DP-36 | Discover sits in-line with the title (the title Section's accessory) | DONE (tree) |
 
+**Health redesign (UR-20261011-008, 2026-10-11):**
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-37 | Health leads with an overall status headline (dot + word + compact summary) | DONE (tree) |
+| DP-38 | One compact line per subsystem, each with a status dot and its metrics | DONE (tree) |
+| DP-39 | Refresh control in-line with the headline (generated white circular-arrow icon) | DONE (asset + tree) |
+| DP-40 | Overall state = worst subsystem (gateway/db down → down; cache down → degraded) | DONE (tree) |
+
 **Verification.** The application suite was verified in **CI** on `3faa1b16`: Gate 1 strict
 typecheck, lint, format, the flow suite, Gate 4 unit tests, the live-Postgres+Redis integration job,
 and the Docker build — all green. (The first push `8caac653` failed only Gate 4, on one unit test

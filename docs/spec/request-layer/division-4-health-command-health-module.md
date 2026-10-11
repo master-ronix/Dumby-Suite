@@ -193,6 +193,25 @@ Dumby | Health
 
 ---
 
+### 4.8 Health Page Redesign (UR-20261011-008) — the current arrangements
+
+> **Authority.** The operator's final authority (UR-20261011-008, 11/10/2026); supersedes the earlier
+> clauses of this Division where they conflict.
+
+- **At-a-glance board.** The content leads with a **status headline** — an overall state dot and
+  word (`🟢 Operational` / `🟡 Degraded` / `🔴 Down`) over a compact `-#` summary (uptime · Node ·
+  module count · guild count). Each subsystem is then **one compact line**: a status dot, the bold
+  subsystem name, and its metrics as `-#` subtext. The in-content title is `System Health` (the
+  frame title already names the surface); the former `📊 SYSTEM HEALTH REPORT` banner is retired.
+- **Subsystem status.** Each subsystem carries a status (`ok` / `warn` / `down`) from its connection
+  state. The overall state is the worst subsystem: a critical subsystem (the Discord gateway or the
+  database) down is `down`; a non-critical one (the cache) down is `degraded`; otherwise
+  `operational`.
+- **Refresh control.** A **Refresh** control (a generated bold white circular-arrow icon,
+  `dumby_refresh`) sits **in-line with the status headline** (a Section accessory). Selecting it
+  re-dispatches the page, re-running the health handler so the report re-gathers its data.
+- **No data lost.** Every data point §4.4 specifies and the page already gathers remains visible.
+
 ## Contract
 - `contracts/rbac.enums.json`
 - `contracts/commands.json`

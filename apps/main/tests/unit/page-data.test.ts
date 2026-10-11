@@ -66,11 +66,16 @@ describe('page-data provider', () => {
     const provider = createPageDataProvider(makeDeps());
     const data = await provider('health', null);
 
-    expect(data['title']).toBe('📊 SYSTEM HEALTH REPORT');
-    const groups = data['groups'] as Array<{ name: string; rows: unknown[] }>;
+    expect(data['title']).toBe('System Health');
+    expect(typeof data['statusLabel']).toBe('string');
+    expect(typeof data['summary']).toBe('string');
+    const groups = data['groups'] as Array<{ name: string; status?: string; rows: unknown[] }>;
     expect(groups.map((group) => group.name)).toContain('Bot Process');
     expect(groups.map((group) => group.name)).toContain('Database');
     expect(groups.map((group) => group.name)).toContain('Cache');
+    // each subsystem carries a status for the at-a-glance layout
+    expect(groups.find((group) => group.name === 'Database')?.status).toBe('ok');
+    expect(groups.find((group) => group.name === 'Cache')?.status).toBe('ok');
     // no client → the Guilds & Users group is omitted rather than invented
     expect(groups.map((group) => group.name)).not.toContain('Guilds & Users');
   });
@@ -100,12 +105,32 @@ describe('page-data provider', () => {
       }),
     );
     const data = await provider('health', null);
+    expect(data['status']).toBe('down');
     const groups = data['groups'] as Array<{ name: string; rows: Array<[string, string]> }>;
     const db = groups.find((group) => group.name === 'Database');
     const cache = groups.find((group) => group.name === 'Cache');
     expect(db?.rows[0]?.[1]).toBe('Unavailable');
     expect(cache?.rows[0]?.[1]).toBe('Unavailable');
     expect(logger.warn).toHaveBeenCalledTimes(2);
+  });
+
+  test('health is degraded when only the cache is down', async () => {
+    const provider = createPageDataProvider(
+      makeDeps({
+        getClient: () => fakeClient,
+        redis: {
+          ping: async (): Promise<never> => {
+            throw new Error('down');
+          },
+        },
+      }),
+    );
+    const data = await provider('health', null);
+    expect(data['status']).toBe('degraded');
+    expect(data['statusLabel']).toBe('Degraded');
+    const groups = data['groups'] as Array<{ name: string; status?: string }>;
+    expect(groups.find((group) => group.name === 'Cache')?.status).toBe('down');
+    expect(groups.find((group) => group.name === 'Discord API')?.status).toBe('ok');
   });
 
   test('persona lists the bound modules and command inventory', async () => {

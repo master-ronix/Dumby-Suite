@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.8
+version: 5.5.9
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -443,6 +443,21 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   sits **in-line with the title** (a Section renders its single accessory on the right of the text
   line); the standalone control row above the title is removed. This is expressible now that only one
   control remains — it was not while two controls shared the row.
+- **Verification:** the corpus gate suite is green; the application suite is pending CI; the
+  interaction paths require a live run.
+
+---
+
+### v5.5.9 — Health Page Redesign (UR-20261011-008) — 2026-10-11
+
+- 2026-10-11 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- Work order: `UR-20261011-008` (extends `UR-20261011-007`).
+- **C1:** the health report is re-presented as an at-a-glance board — an overall status headline
+  (dot + word + compact `-#` summary) over one compact line per subsystem (status dot, bold name,
+  metrics subtext); the in-content title becomes `System Health`. **C2:** a **Refresh** control
+  (generated bold white circular-arrow icon, `dumby_refresh`) sits in-line with the headline and
+  re-runs the report. **C3:** every existing data point is preserved. Overall state = the worst
+  subsystem (gateway/database down → `down`; cache down → `degraded`).
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
 

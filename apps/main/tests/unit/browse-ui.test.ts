@@ -187,5 +187,12 @@ describe('core-frame handlers — discover / info / install', () => {
       act.parse('dumby:act:u:install:browse'),
     );
     expect(installed).toEqual(['hello-world']);
+
+    // UR-20261011-008 — the health page's Refresh control re-dispatches the target page.
+    await act?.execute(
+      { user: { id: 'u' }, guildId: 'g' },
+      act.parse('dumby:act:u:refresh:health'),
+    );
+    expect(dispatched).toContain('health');
   });
 });

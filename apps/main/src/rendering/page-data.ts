@@ -26,6 +26,8 @@ type Rows = ReadonlyArray<readonly [string, string]>;
 interface Group {
   readonly name: string;
   readonly rows: Rows;
+  /** UR-20261011-008 — the subsystem's health: 'ok' | 'warn' | 'down'. */
+  readonly status?: string;
 }
 
 const mb = (bytes: number): string => `${(bytes / 1024 / 1024).toFixed(1)} MB`;
@@ -79,15 +81,19 @@ export function createPageDataProvider(
     const byTier = (tier: string): number =>
       modules.filter((entry) => entry.manifest.tier === tier).length;
 
+    const gatewayReady = client?.isReady() === true;
     const discordRows: Array<readonly [string, string]> = [];
     if (client !== undefined) discordRows.push(['Gateway Ping', `${Math.round(client.ws.ping)}ms`]);
-    discordRows.push(['Gateway Status', client?.isReady() === true ? 'Connected' : 'Disconnected']);
+    discordRows.push(['Gateway Status', gatewayReady ? 'Connected' : 'Disconnected']);
     discordRows.push(['Shard Count', String(config.get('SHARD_COUNT'))]);
 
+    // UR-20261011-008 — each subsystem carries a status, so the health page can lead with an
+    // at-a-glance overall state and mark a degraded subsystem in place.
     const groups: Group[] = [
-      { name: 'Discord API', rows: discordRows },
+      { name: 'Discord API', status: gatewayReady ? 'ok' : 'down', rows: discordRows },
       {
         name: 'Bot Process',
+        status: 'ok',
         rows: [
           ['Uptime', formatUptime(process.uptime())],
           ['Node.js Version', process.version],
@@ -98,6 +104,7 @@ export function createPageDataProvider(
       },
       {
         name: 'Modules',
+        status: 'ok',
         rows: [
           ['Total Loaded', String(modules.length)],
           ['Core-tier', String(byTier('core'))],
@@ -106,13 +113,22 @@ export function createPageDataProvider(
           ['Admin-tier', String(byTier('admin'))],
         ],
       },
-      { name: 'Database', rows: [['PostgreSQL Status', dbStatus]] },
-      { name: 'Cache', rows: [['Redis Status', redisStatus]] },
+      {
+        name: 'Database',
+        status: dbStatus === 'Connected' ? 'ok' : 'down',
+        rows: [['PostgreSQL Status', dbStatus]],
+      },
+      {
+        name: 'Cache',
+        status: redisStatus === 'Connected' ? 'ok' : 'down',
+        rows: [['Redis Status', redisStatus]],
+      },
     ];
 
     if (client !== undefined) {
       groups.push({
         name: 'Guilds & Users',
+        status: 'ok',
         rows: [
           ['Total Guilds', String(client.guilds.cache.size)],
           ['Total Users', String(client.guilds.cache.reduce((sum, g) => sum + g.memberCount, 0))],
@@ -120,7 +136,31 @@ export function createPageDataProvider(
       });
     }
 
-    return { title: '📊 SYSTEM HEALTH REPORT', groups };
+    // The overall state is the worst subsystem: a critical subsystem (the Discord gateway or the
+    // database) down is `down`; a non-critical one (the cache) down is `degraded`; else `operational`.
+    const criticalDown = groups.some(
+      (group) =>
+        group.status === 'down' && (group.name === 'Discord API' || group.name === 'Database'),
+    );
+    const anyDown = groups.some((group) => group.status === 'down');
+    const status = criticalDown ? 'down' : anyDown ? 'degraded' : 'operational';
+    const statusLabel =
+      status === 'operational' ? 'Operational' : status === 'degraded' ? 'Degraded' : 'Down';
+
+    const summaryParts = [
+      `up ${formatUptime(process.uptime())}`,
+      `Node ${process.version}`,
+      `${modules.length} modules`,
+    ];
+    if (client !== undefined) summaryParts.push(`${client.guilds.cache.size} guilds`);
+
+    return {
+      title: 'System Health',
+      status,
+      statusLabel,
+      summary: summaryParts.join(' · '),
+      groups,
+    };
   }
 
   async function persona(): Promise<PageData> {

@@ -10,6 +10,8 @@ import { DEFAULT_MODULE_ICON_NAME, registerModuleEmoji } from './module-icons.js
  *   - `dumby_module`  — the default white module icon; the fallback for any module that declares none
  *                       (item 5), and the icon shown on a MODULE page's command list.
  *   - `dumby_home`    — the Home control's bold white icon (item 2).
+ *   - `dumby_discover`— the Discover control's bold white magnifier (item 2).
+ *   - `dumby_refresh` — the health page's Refresh control's bold white circular arrow.
  *   - `dumby_<slug>`  — the first-party CORE module logo icons (item 1), shown beside each core
  *                       command on the dashboard main page.
  */
@@ -17,6 +19,7 @@ const ICON_ASSETS: ReadonlyArray<readonly [string, string]> = [
   [DEFAULT_MODULE_ICON_NAME, '../../assets/default-module-icon.png'],
   ['dumby_home', '../../assets/home-icon.png'],
   ['dumby_discover', '../../assets/discover-icon.png'],
+  ['dumby_refresh', '../../assets/refresh-icon.png'],
   ['dumby_dashboard', '../../assets/module-icons/dashboard.png'],
   ['dumby_health', '../../assets/module-icons/health.png'],
   ['dumby_browse', '../../assets/module-icons/browse.png'],

@@ -80,9 +80,12 @@ export function registerCoreFrameHandlers(deps: CoreFrameHandlerDeps): void {
         action === 'prev' ||
         action === 'first' ||
         action === 'search' ||
-        action === 'home'
+        action === 'home' ||
+        action === 'refresh'
       ) {
         // item 4 — `home` returns to the TARGET page's own main view (e.g. /browse with no query).
+        // UR-20261011-008 — `refresh` re-dispatches the TARGET page, re-running its handler so the
+        // health report re-gathers its data (the health page's Refresh control).
         await router.dispatch(asPageInteraction(interaction, target));
         return;
       }

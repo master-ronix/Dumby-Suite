@@ -22,6 +22,7 @@ import {
   derivePageSections,
 } from '../rendering/core-renderer.js';
 import { customEmojiParts } from '../rendering/module-icons.js';
+import { healthBlocks } from '../rendering/health-blocks.js';
 import {
   HOME_SELECT_VALUE,
   INSTALL_DROPDOWN_CAP,
@@ -285,16 +286,18 @@ export class CommandRouter {
         // the dashboard's nav is Home/Next/Prev.
         ...(name === 'browse'
           ? { blocks: this.browseBlocks(declaredPageData, interaction.user.id) }
-          : name === 'dashboard' || name === 'modules'
-            ? {
-                actions: this.pageActions(
-                  name,
-                  declaredPageData,
-                  interaction.user.id,
-                  options.page,
-                ),
-              }
-            : {}),
+          : name === 'health'
+            ? { blocks: healthBlocks(declaredPageData, interaction.user.id) }
+            : name === 'dashboard' || name === 'modules'
+              ? {
+                  actions: this.pageActions(
+                    name,
+                    declaredPageData,
+                    interaction.user.id,
+                    options.page,
+                  ),
+                }
+              : {}),
       });
       // A page whose data the effects just changed is re-derived, so the render shows the result
       // of the action rather than the state it was gathered in.
