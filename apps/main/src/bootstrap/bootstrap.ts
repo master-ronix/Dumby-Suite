@@ -446,7 +446,7 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
         return;
       }
       if (typeof component.deferReply === 'function') {
-        await component.deferReply({ ephemeral: false });
+        await component.deferReply();
       }
     },
   });
@@ -1124,7 +1124,7 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
             options: unknown,
           ) => Promise<void>,
           deferReply: interaction.deferReply.bind(interaction) as unknown as (options?: {
-            ephemeral?: boolean;
+            flags?: number | bigint;
           }) => Promise<void>,
           editReply: interaction.editReply.bind(interaction) as unknown as (
             options: unknown,

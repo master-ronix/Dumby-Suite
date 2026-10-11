@@ -37,7 +37,7 @@ export interface CommandInteraction {
   user: { id: string };
   guildId: string | null;
   reply: (options: unknown) => Promise<void>;
-  deferReply: (options?: { ephemeral?: boolean }) => Promise<void>;
+  deferReply: (options?: { flags?: number | bigint }) => Promise<void>;
   editReply: (options: unknown) => Promise<void>;
   replied?: boolean;
   deferred?: boolean;

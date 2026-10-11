@@ -6,7 +6,7 @@
 > continued, never restarted.
 
 - **Created:** 2026-10-08
-- **Last updated:** 2026-10-11 · **Current item:** Modules enablement read & developer attribution (UR-20261011-015, DP-79…DP-80, executed) · **Next action:** re-verify the /modules surfaces on a live run and author the D-8.2 per-layer coverage tests (OI-2)
+- **Last updated:** 2026-10-11 · **Current item:** Deploy-gate corrections (UR-20261011-016, executed) · **Next action:** confirm the feature/dev deploy is no longer skipped, set `BCCM_BATCH_PUSH_DRY_RUN=false` on Railway, and re-verify /modules live
 - **Protocol:** `docs/migration/migration-prompt.md` v5.2.0
 - **Coverage map:** the change-set brief (18 items) → one owning item each (M0–M17)
 - **Record shapes:** `docs/migration/ledger-template.md` §3 (item) and §4 (slice)
@@ -41,6 +41,7 @@
 | M18 | /modules corrections & disable enforcement (UR-20261011-013) | REOPENED |
 | M19 | Codebase interception — BCCM dry-run env coercion (UR-20261011-014) | DONE (typecheck+lint) |
 | M20 | Modules enablement read + developer attribution root-cause (UR-20261011-015) | DONE (typecheck+lint) |
+| M21 | Deploy-gate corrections — CI green + ephemeral deprecation (UR-20261011-016) | DONE (typecheck+lint+format) |
 
 Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (reason)`.
 
@@ -434,3 +435,19 @@ them. Acceptance ids: `ACC-UR-024-1…4`.
 
 **Verification.** `typecheck` and `lint` green locally; `test:unit` in CI. Acceptance ids:
 `ACC-UR-025-1…6`.
+
+---
+
+## Deploy-Gate Corrections (UR-20261011-016) — 2026-10-11
+
+> The `ae2a6d3` deploy was SKIPPED (Railway `checkSuites`), so production ran `8355ba4`. Three causes
+> found and fixed.
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-81 | `env-schema.test.ts` is Prettier-clean (Gate 3 format) (R1) | DONE (format) |
+| DP-82 | `check-code-reconciliation` freshness tolerates a shallow checkout — warns when the commit is absent, fails only on a non-ancestor (R2) | DONE |
+| DP-83 | `deferReply({ ephemeral })` → `flags: MessageFlags.Ephemeral` at all three sites (R3) | DONE (typecheck+lint) |
+
+**Verification.** `typecheck` and `lint` green locally; `format` green; the corpus gate suite 27/27
+(incl. the fixed freshness gate). Acceptance ids: `ACC-UR-026-1…5`.

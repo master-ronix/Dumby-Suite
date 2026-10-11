@@ -132,10 +132,12 @@ describe('parseEnv', () => {
     // "false" read as true, so the BCCM batch push — the module-command deregistration — could never
     // run. This is the difference between a module disable deregistering its commands and not.
     expect(parseEnv(minValid).BCCM_BATCH_PUSH_DRY_RUN).toBe(true);
-    expect(parseEnv({ ...minValid, BCCM_BATCH_PUSH_DRY_RUN: 'false' }).BCCM_BATCH_PUSH_DRY_RUN).toBe(
+    expect(
+      parseEnv({ ...minValid, BCCM_BATCH_PUSH_DRY_RUN: 'false' }).BCCM_BATCH_PUSH_DRY_RUN,
+    ).toBe(false);
+    expect(parseEnv({ ...minValid, BCCM_BATCH_PUSH_DRY_RUN: '0' }).BCCM_BATCH_PUSH_DRY_RUN).toBe(
       false,
     );
-    expect(parseEnv({ ...minValid, BCCM_BATCH_PUSH_DRY_RUN: '0' }).BCCM_BATCH_PUSH_DRY_RUN).toBe(false);
   });
 
   test('DATABASE_SSL / REDIS_TLS do not read a stray "false" as true', () => {

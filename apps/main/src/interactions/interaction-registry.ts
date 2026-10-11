@@ -1,4 +1,5 @@
 import type { Redis } from 'ioredis';
+import { MessageFlags } from 'discord.js';
 
 export interface ComponentInteraction {
   id?: string;
@@ -6,7 +7,7 @@ export interface ComponentInteraction {
   user: { id: string };
   guildId: string | null;
   reply: (options: unknown) => Promise<void>;
-  deferReply: (options?: { ephemeral?: boolean }) => Promise<void>;
+  deferReply: (options?: { flags?: number | bigint }) => Promise<void>;
   deferUpdate?: () => Promise<void>;
   editReply: (options: unknown) => Promise<void>;
   /** item 5 — a control may open a modal (the Discover search text-input interface). */
@@ -138,7 +139,9 @@ export class InteractionRegistry {
     if (ack === 'none') {
       // The handler calls `showModal`; acknowledging here would consume the interaction.
     } else if (ack === 'ephemeral') {
-      await interaction.deferReply({ ephemeral: true });
+      // §1.2/§2.4 — the private (hidden) acknowledgement. `ephemeral: true` is deprecated in
+      // discord.js; the supported form is the `Ephemeral` message flag.
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     } else if (this.acknowledge !== undefined) {
       await this.acknowledge(interaction);
     }

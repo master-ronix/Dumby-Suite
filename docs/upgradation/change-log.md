@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.15
+version: 5.5.16
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,25 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.16 — Deploy-Gate Corrections (UR-20261011-016) — 2026-10-11
+
+- 2026-10-11 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- Work order: `UR-20261011-016` (the `ae2a6d3` deploy was SKIPPED — Railway `checkSuites`; two checks
+  failed).
+- **R1 — format (Gates D-8.4):** `apps/main/tests/unit/env-schema.test.ts` failed `prettier --check`
+  (Gate 3), which failed the whole `Gates` job. Now Prettier-clean; the app passes `prettier --check`.
+- **R2 — docs-gate freshness (Documentation gates):** `check-code-reconciliation.mjs` exited 1 because
+  the `docs-gates` checkout is shallow (`fetch-depth: 1`) and the parent commit is absent. It now
+  **warns** when the commit is absent and fails **only** when it resolves but is not an ancestor of
+  HEAD.
+- **R3 — `ephemeral` deprecation:** every `deferReply({ ephemeral: … })` is replaced by
+  `flags: MessageFlags.Ephemeral` (`interaction-registry.ts`, `middleware/built-in/defer.ts`,
+  `bootstrap.ts`); the structural `deferReply` types now carry `flags?: number | bigint`.
+- **Verification:** `typecheck`, `lint`, `format` green locally; the corpus gate suite 27/27. CI is the
+  deploy gate.
 
 ---
 
