@@ -38,8 +38,8 @@ function asGroups(value: unknown): readonly GroupShape[] {
     }
     out.push({
       name: candidate.name,
-      status: typeof candidate.status === 'string' ? candidate.status : undefined,
       rows,
+      ...(typeof candidate.status === 'string' ? { status: candidate.status } : {}),
     });
   }
   return out;
