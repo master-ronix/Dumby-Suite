@@ -17,10 +17,12 @@ import {
   type PageActionRow,
   type RenderDescriptor,
   type RenderIdentity,
+  type RenderBlock,
   type RenderMode,
   derivePageSections,
 } from '../rendering/core-renderer.js';
 import { customEmojiParts } from '../rendering/module-icons.js';
+import type { ComponentsV2Message } from '../shared/utils/components-v2.js';
 import { PersonaOccupiedError } from '../personas/persona.js';
 
 export interface CommandInteraction {
@@ -123,7 +125,7 @@ export class CommandRouter {
 
   async dispatch(
     interaction: CommandInteraction,
-    options: { mode?: RenderMode; page?: number } = {},
+    options: { mode?: RenderMode; page?: number; query?: string } = {},
   ): Promise<void> {
     const name = interaction.commandName;
     const identity: RenderIdentity = { surface: this.pageTitle(name) };
@@ -189,6 +191,7 @@ export class CommandRouter {
                   def.moduleId,
                   interaction.guildId,
                   options.page,
+                  options.query,
                 )) ?? {},
             },
           );
@@ -271,10 +274,20 @@ export class CommandRouter {
           : {}),
         ...(options.mode !== undefined ? { mode: options.mode } : {}),
         ...(declaredDensity !== undefined ? { mode: declaredDensity } : {}),
-        // items 10/11/15/17 - page-declared action controls; the dashboard's nav is Home/Next/Prev.
-        ...(name === 'dashboard' || name === 'modules' || name === 'browse'
-          ? { actions: this.pageActions(name, declaredPageData, interaction.user.id, options.page) }
-          : {}),
+        // items 8/9 — /browse renders richer blocks (inline Info sections + the install dropdown);
+        // the dashboard's nav is Home/Next/Prev.
+        ...(name === 'browse'
+          ? { blocks: this.browseBlocks(declaredPageData, interaction.user.id) }
+          : name === 'dashboard' || name === 'modules'
+            ? {
+                actions: this.pageActions(
+                  name,
+                  declaredPageData,
+                  interaction.user.id,
+                  options.page,
+                ),
+              }
+            : {}),
       });
       // A page whose data the effects just changed is re-derived, so the render shows the result
       // of the action rather than the state it was gathered in.
@@ -639,13 +652,90 @@ export class CommandRouter {
         { customId: mint('prev', 'modules'), label: 'Previous page', style: 2 },
         { customId: mint('first', 'modules'), label: 'First page', style: 2 },
       ]);
-    } else if (commandName === 'browse') {
-      rows.push([{ customId: mint('search', 'browse'), label: '🔍 Search', style: 2 }]);
-      for (const id of ids) {
-        rows.push([{ customId: mint('info', id), label: `Info: ${id}`, style: 2 }]);
-      }
     }
     return rows;
+  }
+
+  /**
+   * items 1/2/3/5/6/7/8/9 — the /browse content blocks: the Discover control at the top (where the
+   * duplicate "Marketplace" heading was), each available module as a Section with an inline Info
+   * button, and the install dropdown at the bottom (selecting an option installs that module).
+   */
+  private browseBlocks(
+    data: Readonly<Record<string, unknown>> | undefined,
+    invokerId: string,
+  ): readonly RenderBlock[] {
+    const raw = Array.isArray(data?.['modules']) ? (data['modules'] as unknown[]) : [];
+    const modules = raw
+      .map((m) =>
+        typeof m === 'object' && m !== null
+          ? (m as { id?: unknown; name?: unknown; description?: unknown; icon?: unknown })
+          : {},
+      )
+      .filter(
+        (m): m is { id: string; name?: unknown; description?: unknown; icon?: unknown } =>
+          typeof m.id === 'string',
+      );
+    const query = typeof data?.['query'] === 'string' ? (data['query'] as string) : '';
+    const defaultIcon = customEmojiParts('dumby_module');
+
+    const blocks: RenderBlock[] = [];
+    // item 2/4/7 — the Discover control, at the top, where the removed heading was.
+    blocks.push({
+      kind: 'section',
+      content:
+        query === ''
+          ? 'Discover new modules to install.'
+          : `Search results for **${query}** (${modules.length}) —`,
+      accessory: {
+        customId: `dumby:discover:${invokerId}:browse`,
+        label: '',
+        emoji: customEmojiParts('dumby_discover') ?? { name: '🔍' },
+        style: 2,
+      },
+    });
+    // item 8 — one Section per module, with the Info control IN-LINE after its name.
+    for (const m of modules) {
+      const name = String(m.name ?? m.id);
+      const description = String(m.description ?? '');
+      const icon = typeof m.icon === 'string' ? m.icon : '';
+      blocks.push({
+        kind: 'section',
+        content: `${icon} **${name}** — ${description}`.trim(),
+        accessory: { customId: `dumby:info:${invokerId}:${m.id}`, label: 'Info', style: 2 },
+      });
+    }
+    // item 3/9 — the install dropdown; selecting an option installs that module.
+    if (modules.length > 0) {
+      blocks.push({
+        kind: 'select',
+        customId: `dumby:act:${invokerId}:install:browse`,
+        placeholder: 'Select a module to install…',
+        options: modules.map((m) => ({
+          label: String(m.name ?? m.id),
+          value: m.id,
+          description: String(m.description ?? '').slice(0, 100),
+          ...(defaultIcon !== undefined ? { emoji: defaultIcon } : {}),
+        })),
+      });
+    }
+    return blocks;
+  }
+
+  /**
+   * item 5b — builds the /browse render for a search query, for the modal-submit path (bootstrap).
+   */
+  async buildBrowseRender(
+    invokerId: string,
+    guildId: string | null,
+    query: string,
+  ): Promise<ComponentsV2Message> {
+    const data = (await this.options.pageDataProvider?.('browse', guildId, 0, query)) ?? {};
+    return this.renderer.render({
+      surface: this.pageTitle('browse'),
+      moduleId: 'browse',
+      blocks: this.browseBlocks(data, invokerId),
+    });
   }
 
   /** §1.2 — one minted customId per density mode, each carrying the page it applies to. */

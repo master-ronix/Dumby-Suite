@@ -268,6 +268,23 @@ Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (rea
 | DP-11 | Generated bold white Home icon (replaces the emoji substitution) | DONE (asset) |
 | DP-12 | Module-page default-banner fallback + versioned banner URLs | DONE (tree) |
 
+---
+
+## Browse (Marketplace) Page Upgrade (UR-20261011-003) — 2026-10-11
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-13 | Drop the in-content "Marketplace" heading | DONE (tree) |
+| DP-14 | Discover control at the top | DONE (tree) |
+| DP-15 | Install dropdown (String Select) at the bottom | DONE (tree) |
+| DP-16 | Generated bold white Discover icon | DONE (asset) |
+| DP-17 | Available not-installed modules listed with the default icon | DONE (tree) |
+| DP-18 | Discover opens a modal text input; results replace the content | DONE (tree) |
+| DP-19 | Result cap 25 + dropdown synced | DONE (tree) |
+| DP-20 | Rename Search to Discover | DONE (tree) |
+| DP-21 | Inline Info control per module (Section accessory), ephemeral | DONE (tree) |
+| DP-22 | Dropdown option installs the module (guild_module_states) | DONE (tree) |
+
 **Verification.** The application suite was verified in **CI** on `3faa1b16`: Gate 1 strict
 typecheck, lint, format, the flow suite, Gate 4 unit tests, the live-Postgres+Redis integration job,
 and the Docker build — all green. (The first push `8caac653` failed only Gate 4, on one unit test

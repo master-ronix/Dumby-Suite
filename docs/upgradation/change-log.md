@@ -372,6 +372,25 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 
 ---
 
+### v5.5.4 — Browse (Marketplace) Page Upgrade (UR-20261011-003) — 2026-10-11
+
+- 2026-10-11 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- Work order: `UR-20261011-003` (browse page upgrade, ten clauses).
+- **Landed (tree):** DP-13 no in-content "Marketplace" heading; DP-14 the Discover control at the top;
+  DP-15 the install dropdown at the bottom; DP-16 a generated bold white Discover icon; DP-17 the
+  available not-installed modules listed with the default icon; DP-18 Discover opens a modal text
+  input and the results replace the content; DP-19 a 25-result cap with the dropdown synced; DP-20
+  "Search" renamed to "Discover"; DP-21 an inline Info control per module (a Section accessory) that
+  returns a private (ephemeral) payload; DP-22 selecting a dropdown option installs the module
+  (`guild_module_states`).
+- **New capability:** Components v2 Section (type 9) with an accessory; a modal text input; ephemeral
+  replies; per-control acknowledge modes (`update` | `ephemeral` | `none`).
+- **Verification:** the corpus gate suite is green (25/25; `check-ur` detects 11 records). The
+  application suite is pending CI; the interactive paths (modal / ephemeral / dropdown) require a
+  live run.
+
+---
+
 ### 4. Cross-Version Defect Lifecycle
 
 | Id | Introduced | Status | Resolution |

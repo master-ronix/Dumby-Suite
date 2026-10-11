@@ -52,7 +52,7 @@ const titleCaseId = (id: string): string =>
  */
 export function createPageDataProvider(
   deps: PageDataDeps,
-): (moduleId: string, guildId: string | null, page?: number) => Promise<PageData> {
+): (moduleId: string, guildId: string | null, page?: number, query?: string) => Promise<PageData> {
   const { getClient, moduleRegistry, db, redis, config, logger } = deps;
 
   async function health(): Promise<PageData> {
@@ -257,28 +257,38 @@ export function createPageDataProvider(
     return { lines, pageTotal, page: 0 };
   }
 
-  // items 10/11/15 — /browse is marketplace discovery: only installable modules are offered.
-  async function marketplace(): Promise<PageData> {
-    const installable = moduleRegistry
+  // items 1/5/6 — /browse is marketplace discovery. No in-content heading (the frame title already
+  // names the surface — item 1). It lists the available, not-installed marketplace modules (item 5);
+  // with a search query (item 5b) it lists only the name/description matches, capped at 25 (item 6).
+  async function marketplace(query?: string): Promise<PageData> {
+    const available = moduleRegistry
       .all()
       .filter((entry) => entry.manifest.tier === 'marketplace');
-    const lines: string[] = [
-      'Search for a module with the search bar, then select one to install.',
-      '',
-    ];
-    if (installable.length === 0) {
-      lines.push('No marketplace modules are available to install.');
-    } else {
-      for (const entry of installable) {
-        const icon = moduleIcon(entry.manifest.ui?.icon);
-        lines.push(`${icon} ${entry.manifest.name} — ${entry.manifest.description}`);
-      }
-    }
-    return {
-      title: 'Marketplace',
-      lines,
-      modules: installable.map((entry) => ({ id: entry.manifest.name })),
-    };
+    const q = (query ?? '').trim().toLowerCase();
+    const matched =
+      q === ''
+        ? available
+        : available.filter(
+            (entry) =>
+              entry.manifest.name.toLowerCase().includes(q) ||
+              entry.manifest.description.toLowerCase().includes(q),
+          );
+    const shown = matched.slice(0, 25);
+    const modules = shown.map((entry) => ({
+      id: entry.manifest.name,
+      name: entry.manifest.name,
+      description: entry.manifest.description,
+      icon: moduleIcon(entry.manifest.ui?.icon),
+    }));
+    const lines: string[] =
+      modules.length === 0
+        ? [
+            q === ''
+              ? 'No marketplace modules are available to install.'
+              : `No modules match "${query ?? ''}".`,
+          ]
+        : modules.map((m) => `${m.icon} ${m.name} — ${m.description}`);
+    return { lines, modules, query: query ?? '', total: matched.length };
   }
 
   // item 17 — /modules lists only installed/enabled modules.
@@ -295,7 +305,12 @@ export function createPageDataProvider(
     };
   }
 
-  return async (moduleId: string, guildId: string | null, page = 0): Promise<PageData> => {
+  return async (
+    moduleId: string,
+    guildId: string | null,
+    page = 0,
+    query?: string,
+  ): Promise<PageData> => {
     switch (moduleId) {
       case 'health':
         return health();
@@ -308,7 +323,7 @@ export function createPageDataProvider(
       case 'dashboard':
         return dashboard(page, guildId);
       case 'browse':
-        return marketplace();
+        return marketplace(query);
       case 'modules':
         return installedModules();
       default:

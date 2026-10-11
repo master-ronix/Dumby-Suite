@@ -1,6 +1,7 @@
 import type { CommandInteraction, CommandRouter } from '../commands/command-router.js';
 import type { RenderMode } from '../rendering/core-renderer.js';
 import type { ComponentInteraction, InteractionRegistry } from './interaction-registry.js';
+import { textInputModal } from '../shared/utils/components-v2.js';
 
 const MODE_PREFIX = 'dumby:mode:';
 const NAV_PREFIX = 'dumby:nav:';
@@ -37,11 +38,17 @@ function asPageInteraction(
  * §2.4 / §11.3 — the frame's own controls. Both re-enter the router for the target page, so mode
  * switching and dropdown navigation take the same edit-in-place path as any other page change.
  */
-export function registerCoreFrameHandlers(deps: {
+export interface CoreFrameHandlerDeps {
   registry: InteractionRegistry;
   router: CommandRouter;
-}): void {
-  const { registry, router } = deps;
+  /** item 8 — builds the private (ephemeral) info payload for a module id. */
+  moduleInfo?: (moduleId: string) => unknown;
+  /** item 9 — installs a marketplace module for the guild (the install-dropdown action). */
+  installModule?: (moduleId: string, guildId: string | null, userId: string) => Promise<void>;
+}
+
+export function registerCoreFrameHandlers(deps: CoreFrameHandlerDeps): void {
+  const { registry, router, moduleInfo, installModule } = deps;
 
   registry.register({
     customIdPrefix: MODE_PREFIX,
@@ -73,7 +80,54 @@ export function registerCoreFrameHandlers(deps: {
       }
       if (action === 'info' || action === 'uninstall') {
         await router.dispatch(asPageInteraction(interaction, 'modules'));
+        return;
       }
+      if (action === 'install') {
+        // item 9 — selecting a module in the install dropdown installs it, then the page re-renders
+        // so the installed module drops out of the available list.
+        const selected = interaction.values?.[0];
+        if (selected !== undefined && installModule !== undefined) {
+          await installModule(selected, interaction.guildId, interaction.user.id);
+        }
+        await router.dispatch(asPageInteraction(interaction, 'browse'));
+      }
+    },
+  });
+
+  // item 5 — the Discover control opens a modal text input; no acknowledgement (ack: 'none').
+  registry.register({
+    customIdPrefix: 'dumby:discover:',
+    ack: 'none',
+    parse: (customId) => {
+      const parts = customId.split(':');
+      return { target: parts[3] };
+    },
+    execute: async (interaction) => {
+      if (typeof interaction.showModal !== 'function') return;
+      await interaction.showModal(
+        textInputModal(`dumby:discover:submit:${interaction.user.id}:browse`, 'Discover modules', {
+          customId: 'query',
+          label: 'Search modules',
+          placeholder: 'Type a module name…',
+          required: true,
+          maxLength: 80,
+        }),
+      );
+    },
+  });
+
+  // item 8 — the inline Info control returns a private (ephemeral) info payload; ack: 'ephemeral'.
+  registry.register({
+    customIdPrefix: 'dumby:info:',
+    ack: 'ephemeral',
+    parse: (customId) => {
+      const parts = customId.split(':');
+      return { moduleId: parts[3] };
+    },
+    execute: async (interaction, context) => {
+      const { moduleId } = context as { moduleId?: string };
+      if (moduleId === undefined || moduleInfo === undefined) return;
+      await interaction.editReply(moduleInfo(moduleId));
     },
   });
 

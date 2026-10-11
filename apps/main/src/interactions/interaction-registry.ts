@@ -9,14 +9,26 @@ export interface ComponentInteraction {
   deferReply: (options?: { ephemeral?: boolean }) => Promise<void>;
   deferUpdate?: () => Promise<void>;
   editReply: (options: unknown) => Promise<void>;
+  /** item 5 — a control may open a modal (the Discover search text-input interface). */
+  showModal?: (modal: unknown) => Promise<void>;
   /** §11.3 — the chosen option values, present only on a String Select Menu interaction. */
   values?: readonly string[];
 }
+
+/**
+ * item 5/8/9 — how the registry acknowledges a control:
+ *   'update'    (default) deferUpdate; the handler edits the message in place.
+ *   'ephemeral' deferReply(ephemeral); the handler sends a private (hidden) response.
+ *   'none'      no acknowledgement; the handler opens a modal instead.
+ */
+export type AckMode = 'update' | 'ephemeral' | 'none';
 
 export interface IComponentHandler {
   customIdPrefix: string;
   parse(customId: string): unknown;
   idempotencyKey?: (interaction: ComponentInteraction, context: unknown) => string;
+  /** Defaults to 'update'. */
+  ack?: AckMode;
   execute(interaction: ComponentInteraction, context: unknown): Promise<void>;
 }
 
@@ -120,15 +132,24 @@ export class InteractionRegistry {
       handler.idempotencyKey?.(interaction, context) ?? interaction.id ?? interaction.customId;
     if (await this.idempotency.has(key)) return true;
 
-    if (this.acknowledge !== undefined) {
+    // item 5/8/9 — acknowledge per the handler's mode: edit-in-place (default), a private reply, or
+    // nothing (the handler opens a modal).
+    const ack = handler.ack ?? 'update';
+    if (ack === 'none') {
+      // The handler calls `showModal`; acknowledging here would consume the interaction.
+    } else if (ack === 'ephemeral') {
+      await interaction.deferReply({ ephemeral: true });
+    } else if (this.acknowledge !== undefined) {
       await this.acknowledge(interaction);
     }
 
     const existing = this.inFlight.get(key);
     if (existing) return existing;
 
+    // A modal-opening control needs the raw interaction (to call `showModal`); every other control
+    // gets the Renderer's read-only guard, so it cannot bypass the Renderer.
     const safeInteraction =
-      this.renderer === undefined
+      ack === 'none' || this.renderer === undefined
         ? interaction
         : this.renderer.createReadOnlyInteraction(interaction);
     const pending = handler

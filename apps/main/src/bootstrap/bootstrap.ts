@@ -628,7 +628,43 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   });
   // §2.4 / §11.3 - the frame's own interactive controls: the D/M/C density control and the
   // navigation dropdown. Registered after the router exists, since each re-enters it.
-  registerCoreFrameHandlers({ registry: interactionRegistry, router: commandRouter });
+  const moduleInfoPayload = (moduleId: string): unknown => {
+    const entry = moduleRegistry.get(moduleId);
+    if (entry === undefined) {
+      return renderer.render({ surface: 'Module', sections: [`No module named ${moduleId}.`] });
+    }
+    const m = entry.manifest;
+    return renderer.render({
+      surface: m.ui?.displayName ?? m.name,
+      moduleId: m.name,
+      sections: [
+        `**${m.name}** — ${m.description}`,
+        `Tier: ${m.tier} · Version: ${m.version}`,
+        `Developer: ${m.devId}`,
+      ],
+    });
+  };
+  // item 9 — the install dropdown enables the selected module for the guild (guild_module_states).
+  const installModule = async (
+    moduleId: string,
+    guildId: string | null,
+    userId: string,
+  ): Promise<void> => {
+    if (guildId === null || moduleRegistry.get(moduleId) === undefined) return;
+    await db
+      .knex('guild_module_states')
+      .insert({ guildId, moduleSlug: moduleId, enabled: true, state: 'active' })
+      .onConflict(['guildId', 'moduleSlug'])
+      .merge({ enabled: true, state: 'active', updatedAt: db.knex.fn.now() });
+    logger.info('marketplace-module-installed', { moduleId, guildId, userId });
+  };
+
+  registerCoreFrameHandlers({
+    registry: interactionRegistry,
+    router: commandRouter,
+    moduleInfo: (moduleId) => moduleInfoPayload(moduleId),
+    installModule,
+  });
   container.registerValue(CORE_TOKENS.EventBus, eventBus);
   container.registerValue(CORE_TOKENS.EventRouter, eventRouter);
   container.registerValue(CORE_TOKENS.Scheduler, scheduler);
@@ -908,6 +944,32 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
         return;
       }
 
+      if (interaction.isModalSubmit()) {
+        // item 5b — the Discover modal: re-render the /browse page with the submitted search query.
+        const modal = interaction as unknown as {
+          customId: string;
+          fields: { getTextInputValue(name: string): string };
+          update(options: unknown): Promise<void>;
+        };
+        const parts = modal.customId.split(':');
+        if (parts[0] === 'dumby' && parts[1] === 'discover' && parts[2] === 'submit') {
+          if (parts[3] === interaction.user.id) {
+            try {
+              const query = modal.fields.getTextInputValue('query');
+              const payload = await commandRouter.buildBrowseRender(
+                interaction.user.id,
+                interaction.guildId,
+                query,
+              );
+              await modal.update(payload);
+            } catch (err) {
+              logger.warn('discover-modal-submit-failed', { error: String(err) });
+            }
+          }
+        }
+        return;
+      }
+
       if (interaction.isButton() || interaction.isStringSelectMenu()) {
         const componentInteraction = {
           id: interaction.id,
@@ -931,6 +993,13 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
               }
             : {}),
           ...(interaction.isStringSelectMenu() ? { values: interaction.values } : {}),
+          ...(interaction.showModal !== undefined
+            ? {
+                showModal: interaction.showModal.bind(interaction) as unknown as (
+                  modal: unknown,
+                ) => Promise<void>,
+              }
+            : {}),
         };
         const handled = await interactionRegistry.dispatch(componentInteraction);
 

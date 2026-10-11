@@ -136,6 +136,24 @@ The Marketplace is a framework-level surface: its title names the surface, and i
 
 ---
 
+### 5.12 Browse Page Update (UR-20261011-003) — the current arrangements
+
+> **Authority.** The operator's final authority (UR-20261011-003, 11/10/2026); supersedes the earlier
+> clauses of this Division where they conflict.
+
+- **No in-content heading.** The frame title (`Dumby Suite | Marketplace`) names the surface; the
+  content carries no repeated "Marketplace" heading.
+- **Discover control (top).** A Section at the top of the content carries the **Discover** control
+  (a generated bold white magnifier icon) in-line after its text. It opens a **modal** text input.
+- **Listing.** The main page lists the available, **not-installed** marketplace modules, each with the
+  framework's default module logo emoji beside its name. (Ranking / trending is deferred.)
+- **Search.** Submitting the Discover modal re-renders the page with the results for the query; the
+  results are capped at 25 and the install dropdown is synced to them.
+- **Inline Info.** Each module carries an **Info** control in-line after its name (a Section
+  accessory). It returns the module's descriptive content **privately (ephemeral)**.
+- **Install dropdown.** A String Select at the bottom of the frame lists the shown modules; selecting
+  one installs it for the guild.
+
 ## Contract
 - `contracts/rbac.enums.json`
 - `contracts/commands.json`

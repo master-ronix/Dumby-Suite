@@ -16,6 +16,7 @@ import { DEFAULT_MODULE_ICON_NAME, registerModuleEmoji } from './module-icons.js
 const ICON_ASSETS: ReadonlyArray<readonly [string, string]> = [
   [DEFAULT_MODULE_ICON_NAME, '../../assets/default-module-icon.png'],
   ['dumby_home', '../../assets/home-icon.png'],
+  ['dumby_discover', '../../assets/discover-icon.png'],
   ['dumby_dashboard', '../../assets/module-icons/dashboard.png'],
   ['dumby_health', '../../assets/module-icons/health.png'],
   ['dumby_browse', '../../assets/module-icons/browse.png'],

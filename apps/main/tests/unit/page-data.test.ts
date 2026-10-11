@@ -195,12 +195,21 @@ describe('page-data provider', () => {
     expect(data['page']).toBe(0);
   });
 
-  test('marketplace lists installable modules', async () => {
+  test('marketplace lists available modules without an in-content title', async () => {
     const provider = createPageDataProvider(makeDeps());
     const data = await provider('browse', null);
-    expect(data['title']).toBe('Marketplace');
+    // item 1 — no in-content "Marketplace" heading (the frame title already names the surface).
+    expect(data['title']).toBeUndefined();
     expect(JSON.stringify(data)).toContain('browse');
     expect((data['modules'] as unknown[]).length).toBe(1);
+  });
+
+  test('marketplace search filters the available modules by name', async () => {
+    const provider = createPageDataProvider(makeDeps());
+    const hit = await provider('browse', null, 0, 'brow');
+    expect((hit['modules'] as unknown[]).length).toBe(1);
+    const miss = await provider('browse', null, 0, 'zzz');
+    expect((miss['modules'] as unknown[]).length).toBe(0);
   });
 
   test('marketplace reports none when there are no marketplace modules', async () => {

@@ -8,6 +8,8 @@ export const ComponentType = {
   CONTAINER: 17,
   STRING_SELECT: 3,
   BUTTON: 2,
+  /** item 8 — a Section: text blocks beside an accessory (e.g. an inline button). */
+  SECTION: 9,
 } as const;
 
 export type ComponentTypeValue =
@@ -17,7 +19,8 @@ export type ComponentTypeValue =
   | typeof ComponentType.SEPARATOR
   | typeof ComponentType.CONTAINER
   | typeof ComponentType.STRING_SELECT
-  | typeof ComponentType.BUTTON;
+  | typeof ComponentType.BUTTON
+  | typeof ComponentType.SECTION;
 
 export interface ComponentBase {
   type: ComponentTypeValue;
@@ -81,6 +84,16 @@ export interface ActionRowComponent extends ComponentBase {
   components: Array<ButtonComponent | StringSelectComponent>;
 }
 
+/**
+ * item 8 — a Section holds one or more Text Displays beside a single accessory (a button), so a
+ * control can sit IN-LINE after its text rather than on a separate row.
+ */
+export interface SectionComponent extends ComponentBase {
+  type: typeof ComponentType.SECTION;
+  components: TextDisplayComponent[];
+  accessory: ButtonComponent;
+}
+
 export type Component =
   | TextDisplayComponent
   | MediaGalleryComponent
@@ -88,7 +101,8 @@ export type Component =
   | ContainerComponent
   | StringSelectComponent
   | ButtonComponent
-  | ActionRowComponent;
+  | ActionRowComponent
+  | SectionComponent;
 
 export interface ComponentsV2Message {
   components: Component[];
@@ -143,7 +157,7 @@ export function stringSelect(
     label: string;
     value: string;
     description?: string;
-    emoji?: string;
+    emoji?: string | { name: string; id?: string };
     default?: boolean;
   }>,
   placeholder?: string,
@@ -165,7 +179,8 @@ export function stringSelect(
         value: opt.value,
       };
       if (opt.description !== undefined) result.description = opt.description;
-      if (opt.emoji !== undefined) result.emoji = { name: opt.emoji };
+      if (opt.emoji !== undefined)
+        result.emoji = typeof opt.emoji === 'string' ? { name: opt.emoji } : opt.emoji;
       if (opt.default !== undefined) result.default = opt.default;
       return result;
     }),
@@ -205,6 +220,68 @@ export function actionRow(
   return {
     type: ComponentType.ACTION_ROW,
     components,
+  };
+}
+
+/** item 8 — a Section: a text block with an accessory button rendered in-line after it. */
+export function section(content: string, accessory: ButtonComponent): SectionComponent {
+  return {
+    type: ComponentType.SECTION,
+    components: [textDisplay(content)],
+    accessory,
+  };
+}
+
+/** item 5 — a modal carrying one short Text Input, for the Discover search (a text-input interface). */
+export interface ModalTextInput {
+  customId: string;
+  label: string;
+  placeholder?: string;
+  required?: boolean;
+  maxLength?: number;
+}
+
+export interface ModalPayload {
+  custom_id: string;
+  title: string;
+  components: Array<{
+    type: typeof ComponentType.ACTION_ROW;
+    components: Array<{
+      type: 4;
+      custom_id: string;
+      label: string;
+      style: 1;
+      placeholder?: string;
+      required?: boolean;
+      max_length?: number;
+    }>;
+  }>;
+}
+
+export function textInputModal(
+  customId: string,
+  title: string,
+  input: ModalTextInput,
+): ModalPayload {
+  return {
+    custom_id: customId,
+    title,
+    components: [
+      {
+        type: ComponentType.ACTION_ROW,
+        components: [
+          {
+            type: 4,
+            custom_id: input.customId,
+            label: input.label,
+            style: 1,
+            ...(input.placeholder !== undefined ? { placeholder: input.placeholder } : {}),
+            ...(input.required !== undefined ? { required: input.required } : {}),
+            ...(input.maxLength !== undefined ? { max_length: input.maxLength } : {}),
+          },
+        ],
+      },
+    ],
   };
 }
 

@@ -6,7 +6,9 @@ import {
   createBannerMediaGallery,
   createTitleBlock,
   DEFAULT_ACCENT_COLOR,
+  section,
   separator,
+  stringSelect,
   textDisplay,
   type Component,
   type ComponentsV2Message,
@@ -51,7 +53,7 @@ export interface NavigationOption {
   readonly label: string;
   readonly value: string;
   readonly description?: string;
-  readonly emoji?: string;
+  readonly emoji?: string | { name: string; id?: string };
   readonly default?: boolean;
 }
 
@@ -80,6 +82,20 @@ export interface PageActionButton {
 /** item 17 — one action row; Discord shows up to five buttons per row. */
 export type PageActionRow = readonly PageActionButton[];
 
+/**
+ * item 8 — a richer content block. A `section` renders its text with the accessory button IN-LINE
+ * after it; a `select` renders a String Select row (the install dropdown); a `text` is plain text.
+ */
+export type RenderBlock =
+  | { readonly kind: 'text'; readonly content: string }
+  | { readonly kind: 'section'; readonly content: string; readonly accessory: PageActionButton }
+  | {
+      readonly kind: 'select';
+      readonly customId: string;
+      readonly placeholder: string;
+      readonly options: readonly NavigationOption[];
+    };
+
 export interface RenderDescriptor extends RenderIdentity {
   mode?: RenderMode;
   sections?: readonly string[];
@@ -96,6 +112,8 @@ export interface RenderDescriptor extends RenderIdentity {
   modeControl?: ModeControl;
   /** item 11/15/17 — page-declared action buttons rendered below the footer. */
   actions?: readonly PageActionRow[];
+  /** item 8 — richer content blocks (inline sections, selects) that replace the plain sections. */
+  blocks?: readonly RenderBlock[];
 }
 
 /**
@@ -280,6 +298,37 @@ export class CoreRenderer {
       components.push(textDisplay(this.oneLineRender(input.surface, sections[0] ?? input.surface)));
     } else if (mode === 'M') {
       components.push(textDisplay(this.condensedRender(sections)));
+    } else if (input.blocks !== undefined && input.blocks.length > 0) {
+      // item 8 — richer blocks: a Section (text with an inline accessory), a text block, or a Select.
+      input.blocks.forEach((block, index) => {
+        if (index > 0) components.push(separator());
+        if (block.kind === 'text') {
+          components.push(textDisplay(block.content));
+        } else if (block.kind === 'section') {
+          const a = block.accessory;
+          components.push(
+            section(
+              block.content,
+              button(a.customId, a.label, a.style ?? 2, a.disabled ?? false, a.emoji),
+            ),
+          );
+        } else {
+          components.push(
+            actionRow([
+              stringSelect(
+                block.customId,
+                block.options.map((o) => ({
+                  label: o.label,
+                  value: o.value,
+                  ...(o.description !== undefined ? { description: o.description } : {}),
+                  ...(o.emoji !== undefined ? { emoji: o.emoji } : {}),
+                })),
+                block.placeholder,
+              ),
+            ]),
+          );
+        }
+      });
     } else {
       sections.forEach((section, index) => {
         if (index > 0) components.push(separator());
