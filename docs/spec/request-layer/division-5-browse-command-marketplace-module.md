@@ -196,6 +196,16 @@ The Marketplace is a framework-level surface: its title names the surface, and i
   most **24** modules (`MARKETPLACE_MODULE_CAP`), reserving one dropdown slot for Home, so the
   listing and the dropdown stay in sync (24 modules + Home = 25 options).
 
+### 5.16 Browse Page — Discover In-Line with the Title (UR-20261011-007) — the current arrangements
+
+> **Authority.** The operator's final authority (UR-20261011-007, 11/10/2026); supersedes §5.15
+> where they conflict.
+
+- **Discover sits in-line with the title.** The browse title is a **Section** whose **accessory is
+  the Discover control**; a Section renders its single accessory on the right of the text line, so
+  Discover appears on the **same line as the title**. The standalone control row above the title is
+  removed.
+
 ## Contract
 - `contracts/rbac.enums.json`
 - `contracts/commands.json`

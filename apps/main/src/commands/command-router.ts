@@ -664,9 +664,10 @@ export class CommandRouter {
   }
 
   /**
-   * items 1/2/3/5/6/7/8/9 — the /browse content blocks: the Discover control at the top (where the
-   * duplicate "Marketplace" heading was), each available module as a Section with an inline Info
-   * button, and the install dropdown at the bottom (selecting an option installs that module).
+   * items 1/2/3/5/6/7/8/9 — the /browse content blocks: the title as a Section whose accessory is
+   * the Discover control (so Discover sits IN-LINE with the title), each available module as a
+   * Section with an inline Info button, and the install dropdown at the bottom (selecting an option
+   * installs that module; the permanent first option, Home, returns to the main view).
    */
   private browseBlocks(
     data: Readonly<Record<string, unknown>> | undefined,
@@ -688,26 +689,21 @@ export class CommandRouter {
     const homeIcon = customEmojiParts('dumby_home');
 
     const blocks: RenderBlock[] = [];
-    // UR-20261011-006 (item 2) — the control row carries Discover only; the Home control now lives
-    // in the install dropdown as its permanent first option.
+    // UR-20261011-007 — the title is a Section whose accessory is the Discover control, so Discover
+    // sits IN-LINE with the title (a Section renders its single accessory on the right of the text
+    // line) rather than on a row above it. With only one control left this is expressible.
     blocks.push({
-      kind: 'row',
-      buttons: [
-        {
-          customId: `dumby:discover:${invokerId}:browse`,
-          label: 'Discover',
-          emoji: customEmojiParts('dumby_discover') ?? { name: '🔍' },
-          style: 2,
-        },
-      ],
-    });
-    // item 3 — the bold title, below the controls.
-    blocks.push({
-      kind: 'text',
+      kind: 'section',
       content:
         query === ''
           ? '**Explore new modules to install**'
           : `**Search results for ${query}** (${modules.length})`,
+      accessory: {
+        customId: `dumby:discover:${invokerId}:browse`,
+        label: 'Discover',
+        emoji: customEmojiParts('dumby_discover') ?? { name: '🔍' },
+        style: 2,
+      },
     });
     // item 8 — one Section per module, with the Info control IN-LINE after its name.
     for (const m of modules) {

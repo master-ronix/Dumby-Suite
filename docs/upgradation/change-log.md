@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.7
+version: 5.5.8
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -430,6 +430,19 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   **24** (`MARKETPLACE_MODULE_CAP`) and the dropdown at **25** (`INSTALL_DROPDOWN_CAP`), reserving one
   slot for Home, so the listing and the dropdown stay in sync. The dropdown is now **always
   enabled** (the permanent Home option retires the empty-state disabled placeholder).
+- **Verification:** the corpus gate suite is green; the application suite is pending CI; the
+  interaction paths require a live run.
+
+---
+
+### v5.5.8 — Browse: Discover In-Line with the Title (UR-20261011-007) — 2026-10-11
+
+- 2026-10-11 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- Work order: `UR-20261011-007` (corrects `UR-20261011-006`).
+- **C1:** the browse title becomes a **Section whose accessory is the Discover control**, so Discover
+  sits **in-line with the title** (a Section renders its single accessory on the right of the text
+  line); the standalone control row above the title is removed. This is expressible now that only one
+  control remains — it was not while two controls shared the row.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
 

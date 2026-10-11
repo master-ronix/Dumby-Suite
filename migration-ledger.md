@@ -313,6 +313,12 @@ Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (rea
 | DP-34 | Per-page module listing caps at 24; dropdown caps at 25 (one slot reserved for Home) | DONE (tree) |
 | DP-35 | The install dropdown is always enabled (permanent Home retires the disabled placeholder) | DONE (tree) |
 
+**Corrections (UR-20261011-007, 2026-10-11):**
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-36 | Discover sits in-line with the title (the title Section's accessory) | DONE (tree) |
+
 **Verification.** The application suite was verified in **CI** on `3faa1b16`: Gate 1 strict
 typecheck, lint, format, the flow suite, Gate 4 unit tests, the live-Postgres+Redis integration job,
 and the Docker build — all green. (The first push `8caac653` failed only Gate 4, on one unit test
