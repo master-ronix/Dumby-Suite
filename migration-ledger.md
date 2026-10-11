@@ -351,6 +351,17 @@ Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (rea
 | DP-52 | /browse lists installable + re-enableable modules (disabled standard = "Previously installed") | DONE (tree) |
 | DP-53 | No uninstall control rendered on a core module's Info | DONE (tree) |
 
+**Disable enforcement (UR-20261011-011, 2026-10-11):**
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-54 | Disable writes an instant `@everyone` deny override on the module's commands (Discord command permissions) | DONE (tree) |
+| DP-55 | Disable/enable also enqueue the module's commands on BCCM for batched deregistration/re-registration | DONE (tree) |
+| DP-56 | EventRouter gates dispatch by module enablement (a disabled module's handlers do not fire) | DONE (tree) |
+| DP-57 | /modules lists only enabled modules for the guild | DONE (tree) |
+| DP-58 | The dashboard registers a page only for an enabled standard module | DONE (tree) |
+| DP-59 | /browse lists a disabled module as "Previously installed" for re-enablement | DONE (tree) |
+
 **Verification.** The application suite was verified in **CI** on `3faa1b16`: Gate 1 strict
 typecheck, lint, format, the flow suite, Gate 4 unit tests, the live-Postgres+Redis integration job,
 and the Docker build — all green. (The first push `8caac653` failed only Gate 4, on one unit test

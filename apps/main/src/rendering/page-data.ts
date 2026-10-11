@@ -59,6 +59,34 @@ export function createPageDataProvider(
 ): (moduleId: string, guildId: string | null, page?: number, query?: string) => Promise<PageData> {
   const { getClient, moduleRegistry, db, redis, config, logger } = deps;
 
+  /**
+   * UR-20261011-011 — the guild's module enablement, read once. A module is "enabled" when its
+   * `guild_module_states` row is `enabled:true, state:'active'`; an absent row falls back to the
+   * tier default (`defaultEnabledForTier`). The disabled set drives what the catalogue lists, what
+   * the installed list shows, and which module pages the dashboard registers.
+   */
+  const enabledStates = async (guildId?: string | null): Promise<Map<string, boolean>> => {
+    const map = new Map<string, boolean>();
+    if (!guildId) return map;
+    try {
+      const rows = await db
+        .knex('guild_module_states')
+        .where({ guildId })
+        .whereNull('deletedAt')
+        .select<{ moduleSlug: string; enabled: boolean; state: string }[]>(
+          'moduleSlug',
+          'enabled',
+          'state',
+        );
+      for (const row of rows) {
+        map.set(String(row.moduleSlug), row.enabled === true && row.state === 'active');
+      }
+    } catch (err) {
+      logger.warn('page-data-module-states-unavailable', { guildId, error: String(err) });
+    }
+    return map;
+  };
+
   async function health(): Promise<PageData> {
     const client = getClient();
     const memory = process.memoryUsage();
@@ -260,7 +288,13 @@ export function createPageDataProvider(
   // CURRENT (BCCM-effective) name and status.
   async function dashboard(page: number, guildId: string | null): Promise<PageData> {
     const all = moduleRegistry.all();
-    const standard = all.filter((entry) => entry.manifest.tier === 'standard');
+    // UR-20261011-011 — a disabled standard module has NO page on the dashboard (its commands are
+    // not registered for the guild either, §17.6).
+    const enabledBySlug = await enabledStates(guildId);
+    const standard = all.filter(
+      (entry) =>
+        entry.manifest.tier === 'standard' && (enabledBySlug.get(entry.manifest.name) ?? true),
+    );
     const pageTotal = 1 + standard.length;
 
     if (page >= 1 && page <= standard.length) {
@@ -308,28 +342,10 @@ export function createPageDataProvider(
   // entry, so the listing and the install dropdown stay in sync within Discord's 25-option ceiling.
   async function marketplace(query?: string, guildId?: string | null): Promise<PageData> {
     const all = moduleRegistry.all();
-    // UR-20261011-010 — the catalogue lists what a guild can INSTALL or RE-ENABLE: marketplace
+    // UR-20261011-010/011 — the catalogue lists what a guild can INSTALL or RE-ENABLE: marketplace
     // modules not enabled for the guild, and standard modules the guild has disabled
     // ("Previously Installed", §13.2). Core/Admin are never listed.
-    const enabledBySlug = new Map<string, boolean>();
-    if (guildId) {
-      try {
-        const rows = await db
-          .knex('guild_module_states')
-          .where({ guildId })
-          .whereNull('deletedAt')
-          .select<{ moduleSlug: string; enabled: boolean; state: string }[]>(
-            'moduleSlug',
-            'enabled',
-            'state',
-          );
-        for (const row of rows) {
-          enabledBySlug.set(String(row.moduleSlug), row.enabled === true && row.state === 'active');
-        }
-      } catch (err) {
-        logger.warn('page-data-module-states-unavailable', { guildId, error: String(err) });
-      }
-    }
+    const enabledBySlug = await enabledStates(guildId);
     const available = all.filter((entry) => {
       const tier = entry.manifest.tier;
       if (tier !== 'marketplace' && tier !== 'standard') return false;
@@ -370,12 +386,23 @@ export function createPageDataProvider(
   // item 17 — /modules lists installed/enabled modules, one page at a time (UR-20261011-009). The
   // page renders as content blocks (a Section per module, each with an inline Info control); `lines`
   // remains for the condensed (M/C) fallback.
-  async function installedModules(page = 0): Promise<PageData> {
-    const all = moduleRegistry.all();
-    const total = all.length;
+  async function installedModules(page = 0, guildId?: string | null): Promise<PageData> {
+    // UR-20261011-011 — the list shows what is ENABLED for the guild: core always, standard unless
+    // disabled, marketplace only when installed. A disabled module is not "installed".
+    const enabledBySlug = await enabledStates(guildId);
+    const enabledModules = moduleRegistry.all().filter((entry) => {
+      const tier = entry.manifest.tier;
+      if (tier === 'core') return true;
+      if (tier === 'admin') return false;
+      return enabledBySlug.get(entry.manifest.name) ?? defaultEnabledForTier(tier);
+    });
+    const total = enabledModules.length;
     const pageTotal = Math.max(1, Math.ceil(total / MODULES_PAGE_SIZE));
     const current = Math.min(Math.max(page, 0), pageTotal - 1);
-    const slice = all.slice(current * MODULES_PAGE_SIZE, (current + 1) * MODULES_PAGE_SIZE);
+    const slice = enabledModules.slice(
+      current * MODULES_PAGE_SIZE,
+      (current + 1) * MODULES_PAGE_SIZE,
+    );
     const modules = slice.map((entry) => ({
       id: entry.manifest.name,
       name: entry.manifest.ui?.displayName ?? titleCaseId(entry.manifest.name),
@@ -407,7 +434,7 @@ export function createPageDataProvider(
       case 'browse':
         return marketplace(query, guildId);
       case 'modules':
-        return installedModules(page);
+        return installedModules(page, guildId);
       default:
         return {};
     }

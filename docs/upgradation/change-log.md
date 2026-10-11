@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.11
+version: 5.5.12
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -493,6 +493,21 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   immediately plus a **BCCM** enqueue of the module's commands; `/browse` lists installable +
   re-enableable modules (a disabled standard module reads "Previously installed"). **C9:** a core
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
+- **Verification:** the corpus gate suite is green; the application suite is pending CI; the
+  interaction paths require a live run.
+
+---
+
+### v5.5.12 — Module Disable Enforcement (UR-20261011-011) — 2026-10-11
+
+- 2026-10-11 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- Work order: `UR-20261011-011` (corrects `UR-20261011-010`).
+- **C1/C4:** `/modules` lists only enabled modules; a disabled module is offered in `/browse` as
+  "Previously installed". **C2:** disable now **enforces** — an instant `@everyone` **deny override**
+  via Discord's per-guild command permissions (§17.6) plus the **BCCM** deregistration enqueue, and the
+  `EventRouter` gates dispatch so a disabled module's handlers stop firing. **C3:** the dashboard
+  registers a page only for an enabled standard module. Fleet-wide jobs/tasks are not per-guild and are
+  out of scope (§29.6).
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
 

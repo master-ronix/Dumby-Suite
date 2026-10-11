@@ -37,10 +37,32 @@ export interface EventRouterDeps {
   /** §16 — a shed increments `dumby_gateway_events_shed_total`, tagged by event name. */
   metrics?: MetricsRegistry;
   isProtected?: (event: string) => boolean;
+  /**
+   * UR-20261011-011 — the guild module-enablement gate. A handler whose module is disabled for the
+   * event's guild is skipped, so a disabled module's subscriptions stop firing (§13.2). Absent, or
+   * an event with no guild, dispatches as before.
+   */
+  isModuleEnabled?: (moduleId: string, guildId: string) => Promise<boolean>;
+}
+
+/** The first guild id found among an event's arguments (a Message, GuildMember, etc.). */
+function guildIdFromArgs(args: readonly unknown[]): string | undefined {
+  for (const arg of args) {
+    if (typeof arg !== 'object' || arg === null) continue;
+    const candidate = arg as { guildId?: unknown; guild?: { id?: unknown } };
+    if (typeof candidate.guildId === 'string') return candidate.guildId;
+    if (typeof candidate.guild?.id === 'string') return candidate.guild.id;
+  }
+  return undefined;
+}
+
+interface RegisteredHandler {
+  readonly handler: IEventHandler;
+  readonly moduleId: string;
 }
 
 export class EventRouter {
-  private readonly handlers = new Map<string, IEventHandler[]>();
+  private readonly handlers = new Map<string, RegisteredHandler[]>();
   private readonly moduleHandlers = new Map<string, string>();
 
   constructor(private readonly deps: EventRouterDeps) {}
@@ -50,12 +72,12 @@ export class EventRouter {
     if (!this.handlers.has(event)) {
       this.handlers.set(event, []);
     }
-    this.handlers.get(event)!.push(handler);
+    this.handlers.get(event)!.push({ handler, moduleId });
     this.moduleHandlers.set(`${moduleId}:${event}`, handler.event);
   }
 
   getHandlers(event: string): IEventHandler[] {
-    return this.handlers.get(event) ?? [];
+    return (this.handlers.get(event) ?? []).map((entry) => entry.handler);
   }
 
   getRegisteredEvents(): string[] {
@@ -75,8 +97,13 @@ export class EventRouter {
   }
 
   async dispatch(event: string, ...args: unknown[]): Promise<void> {
-    const handlers = this.handlers.get(event) ?? [];
-    if (this.shouldShed(event, handlers)) {
+    const registrations = this.handlers.get(event) ?? [];
+    if (
+      this.shouldShed(
+        event,
+        registrations.map((entry) => entry.handler),
+      )
+    ) {
       this.deps.metrics?.gatewayEventsShedTotal.inc({ event_name: event });
       this.deps.logger.warn('gateway-event-shed', {
         event,
@@ -84,7 +111,13 @@ export class EventRouter {
       });
       return;
     }
-    for (const handler of handlers) {
+    const guildId = guildIdFromArgs(args);
+    for (const { handler, moduleId } of registrations) {
+      // UR-20261011-011 — a disabled module's handlers do not fire (its processing is terminated).
+      if (!(await this.moduleEnabled(moduleId, guildId))) {
+        this.deps.logger.debug('event-handler-module-disabled', { event, moduleId });
+        continue;
+      }
       try {
         await handler.handle(...args);
       } catch (err) {
@@ -93,6 +126,18 @@ export class EventRouter {
           error: String(err),
         });
       }
+    }
+  }
+
+  /** UR-20261011-011 — fails open: an unavailable gate must not silently drop live events. */
+  private async moduleEnabled(moduleId: string, guildId: string | undefined): Promise<boolean> {
+    const check = this.deps.isModuleEnabled;
+    if (check === undefined || guildId === undefined) return true;
+    try {
+      return await check(moduleId, guildId);
+    } catch (err) {
+      this.deps.logger.warn('event-module-gate-failed', { moduleId, guildId, error: String(err) });
+      return true;
     }
   }
 }

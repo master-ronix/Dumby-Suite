@@ -235,6 +235,26 @@ Dumby | {ModuleName}
 - **Navigation.** The `/modules` **Home** control returns to **`/modules` page 0** (this surface's own
   main view), not the dashboard; Next/Previous page the listing.
 
+### 9.12 Module Disable Enforcement (UR-20261011-011) — the current arrangements
+
+> **Authority.** The operator's final authority (UR-20261011-011, 11/10/2026); supersedes §9.11 where
+> they conflict.
+
+- **Instant access denial.** Disabling a module writes an **immediate deny override** to Discord's
+  native per-command permissions (`@everyone` denied) for each of the module's registered commands,
+  so they disappear from members' effective access at once (§17.6). Enabling clears the override.
+- **Batched deregistration.** The module's commands are also enqueued on the guild command change
+  queue (**BCCM**) for the actual Discord deregistration (§17.7).
+- **Event termination.** A disabled module's **event handlers do not fire** — the `EventRouter` skips
+  a handler whose module is disabled for the event's guild (§13.2).
+- **Listing exclusion.** `/modules` lists only modules **enabled** for the guild: core always,
+  standard unless disabled, marketplace only when installed. The **dashboard** registers a page only
+  for an enabled standard module. A disabled module is offered in `/browse` as **"Previously
+  installed"** for re-enablement.
+- **Scope.** A per-guild toggle terminates the module's per-guild processing (commands + events).
+  Fleet-wide cron tasks / jobs are not per-guild and are not stopped by it (§29.6); that is the unload
+  path (§13.7).
+
 ## Contract
 - `contracts/rbac.enums.json`
 - `contracts/commands.json`

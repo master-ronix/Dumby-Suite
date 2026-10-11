@@ -396,7 +396,17 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     thresholdMs: config.get('EVENT_LOOP_LAG_SHED_THRESHOLD_MS'),
   });
   eventLoopLagMonitor.start();
-  const eventRouter = new EventRouter({ logger, cache, lagMonitor: eventLoopLagMonitor, metrics });
+  // UR-20261011-011 — a disabled module's event handlers must not fire. The gate is late-bound
+  // because the enablement check (which reads guild_module_states) is defined further below.
+  let moduleEnabledGate: ((moduleId: string, guildId: string) => Promise<boolean>) | undefined;
+  const eventRouter = new EventRouter({
+    logger,
+    cache,
+    lagMonitor: eventLoopLagMonitor,
+    metrics,
+    isModuleEnabled: (moduleId, guildId) =>
+      moduleEnabledGate ? moduleEnabledGate(moduleId, guildId) : Promise.resolve(true),
+  });
   fatalHooks.notify = (correlationId, error) => {
     try {
       void eventBus.emit('dumby.system.fatal', {
@@ -648,12 +658,20 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
       return false;
     }
   };
+  // The event router's gate uses the (moduleId, guildId) order.
+  moduleEnabledGate = (moduleId, guildId) => isModuleEnabledForGuild(guildId, moduleId);
   const TIER_LABEL: Readonly<Record<string, string>> = {
     admin: 'Admin',
     core: 'Core',
     standard: 'Standard',
     marketplace: 'Marketplace',
   };
+  // UR-20261011-011 — the instant command-access gate (Discord's per-guild command permissions),
+  // late-bound because it needs the REST client, which is built after login. On a module disable the
+  // framework writes a DENY override for `@everyone` so the command disappears from members'
+  // effective access instantly, while the deregistration is batched on the change queue (§17.6/§17.7).
+  let setModuleCommandAccess:
+    ((moduleId: string, guildId: string, allowed: boolean) => Promise<void>) | undefined;
   // UR-20261011-010 — the module detail card (item 8): a formal, meaningful, banner-less card.
   // It renders at MEDIUM density (no banner, no per-field dividers) as a single content block, and
   // attributes the developer by NAME (not the raw `devId`). A CORE module carries NO uninstall
@@ -751,6 +769,7 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
       .insert({ guildId, moduleSlug: moduleId, enabled: true, state: 'active' })
       .onConflict(['guildId', 'moduleSlug'])
       .merge({ enabled: true, state: 'active', updatedAt: db.knex.fn.now() });
+    await setModuleCommandAccess?.(moduleId, guildId, true);
     await enqueueModuleCommandChanges(moduleId, guildId, userId, 'enable');
     logger.info('marketplace-module-installed', { moduleId, guildId, userId });
   };
@@ -769,6 +788,7 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
       .insert({ guildId, moduleSlug: moduleId, enabled: false, state: 'disabled' })
       .onConflict(['guildId', 'moduleSlug'])
       .merge({ enabled: false, state: 'disabled', updatedAt: db.knex.fn.now() });
+    await setModuleCommandAccess?.(moduleId, guildId, false);
     await enqueueModuleCommandChanges(moduleId, guildId, userId, 'disable');
     logger.info('module-uninstalled', { moduleId, guildId, userId });
   };
@@ -1159,6 +1179,43 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
           body: commands,
         });
       },
+    };
+    // UR-20261011-011 — the instant command-access override: on a module disable, write a DENY
+    // override for `@everyone` on each of the module's registered commands, so they disappear from
+    // members' effective access at once while the deregistration stays batched (§17.6/§17.7).
+    // Enabling clears the override (allow).
+    setModuleCommandAccess = async (moduleId, guildId, allowed) => {
+      const entry = moduleRegistry.get(moduleId);
+      if (entry === undefined || applicationId === '') return;
+      const names = new Set(entry.manifest.commands.map((command) => command.name));
+      if (names.size === 0) return;
+      let registered: Array<{ id: string; name: string }>;
+      try {
+        registered = (await rest.get(
+          Routes.applicationGuildCommands(applicationId, guildId),
+        )) as Array<{ id: string; name: string }>;
+      } catch (err) {
+        logger.warn('command-access-read-failed', { moduleId, guildId, error: String(err) });
+        return;
+      }
+      let applied = 0;
+      for (const command of registered) {
+        if (!names.has(command.name)) continue;
+        try {
+          await rest.put(Routes.applicationCommandPermissions(applicationId, guildId, command.id), {
+            body: { permissions: [{ id: guildId, type: 1, permission: allowed }] },
+          });
+          applied += 1;
+        } catch (err) {
+          logger.warn('command-access-set-failed', {
+            moduleId,
+            guildId,
+            command: command.name,
+            error: String(err),
+          });
+        }
+      }
+      logger.info('module-command-access-set', { moduleId, guildId, allowed, applied });
     };
     // §17.7 — run the batch once shortly after boot: it converges any batch left pending by the
     // previous deploy, and in dry-run it makes the output visible without waiting for the 12h

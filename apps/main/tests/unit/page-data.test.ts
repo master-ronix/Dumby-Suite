@@ -284,16 +284,18 @@ describe('page-data provider', () => {
     ).toBe(true);
   });
 
-  test('installedModules lists every loaded module', async () => {
+  test('installedModules lists enabled modules (UR-20261011-011)', async () => {
     const provider = createPageDataProvider(makeDeps());
     const data = await provider('modules', null);
     expect(data['title']).toBe('Installed Modules');
-    expect((data['modules'] as unknown[]).length).toBe(4);
+    // core (health, dashboard) + the default-enabled standard (hello-world); the marketplace
+    // module (browse) is not installed, so it is not listed.
+    expect((data['modules'] as unknown[]).length).toBe(3);
   });
 
   test('installedModules paginates the module list (UR-20261011-009)', async () => {
     const many = Array.from({ length: 15 }, (_, i) =>
-      mod(`mp-${String(i).padStart(2, '0')}`, 'marketplace', ['x']),
+      mod(`std-${String(i).padStart(2, '0')}`, 'standard', ['x']),
     );
     const bigRegistry = {
       all: () => many,
