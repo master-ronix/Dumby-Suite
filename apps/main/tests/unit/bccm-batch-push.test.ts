@@ -2,6 +2,7 @@ import { describe, expect, test, vi } from 'vitest';
 import type { CommandCeilingService } from '../../src/commands/command-ceiling.js';
 import {
   applyBatch,
+  isValidCommandName,
   newNames,
   resolveCommandPayloads,
   runBccmBatchPush,
@@ -240,6 +241,17 @@ describe('bccm batch push — failure modes', () => {
   });
 });
 
+describe('isValidCommandName', () => {
+  test('accepts lowercase names within the length limit and rejects the rest', () => {
+    expect(isValidCommandName('hello')).toBe(true);
+    expect(isValidCommandName('queue-admin')).toBe(true);
+    expect(isValidCommandName('Bad Name')).toBe(false);
+    expect(isValidCommandName('UPPER')).toBe(false);
+    expect(isValidCommandName('')).toBe(false);
+    expect(isValidCommandName('a'.repeat(33))).toBe(false);
+  });
+});
+
 describe('resolveCommandPayloads', () => {
   const registry = {
     get: (name: string) =>
@@ -265,5 +277,14 @@ describe('resolveCommandPayloads', () => {
       { name: 'ghost', description: 'ghost' },
     ]);
     expect(seen).toEqual(['ghost']);
+  });
+
+  test('drops an invalid name entirely, because it would fail the whole bulk overwrite', () => {
+    const problems: Array<{ name: string; reason: string }> = [];
+    const body = resolveCommandPayloads(['Bad Name', 'hello'], registry, (name, reason) =>
+      problems.push({ name, reason }),
+    );
+    expect(body).toEqual([{ name: 'hello', description: 'Says hello', type: 1 }]);
+    expect(problems).toEqual([{ name: 'Bad Name', reason: 'invalid-name' }]);
   });
 });

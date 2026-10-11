@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.25
+version: 5.5.26
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,19 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.26 — BCCM name validation (UR-20261011-023 v1.1) — 2026-10-11
+
+- 2026-10-11 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- The operator's log confirmed the v5.5.25 diagnosis (`status=400 Invalid Form Body`, missing
+  `description`) and added one detail: a command also had an **invalid name**. Since the BCCM sends a
+  bulk overwrite, one bad name rejects the whole batch. `isValidCommandName` now guards
+  `resolveCommandPayloads`, which drops an invalid name and reports it as `invalid-name`.
+- `module-command-access-set` now carries `applied=N` in the message (the UR-019 pattern), so the
+  instant hide is confirmable from the log.
+- **Verification:** `typecheck`, `lint`, `format` green; corpus gates 27/27.
 
 ---
 

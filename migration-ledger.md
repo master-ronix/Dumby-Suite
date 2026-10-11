@@ -50,6 +50,7 @@
 | M27 | OAuth route coverage + callback alias (UR-20261011-022) | DONE (typecheck+lint+format) |
 | M28 | OAuth state-cookie path widened to `/` so the callback alias receives it (UR-20261011-022 v1.1) | DONE |
 | M29 | New-guild command deploy, per-guild authorization, BCCM full-object payload (UR-20261011-023) | DONE (typecheck+lint+format) |
+| M30 | BCCM name validation (drop an invalid name, which fails the whole bulk overwrite) + `applied=N` in the hide log (UR-20261011-023 v1.1) | DONE |
 
 Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (reason)`.
 

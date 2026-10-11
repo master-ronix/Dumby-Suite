@@ -1251,7 +1251,7 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
         const body = resolveCommandPayloads(
           commands.map((command) => command.name),
           commandRegistry,
-          (name) => logger.warn('bccm-batch-command-unresolved', { guildId, name }),
+          (name, reason) => logger.warn('bccm-batch-command-skipped', { guildId, name, reason }),
         );
         await rest.put(Routes.applicationGuildCommands(applicationId, guildId), { body });
       },
@@ -1288,7 +1288,13 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
         allowed,
         logger,
       });
-      logger.info('module-command-access-set', { moduleId, guildId, allowed, applied });
+      // The log viewer drops structured fields, so `applied` is in the message too (UR-019 pattern).
+      logger.info(`module-command-access-set applied=${applied}`, {
+        moduleId,
+        guildId,
+        allowed,
+        applied,
+      });
     };
     // §17.7 — run the batch once shortly after boot: it converges any batch left pending by the
     // previous deploy, and in dry-run it makes the output visible without waiting for the 12h

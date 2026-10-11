@@ -63,6 +63,16 @@ export interface CommandLookup {
 }
 
 /**
+ * UR-20261011-023 — Discord's command-name rule: 1–32 characters from
+ * `[-_\p{L}\p{N}\p{sc=Deva}\p{sc=Thai}]`, lowercase only. Because the BCCM sends a BULK
+ * overwrite, one invalid name rejects the WHOLE batch and nothing changes — so an invalid name must
+ * never be sent.
+ */
+export function isValidCommandName(name: string): boolean {
+  return /^[-_\p{L}\p{N}\p{sc=Deva}\p{sc=Thai}]{1,32}$/u.test(name) && name === name.toLowerCase();
+}
+
+/**
  * UR-20261011-023 — Discord's bulk overwrite needs a FULL command object (a `name` AND a
  * `description`); sending `{ name }` alone is rejected with a 400, which is what made the first
  * real BCCM push fail. Resolve each desired name to its registered definition, keeping the
@@ -72,16 +82,24 @@ export interface CommandLookup {
 export function resolveCommandPayloads(
   names: readonly string[],
   registry: CommandLookup,
-  onUnresolved?: (name: string) => void,
+  onProblem?: (name: string, reason: 'invalid-name' | 'unresolved') => void,
 ): object[] {
-  return names.map((name) => {
+  const payloads: object[] = [];
+  for (const name of names) {
+    if (!isValidCommandName(name)) {
+      // Dropped, not sent: one invalid name fails the entire bulk overwrite.
+      onProblem?.(name, 'invalid-name');
+      continue;
+    }
     const definition = registry.get(name);
     if (definition === undefined) {
-      onUnresolved?.(name);
-      return { name, description: name };
+      onProblem?.(name, 'unresolved');
+      payloads.push({ name, description: name });
+      continue;
     }
-    return { ...definition.data, name };
-  });
+    payloads.push({ ...definition.data, name });
+  }
+  return payloads;
 }
 
 /**
