@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.16
+version: 5.5.17
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,26 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.17 — Disable Button Non-Functional (UR-20261011-017) — 2026-10-11
+
+- 2026-10-11 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- Work order: `UR-20261011-017` (the operator's live report: the Disable button does nothing).
+- **Root cause.** `guild_module_states` is guarded by a **partial** unique index
+  (`createPartialUniqueNotDeleted` → `... where "deletedAt" is null`). Postgres matches an `ON CONFLICT`
+  target to a partial index only when the target repeats the predicate; the three upserts used the bare
+  `.onConflict(['guildId', 'moduleSlug'])`, which matches no index, so the insert threw **42P10** and
+  the disable never persisted. `uninstallModule` is not in a try/catch, so the button was a no-op.
+- **Fix.** All three `guild_module_states` upserts (`uninstallModule`, `installModule`, the
+  `isModuleEnabledInGuild` seed) now use
+  `.onConflict(db.knex.raw('("guildId", "moduleSlug") where "deletedAt" is null'))` — the codebase's own
+  idiom (as in `admin.routes.ts` for `guild_command_renames`).
+- **Proof.** Generated SQL now carries `where "deletedAt" is null`; a DB-free regression test
+  (`tests/unit/module-state-upsert.test.ts`) locks it.
+- **Verification:** `typecheck`, `lint`, `format` green locally. The instant `@everyone` deny override
+  now runs; the BCCM deregistration still needs `BCCM_BATCH_PUSH_DRY_RUN=false`.
 
 ---
 

@@ -6,7 +6,7 @@
 > continued, never restarted.
 
 - **Created:** 2026-10-08
-- **Last updated:** 2026-10-11 · **Current item:** Deploy-gate corrections (UR-20261011-016, executed) · **Next action:** confirm the feature/dev deploy is no longer skipped, set `BCCM_BATCH_PUSH_DRY_RUN=false` on Railway, and re-verify /modules live
+- **Last updated:** 2026-10-11 · **Current item:** Disable-button root cause — partial-index upsert (UR-20261011-017, executed) · **Next action:** set `BCCM_BATCH_PUSH_DRY_RUN=false` on Railway and re-verify disable/enable live
 - **Protocol:** `docs/migration/migration-prompt.md` v5.2.0
 - **Coverage map:** the change-set brief (18 items) → one owning item each (M0–M17)
 - **Record shapes:** `docs/migration/ledger-template.md` §3 (item) and §4 (slice)
@@ -42,6 +42,7 @@
 | M19 | Codebase interception — BCCM dry-run env coercion (UR-20261011-014) | DONE (typecheck+lint) |
 | M20 | Modules enablement read + developer attribution root-cause (UR-20261011-015) | DONE (typecheck+lint) |
 | M21 | Deploy-gate corrections — CI green + ephemeral deprecation (UR-20261011-016) | DONE (typecheck+lint+format) |
+| M22 | Disable-button root cause — guild_module_states partial-index upsert (UR-20261011-017) | DONE (typecheck+lint+format) |
 
 Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (reason)`.
 
@@ -452,3 +453,21 @@ them. Acceptance ids: `ACC-UR-024-1…4`.
 
 **Verification.** `typecheck` and `lint` green locally; `format` green; the corpus gate suite 27/27
 (incl. the fixed freshness gate). Acceptance ids: `ACC-UR-026-1…5`.
+
+---
+
+## Disable-Button Root Cause (UR-20261011-017) — 2026-10-11
+
+> The operator reported the module Disable button non-functional on the live build. Root cause: the
+> `guild_module_states` upserts used a bare `ON CONFLICT` target that did not match the table's
+> **partial** unique index, so the write threw (42P10) and the disable never persisted.
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-85 | `uninstallModule` upsert carries the partial-index predicate (`... where "deletedAt" is null`) (R1) | DONE (typecheck+lint) |
+| DP-86 | `installModule` upsert — the same fix (R2) | DONE |
+| DP-87 | `isModuleEnabledInGuild` default-row seed — the same fix (R3) | DONE |
+| DP-88 | DB-free regression test locking the SQL contract (`module-state-upsert.test.ts`) | DONE (CI) |
+
+**Proof.** The generated SQL now reads `on conflict ("guildId", "moduleSlug") where "deletedAt" is null
+do update set …`. Acceptance ids: `ACC-UR-027-1…5`.

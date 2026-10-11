@@ -583,7 +583,7 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
           await db
             .knex('guild_module_states')
             .insert({ guildId, moduleSlug: moduleId, enabled: true, state: 'active' })
-            .onConflict(['guildId', 'moduleSlug'])
+            .onConflict(db.knex.raw('("guildId", "moduleSlug") where "deletedAt" is null'))
             .ignore();
         }
         return enabled;
@@ -776,7 +776,7 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     await db
       .knex('guild_module_states')
       .insert({ guildId, moduleSlug: moduleId, enabled: true, state: 'active' })
-      .onConflict(['guildId', 'moduleSlug'])
+      .onConflict(db.knex.raw('("guildId", "moduleSlug") where "deletedAt" is null'))
       .merge({ enabled: true, state: 'active', updatedAt: db.knex.fn.now() });
     await setModuleCommandAccess?.(moduleId, guildId, true);
     await enqueueModuleCommandChanges(moduleId, guildId, userId, 'enable');
@@ -795,7 +795,7 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     await db
       .knex('guild_module_states')
       .insert({ guildId, moduleSlug: moduleId, enabled: false, state: 'disabled' })
-      .onConflict(['guildId', 'moduleSlug'])
+      .onConflict(db.knex.raw('("guildId", "moduleSlug") where "deletedAt" is null'))
       .merge({ enabled: false, state: 'disabled', updatedAt: db.knex.fn.now() });
     await setModuleCommandAccess?.(moduleId, guildId, false);
     await enqueueModuleCommandChanges(moduleId, guildId, userId, 'disable');
