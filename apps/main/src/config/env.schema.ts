@@ -11,6 +11,30 @@ const csvIds = () =>
         .filter((id) => id.length > 0),
     );
 
+/**
+ * A boolean read from an environment string.
+ *
+ * `z.coerce.boolean()` is unsafe for env parsing: it is `Boolean(value)`, so the *string* `"false"`
+ * coerces to `true` — an explicit `false` in the environment would be read as `true`. That silently
+ * broke `BCCM_BATCH_PUSH_DRY_RUN` (the `.env.example` says "Set false to send", but `false` read as
+ * `true`, so the batch push never actually ran) and would silently force `DATABASE_SSL` /
+ * `REDIS_TLS` on. This accepts true/1/yes/on (case-insensitive) as `true`, any other non-empty
+ * string as `false`, and falls back to `def` when unset or blank.
+ */
+const envBool = (def: boolean) =>
+  z
+    .union([z.boolean(), z.string()])
+    .optional()
+    .transform((value) =>
+      value === undefined
+        ? def
+        : typeof value === 'boolean'
+          ? value
+          : value.trim() === ''
+            ? def
+            : /^(true|1|yes|on)$/i.test(value.trim()),
+    );
+
 const baseEnvSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'staging', 'production']).default('development'),
@@ -63,12 +87,12 @@ const baseEnvSchema = z
     DATABASE_POOL_MAX: z.coerce.number().int().positive().default(10),
     DATABASE_STATEMENT_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
     DATABASE_REPLICA_MAX_LAG_MS: z.coerce.number().int().nonnegative().default(1000),
-    DATABASE_SSL: z.coerce.boolean().default(false),
+    DATABASE_SSL: envBool(false),
     SLOW_QUERY_THRESHOLD_MS: z.coerce.number().int().positive().default(500),
     CRITICAL_QUERY_THRESHOLD_MS: z.coerce.number().int().positive().default(2000),
 
     REDIS_URL: z.string().min(1, 'REDIS_URL is required'),
-    REDIS_TLS: z.coerce.boolean().default(false),
+    REDIS_TLS: envBool(false),
     CACHE_L1_MAX_ENTRIES: z.coerce.number().int().positive().default(5000),
     CACHE_L1_MAX_BYTES: z.coerce.number().int().positive().default(52_428_800),
 
@@ -88,7 +112,7 @@ const baseEnvSchema = z
     SHARD_LOCK_HEARTBEAT_MS: z.coerce.number().int().positive().default(10_000),
     SHARD_LOCK_RETRY_MS: z.coerce.number().int().positive().default(2000),
 
-    TELEMETRY_ENABLED: z.coerce.boolean().default(false),
+    TELEMETRY_ENABLED: envBool(false),
     TRACE_SAMPLE_RATE: z.coerce.number().min(0).max(1).default(0.1),
     OTEL_EXPORTER_OTLP_ENDPOINT: z.string().default(''),
 
@@ -132,10 +156,10 @@ const baseEnvSchema = z
     MTP_BANDWIDTH_TOKEN_THRESHOLD_BYTES: z.coerce.number().int().positive().default(1_048_576),
     MTP_MEMORY_TOKEN_THRESHOLD_BYTES: z.coerce.number().int().positive().default(52_428_800),
 
-    CORE_ADMIN_EVAL_ENABLED: z.coerce.boolean().default(false),
+    CORE_ADMIN_EVAL_ENABLED: envBool(false),
     // §17.7 BCCM — the batch push defaults to dry-run: it logs the batch it would send and
     // changes nothing until an operator turns this off.
-    BCCM_BATCH_PUSH_DRY_RUN: z.coerce.boolean().default(true),
+    BCCM_BATCH_PUSH_DRY_RUN: envBool(true),
   })
   .strict();
 

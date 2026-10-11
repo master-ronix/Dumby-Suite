@@ -116,6 +116,34 @@ describe('parseEnv', () => {
     expect(env.TELEMETRY_ENABLED).toBe(true);
   });
 
+  test('parses boolean env strings strictly — "false" is not Boolean("false") === true', () => {
+    // Regression: `z.coerce.boolean()` is `Boolean(value)`, so the string "false" read as true.
+    // false/0/no are false; true/1/yes/on are true; blank falls back to the field default.
+    expect(parseEnv({ ...minValid, TELEMETRY_ENABLED: 'false' }).TELEMETRY_ENABLED).toBe(false);
+    expect(parseEnv({ ...minValid, TELEMETRY_ENABLED: '0' }).TELEMETRY_ENABLED).toBe(false);
+    expect(parseEnv({ ...minValid, TELEMETRY_ENABLED: 'no' }).TELEMETRY_ENABLED).toBe(false);
+    expect(parseEnv({ ...minValid, TELEMETRY_ENABLED: '1' }).TELEMETRY_ENABLED).toBe(true);
+    expect(parseEnv({ ...minValid, TELEMETRY_ENABLED: 'yes' }).TELEMETRY_ENABLED).toBe(true);
+    expect(parseEnv({ ...minValid, TELEMETRY_ENABLED: '' }).TELEMETRY_ENABLED).toBe(false);
+  });
+
+  test('BCCM_BATCH_PUSH_DRY_RUN can actually be turned off with "false" (default true)', () => {
+    // Regression: `.env.example` says "Set false to send", but `z.coerce.boolean()` made the string
+    // "false" read as true, so the BCCM batch push — the module-command deregistration — could never
+    // run. This is the difference between a module disable deregistering its commands and not.
+    expect(parseEnv(minValid).BCCM_BATCH_PUSH_DRY_RUN).toBe(true);
+    expect(parseEnv({ ...minValid, BCCM_BATCH_PUSH_DRY_RUN: 'false' }).BCCM_BATCH_PUSH_DRY_RUN).toBe(
+      false,
+    );
+    expect(parseEnv({ ...minValid, BCCM_BATCH_PUSH_DRY_RUN: '0' }).BCCM_BATCH_PUSH_DRY_RUN).toBe(false);
+  });
+
+  test('DATABASE_SSL / REDIS_TLS do not read a stray "false" as true', () => {
+    const env = parseEnv({ ...minValid, DATABASE_SSL: 'false', REDIS_TLS: 'false' });
+    expect(env.DATABASE_SSL).toBe(false);
+    expect(env.REDIS_TLS).toBe(false);
+  });
+
   test('rejects unknown keys via .strict()', () => {
     expect(() => parseEnv({ ...minValid, UNKNOWN_EXTRA_KEY: 'bad' })).toThrow(
       ConfigValidationError,
