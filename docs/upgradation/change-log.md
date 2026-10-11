@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.17
+version: 5.5.18
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,28 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.18 — Disable-Flow Corrections (UR-20261011-018) — 2026-10-11
+
+- 2026-10-11 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- Work order: `UR-20261011-018` (the operator's four live requests).
+- **R1 — Compact confirmation.** A disable now replaces the card with a formal **Mode C** frame
+  ("✅ **<module>** disabled — … Re-enable it from /browse."). New `disableConfirmation` dependency.
+- **R2 — instant hide/restrict.** `setModuleCommandAccess` wrote the per-guild command-permission
+  override with the BOT token; Discord's *Edit Application Command Permissions* endpoint accepts only
+  a **Bearer token** (`applications.commands.permissions.update`) — a bot token is rejected (403,
+  "Bots cannot use this endpoint"). It now uses `DISCORD_COMMAND_PERMISSIONS_TOKEN` (new env key) via a
+  direct `PUT`. Absent the token it logs `command-access-token-missing` and returns; the state write
+  and BCCM deregistration still apply.
+- **R3 — `/browse` Info.** The `dumby:info:` customId now carries the surface; the uninstall control
+  renders on the `/modules` card only.
+- **R4 — owner rank.** Both interaction adapters now pass `isGuildOwner` (the component adapter also
+  passes member context), so a guild owner is not mis-ranked to RESTRICTED.
+- **Residual recorded, not fixed:** `persona.repository.ts` binds `guild_persona_bindings` with a
+  `moduleSlug` column that table does not have — the same class of mismatch as UR-20261011-017.
+- **Verification:** `typecheck`, `lint`, `format` green; the ConfigMap gate unchanged (27 keys).
 
 ---
 

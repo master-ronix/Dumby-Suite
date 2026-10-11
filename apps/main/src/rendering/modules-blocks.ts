@@ -69,7 +69,7 @@ export function modulesBlocks(
     blocks.push({
       kind: 'section',
       content: description === '' ? heading : `${heading}\n-# ${description}`,
-      accessory: { customId: `dumby:info:${invokerId}:${m.id}`, label: 'Info', style: 2 },
+      accessory: { customId: `dumby:info:${invokerId}:modules:${m.id}`, label: 'Info', style: 2 },
     });
   }
   return blocks;

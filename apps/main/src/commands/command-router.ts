@@ -755,7 +755,7 @@ export class CommandRouter {
       blocks.push({
         kind: 'section',
         content: `${icon} **${name}** — ${description}${note}`.trim(),
-        accessory: { customId: `dumby:info:${invokerId}:${m.id}`, label: 'Info', style: 2 },
+        accessory: { customId: `dumby:info:${invokerId}:browse:${m.id}`, label: 'Info', style: 2 },
       });
     }
     // UR-20261011-006 (items 1/3/9) — the install dropdown carries the permanent Home option in its

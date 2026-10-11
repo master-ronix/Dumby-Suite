@@ -68,6 +68,12 @@ const baseEnvSchema = z
     TWILL_PORT: z.coerce.number().int().positive().default(8090),
 
     BOT_TOKEN: z.string().default(''),
+    // §17.6 — a Bearer token (user OAuth2, scope `applications.commands.permissions.update`) used to
+    // edit per-guild command permissions (Server Settings → Integrations). Discord REJECTS a bot
+    // token on that endpoint (403 "Bots cannot use this endpoint"); a bot cannot mint this token
+    // itself, so the operator provisions it. Without it, module disable still writes the state and
+    // enqueues the BCCM deregistration, but the instant hide/restrict does not run.
+    DISCORD_COMMAND_PERMISSIONS_TOKEN: z.string().default(''),
     PERSONA_ID: z.string().default(''),
     BOT_OWNER_IDS: csvIds(),
     DEV_GUILD_ID: z

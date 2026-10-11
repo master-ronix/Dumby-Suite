@@ -6,7 +6,7 @@
 > continued, never restarted.
 
 - **Created:** 2026-10-08
-- **Last updated:** 2026-10-11 · **Current item:** Disable-button root cause — partial-index upsert (UR-20261011-017, executed) · **Next action:** set `BCCM_BATCH_PUSH_DRY_RUN=false` on Railway and re-verify disable/enable live
+- **Last updated:** 2026-10-11 · **Current item:** Disable-flow corrections (UR-20261011-018, executed) · **Next action:** set `DISCORD_COMMAND_PERMISSIONS_TOKEN` and `BCCM_BATCH_PUSH_DRY_RUN=false` on Railway, then re-verify disable/enable live
 - **Protocol:** `docs/migration/migration-prompt.md` v5.2.0
 - **Coverage map:** the change-set brief (18 items) → one owning item each (M0–M17)
 - **Record shapes:** `docs/migration/ledger-template.md` §3 (item) and §4 (slice)
@@ -43,6 +43,7 @@
 | M20 | Modules enablement read + developer attribution root-cause (UR-20261011-015) | DONE (typecheck+lint) |
 | M21 | Deploy-gate corrections — CI green + ephemeral deprecation (UR-20261011-016) | DONE (typecheck+lint+format) |
 | M22 | Disable-button root cause — guild_module_states partial-index upsert (UR-20261011-017) | DONE (typecheck+lint+format) |
+| M23 | Disable-flow corrections — Mode C confirmation, Bearer command-permissions, /browse control removal, owner rank (UR-20261011-018) | DONE (typecheck+lint+format) |
 
 Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (reason)`.
 
@@ -471,3 +472,20 @@ them. Acceptance ids: `ACC-UR-024-1…4`.
 
 **Proof.** The generated SQL now reads `on conflict ("guildId", "moduleSlug") where "deletedAt" is null
 do update set …`. Acceptance ids: `ACC-UR-027-1…5`.
+
+---
+
+## Disable-Flow Corrections (UR-20261011-018) — 2026-10-11
+
+> The operator's four live requests after the disable fix went live: a Compact confirmation, a real
+> instant hide/restrict, no disable control on `/browse`, and a spurious FORBIDDEN.
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-89 | Disable shows a formal Mode C confirmation (R1) | DONE (typecheck+lint) |
+| DP-90 | `setModuleCommandAccess` uses a Bearer token (`DISCORD_COMMAND_PERMISSIONS_TOKEN`) — the endpoint rejects a bot token (R2) | DONE |
+| DP-91 | The `/browse` Info view carries no disable control; the `/modules` card does (R3) | DONE |
+| DP-92 | Both adapters pass `isGuildOwner`; the component adapter passes member context (R4) | DONE |
+
+**Verification.** `typecheck`, `lint`, `format` green locally; the ConfigMap gate unchanged (27 keys).
+Acceptance ids: `ACC-UR-028-1…5`.

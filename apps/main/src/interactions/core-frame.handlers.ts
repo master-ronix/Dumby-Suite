@@ -47,15 +47,27 @@ export interface CoreFrameHandlerDeps {
     moduleId: string,
     guildId: string | null,
     invokerId: string,
+    /** The invoking surface: 'modules' (the detail card, with its control) or 'browse' (info only). */
+    surface?: string,
   ) => unknown | Promise<unknown>;
   /** item 9 — installs a marketplace module for the guild (the install-dropdown action). */
   installModule?: (moduleId: string, guildId: string | null, userId: string) => Promise<void>;
   /** UR-20261011-009 — disables/uninstalls a module for the guild (the detail card's control). */
   uninstallModule?: (moduleId: string, guildId: string | null, userId: string) => Promise<void>;
+  /**
+   * UR-20261011-018 — the formal Compact (Mode C) confirmation shown after a module is disabled,
+   * in place of the refreshed detail card.
+   */
+  disableConfirmation?: (
+    moduleId: string,
+    guildId: string | null,
+    invokerId: string,
+  ) => unknown | Promise<unknown>;
 }
 
 export function registerCoreFrameHandlers(deps: CoreFrameHandlerDeps): void {
-  const { registry, router, moduleInfo, installModule, uninstallModule } = deps;
+  const { registry, router, moduleInfo, installModule, uninstallModule, disableConfirmation } =
+    deps;
 
   registry.register({
     customIdPrefix: MODE_PREFIX,
@@ -106,13 +118,18 @@ export function registerCoreFrameHandlers(deps: CoreFrameHandlerDeps): void {
       }
       if (action === 'uninstall') {
         // UR-20261011-009 — the module detail card's uninstall/disable control: disable the module
-        // for the guild, then refresh the card in place so its control reflects the new state.
+        // for the guild. UR-20261011-018 — replace the card with a formal Compact (Mode C)
+        // confirmation, so the operator sees a definitive, professional result.
         if (uninstallModule !== undefined) {
           await uninstallModule(target, interaction.guildId, interaction.user.id);
         }
-        if (moduleInfo !== undefined) {
+        if (disableConfirmation !== undefined) {
           await interaction.editReply(
-            await moduleInfo(target, interaction.guildId, interaction.user.id),
+            await disableConfirmation(target, interaction.guildId, interaction.user.id),
+          );
+        } else if (moduleInfo !== undefined) {
+          await interaction.editReply(
+            await moduleInfo(target, interaction.guildId, interaction.user.id, 'modules'),
           );
         }
         return;
@@ -163,13 +180,15 @@ export function registerCoreFrameHandlers(deps: CoreFrameHandlerDeps): void {
     ack: 'ephemeral',
     parse: (customId) => {
       const parts = customId.split(':');
-      return { moduleId: parts[3] };
+      // `dumby:info:<invoker>:<surface>:<moduleId>` — the surface decides whether the detail card
+      // carries the uninstall/disable control (the /modules card) or not (the /browse info).
+      return { surface: parts[3], moduleId: parts[4] };
     },
     execute: async (interaction, context) => {
-      const { moduleId } = context as { moduleId?: string };
+      const { surface, moduleId } = context as { surface?: string; moduleId?: string };
       if (moduleId === undefined || moduleInfo === undefined) return;
       await interaction.editReply(
-        await moduleInfo(moduleId, interaction.guildId, interaction.user.id),
+        await moduleInfo(moduleId, interaction.guildId, interaction.user.id, surface),
       );
     },
   });
