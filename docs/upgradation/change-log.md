@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.27
+version: 5.5.28
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,19 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.28 — /persona Interface Revision (UR-20261011-025) — 2026-10-12
+
+- 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- Work order: `UR-20261011-025`.
+- The /persona page had no block set and fell back to plain sections with a run-on command inventory.
+  Added `rendering/persona-blocks.ts`: a status headline (`🟢 Main Bot · Online`) with the Refresh
+  control in-line, the identity as one compact field line, the command inventory grouped by tier with
+  code-formatted commands, and the Twill note. `persona()` now emits status/summary/identity/tiers/note;
+  the router attaches the blocks when the data carries `tiers`.
+- **Verification:** `typecheck`, `lint`, `format` green; corpus gates 27/27.
 
 ---
 

@@ -195,31 +195,47 @@ export function createPageDataProvider(
   async function persona(): Promise<PageData> {
     const client = getClient();
     const modules = moduleRegistry.all();
-    const rows: Array<readonly [string, string]> = [];
-    if (client?.application?.id !== undefined) rows.push(['Application ID', client.application.id]);
-    if (client?.user?.username !== undefined) rows.push(['Display Name', client.user.username]);
-    rows.push(['Bound Server', 'this guild (primary deployment)']);
-    rows.push(['Shards', String(config.get('SHARD_COUNT'))]);
-    rows.push([
-      'Bound Modules',
-      `${modules.length} (${modules.map((entry) => entry.manifest.name).join(', ')})`,
-    ]);
-    rows.push(['DM Behavior', 'Prohibited (main bot)']);
-    rows.push(['Status', client?.isReady() === true ? '● Online' : '● Offline']);
+    const online = client?.isReady() === true;
+    const displayName = client?.user?.username ?? 'Main Bot';
+    const shards = config.get('SHARD_COUNT');
 
-    const inventory = modules
-      .map((entry) => `/${entry.manifest.commands.map((command) => command.name).join(' /')}`)
-      .join('   ');
+    // UR-20261011-025 — the page carries the bot's identity as one compact field line and its
+    // command inventory grouped by tier, so every registered command stays visible without a
+    // run-on line. `personaBlocks` renders it; the renderer never sees this raw shape.
+    const identity: Array<readonly [string, string]> = [];
+    if (client?.application?.id !== undefined) {
+      identity.push(['Application ID', client.application.id]);
+    }
+    identity.push(['Display Name', displayName]);
+    identity.push(['Bound Server', 'this guild (primary deployment)']);
+    identity.push(['Shards', String(shards)]);
+    identity.push(['DM Behavior', 'Prohibited (main bot)']);
+
+    const tierOrder = ['core', 'standard', 'marketplace'] as const;
+    const tiers = tierOrder
+      .map((tier) => ({
+        tier,
+        modules: modules
+          .filter((entry) => entry.manifest.tier === tier)
+          .map((entry) => ({
+            name: entry.manifest.name,
+            commands: entry.manifest.commands.map((command) => command.name),
+          })),
+      }))
+      .filter((group) => group.modules.length > 0);
+
+    const commandCount = modules.reduce(
+      (total, entry) => total + entry.manifest.commands.length,
+      0,
+    );
 
     return {
       title: 'Active Personas',
-      groups: [{ name: 'Main Bot (Primary)', rows }],
-      lines: [
-        'Command Inventory (Main Bot):',
-        inventory,
-        '',
-        'ℹ️ Persona creation and configuration are handled through the Twill registration API.',
-      ],
+      status: online ? 'online' : 'offline',
+      summary: `${displayName} · ${shards} shard${shards === 1 ? '' : 's'} · ${modules.length} bound modules · ${commandCount} commands`,
+      identity,
+      tiers,
+      note: 'Persona creation and configuration are handled through the Twill registration API.',
     };
   }
 

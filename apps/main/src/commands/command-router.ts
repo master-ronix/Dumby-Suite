@@ -24,6 +24,7 @@ import {
 import { customEmojiParts } from '../rendering/module-icons.js';
 import { healthBlocks } from '../rendering/health-blocks.js';
 import { modulesBlocks } from '../rendering/modules-blocks.js';
+import { personaBlocks } from '../rendering/persona-blocks.js';
 import {
   HOME_SELECT_VALUE,
   INSTALL_DROPDOWN_CAP,
@@ -283,10 +284,10 @@ export class CommandRouter {
           : {}),
         ...(options.mode !== undefined ? { mode: options.mode } : {}),
         ...(declaredDensity !== undefined ? { mode: declaredDensity } : {}),
-        // items 8/9 — /browse and /modules render richer blocks (inline Info sections, the install
-        // dropdown, the /modules listing); the dashboard's nav is Home/Next/Prev. Each block set
-        // attaches only when the page data carries its shape, so a command that returns a plain
-        // render is left untouched.
+        // items 8/9 — /browse, /modules and /persona render richer blocks (inline Info sections, the
+        // install dropdown, the /modules listing, the persona control-plane board); the dashboard's
+        // nav is Home/Next/Prev. Each block set attaches only when the page data carries its shape,
+        // so a command that returns a plain render is left untouched.
         ...(name === 'browse'
           ? { blocks: this.browseBlocks(declaredPageData, interaction.user.id) }
           : name === 'health' && Array.isArray(declaredPageData?.['groups'])
@@ -301,16 +302,18 @@ export class CommandRouter {
                     options.page,
                   ),
                 }
-              : name === 'dashboard'
-                ? {
-                    actions: this.pageActions(
-                      name,
-                      declaredPageData,
-                      interaction.user.id,
-                      options.page,
-                    ),
-                  }
-                : {}),
+              : name === 'persona' && Array.isArray(declaredPageData?.['tiers'])
+                ? { blocks: personaBlocks(declaredPageData, interaction.user.id) }
+                : name === 'dashboard'
+                  ? {
+                      actions: this.pageActions(
+                        name,
+                        declaredPageData,
+                        interaction.user.id,
+                        options.page,
+                      ),
+                    }
+                  : {}),
       });
       // A page whose data the effects just changed is re-derived, so the render shows the result
       // of the action rather than the state it was gathered in.
