@@ -64,7 +64,8 @@ describe('personaBlocks', () => {
     expect(String(head['content'])).toContain('2 modules');
     const accessory = head['accessory'] as Any;
     expect(accessory['label']).toBe('Refresh');
-    expect(accessory['customId']).toBe('dumby:act:u1:refresh:persona');
+    // The selected profile rides along so Refresh does not drop the member back to the running one.
+    expect(accessory['customId']).toBe('dumby:act:u1:refresh:persona:main');
   });
 
   test('carries the profile switcher, marking the profile that is running the command', () => {

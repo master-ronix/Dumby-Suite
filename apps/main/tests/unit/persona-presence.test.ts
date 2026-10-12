@@ -75,4 +75,38 @@ describe('personaPresenceFromClient', () => {
     const presence = personaPresenceFromClient(() => undefined, vi.fn());
     expect(await presence('g1', 'app-1')).toBe(false);
   });
+
+  test('FETCHES an uncached guild rather than reading its members as absent', async () => {
+    const fetch = vi.fn(async () => ({ members: { fetch: async () => ({ id: 'app-1' }) } }));
+    const client = { guilds: { cache: { get: () => undefined }, fetch } };
+    const presence = personaPresenceFromClient(() => client as never, vi.fn());
+    expect(await presence('g1', 'app-1')).toBe(true);
+    expect(fetch).toHaveBeenCalledWith('g1');
+  });
+
+  test('reports absent when the guild fetch itself fails', async () => {
+    const client = {
+      guilds: {
+        cache: { get: () => undefined },
+        fetch: async () => {
+          throw new Error('Unknown Guild');
+        },
+      },
+    };
+    const presence = personaPresenceFromClient(() => client as never, vi.fn());
+    expect(await presence('g1', 'app-1')).toBe(false);
+  });
+
+  test('a cached guild is used without a fetch', async () => {
+    const fetch = vi.fn();
+    const client = {
+      guilds: {
+        cache: { get: () => ({ members: { fetch: async () => ({ id: 'app-1' }) } }) },
+        fetch,
+      },
+    };
+    const presence = personaPresenceFromClient(() => client as never, vi.fn());
+    expect(await presence('g1', 'app-1')).toBe(true);
+    expect(fetch).not.toHaveBeenCalled();
+  });
 });

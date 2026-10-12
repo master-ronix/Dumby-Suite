@@ -69,7 +69,7 @@ import { PersonaCommandBindingService } from '../personas/persona-command-bindin
 import { personaPresenceFromClient } from '../personas/persona-presence.js';
 import { filterRegistryForModules, PersonaRuntime } from '../personas/persona-runtime.js';
 import { createPersonaOAuthService } from '../personas/persona-oauth.js';
-import { openSealedText } from '../personas/persona-credentials.js';
+import { openBotTokenOrEmpty, openSealedText } from '../personas/persona-credentials.js';
 import { dashboardUrlFrom, personaSetupCard } from '../rendering/persona-setup.js';
 import { personaInviteUrl, publicBaseFrom } from '../personas/persona-invite.js';
 import {
@@ -1437,10 +1437,12 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
       // re-creates them on the next enable, the batched path it already owns.
       let removed = 0;
       if (applied === 0 && !allowed) {
+        // Never throws: an unreadable token degrades to '' and deleteGuildCommands reports it, so
+        // the disable still completes through the queued BCCM deregistration.
         const ownerBotToken =
           ownerPersona === undefined
             ? config.get('BOT_TOKEN')
-            : openSealedText(ownerPersona.botTokenSealed, personaRootKey);
+            : openBotTokenOrEmpty(ownerPersona.botTokenSealed, personaRootKey);
         removed = await deleteGuildCommands({
           botToken: ownerBotToken,
           applicationId: ownerApplicationId,

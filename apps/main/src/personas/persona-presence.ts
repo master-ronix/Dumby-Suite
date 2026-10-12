@@ -17,8 +17,11 @@ export interface PresenceGuild {
 }
 
 export interface PersonaPresenceDeps {
-  /** Resolves a cached guild, or undefined when the guild is not cached. */
-  getGuild: (guildId: string) => PresenceGuild | undefined;
+  /**
+   * Resolves a guild. May be async, so an implementation can FETCH a guild the cache has not seen
+   * rather than reporting its members absent — a cold cache must not read as "not in this guild".
+   */
+  getGuild: (guildId: string) => PresenceGuild | undefined | Promise<PresenceGuild | undefined>;
   /** Optional logger for the failure path; never throws. */
   onError?: (guildId: string, applicationId: string, error: unknown) => void;
 }
@@ -32,7 +35,7 @@ export function createPersonaPresence(
 ): (guildId: string, applicationId: string) => Promise<boolean> {
   return async (guildId: string, applicationId: string): Promise<boolean> => {
     if (applicationId === '') return false;
-    const guild = deps.getGuild(guildId);
+    const guild = await deps.getGuild(guildId);
     if (guild === undefined) return false;
     try {
       const member = await guild.members.fetch(applicationId);
@@ -46,7 +49,11 @@ export function createPersonaPresence(
 
 /** The client slice the presence lookup needs (a discord.js Client satisfies it structurally). */
 export interface PresenceClient {
-  guilds: { cache: { get: (guildId: string) => PresenceGuild | undefined } };
+  guilds: {
+    cache: { get: (guildId: string) => PresenceGuild | undefined };
+    /** Optional: present on a discord.js Client, so a cold cache can be fetched. */
+    fetch?: (guildId: string) => Promise<PresenceGuild>;
+  };
 }
 
 /**
@@ -58,7 +65,19 @@ export function personaPresenceFromClient(
   warn: (message: string) => void,
 ): (guildId: string, applicationId: string) => Promise<boolean> {
   return createPersonaPresence({
-    getGuild: (guildId) => getClient()?.guilds.cache.get(guildId),
+    getGuild: async (guildId) => {
+      const client = getClient();
+      if (client === undefined) return undefined;
+      const cached = client.guilds.cache.get(guildId);
+      if (cached !== undefined) return cached;
+      // A cold cache is not "absent" — ask Discord before saying so.
+      if (client.guilds.fetch === undefined) return undefined;
+      try {
+        return await client.guilds.fetch(guildId);
+      } catch {
+        return undefined;
+      }
+    },
     onError: (guildId, applicationId, err) =>
       warn(`persona-presence-check-failed guild=${guildId} app=${applicationId}: ${String(err)}`),
   });

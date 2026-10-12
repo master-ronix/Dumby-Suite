@@ -119,10 +119,12 @@ export function registerCoreFrameHandlers(deps: CoreFrameHandlerDeps): void {
         // health report re-gathers its data (the health page's Refresh control).
         // UR-20261011-009 — a trailing page segment pages the target surface (the /modules nav).
         const n = Number(page);
-        await router.dispatch(
-          asPageInteraction(interaction, target),
-          page !== undefined && Number.isFinite(n) ? { page: n } : undefined,
-        );
+        // UR-20261012-039 — the trailing segment is a page INDEX for paging surfaces, but a
+        // NON-numeric one is a page-data selection (the /persona profile switcher), which travels on
+        // the query channel so a Refresh keeps the profile the member had chosen.
+        const dispatchOptions =
+          page === undefined ? undefined : Number.isFinite(n) ? { page: n } : { query: page };
+        await router.dispatch(asPageInteraction(interaction, target), dispatchOptions);
         return;
       }
       if (action === 'uninstall') {

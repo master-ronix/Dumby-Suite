@@ -71,6 +71,7 @@
 | M48 | Signing key custody: the verifier reads `BUILD_SIGNING_PUBLIC_KEY`; the runtime no longer needs the platform's private key (UR-20261012-036) | DONE (typecheck+lint+format) |
 | M49 | Registrar registry + enforcement at registration (fail closed), with a boot seed and an internal grant surface (UR-20261012-037) | DONE (typecheck+lint+format) |
 | M50 | Persona runtime: hosts each active persona's gateway, deploys its bound modules' commands, off by default (UR-20261012-038) | DONE (typecheck+lint+format) |
+| M51 | Residuals: Route B no longer throws on an unreadable token; Refresh keeps the selected profile; presence fetches an uncached guild (UR-20261012-039) | DONE (typecheck+lint+format) |
 
 Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (reason)`.
 

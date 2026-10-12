@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.45
+version: 5.5.46
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,22 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.46 — Residuals Closed (UR-20261012-039) — 2026-10-12
+
+- 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- ROUTE B COULD TAKE THE WHOLE DISABLE DOWN -- a real defect, not tidiness. Route B removes a module's
+  commands with the owning application's bot token, and opening that token THREW when the envelope
+  could not be unwrapped. The state write, the override attempt and the BCCM enqueue all sat behind it,
+  so an unreadable token broke the disable flow outright. openBotTokenOrEmpty returns '' instead and
+  deleteGuildCommands reports it, so the disable completes through the queued deregistration.
+- Refresh no longer drops the chosen persona profile: the selected id rides on the Refresh control's
+  custom id and travels on the page-data query channel. A numeric trailing segment is still a page
+  index, so paging surfaces are untouched.
+- Presence now FETCHES an uncached guild, so a cold cache is not mistaken for absence.
+- **Verification:** typecheck, lint, format, corpus gates 27/27, test-import guard.
 
 ---
 

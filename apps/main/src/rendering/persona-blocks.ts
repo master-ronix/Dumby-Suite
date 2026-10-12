@@ -157,7 +157,9 @@ export function personaBlocks(
     kind: 'section',
     content: subtext === '' ? headline : `${headline}\n-# ${subtext}`,
     accessory: {
-      customId: `dumby:act:${invokerId}:refresh:persona`,
+      // The selected profile rides along, so Refresh re-gathers the state WITHOUT dropping the
+      // member back to the running persona.
+      customId: `dumby:act:${invokerId}:refresh:persona:${selected?.id ?? ''}`,
       label: 'Refresh',
       emoji: customEmojiParts('dumby_refresh') ?? { name: '\u{1F504}' },
       style: 2,
