@@ -122,6 +122,24 @@ export class FreeCharterEndedError extends Error {
   }
 }
 
+/**
+ * UR-20261012-037 — the registrar is not recorded against this application. Authentication on the
+ * registration API is the internal key; THIS is authorisation: who may register what.
+ */
+export class RegistrarNotAuthorisedError extends Error {
+  constructor(
+    readonly authority: string,
+    readonly discordApplicationId: string,
+  ) {
+    super(
+      `registrar "${authority}" is not authorised to register a persona for application ` +
+        `"${discordApplicationId}" — grant it first (POST /twill/registrars, or the ` +
+        `PERSONA_REGISTRAR_AUTHORITIES seed)`,
+    );
+    this.name = 'RegistrarNotAuthorisedError';
+  }
+}
+
 export class UnknownPersonaError extends Error {
   constructor(readonly personaId: string) {
     super(`No persona "${personaId}" exists`);

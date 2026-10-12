@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.43
+version: 5.5.44
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,23 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.44 — Registrar Authority Verification (UR-20261012-037) — 2026-10-12
+
+- 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- The registration API required a registrarAuthority and never checked it -- and discarded it: it is
+  not a field on the persona identity and nothing read it. Anyone with the internal key could register
+  a persona for any Discord application.
+- persona_registrars records (authority, discordApplicationId) grants; '' means any application, so
+  the registry is not chicken-and-egg. registerPersona checks the grant BEFORE the duplicate check and
+  throws RegistrarNotAuthorisedError; an ABSENT registry refuses everything rather than waving it
+  through, so a misconfigured deployment fails closed.
+- Two ways in: GET/POST /twill/registrars and DELETE /twill/registrars/:authority/:applicationId
+  (behind the internal key), and the boot seed PERSONA_REGISTRAR_AUTHORITIES, applied idempotently.
+  Authenticated-but-not-authorised is a 403, not a 400.
+- **Verification:** typecheck, lint, format, corpus gates 27/27, test-import guard.
 
 ---
 

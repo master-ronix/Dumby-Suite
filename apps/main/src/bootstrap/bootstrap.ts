@@ -75,6 +75,11 @@ import {
   PostgresPersonaBindingStore,
   PostgresPersonaIdentityStore,
 } from '../personas/persona.repository.js';
+import {
+  parseRegistrarSeed,
+  PostgresPersonaRegistrarStore,
+  seedRegistrars,
+} from '../personas/persona-registrar.repository.js';
 import { MiddlewarePipeline } from '../middleware/middleware-pipeline.js';
 import { TraceMiddleware } from '../middleware/built-in/trace.js';
 import { AnalyticsMiddleware } from '../middleware/built-in/analytics.js';
@@ -487,10 +492,18 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   const personaIdentities = new PostgresPersonaIdentityStore(db.knex);
   const personaRootKey = rootKeyFromBase64('local', config.get('ENCRYPTION_ROOT_KEY'));
   const personaBindings = new PostgresPersonaBindingStore(db.knex);
+  // UR-20261012-037 — the registrar registry, seeded from configuration so a fresh install can
+  // register its first persona without a chicken-and-egg.
+  const personaRegistrars = new PostgresPersonaRegistrarStore(db.knex);
+  await seedRegistrars(
+    personaRegistrars,
+    parseRegistrarSeed(config.get('PERSONA_REGISTRAR_AUTHORITIES')),
+  );
   const personaBindingService = new PersonaCommandBindingService(
     personaIdentities,
     personaBindings,
     logger,
+    personaRegistrars,
   );
 
   const guildConfigService = new GuildConfigService(
@@ -1559,6 +1572,7 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
           service: personaBindingService,
           identities: personaIdentities,
           bindings: personaBindings,
+          registrars: personaRegistrars,
           rootKey: personaRootKey,
           logger,
           costSignals: { dedicatedInfrastructureRequired: false, perPersonaCostMeasurable: false },

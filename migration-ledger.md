@@ -69,6 +69,7 @@
 | M46 | Signing key normalised: the documented single-line escaped PEM was the form the code rejected, so the warning was unfixable by config (UR-20261012-035) | DONE (typecheck+lint+format) |
 | M47 | `describe` import missing in the new signing-key test block (UR-20261012-035 v1.1) | DONE |
 | M48 | Signing key custody: the verifier reads `BUILD_SIGNING_PUBLIC_KEY`; the runtime no longer needs the platform's private key (UR-20261012-036) | DONE (typecheck+lint+format) |
+| M49 | Registrar registry + enforcement at registration (fail closed), with a boot seed and an internal grant surface (UR-20261012-037) | DONE (typecheck+lint+format) |
 
 Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (reason)`.
 

@@ -12,6 +12,11 @@ import {
   PostgresPersonaIdentityStore,
 } from '../personas/persona.repository.js';
 import { registerTwillPersonaRoutes } from '../personas/twill-registration.js';
+import {
+  parseRegistrarSeed,
+  PostgresPersonaRegistrarStore,
+  seedRegistrars,
+} from '../personas/persona-registrar.repository.js';
 
 /**
  * UR-20261012-033 — the Twill control plane.
@@ -39,12 +44,15 @@ async function start(): Promise<void> {
 
   const identities = new PostgresPersonaIdentityStore(db);
   const bindings = new PostgresPersonaBindingStore(db);
-  const service = new PersonaCommandBindingService(identities, bindings, logger);
+  const registrars = new PostgresPersonaRegistrarStore(db);
+  await seedRegistrars(registrars, parseRegistrarSeed(env.PERSONA_REGISTRAR_AUTHORITIES));
+  const service = new PersonaCommandBindingService(identities, bindings, logger, registrars);
 
   registerTwillPersonaRoutes(app, {
     service,
     identities,
     bindings,
+    registrars,
     rootKey,
     logger,
     // ADR-008 — the free-charter sunset reads measured cost signals. Neither is measurable while the

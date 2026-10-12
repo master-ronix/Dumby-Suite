@@ -7,9 +7,11 @@ import {
   type PersonaBinding,
   type PersonaIdentity,
   type PersonaRegistrationInput,
+  RegistrarNotAuthorisedError,
   UnknownPersonaError,
 } from './persona.js';
 import type { PersonaBindingStore, PersonaIdentityStore } from './persona.repository.js';
+import type { PersonaRegistrarStore } from './persona-registrar.repository.js';
 import type { Logger } from '../logging/logger.js';
 
 export class PersonaCommandBindingService {
@@ -17,12 +19,27 @@ export class PersonaCommandBindingService {
     private readonly identities: PersonaIdentityStore,
     private readonly bindings: PersonaBindingStore,
     private readonly logger: Logger,
+    /**
+     * UR-20261012-037 — who may register what. Optional so a caller that has no registry (a unit
+     * test, a read-only surface) can still construct the service; when absent, registrations are
+     * REFUSED rather than waved through.
+     */
+    private readonly registrars?: PersonaRegistrarStore,
   ) {}
 
   async registerPersona(
     input: PersonaRegistrationInput,
     costSignals: FreeCharterCostSignals,
   ): Promise<PersonaIdentity> {
+    // UR-20261012-037 — authorisation first: the internal API key proves the CALLER is trusted;
+    // this proves the caller may register THIS application.
+    const authorised =
+      this.registrars === undefined
+        ? false
+        : await this.registrars.isAuthorised(input.registrarAuthority, input.discordApplicationId);
+    if (!authorised) {
+      throw new RegistrarNotAuthorisedError(input.registrarAuthority, input.discordApplicationId);
+    }
     const existing = await this.identities.findByApplicationId(input.discordApplicationId);
     assertApplicationNotRegistered(existing);
     assertFreeCharterRegistration(input.grandfathered ?? false, costSignals);

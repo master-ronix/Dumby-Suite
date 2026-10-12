@@ -13,6 +13,7 @@ import type { FastifyInstance } from 'fastify';
 import type { EnvelopeRootKey, SealedEnvelope } from '../crypto/envelope.js';
 import type { Logger } from '../logging/logger.js';
 import type { PersonaBindingStore, PersonaIdentityStore } from './persona.repository.js';
+import type { PersonaRegistrarStore } from './persona-registrar.repository.js';
 import {
   derivePersonaBotTokenDigest,
   freeCharterStatus,
@@ -112,6 +113,8 @@ export interface TwillPersonaRouteDeps {
   service: PersonaCommandBindingService;
   identities: PersonaIdentityStore;
   bindings: PersonaBindingStore;
+  /** UR-20261012-037 — who may register what. Absent, the registrar surface is not served. */
+  registrars?: PersonaRegistrarStore | undefined;
   rootKey: EnvelopeRootKey;
   logger: Logger;
   /** ADR-008 — the free-charter cost signals the registration gate reads. */
@@ -124,6 +127,8 @@ function statusFor(err: unknown): number {
   if (name === 'ApplicationAlreadyRegisteredError') return 409;
   if (name === 'FreeCharterEndedError') return 409;
   if (name === 'UnknownPersonaError') return 404;
+  // UR-20261012-037 — authenticated but not authorised is a 403, not a 400.
+  if (name === 'RegistrarNotAuthorisedError') return 403;
   if (name === 'SingleServerBoundViolationError') return 409;
   return 400;
 }
@@ -140,7 +145,7 @@ export function registerTwillPersonaRoutes(
   app: FastifyInstance,
   deps: TwillPersonaRouteDeps,
 ): void {
-  const { service, identities, bindings, rootKey, logger, costSignals } = deps;
+  const { service, identities, bindings, registrars, rootKey, logger, costSignals } = deps;
 
   app.post<{ Body: PersonaRegistrationBody }>(
     '/twill/personas/register',
@@ -167,6 +172,55 @@ export function registerTwillPersonaRoutes(
           .code(statusFor(err))
           .send({ error: 'Registration failed', reason: reasonOf(err) });
       }
+    },
+  );
+
+  // UR-20261012-037 — the registrar registry's runtime surface. Granting is what makes a
+  // registration possible; the boot seed covers a fresh install.
+  app.get('/twill/registrars', async (_request, reply) => {
+    if (registrars === undefined) {
+      return reply.code(404).send({ error: 'Not Found', reason: 'no registrar registry' });
+    }
+    return reply.send({ registrars: await registrars.list() });
+  });
+
+  app.post<{ Body: { authority?: unknown; discordApplicationId?: unknown; grantedBy?: unknown } }>(
+    '/twill/registrars',
+    async (request, reply) => {
+      if (registrars === undefined) {
+        return reply.code(404).send({ error: 'Not Found', reason: 'no registrar registry' });
+      }
+      const authority = str(request.body?.authority);
+      if (authority === undefined) {
+        return reply.code(400).send({ error: 'Bad Request', reason: 'authority is required' });
+      }
+      const discordApplicationId = str(request.body?.discordApplicationId) ?? '';
+      const grantedBy = str(request.body?.grantedBy) ?? 'internal-api';
+      await registrars.grant({ authority, discordApplicationId, grantedBy });
+      logger.info(
+        `persona-registrar-granted authority=${authority} application=${discordApplicationId || 'ANY'}`,
+      );
+      return reply.code(201).send({ authority, discordApplicationId, grantedBy });
+    },
+  );
+
+  app.delete<{ Params: { authority: string; applicationId: string } }>(
+    '/twill/registrars/:authority/:applicationId',
+    async (request, reply) => {
+      if (registrars === undefined) {
+        return reply.code(404).send({ error: 'Not Found', reason: 'no registrar registry' });
+      }
+      const revoked = await registrars.revoke(
+        request.params.authority,
+        request.params.applicationId,
+      );
+      if (!revoked) {
+        return reply.code(404).send({ error: 'Not Found', reason: 'no such grant' });
+      }
+      logger.info(
+        `persona-registrar-revoked authority=${request.params.authority} application=${request.params.applicationId || 'ANY'}`,
+      );
+      return reply.code(204).send();
     },
   );
 
