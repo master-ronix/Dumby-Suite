@@ -295,10 +295,15 @@ describe('CommandRouter', () => {
     const reg = new CommandRegistry();
     const handler = vi.fn().mockResolvedValue(undefined);
     reg.registerModule('utility', 'standard');
+    // UR-20261012-047 — this used to rely on the removed "no explicit permission declaration" deny,
+    // which was not a layer and denied every core command in production. The denial is now forced the
+    // legitimate way: the command declares a Discord permission the member does not hold, so Layer 5
+    // refuses it and the FORBIDDEN notice still renders.
     reg.register({
       data: { name: 'utility', description: 'Utility' },
       execute: handler,
       moduleId: 'utility',
+      permissions: { discord: ['BAN_MEMBERS'] },
     });
     const logger = makeLogger() as unknown as Logger;
     const router = new CommandRouter(reg, logger, {

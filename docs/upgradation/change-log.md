@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.52
+version: 5.5.53
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,40 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.53 — the undocumented eighth layer: every core command refused to every non-owner (UR-20261012-047) — 2026-10-12
+
+- 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- UR-046 DID NOT FIX IT. a76cdd3 went live with UR-046 and /dashboard still failed in guild
+  1062427177326497863. The code shows why: assertCommandInScope already has `if (tier === 'core')
+  return;` -- a core command NEVER reaches the enablement check. UR-046 was real hardening applied to a
+  branch core commands do not take. The earlier diagnosis was an inference from message wording.
+- THE ACTUAL CAUSE: CommandScopeDeniedError is thrown from TWO different checks sharing ONE message --
+  assertCommandInScope (scope/enablement) and assertPermissionAllowed (command-router.ts:433, the
+  PERMISSION RESOLVER). "not available in guild" is also how a PERMISSION refusal reads; the notice's
+  `reason: FORBIDDEN` is the tell (FORBIDDEN comes from reasonFromRejection).
+- The refusal was the resolver's LAST block: `if (ctx.hasExplicitPermissionDeclaration !== true) return
+  deny(7, 'no explicit permission declaration exists for this action')`.
+- WHY THAT IS A DEFECT, NOT A POLICY:
+  - IT IS NOT A LAYER. DIAGRAM 21-A lists seven; none is a declaration check.
+  - IT INVERTS THE DOCUMENTED DEFAULT: "Only if every layer passes without a definitive answer does the
+    framework fall through to the final default: ALLOW."
+  - DECLARING NOTHING IS NORMAL: §21.3 -- MEMBER is "the default requirement every command carries when
+    it declares nothing".
+  - IT MISUSES LAYER 7, whose real job is a GRANT override: with no applicable grant, resolution
+    CONTINUES to Layers 4-6.
+- THE PRODUCTION EFFECT WAS TOTAL: dashboard/modules/health all declare NO permissions (host-registered
+  core commands, §1.7), so EVERY core command was denied to EVERY member who was not a bot owner. The
+  bot owner short-circuits at LAYER 1 -- which is exactly why this read as one guild's problem instead
+  of a blanket one.
+- FIX: the block is REMOVED; resolution falls through to ALLOW as documented. Two tests had ENCODED THE
+  DEFECT and were corrected to the spec; a third now forces its denial legitimately (a declared Discord
+  permission the member lacks, refused at Layer 5).
+- RECORDED: one error class with one string covers two unrelated failures, which is why this took two
+  attempts and misled both the agent and me. Distinguishing them is a follow-up worth doing.
+- **Verification:** 112 files / 1133 tests / 0 failures WITH COVERAGE, no threshold error; typecheck, lint, format green; gates 27/27.
 
 ---
 

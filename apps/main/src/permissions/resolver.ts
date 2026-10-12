@@ -150,10 +150,22 @@ export function resolvePermission(ctx: PermissionContext): PermissionResult {
     }
   }
 
-  if (ctx.hasExplicitPermissionDeclaration !== true) {
-    return deny(7, 'no explicit permission declaration exists for this action');
-  }
-
+  // UR-20261012-047 — the "no explicit permission declaration" DENY that stood here is REMOVED.
+  //
+  // It was not a layer. DIAGRAM 21-A of `permission-authorization-engine.md` lists seven, and none of
+  // them is a declaration check; §21.3 says MEMBER is "the default requirement every command carries
+  // when it declares nothing"; and the diagram's own closing line is "Only if every layer passes
+  // without a definitive answer does the framework fall through to the final default: allow". This
+  // block inverted that documented default into a denial, and mislabelled it as Layer 7 — whose real
+  // job is a GRANT override that can only ALLOW or DENY, never a blanket refusal for having no grant.
+  //
+  // The effect in production was total: `/dashboard`, `/modules` and `/health` declare no permissions
+  // (they are host-registered core commands), so EVERY core command was denied for every member who
+  // was not a bot owner. The bot owner bypasses at Layer 1, which is why it looked like a per-guild
+  // problem in guild 1062427177326497863 rather than a blanket one.
+  //
+  // `hasExplicitPermissionDeclaration` is still carried on the context and is still meaningful to a
+  // caller that wants to know whether an action declared a posture; it simply no longer denies.
   return ALLOW;
 }
 
