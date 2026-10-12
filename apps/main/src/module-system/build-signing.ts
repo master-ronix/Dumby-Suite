@@ -23,6 +23,19 @@ import { join } from 'node:path';
  * private-key column. This is what §15.8 sanctions while the key-ceremony work is deferred.
  */
 
+/**
+ * UR-20261012-035 — normalises a configured signing key.
+ *
+ * The key arrives from configuration, and a hosting variable is a SINGLE-LINE value: a PEM therefore
+ * arrives with its line breaks written as the two characters `\n`. Node's key parser needs real
+ * line breaks, so the escapes are turned back here. A value that already carries real newlines is
+ * returned untouched, so both forms work. Without this the documented "single-line PEM with escaped
+ * newlines" was exactly the form that failed.
+ */
+export function normalizeSigningKey(value: string): string {
+  return value.includes('\\n') ? value.replace(/\\n/g, '\n') : value;
+}
+
 export const BUILD_SIGNING_ALGORITHM = 'Ed25519';
 export const HASH_ALGORITHM = 'sha256';
 export const HASH_PREFIX = 'sha256:';

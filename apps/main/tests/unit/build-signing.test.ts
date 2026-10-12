@@ -1,4 +1,5 @@
 import { test, expect } from 'vitest';
+import { createPublicKey, generateKeyPairSync } from 'node:crypto';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -13,6 +14,7 @@ import {
   tupleFromSidecar,
   BuildSigningKeyError,
   HASH_PREFIX,
+  normalizeSigningKey,
 } from '../../src/module-system/build-signing.js';
 
 const tuple = {
@@ -94,4 +96,29 @@ test('BuildSigner validates key material', () => {
   const signer = BuildSigner.fromSeed('k', Buffer.alloc(32, 1));
   expect(signer.keyId).toBe('k');
   expect(signer.publicKeyPem).toContain('PUBLIC KEY');
+});
+
+// --- UR-20261012-035 — the configured key's escapes ---------------------------------------
+
+describe('normalizeSigningKey', () => {
+  const pem = (body: string): string =>
+    `-----BEGIN PRIVATE KEY-----\n${body}\n-----END PRIVATE KEY-----\n`;
+
+  test('turns the escaped single-line form a hosting variable holds into real line breaks', () => {
+    const singleLine = pem('ABC').replace(/\n/g, '\\n');
+    expect(normalizeSigningKey(singleLine)).toBe(pem('ABC'));
+  });
+
+  test('leaves a value that already carries real newlines untouched', () => {
+    expect(normalizeSigningKey(pem('ABC'))).toBe(pem('ABC'));
+  });
+
+  test('the normalised single-line form is a key Node will actually accept', () => {
+    const { privateKey } = generateKeyPairSync('ed25519');
+    const exported = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
+    // Before the fix this exact value failed with DECODER routines::unsupported.
+    expect(() =>
+      createPublicKey(normalizeSigningKey(exported.replace(/\n/g, '\\n'))),
+    ).not.toThrow();
+  });
 });

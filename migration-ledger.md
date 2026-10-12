@@ -6,7 +6,7 @@
 > continued, never restarted.
 
 - **Created:** 2026-10-08
-- **Last updated:** 2026-10-12 · **Current item:** Twill surface reachability + attestation (UR-20261012-034, executed) · **Next action:** authorize each guild from /dashboard, then flip BCCM_BATCH_PUSH_DRY_RUN=false and watch for sent>0
+- **Last updated:** 2026-10-12 · **Current item:** Signing-key format bug fixed (UR-20261012-035, executed) · no open blocker · **Next action:** authorize each guild from /dashboard, then flip BCCM_BATCH_PUSH_DRY_RUN=false and watch for sent>0
 - **Protocol:** `docs/migration/migration-prompt.md` v5.2.0
 - **Coverage map:** the change-set brief (18 items) → one owning item each (M0–M17)
 - **Record shapes:** `docs/migration/ledger-template.md` §3 (item) and §4 (slice)
@@ -66,6 +66,7 @@
 | M43 | Twill persona registration API served for real (register/detail/status/charter/bind/unbind), sealing both credentials and echoing none (UR-20261012-033) | DONE (typecheck+lint+format) |
 | M44 | Install permission bitfield now always sent (the guild-less dashboard link too); two test fixtures corrected (UR-20261012-031 v1.1) | DONE |
 | M45 | Twill registration surface mountable on the deployed API server (TWILL_ROUTES_ON_API, default off, internal-key gated); registrar attestation recorded (UR-20261012-034) | DONE (typecheck+lint+format) |
+| M46 | Signing key normalised: the documented single-line escaped PEM was the form the code rejected, so the warning was unfixable by config (UR-20261012-035) | DONE (typecheck+lint+format) |
 
 Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (reason)`.
 

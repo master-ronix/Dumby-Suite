@@ -46,7 +46,7 @@ import { SealedCredentialService } from '../credentials/sealed-credential.servic
 import { PostgresCommandPermissionTokenStore } from '../db/repositories/command-permission-token.repository.js';
 import { CommandPermissionTokenService } from '../commands/command-permission-tokens.js';
 import { PostgresGrantWriter } from '../db/repositories/rbac-grant.repository.js';
-import { BuildSignatureVerifier } from '../module-system/build-signing.js';
+import { BuildSignatureVerifier, normalizeSigningKey } from '../module-system/build-signing.js';
 import { createPublicKey } from 'node:crypto';
 import { InFlightTracker } from '../shutdown/in-flight-tracker.js';
 import {
@@ -226,7 +226,10 @@ export async function bootstrapWorker(): Promise<void> {
   let provenanceGuardArmed = buildSigningKeyId !== '' && buildSigningPrivateKey !== '';
   if (provenanceGuardArmed) {
     try {
-      verifier.registerKey(buildSigningKeyId, createPublicKey(buildSigningPrivateKey));
+      verifier.registerKey(
+        buildSigningKeyId,
+        createPublicKey(normalizeSigningKey(buildSigningPrivateKey)),
+      );
     } catch (err) {
       provenanceGuardArmed = false;
       logger.warn(
@@ -972,7 +975,10 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   let provenanceGuardArmed = buildSigningKeyId !== '' && buildSigningPrivateKey !== '';
   if (provenanceGuardArmed) {
     try {
-      verifier.registerKey(buildSigningKeyId, createPublicKey(buildSigningPrivateKey));
+      verifier.registerKey(
+        buildSigningKeyId,
+        createPublicKey(normalizeSigningKey(buildSigningPrivateKey)),
+      );
     } catch (err) {
       provenanceGuardArmed = false;
       logger.warn(

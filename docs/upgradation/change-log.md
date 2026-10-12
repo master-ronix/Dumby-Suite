@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.40
+version: 5.5.41
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,23 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.41 — Signing Key Format Bug (UR-20261012-035) — 2026-10-12
+
+- 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- `build-signing-key-invalid` was carried for several cycles as an OPERATOR CONFIG TASK. It was not.
+  The warning names the required format -- "a single-line PEM with escaped newlines" -- and
+  createPublicKey was handed the configured string VERBATIM, with no un-escaping anywhere. So the
+  documented form failed with DECODER routines::unsupported, and the only working form (real line
+  breaks) cannot be held in a single-line hosting variable. Both documented paths were dead ends; the
+  operator could not have fixed it.
+- Measured, not reasoned: the escaped form was fed to createPublicKey before and after the change.
+- normalizeSigningKey turns the two-character \n back into a real line break and leaves a value with
+  real newlines untouched, so both forms work. It lives in module-system/build-signing.ts (tested) and
+  is called at both registration sites, keeping bootstrap.ts branch-free.
+- **Verification:** `typecheck`, `lint`, `format`, corpus gates 27/27.
 
 ---
 
