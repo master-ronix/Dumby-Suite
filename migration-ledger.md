@@ -6,7 +6,7 @@
 > continued, never restarted.
 
 - **Created:** 2026-10-08
-- **Last updated:** 2026-10-12 · **Current item:** /persona profile-aware board + BCCM skip observability (UR-20261012-026 v1.1, UR-20261012-027, executed) · **Next action:** authorize each guild from /dashboard, then flip BCCM_BATCH_PUSH_DRY_RUN=false and watch for sent>0
+- **Last updated:** 2026-10-12 · **Current item:** OAuth install flow Phase 1 (UR-20261012-028, executed) · Phase 2 = persona authorization (open) · **Next action:** authorize each guild from /dashboard, then flip BCCM_BATCH_PUSH_DRY_RUN=false and watch for sent>0
 - **Protocol:** `docs/migration/migration-prompt.md` v5.2.0
 - **Coverage map:** the change-set brief (18 items) → one owning item each (M0–M17)
 - **Record shapes:** `docs/migration/ledger-template.md` §3 (item) and §4 (slice)
@@ -57,6 +57,7 @@
 | M34 | /persona profile-aware board: custom indicators, no guild line, tidier inventory, profile switcher (UR-20261012-026) | DONE (typecheck+lint+format) |
 | M35 | Persona switcher test passes the selected id as the query arg (UR-20261012-026 v1.1) | DONE |
 | M36 | `bccm-batch-command-skipped` names the dropped command in its message (UR-20261012-027) | DONE |
+| M37 | OAuth install flow: `/auth/authorize?bot=1` install link + returned-guild preference + token keyed by (application, guild) with boot adoption (UR-20261012-028) | DONE (typecheck+lint+format) |
 
 Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (reason)`.
 

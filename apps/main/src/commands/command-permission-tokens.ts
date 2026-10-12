@@ -81,14 +81,19 @@ export class CommandPermissionTokenService {
     this.refreshLeadMs = deps.refreshLeadMs ?? DEFAULT_REFRESH_LEAD_MS;
   }
 
-  /** Store a freshly-authorized token set, sealing both values at rest. */
+  /**
+   * Store a freshly-authorized token set, sealing both values at rest. UR-20261012-028 — the token
+   * belongs to the APPLICATION that issued it, so it is keyed by (applicationId, guildId).
+   */
   async connect(
+    applicationId: string,
     guildId: string,
     authorizingUserId: string,
     tokens: ConnectedTokenSet,
   ): Promise<void> {
+    const label = `${applicationId}:${guildId}`;
     const access = await this.sealer.issue(
-      `cmd-perm-access:${guildId}`,
+      `cmd-perm-access:${label}`,
       authorizingUserId,
       tokens.accessToken,
     );
@@ -96,11 +101,12 @@ export class CommandPermissionTokenService {
       tokens.refreshToken === undefined
         ? null
         : await this.sealer.issue(
-            `cmd-perm-refresh:${guildId}`,
+            `cmd-perm-refresh:${label}`,
             authorizingUserId,
             tokens.refreshToken,
           );
     await this.store.upsert({
+      applicationId,
       guildId,
       authorizingUserId,
       accessCredentialId: access.credentialId,
@@ -113,28 +119,60 @@ export class CommandPermissionTokenService {
       updatedAt: new Date(this.now()),
     });
     this.logger.info('command-permission-token-connected', {
+      applicationId,
       guildId,
       authorizingUserId,
       hasRefresh: refresh !== null,
     });
   }
 
-  /** The live access token for the guild, or undefined when there is none usable. */
-  async resolveAccessToken(guildId: string): Promise<string | undefined> {
-    const record = await this.store.findByGuild(guildId);
+  /**
+   * UR-20261012-028 — re-keys any pre-key-change rows to this application, so an authorization
+   * granted before the key changed keeps working without a re-authorize. Non-fatal by design: a
+   * failure is logged, never thrown, because it must not block boot.
+   */
+  async adoptLegacy(applicationId: string): Promise<number> {
+    try {
+      const adopted = await this.store.adoptLegacy(applicationId);
+      if (adopted > 0) {
+        this.logger.info('command-permission-token-legacy-adopted', {
+          applicationId,
+          count: adopted,
+        });
+      }
+      return adopted;
+    } catch (err) {
+      this.logger.warn('command-permission-token-legacy-adopt-failed', {
+        applicationId,
+        error: String(err),
+      });
+      return 0;
+    }
+  }
+
+  /** The live access token for the application in the guild, or undefined when there is none usable. */
+  async resolveAccessToken(applicationId: string, guildId: string): Promise<string | undefined> {
+    const record = await this.store.findByApplicationGuild(applicationId, guildId);
     if (record === undefined || record.status !== 'active') return undefined;
     if (record.accessTokenExpiresAt.getTime() <= this.now()) return undefined;
     try {
       return await this.sealer.read(record.accessCredentialId);
     } catch (err) {
-      this.logger.warn('command-permission-token-unreadable', { guildId, error: String(err) });
+      this.logger.warn('command-permission-token-unreadable', {
+        applicationId,
+        guildId,
+        error: String(err),
+      });
       return undefined;
     }
   }
 
-  /** The connection state a dashboard shows. */
-  async status(guildId: string): Promise<CommandPermissionTokenStatus | 'none'> {
-    const record = await this.store.findByGuild(guildId);
+  /** The connection state a dashboard shows, for one application in one guild. */
+  async status(
+    applicationId: string,
+    guildId: string,
+  ): Promise<CommandPermissionTokenStatus | 'none'> {
+    const record = await this.store.findByApplicationGuild(applicationId, guildId);
     if (record === undefined) return 'none';
     if (record.status === 'active' && record.accessTokenExpiresAt.getTime() <= this.now()) {
       return record.refreshCredentialId === '' ? 'expired' : 'active';
@@ -154,9 +192,10 @@ export class CommandPermissionTokenService {
       try {
         refreshValue = await this.sealer.read(record.refreshCredentialId);
       } catch (err) {
-        await this.store.setStatus(record.guildId, 'revoked');
+        await this.store.setStatus(record.applicationId, record.guildId, 'revoked');
         revoked += 1;
         this.logger.warn('command-permission-token-revoked', {
+          applicationId: record.applicationId,
           guildId: record.guildId,
           reason: `refresh token unreadable: ${String(err)}`,
         });
@@ -165,7 +204,7 @@ export class CommandPermissionTokenService {
       try {
         const next = await this.refresher.refreshToken(refreshValue);
         const access = await this.sealer.issue(
-          `cmd-perm-access:${record.guildId}`,
+          `cmd-perm-access:${record.applicationId}:${record.guildId}`,
           record.authorizingUserId,
           next.accessToken,
         );
@@ -174,24 +213,32 @@ export class CommandPermissionTokenService {
             ? record.refreshCredentialId
             : (
                 await this.sealer.issue(
-                  `cmd-perm-refresh:${record.guildId}`,
+                  `cmd-perm-refresh:${record.applicationId}:${record.guildId}`,
                   record.authorizingUserId,
                   next.refreshToken,
                 )
               ).credentialId;
-        await this.store.recordRefresh(record.guildId, {
+        await this.store.recordRefresh(record.applicationId, record.guildId, {
           accessCredentialId: access.credentialId,
           refreshCredentialId: nextRefreshId,
           accessTokenExpiresAt: new Date(this.now() + next.expiresIn * 1000),
           lastRefreshedAt: new Date(this.now()),
         });
         refreshed += 1;
-        this.logger.info('command-permission-token-refreshed', { guildId: record.guildId });
+        this.logger.info('command-permission-token-refreshed', {
+          applicationId: record.applicationId,
+          guildId: record.guildId,
+        });
       } catch (err) {
         const isRevoked = err instanceof OAuth2RefreshError && err.revoked;
-        await this.store.setStatus(record.guildId, isRevoked ? 'revoked' : 'expired');
+        await this.store.setStatus(
+          record.applicationId,
+          record.guildId,
+          isRevoked ? 'revoked' : 'expired',
+        );
         if (isRevoked) revoked += 1;
         this.logger.warn('command-permission-token-revoked', {
+          applicationId: record.applicationId,
           guildId: record.guildId,
           reason: isRevoked
             ? `Discord rejected the refresh (${err instanceof Error ? err.message : String(err)}) — re-authorize from the dashboard`

@@ -51,11 +51,22 @@ export function validateOAuthState(expected: string, received: string | null | u
   return timingSafeEqual(a, b);
 }
 
+/**
+ * UR-20261012-028 — the bot-install flow's extra parameters. `guildId` preselects the guild on
+ * Discord's picker and `disableGuildSelect` locks it; both apply only when the `bot` or
+ * `applications.commands` scope is requested under a guild install.
+ */
+export interface AuthorizeExtras {
+  readonly guildId?: string | undefined;
+  readonly disableGuildSelect?: boolean | undefined;
+}
+
 /** §19.7 — the Discord authorization URL the dashboard redirects to. */
 export function buildAuthorizeUrl(
   config: OAuth2Config,
   state: string,
   scopes: readonly string[],
+  extras: AuthorizeExtras = {},
 ): string {
   const url = new URL(DISCORD_AUTHORIZE_URL);
   url.searchParams.set('client_id', config.clientId);
@@ -63,6 +74,10 @@ export function buildAuthorizeUrl(
   url.searchParams.set('response_type', 'code');
   url.searchParams.set('scope', scopes.join(' '));
   url.searchParams.set('state', state);
+  if (extras.guildId !== undefined && extras.guildId !== '') {
+    url.searchParams.set('guild_id', extras.guildId);
+  }
+  if (extras.disableGuildSelect === true) url.searchParams.set('disable_guild_select', 'true');
   return url.toString();
 }
 
@@ -104,8 +119,12 @@ export class DiscordOAuth2Client {
     return this.config.clientId !== '' && this.config.redirectUri !== '';
   }
 
-  authorizeUrl(state: string, scopes: readonly string[] = ['identify', 'guilds']): string {
-    return buildAuthorizeUrl(this.config, state, scopes);
+  authorizeUrl(
+    state: string,
+    scopes: readonly string[] = ['identify', 'guilds'],
+    extras: AuthorizeExtras = {},
+  ): string {
+    return buildAuthorizeUrl(this.config, state, scopes, extras);
   }
 
   async exchangeCode(code: string): Promise<OAuth2TokenSet> {

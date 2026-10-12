@@ -21,6 +21,11 @@ export interface OAuthRoutesDeps {
   logger: Logger;
   /** The guild the dashboard's default button authorizes for. */
   defaultGuildId: string;
+  /**
+   * UR-20261012-028 — the Discord application the flow authorizes for. The command-permissions
+   * endpoint is per-application, so the token is stored against it.
+   */
+  applicationId: string;
   /** Present when the token store is wired; absent the flow still runs but stores nothing. */
   tokens?: CommandPermissionTokenService | undefined;
   /** UR-20261011-023 — the guilds the bot is in, so the dashboard can authorize per guild. */
@@ -58,12 +63,25 @@ a.btn{display:inline-block;background:#5865f2;color:#fff;text-decoration:none;pa
  * exchanges the code, verifies the user can manage the guild, and stores the token for later use.
  */
 export function registerOAuthRoutes(app: FastifyInstance, deps: OAuthRoutesDeps): void {
-  const { client, logger, defaultGuildId, tokens } = deps;
+  const { client, logger, defaultGuildId, applicationId, tokens } = deps;
   const scopes = ['identify', 'guilds', COMMAND_PERMISSION_SCOPE] as const;
+  /**
+   * UR-20261012-028 — the bot-INSTALL flow's scopes. Adding the install scopes to an authorize URL
+   * is what makes Discord continue into the full code grant; with `Requires OAuth2 Code Grant` on,
+   * the bot is added only after the code is exchanged, so the guild arrives already authorized.
+   */
+  const installScopes = [
+    'bot',
+    'applications.commands',
+    COMMAND_PERMISSION_SCOPE,
+    'identify',
+    'guilds',
+  ] as const;
 
   app.get('/auth/authorize', async (req, reply) => {
-    const query = req.query as { guild?: string };
+    const query = req.query as { guild?: string; bot?: string };
     const guildId = query.guild ?? defaultGuildId;
+    const install = query.bot === '1';
     const state = generateOAuthState();
     const cookies = [
       // Path=/ so the callback leg receives them at BOTH /auth/callback and /oauth/callback; a
@@ -72,14 +90,24 @@ export function registerOAuthRoutes(app: FastifyInstance, deps: OAuthRoutesDeps)
       `${OAUTH_GUILD_COOKIE}=${guildId}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=600`,
     ];
     reply.header('set-cookie', cookies);
-    return reply.redirect(client.authorizeUrl(state, scopes));
+    // The install flow leaves the guild to Discord's picker unless one was named explicitly.
+    const extras =
+      install && query.guild === undefined ? {} : { guildId, disableGuildSelect: install };
+    return reply.redirect(
+      client.authorizeUrl(state, install ? installScopes : scopes, install ? extras : {}),
+    );
   });
 
   const handleCallback = async (req: FastifyRequest, reply: FastifyReply): Promise<unknown> => {
-    const query = req.query as { code?: string; state?: string };
+    const query = req.query as { code?: string; state?: string; guild_id?: string };
     const cookies = parseCookies(req.headers.cookie);
     const expected = cookies[OAUTH_STATE_COOKIE];
-    const guildId = cookies[OAUTH_GUILD_COOKIE] ?? defaultGuildId;
+    // UR-20261012-028 — the bot-install flow returns the guild the bot was actually added to; it
+    // wins over the cookie, which for an install holds only the default.
+    const guildId =
+      typeof query.guild_id === 'string' && query.guild_id !== ''
+        ? query.guild_id
+        : (cookies[OAUTH_GUILD_COOKIE] ?? defaultGuildId);
     if (!validateOAuthState(expected ?? '', query.state)) {
       logger.warn('oauth2-state-mismatch', { guildId });
       return reply
@@ -121,14 +149,14 @@ export function registerOAuthRoutes(app: FastifyInstance, deps: OAuthRoutesDeps)
           );
       }
       if (tokens !== undefined) {
-        await tokens.connect(guildId, user.id, {
+        await tokens.connect(applicationId, guildId, user.id, {
           accessToken: tokenSet.accessToken,
           refreshToken: tokenSet.refreshToken,
           expiresIn: tokenSet.expiresIn,
           scope: COMMAND_PERMISSION_SCOPE,
         });
       }
-      logger.info('oauth2-connected', { guildId, userId: user.id });
+      logger.info('oauth2-connected', { applicationId, guildId, userId: user.id });
       return reply
         .type('text/html')
         .send(
@@ -157,7 +185,7 @@ export function registerOAuthRoutes(app: FastifyInstance, deps: OAuthRoutesDeps)
 
   app.get('/dashboard', async (_req, reply) => {
     const statusOf = (guildId: string): Promise<string> =>
-      tokens === undefined ? Promise.resolve('none') : tokens.status(guildId);
+      tokens === undefined ? Promise.resolve('none') : tokens.status(applicationId, guildId);
     const line = (status: string): string =>
       status === 'active'
         ? '<span class="ok">Connected — module disables hide commands instantly.</span>'

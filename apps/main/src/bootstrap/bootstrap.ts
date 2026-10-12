@@ -1234,6 +1234,9 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     } catch (err) {
       logger.warn('module-emoji-upload-failed', { error: String(err) });
     }
+    // UR-20261012-028 — adopt any command-permission token rows written before the store was keyed
+    // by application, now that the running application's id is known. Non-fatal by design.
+    await commandPermissionTokens.adoptLegacy(applicationId);
     const rest = new REST({ version: '10' }).setToken(config.get('BOT_TOKEN'));
     // §17.7 — the BCCM batch push's Discord surface. `getRegistered` is the authority for what
     // "new" means; `putCommands` is the idempotent bulk overwrite of the guild's command set.
@@ -1287,7 +1290,7 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
       // token/Bearer mechanics live in `command-access.ts` so they are unit-tested. UR-20261011-020
       // — prefer the dashboard-authorized per-guild token, fall back to the operator's static env
       // token, and absent both keep the current behaviour (state write + BCCM deregistration).
-      const storedToken = await commandPermissionTokens.resolveAccessToken(guildId);
+      const storedToken = await commandPermissionTokens.resolveAccessToken(applicationId, guildId);
       const applied = await setGuildCommandPermissions({
         token: storedToken ?? config.get('DISCORD_COMMAND_PERMISSIONS_TOKEN'),
         applicationId,
@@ -1442,6 +1445,7 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
           client: oauth2Client,
           logger,
           defaultGuildId: config.get('DEV_GUILD_ID'),
+          applicationId: discordClient?.application?.id ?? '',
           tokens: commandPermissionTokens,
           // UR-20261011-023 — the dashboard lists every guild the bot is in, each with its own
           // Authorize link, so authorization is per guild rather than fixed to the dev guild.

@@ -34,6 +34,7 @@ function build(client: unknown, tokens: unknown) {
     client: client as never,
     logger,
     defaultGuildId: 'g1',
+    applicationId: 'app1',
     tokens: tokens as never,
   });
   return app;
@@ -65,6 +66,7 @@ test('GET /dashboard lists every guild with its own authorize link', async () =>
     client: makeClient() as never,
     logger,
     defaultGuildId: 'g1',
+    applicationId: 'app1',
     tokens: makeTokens('active') as never,
     listGuilds: async () => [
       { id: 'g1', name: 'Old Server' },
@@ -76,6 +78,35 @@ test('GET /dashboard lists every guild with its own authorize link', async () =>
   expect(res.body).toContain('Old Server');
   expect(res.body).toContain('New Server');
   expect(res.body).toContain('/auth/authorize?guild=g2');
+  // UR-20261012-028 — the install link adds the bot and stores its token in one step.
+  expect(res.body).toContain('/auth/authorize?bot=1');
+});
+
+test('GET /auth/authorize?bot=1 requests the install scopes, leaving the guild to Discord', async () => {
+  const client = makeClient();
+  const res = await build(client, makeTokens()).inject({
+    method: 'GET',
+    url: '/auth/authorize?bot=1',
+  });
+  expect(res.statusCode).toBe(302);
+  const args = (client as { authorizeUrl: { mock: { calls: unknown[][] } } }).authorizeUrl.mock
+    .calls[0]!;
+  const scopes = args[1] as string[];
+  expect(scopes).toContain('bot');
+  expect(scopes).toContain('applications.commands');
+  expect(scopes).toContain('applications.commands.permissions.update');
+  expect(args[2]).toEqual({});
+});
+
+test('GET /auth/authorize?bot=1&guild=g2 pins the guild on the picker', async () => {
+  const client = makeClient();
+  await build(client, makeTokens()).inject({
+    method: 'GET',
+    url: '/auth/authorize?bot=1&guild=g2',
+  });
+  const args = (client as { authorizeUrl: { mock: { calls: unknown[][] } } }).authorizeUrl.mock
+    .calls[0]!;
+  expect(args[2]).toEqual({ guildId: 'g2', disableGuildSelect: true });
 });
 
 test('GET /auth/authorize mints a state cookie and redirects to Discord', async () => {
@@ -120,9 +151,27 @@ test('GET /auth/callback stores the token set on success', async () => {
   expect(res.statusCode).toBe(200);
   expect(res.body).toContain('Connected');
   expect((tokens as { connect: ReturnType<typeof vi.fn> }).connect).toHaveBeenCalledWith(
+    'app1',
     'g1',
     'u1',
     expect.objectContaining({ accessToken: 'access', refreshToken: 'refresh' }),
+  );
+});
+
+test('GET /auth/callback prefers the guild Discord returns for an install', async () => {
+  const tokens = makeTokens();
+  const client = makeClient({ fetchGuilds: vi.fn(async () => [{ id: 'g9', permissions: '32' }]) });
+  const res = await build(client, tokens).inject({
+    method: 'GET',
+    url: '/auth/callback?code=code123&state=S&guild_id=g9',
+    headers: { cookie: OK_COOKIE },
+  });
+  expect(res.statusCode).toBe(200);
+  expect((tokens as { connect: ReturnType<typeof vi.fn> }).connect).toHaveBeenCalledWith(
+    'app1',
+    'g9',
+    'u1',
+    expect.any(Object),
   );
 });
 

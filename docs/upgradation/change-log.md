@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.31
+version: 5.5.32
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,25 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.32 — OAuth Install Flow, Phase 1 (UR-20261012-028) — 2026-10-12
+
+- 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- Operator chose the combined install flow. Phase 1 covers the main bot: `/dashboard` gains *Add Dumby
+  to your server* (`/auth/authorize?bot=1`), which requests the install scopes so Discord continues
+  into the full code grant — with the code-grant toggle on, the bot is added only after the exchange,
+  so the guild arrives already authorized. The callback prefers the `guild_id` Discord returns over
+  the cookie.
+- The command-permission token is now keyed by **(applicationId, guildId)**: the endpoint is
+  per-application, so a token belongs to the application that issued it. A migration re-keys the
+  table, and `adoptLegacy` re-keys pre-change rows at boot (non-fatally) so existing authorizations
+  keep working.
+- **Phase 2 (personas) is deliberately not built.** A persona is a separate Discord application
+  needing its own credentials and authorization; the operator reports persona credentials arrive
+  only through the one-time Twill registration, so the client-secret question stays open.
+- **Verification:** `typecheck`, `lint`, `format`, corpus gates 27/27.
 
 ---
 
