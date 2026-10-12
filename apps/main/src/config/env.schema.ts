@@ -166,6 +166,9 @@ const baseEnvSchema = z
     // private key is never persisted; `signing_keys` holds only public keys (finding #21).
     BUILD_SIGNING_KEY_ID: z.string().default(''),
     BUILD_SIGNING_PRIVATE_KEY: z.string().default(''),
+    // UR-20261012-036 — the PUBLIC half. The verifier needs only this, so the runtime never has to
+    // hold the platform's signing secret. Preferred over the private key when both are set.
+    BUILD_SIGNING_PUBLIC_KEY: z.string().default(''),
     // §15.9 quarantine root for refused modules. Empty => `<MODULES_DIR>/quarantine`.
     SWASTIK_QUARANTINE_PATH: z.string().default(''),
 

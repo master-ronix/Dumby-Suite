@@ -15,6 +15,7 @@ import {
   BuildSigningKeyError,
   HASH_PREFIX,
   normalizeSigningKey,
+  resolveSigningPublicKey,
 } from '../../src/module-system/build-signing.js';
 
 const tuple = {
@@ -120,5 +121,35 @@ describe('normalizeSigningKey', () => {
     expect(() =>
       createPublicKey(normalizeSigningKey(exported.replace(/\n/g, '\\n'))),
     ).not.toThrow();
+  });
+});
+
+describe('resolveSigningPublicKey', () => {
+  const pair = generateKeyPairSync('ed25519');
+  const privatePem = pair.privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
+  const publicPem = pair.publicKey.export({ type: 'spki', format: 'pem' }).toString();
+
+  test('prefers the public key, so the runtime never needs the private half', () => {
+    // A private key that is NOT the pair's — if it were used, this would resolve to the wrong key.
+    const other = generateKeyPairSync('ed25519');
+    const otherPrivate = other.privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
+    const resolved = resolveSigningPublicKey(otherPrivate, publicPem);
+    expect(resolved).toBeDefined();
+    expect(resolved?.export({ type: 'spki', format: 'pem' }).toString()).toBe(publicPem);
+  });
+
+  test('falls back to deriving the public key from the private one', () => {
+    const resolved = resolveSigningPublicKey(privatePem, '');
+    expect(resolved?.export({ type: 'spki', format: 'pem' }).toString()).toBe(publicPem);
+  });
+
+  test('accepts the escaped single-line form for either key', () => {
+    expect(resolveSigningPublicKey('', publicPem.replace(/\n/g, '\\n'))).toBeDefined();
+    expect(resolveSigningPublicKey(privatePem.replace(/\n/g, '\\n'), '')).toBeDefined();
+  });
+
+  test('returns undefined when neither key is configured', () => {
+    expect(resolveSigningPublicKey('', '')).toBeUndefined();
+    expect(resolveSigningPublicKey('   ', '  ')).toBeUndefined();
   });
 });

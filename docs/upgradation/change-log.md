@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.42
+version: 5.5.43
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,20 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.43 — Signing Key Custody (UR-20261012-036) — 2026-10-12
+
+- 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- The operator asked why the build-signing keys sit on the core bot. The spec answers it (Swastik
+  builds and signs; a developer's identity is a dev id, not a key) -- and exposes a real flaw: a
+  verifier needs only the PUBLIC key, yet the runtime was handed the PRIVATE key and derived the
+  public one from it, forcing the platform's signing secret into the bot for no reason.
+- BUILD_SIGNING_PUBLIC_KEY is added and preferred, so the runtime can be given only the public half.
+  resolveSigningPublicKey() falls back to deriving from the private key (so the builder still works)
+  and returns undefined when neither is set, arming nothing and warning about nothing.
+- **Verification:** typecheck, lint, format, corpus gates 27/27, test-import guard.
 
 ---
 

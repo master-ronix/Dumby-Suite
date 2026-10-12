@@ -36,6 +36,25 @@ export function normalizeSigningKey(value: string): string {
   return value.includes('\\n') ? value.replace(/\\n/g, '\n') : value;
 }
 
+/**
+ * UR-20261012-036 — the key the VERIFIER needs.
+ *
+ * A verifier only ever checks signatures, so it needs only the PUBLIC half. Historically the runtime
+ * was handed the private key and derived the public one from it, which forced the platform's signing
+ * secret to sit inside the bot for no reason. `BUILD_SIGNING_PUBLIC_KEY` is now preferred; the private
+ * key remains accepted so the builder (and any existing deployment) still works.
+ *
+ * Returns undefined when neither is configured — the caller then leaves the provenance guard disarmed.
+ */
+export function resolveSigningPublicKey(
+  privateKey: string,
+  publicKey: string,
+): KeyObject | undefined {
+  if (publicKey.trim() !== '') return createPublicKey(normalizeSigningKey(publicKey));
+  if (privateKey.trim() !== '') return createPublicKey(normalizeSigningKey(privateKey));
+  return undefined;
+}
+
 export const BUILD_SIGNING_ALGORITHM = 'Ed25519';
 export const HASH_ALGORITHM = 'sha256';
 export const HASH_PREFIX = 'sha256:';
