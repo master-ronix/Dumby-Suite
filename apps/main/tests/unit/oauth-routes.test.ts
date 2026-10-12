@@ -209,3 +209,98 @@ test('GET /auth/callback surfaces a Discord exchange failure', async () => {
   });
   expect(res.statusCode).toBe(502);
 });
+
+// --- UR-20261012-030 (Route A) — per-persona authorization --------------------------------
+
+function buildWithPersonas(personaClients: unknown, listPersonas?: unknown) {
+  const app = Fastify();
+  registerOAuthRoutes(app, {
+    client: makeClient() as never,
+    logger,
+    defaultGuildId: 'g1',
+    applicationId: 'app1',
+    tokens: makeTokens() as never,
+    personaClients: personaClients as never,
+    ...(listPersonas !== undefined ? { listPersonas: listPersonas as never } : {}),
+  });
+  return app;
+}
+
+const personaClient = {
+  authorizeUrl: vi.fn(
+    (state: string) => `https://discord.com/oauth2/authorize?persona=1&state=${state}`,
+  ),
+  exchangeCode: vi.fn(async () => ({
+    accessToken: 'p-access',
+    tokenType: 'Bearer',
+    expiresIn: 604800,
+    refreshToken: 'p-refresh',
+  })),
+  fetchUser: vi.fn(async () => ({ id: 'u9', username: 'nova-admin' })),
+  fetchGuilds: vi.fn(async () => [{ id: 'g1', permissions: '32' }]),
+};
+
+test('GET /auth/authorize?app=<persona> uses that application client and records it in a cookie', async () => {
+  const res = await buildWithPersonas(async () => personaClient as never).inject({
+    method: 'GET',
+    url: '/auth/authorize?app=app-9&guild=g1&bot=1',
+  });
+  expect(res.statusCode).toBe(302);
+  expect(String(res.headers.location)).toContain('persona=1');
+  expect(String(res.headers['set-cookie'])).toContain('dumby_oauth_app=app-9');
+});
+
+test('GET /auth/authorize?app=<unknown> refuses when no persona client resolves', async () => {
+  const res = await buildWithPersonas(async () => undefined).inject({
+    method: 'GET',
+    url: '/auth/authorize?app=app-x&guild=g1',
+  });
+  expect(res.statusCode).toBe(400);
+  expect(res.body).toContain('Authorization unavailable');
+});
+
+test('GET /auth/callback exchanges with the persona client and stores against its application', async () => {
+  const tokens = makeTokens();
+  const app = Fastify();
+  registerOAuthRoutes(app, {
+    client: makeClient() as never,
+    logger,
+    defaultGuildId: 'g1',
+    applicationId: 'app1',
+    tokens: tokens as never,
+    personaClients: (async () => personaClient) as never,
+  });
+  const res = await app.inject({
+    method: 'GET',
+    url: '/auth/callback?code=c&state=S&guild_id=g1',
+    headers: { cookie: 'dumby_oauth_state=S; dumby_oauth_guild=g1; dumby_oauth_app=app-9' },
+  });
+  expect(res.statusCode).toBe(200);
+  expect((tokens as { connect: ReturnType<typeof vi.fn> }).connect).toHaveBeenCalledWith(
+    'app-9',
+    'g1',
+    'u9',
+    expect.any(Object),
+  );
+});
+
+test('GET /dashboard lists each persona with an invite + authorize link', async () => {
+  const res = await buildWithPersonas(
+    async () => personaClient as never,
+    async () => [{ id: 'p-1', name: 'Nova', discordApplicationId: 'app-9', boundGuildId: 'g1' }],
+  ).inject({ method: 'GET', url: '/dashboard' });
+  expect(res.statusCode).toBe(200);
+  expect(res.body).toContain('Nova');
+  expect(res.body).toContain('/auth/authorize?app=app-9&amp;guild=g1&amp;bot=1');
+});
+
+test('GET /dashboard says so when no personas are registered', async () => {
+  const res = await buildWithPersonas(
+    async () => personaClient as never,
+    async () => [],
+  ).inject({
+    method: 'GET',
+    url: '/dashboard',
+  });
+  expect(res.body).toContain('No personas are registered');
+});

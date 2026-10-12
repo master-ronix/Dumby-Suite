@@ -63,11 +63,13 @@ import { createPageDataProvider } from '../rendering/page-data.js';
 import { registerKnownGuilds } from '../discord/guild-registry.js';
 import { createBccmEffectHandlers } from '../commands/bccm-effects.js';
 import { effectiveCommandName, resolveEffectiveCommandNames } from '../commands/command-renames.js';
-import { setGuildCommandPermissions } from '../commands/command-access.js';
+import { deleteGuildCommands, setGuildCommandPermissions } from '../commands/command-access.js';
 import { disableConfirmationDescriptor } from '../rendering/confirmations.js';
 import type { CommandInteraction } from '../commands/command-router.js';
 import { PersonaCommandBindingService } from '../personas/persona-command-binding.service.js';
 import { personaPresenceFromClient } from '../personas/persona-presence.js';
+import { createPersonaOAuthService } from '../personas/persona-oauth.js';
+import { openSealedText } from '../personas/persona-credentials.js';
 import { dashboardUrlFrom, personaSetupCard } from '../rendering/persona-setup.js';
 import {
   PostgresPersonaBindingStore,
@@ -476,8 +478,12 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     return def !== undefined && commandRegistry.getModuleTier(def.moduleId) === 'core';
   };
 
+  // UR-20261012-030 — the identity store and the envelope root key are both needed by the persona
+  // OAuth and Route B paths, so they are bound once here rather than rebuilt per call site.
+  const personaIdentities = new PostgresPersonaIdentityStore(db.knex);
+  const personaRootKey = rootKeyFromBase64('local', config.get('ENCRYPTION_ROOT_KEY'));
   const personaBindingService = new PersonaCommandBindingService(
-    new PostgresPersonaIdentityStore(db.knex),
+    personaIdentities,
     new PostgresPersonaBindingStore(db.knex),
     logger,
   );
@@ -637,6 +643,16 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
       () => discordClient,
       (message) => logger.warn(message),
     ),
+  });
+  // UR-20261012-030 (Route A) — one OAuth2 client per persona application, built from the client
+  // secret the Twill registration sealed. An application without one resolves to undefined, which is
+  // exactly when Route B applies.
+  const personaOAuth = createPersonaOAuthService({
+    identities: personaIdentities,
+    openSecret: (sealed) => openSealedText(sealed, personaRootKey),
+    redirectUri: config.get('OAUTH_REDIRECT_URI'),
+    createClient: (oauthConfig) => new DiscordOAuth2Client({ config: oauthConfig, logger }),
+    warn: (message, meta) => logger.warn(message, meta),
   });
   const bccmEffects = createBccmEffectHandlers({
     knex: db.knex,
@@ -1288,13 +1304,23 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     // Enabling clears the override (allow).
     setModuleCommandAccess = async (moduleId, guildId, allowed) => {
       const entry = moduleRegistry.get(moduleId);
-      if (entry === undefined || applicationId === '') return;
+      if (entry === undefined) return;
       const names = new Set(entry.manifest.commands.map((command) => command.name));
       if (names.size === 0) return;
+
+      // UR-20261012-030 — a module's commands belong to the application that OWNS the module in this
+      // guild: the persona bound to it, else the resident main bot. Both the read endpoint and the
+      // token are per-application, so the owner decides both.
+      const ownerPersonaId = await personaBindingService.resolveCommandOwner(guildId, moduleId);
+      const ownerPersona =
+        ownerPersonaId === undefined ? undefined : await personaIdentities.findById(ownerPersonaId);
+      const ownerApplicationId = ownerPersona?.discordApplicationId ?? applicationId;
+      if (ownerApplicationId === '') return;
+
       let registered: Array<{ id: string; name: string }>;
       try {
         registered = (await rest.get(
-          Routes.applicationGuildCommands(applicationId, guildId),
+          Routes.applicationGuildCommands(ownerApplicationId, guildId),
         )) as Array<{ id: string; name: string }>;
       } catch (err) {
         logger.warn('command-access-read-failed', { moduleId, guildId, error: String(err) });
@@ -1302,24 +1328,50 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
       }
       // §17.6 — the instant override (Server Settings → Integrations) needs a Bearer token; the
       // token/Bearer mechanics live in `command-access.ts` so they are unit-tested. UR-20261011-020
-      // — prefer the dashboard-authorized per-guild token, fall back to the operator's static env
-      // token, and absent both keep the current behaviour (state write + BCCM deregistration).
-      const storedToken = await commandPermissionTokens.resolveAccessToken(applicationId, guildId);
+      // — prefer the dashboard-authorized token FOR THIS APPLICATION, fall back to the operator's
+      // static env token (the main bot only), and absent both use Route B below.
+      const storedToken = await commandPermissionTokens.resolveAccessToken(
+        ownerApplicationId,
+        guildId,
+      );
+      const bearer =
+        storedToken ??
+        (ownerPersona === undefined ? config.get('DISCORD_COMMAND_PERMISSIONS_TOKEN') : undefined);
       const applied = await setGuildCommandPermissions({
-        token: storedToken ?? config.get('DISCORD_COMMAND_PERMISSIONS_TOKEN'),
-        applicationId,
+        token: bearer ?? '',
+        applicationId: ownerApplicationId,
         guildId,
         registered,
         commandNames: names,
         allowed,
         logger,
       });
-      // The log viewer drops structured fields, so `applied` is in the message too (UR-019 pattern).
-      logger.info(`module-command-access-set applied=${applied}`, {
+      // UR-20261012-030 (Route B) — with no user token, a DISABLE still hides at once by removing the
+      // guild commands with the OWNER's own bot token, which needs no authorization at all. The BCCM
+      // re-creates them on the next enable, the batched path it already owns.
+      let removed = 0;
+      if (applied === 0 && !allowed) {
+        const ownerBotToken =
+          ownerPersona === undefined
+            ? config.get('BOT_TOKEN')
+            : openSealedText(ownerPersona.botTokenSealed, personaRootKey);
+        removed = await deleteGuildCommands({
+          botToken: ownerBotToken,
+          applicationId: ownerApplicationId,
+          guildId,
+          registered,
+          commandNames: names,
+          logger,
+        });
+      }
+      // The log viewer drops structured fields, so the outcome is in the message too (UR-019 pattern).
+      logger.info(`module-command-access-set applied=${applied} removed=${removed}`, {
         moduleId,
         guildId,
         allowed,
         applied,
+        removed,
+        applicationId: ownerApplicationId,
       });
     };
     // §17.7 — run the batch once shortly after boot: it converges any batch left pending by the
@@ -1461,6 +1513,17 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
           defaultGuildId: config.get('DEV_GUILD_ID'),
           applicationId: discordClient?.application?.id ?? '',
           tokens: commandPermissionTokens,
+          // UR-20261012-030 — a persona authorizes through its own application.
+          personaClients: (appId) => personaOAuth.clientForApplication(appId),
+          listPersonas: async () => {
+            const rows = await personaIdentities.list();
+            return rows.map((row) => ({
+              id: row.id,
+              name: row.name,
+              discordApplicationId: row.discordApplicationId,
+              boundGuildId: row.boundGuildId,
+            }));
+          },
           // UR-20261011-023 — the dashboard lists every guild the bot is in, each with its own
           // Authorize link, so authorization is per guild rather than fixed to the dev guild.
           listGuilds: async () => {

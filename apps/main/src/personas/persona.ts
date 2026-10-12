@@ -34,6 +34,12 @@ export interface PersonaIdentity {
    * only as a non-reversible equality/lookup aid alongside it.
    */
   readonly botTokenSealed: SealedEnvelope;
+  /**
+   * UR-20261012-030 — the persona application's OAuth2 client secret, sealed the same way. Present
+   * only when the registration supplied it; absent, the persona has no Route A authorization and the
+   * bot-token fallback (Route B) applies.
+   */
+  readonly oauthClientSecretSealed?: SealedEnvelope;
 }
 
 export interface PersonaRegistrationInput {
@@ -42,6 +48,8 @@ export interface PersonaRegistrationInput {
   readonly boundGuildId: string;
   readonly botTokenDigest: string;
   readonly botTokenSealed: SealedEnvelope;
+  /** UR-20261012-030 — optional; without it the persona cannot authorize (Route B applies). */
+  readonly oauthClientSecretSealed?: SealedEnvelope;
   readonly registrarAuthority: string;
   readonly dmBehavior?: PersonaDmBehavior;
   readonly shardAllocation?: number;
@@ -182,6 +190,9 @@ export function buildPersonaIdentity(input: PersonaRegistrationInput): PersonaId
     status: 'active',
     botTokenDigest: input.botTokenDigest,
     botTokenSealed: input.botTokenSealed,
+    ...(input.oauthClientSecretSealed !== undefined
+      ? { oauthClientSecretSealed: input.oauthClientSecretSealed }
+      : {}),
   };
 }
 

@@ -71,3 +71,62 @@ export async function setGuildCommandPermissions(
   }
   return applied;
 }
+
+export interface DeleteGuildCommandsInput {
+  /**
+   * The application's OWN bot token. Deleting a guild command is a bot-token operation, so unlike
+   * the permission override this needs no user authorization at all.
+   */
+  botToken: string;
+  applicationId: string;
+  guildId: string;
+  /** The guild's registered commands, as returned by the API. */
+  registered: readonly { id: string; name: string }[];
+  /** The module's command names; only these are touched. */
+  commandNames: ReadonlySet<string>;
+  logger: CommandAccessLogger;
+  /** Injectable for tests; defaults to the global fetch. */
+  fetchImpl?: typeof fetch;
+}
+
+/**
+ * UR-20261012-030 (Route B) — removes the module's guild commands outright with the application's
+ * bot token, so a disable hides them at once even when no user authorization exists. A 404 counts as
+ * removed: the command is already gone. The BCCM re-creates the commands on the next enable, which
+ * is exactly the batched path it already owns.
+ */
+export async function deleteGuildCommands(input: DeleteGuildCommandsInput): Promise<number> {
+  const { botToken, applicationId, guildId, registered, commandNames, logger } = input;
+  if (botToken === '') {
+    logger.warn('command-access-bot-token-missing', {
+      guildId,
+      note: 'no bot token available to remove the commands; BCCM deregistration still applies',
+    });
+    return 0;
+  }
+  const doFetch = input.fetchImpl ?? fetch;
+  let removed = 0;
+  for (const command of registered) {
+    if (!commandNames.has(command.name)) continue;
+    try {
+      const res = await doFetch(
+        `https://discord.com/api/v10/applications/${applicationId}/guilds/${guildId}/commands/${command.id}`,
+        { method: 'DELETE', headers: { Authorization: `Bot ${botToken}` } },
+      );
+      if (res.ok || res.status === 404) removed += 1;
+      else
+        logger.warn('command-access-delete-failed', {
+          guildId,
+          command: command.name,
+          status: res.status,
+        });
+    } catch (err) {
+      logger.warn('command-access-delete-failed', {
+        guildId,
+        command: command.name,
+        error: String(err),
+      });
+    }
+  }
+  return removed;
+}

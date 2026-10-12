@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.34
+version: 5.5.35
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,26 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.35 — Persona Authorization, Route A + Route B (UR-20261012-030) — 2026-10-12
+
+- 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- Route A (primary): a persona's OAuth2 client secret joins the Twill registration payload as an
+  optional sealed field; personas/persona-oauth.ts resolves an OAuth2 client per persona application
+  (its app id, its opened secret, the shared callback). /auth/authorize accepts app=<applicationId>,
+  the callback exchanges with THAT application's client only and stores the token against it, and
+  /dashboard lists each persona with an Invite + authorize link pinned to its bound guild.
+- The access override now follows the OWNING application: setModuleCommandAccess resolves the persona
+  bound to the module (else the main bot) and uses that application's endpoints and token. The static
+  env token applies to the main bot only.
+- Route B (fallback only): with no user token, a disable removes the guild commands with the owner's
+  own bot token -- a bot-token operation needing no authorization at all. A 404 counts as removed;
+  the BCCM re-creates on enable. Costs the daily create quota and changes the command id.
+- **Blocker restated:** /twill/personas/register is still an HTTP stub (501), so no persona (and so no
+  client secret) can yet be created in production. The service and model accept the secret today.
+- **Verification:** `typecheck`, `lint`, `format`, corpus gates 27/27.
 
 ---
 

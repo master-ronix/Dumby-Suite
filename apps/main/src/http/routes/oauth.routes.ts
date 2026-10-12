@@ -10,6 +10,8 @@ import type { CommandPermissionTokenService } from '../../commands/command-permi
 
 export const OAUTH_STATE_COOKIE = 'dumby_oauth_state';
 export const OAUTH_GUILD_COOKIE = 'dumby_oauth_guild';
+/** UR-20261012-030 — the Discord application the authorization is for (a persona, or the main bot). */
+export const OAUTH_APP_COOKIE = 'dumby_oauth_app';
 
 export interface OAuthGuildSummary {
   id: string;
@@ -30,6 +32,23 @@ export interface OAuthRoutesDeps {
   tokens?: CommandPermissionTokenService | undefined;
   /** UR-20261011-023 — the guilds the bot is in, so the dashboard can authorize per guild. */
   listGuilds?: (() => Promise<readonly OAuthGuildSummary[]>) | undefined;
+  /**
+   * UR-20261012-030 (Route A) — resolves the OAuth2 client for a PERSONA application, so a persona's
+   * own authorization can be run. Undefined for an application with no usable secret, which is
+   * exactly when Route B applies instead.
+   */
+  personaClients?:
+    ((applicationId: string) => Promise<DiscordOAuth2Client | undefined>) | undefined;
+  /** UR-20261012-030 — the registered personas, so the dashboard can offer each one's invite link. */
+  listPersonas?: (() => Promise<readonly OAuthPersonaSummary[]>) | undefined;
+}
+
+/** One registered persona as the dashboard needs it. */
+export interface OAuthPersonaSummary {
+  id: string;
+  name: string;
+  discordApplicationId: string;
+  boundGuildId: string;
 }
 
 /** Manage Guild (0x20) or Administrator (0x8). */
@@ -79,27 +98,49 @@ export function registerOAuthRoutes(app: FastifyInstance, deps: OAuthRoutesDeps)
   ] as const;
 
   app.get('/auth/authorize', async (req, reply) => {
-    const query = req.query as { guild?: string; bot?: string };
+    const query = req.query as { guild?: string; bot?: string; app?: string };
     const guildId = query.guild ?? defaultGuildId;
     const install = query.bot === '1';
+    // UR-20261012-030 — `app` names the Discord application being authorized. Absent, it is the main
+    // bot. A persona's application needs its own client, which carries its own credentials.
+    const requestedApp = typeof query.app === 'string' ? query.app : '';
+    const activeClient =
+      requestedApp === '' || deps.personaClients === undefined
+        ? client
+        : await deps.personaClients(requestedApp);
+    if (activeClient === undefined) {
+      logger.warn('oauth2-app-unresolved', { applicationId: requestedApp, guildId });
+      return reply
+        .code(400)
+        .type('text/html')
+        .send(
+          page(
+            'Dumby Suite',
+            '<h1 class="bad">Authorization unavailable</h1><p class="sub">That persona has no OAuth2 client secret registered, so it cannot be authorized. Add one at registration, or use the bot-token fallback.</p><a class="btn" href="/dashboard">Back to dashboard</a>',
+          ),
+        );
+    }
     const state = generateOAuthState();
     const cookies = [
       // Path=/ so the callback leg receives them at BOTH /auth/callback and /oauth/callback; a
       // narrower path would silently drop them on the alias and fail the state check.
       `${OAUTH_STATE_COOKIE}=${state}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=600`,
       `${OAUTH_GUILD_COOKIE}=${guildId}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=600`,
+      `${OAUTH_APP_COOKIE}=${requestedApp}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=600`,
     ];
     reply.header('set-cookie', cookies);
     // The install flow leaves the guild to Discord's picker unless one was named explicitly.
     const extras =
       install && query.guild === undefined ? {} : { guildId, disableGuildSelect: install };
     return reply.redirect(
-      client.authorizeUrl(state, install ? installScopes : scopes, install ? extras : {}),
+      activeClient.authorizeUrl(state, install ? installScopes : scopes, install ? extras : {}),
     );
   });
 
   const handleCallback = async (req: FastifyRequest, reply: FastifyReply): Promise<unknown> => {
     const query = req.query as { code?: string; state?: string; guild_id?: string };
+    const cookiesForApp = parseCookies(req.headers.cookie);
+    const requestedApp = cookiesForApp[OAUTH_APP_COOKIE] ?? '';
     const cookies = parseCookies(req.headers.cookie);
     const expected = cookies[OAUTH_STATE_COOKIE];
     // UR-20261012-028 — the bot-install flow returns the guild the bot was actually added to; it
@@ -131,10 +172,29 @@ export function registerOAuthRoutes(app: FastifyInstance, deps: OAuthRoutesDeps)
           ),
         );
     }
+    // UR-20261012-030 — the code was issued by a specific application; only THAT application's
+    // client may exchange it, and the token is stored against it.
+    const exchangeClient =
+      requestedApp === '' || deps.personaClients === undefined
+        ? client
+        : await deps.personaClients(requestedApp);
+    if (exchangeClient === undefined) {
+      logger.warn('oauth2-app-unresolved', { applicationId: requestedApp, guildId });
+      return reply
+        .code(400)
+        .type('text/html')
+        .send(
+          page(
+            'Dumby Suite',
+            '<h1 class="bad">Authorization unavailable</h1><p class="sub">That persona has no OAuth2 client secret registered, so the code cannot be exchanged. Add one at registration.</p><a class="btn" href="/dashboard">Back to dashboard</a>',
+          ),
+        );
+    }
+    const tokenApplicationId = requestedApp === '' ? applicationId : requestedApp;
     try {
-      const tokenSet = await client.exchangeCode(query.code);
-      const user = await client.fetchUser(tokenSet.accessToken);
-      const guilds = await client.fetchGuilds(tokenSet.accessToken);
+      const tokenSet = await exchangeClient.exchangeCode(query.code);
+      const user = await exchangeClient.fetchUser(tokenSet.accessToken);
+      const guilds = await exchangeClient.fetchGuilds(tokenSet.accessToken);
       const guild = guilds.find((g) => g.id === guildId);
       if (guild === undefined || !canManage(guild.permissions)) {
         logger.warn('oauth2-not-permitted', { guildId, userId: user.id });
@@ -149,14 +209,18 @@ export function registerOAuthRoutes(app: FastifyInstance, deps: OAuthRoutesDeps)
           );
       }
       if (tokens !== undefined) {
-        await tokens.connect(applicationId, guildId, user.id, {
+        await tokens.connect(tokenApplicationId, guildId, user.id, {
           accessToken: tokenSet.accessToken,
           refreshToken: tokenSet.refreshToken,
           expiresIn: tokenSet.expiresIn,
           scope: COMMAND_PERMISSION_SCOPE,
         });
       }
-      logger.info('oauth2-connected', { applicationId, guildId, userId: user.id });
+      logger.info('oauth2-connected', {
+        applicationId: tokenApplicationId,
+        guildId,
+        userId: user.id,
+      });
       return reply
         .type('text/html')
         .send(
@@ -184,8 +248,8 @@ export function registerOAuthRoutes(app: FastifyInstance, deps: OAuthRoutesDeps)
   app.get('/oauth/callback', handleCallback);
 
   app.get('/dashboard', async (_req, reply) => {
-    const statusOf = (guildId: string): Promise<string> =>
-      tokens === undefined ? Promise.resolve('none') : tokens.status(applicationId, guildId);
+    const statusOf = (appId: string, guildId: string): Promise<string> =>
+      tokens === undefined ? Promise.resolve('none') : tokens.status(appId, guildId);
     const line = (status: string): string =>
       status === 'active'
         ? '<span class="ok">Connected — module disables hide commands instantly.</span>'
@@ -201,9 +265,19 @@ export function registerOAuthRoutes(app: FastifyInstance, deps: OAuthRoutesDeps)
       deps.listGuilds === undefined ? [{ id: defaultGuildId, name: '' }] : await deps.listGuilds();
     const rows = await Promise.all(
       guilds.map(async (guild) => {
-        const status = await statusOf(guild.id);
+        const status = await statusOf(applicationId, guild.id);
         const label = guild.name === '' ? guild.id : guild.name;
         return `<p><a class="btn" href="/auth/authorize?guild=${encodeURIComponent(guild.id)}">Authorize</a> <strong>${label}</strong><br><span class="mono">${guild.id} · ${line(status)}</span></p>`;
+      }),
+    );
+    // UR-20261012-030 — one row per registered persona: inviting it and authorizing it are the
+    // same step, because the install flow is what captures its command-permission token.
+    const personas = deps.listPersonas === undefined ? [] : await deps.listPersonas();
+    const personaRows = await Promise.all(
+      personas.map(async (persona) => {
+        const status = await statusOf(persona.discordApplicationId, persona.boundGuildId);
+        const href = `/auth/authorize?app=${encodeURIComponent(persona.discordApplicationId)}&guild=${encodeURIComponent(persona.boundGuildId)}&bot=1`;
+        return `<p><a class="btn" href="${href}">Invite + authorize</a> <strong>${persona.name}</strong><br><span class="mono">${persona.discordApplicationId} · ${persona.boundGuildId} · ${line(status)}</span></p>`;
       }),
     );
     return reply.type('text/html').send(
@@ -211,7 +285,9 @@ export function registerOAuthRoutes(app: FastifyInstance, deps: OAuthRoutesDeps)
         'Dumby Suite',
         `<h1>Dumby Suite</h1><p class="sub">Command permissions dashboard</p>
 <p class="sub">Authorizing a guild lets Dumby hide a disabled module's commands there instantly. Do it once per guild.</p>\n<p><a class="btn" href="/auth/authorize?bot=1">Add Dumby to your server</a> <strong>Install + authorize in one step</strong><br><span class="mono">Adds the bot and stores its command-permission token together.</span></p>
-${rows.join('\n')}`,
+${rows.join('\n')}
+<h1>Personas</h1><p class="sub">Each persona is a separate application: invite and authorize it in one step.</p>
+${personaRows.length === 0 ? '<p class="sub">No personas are registered.</p>' : personaRows.join('\n')}`,
       ),
     );
   });

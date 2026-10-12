@@ -30,6 +30,7 @@ interface PersonaIdentityRow {
   status: 'active' | 'retired';
   botTokenDigest: string;
   botTokenSealed: SealedEnvelope;
+  oauthClientSecretSealed?: SealedEnvelope | null;
 }
 
 interface PersonaBindingRow {
@@ -52,6 +53,9 @@ function toIdentity(row: PersonaIdentityRow): PersonaIdentity {
     status: row.status,
     botTokenDigest: row.botTokenDigest,
     botTokenSealed: row.botTokenSealed,
+    ...(row.oauthClientSecretSealed !== undefined && row.oauthClientSecretSealed !== null
+      ? { oauthClientSecretSealed: row.oauthClientSecretSealed }
+      : {}),
   };
 }
 
@@ -107,6 +111,7 @@ function toRow(persona: PersonaIdentity): PersonaIdentityRow {
     status: persona.status,
     botTokenDigest: persona.botTokenDigest,
     botTokenSealed: persona.botTokenSealed,
+    oauthClientSecretSealed: persona.oauthClientSecretSealed ?? null,
   };
 }
 
