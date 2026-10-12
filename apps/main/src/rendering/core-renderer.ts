@@ -6,10 +6,12 @@ import {
   createBannerMediaGallery,
   createTitleBlock,
   DEFAULT_ACCENT_COLOR,
+  linkButton,
   section,
   separator,
   stringSelect,
   textDisplay,
+  type ButtonComponent,
   type Component,
   type ComponentsV2Message,
 } from '../shared/utils/components-v2.js';
@@ -70,13 +72,31 @@ export interface ModeControl {
 
 /** item 11/15/17 — a page-declared action button (info, uninstall, paging, search). */
 export interface PageActionButton {
-  readonly customId: string;
+  /** Omitted for a LINK button (style 5), which carries `url` instead of an id. */
+  readonly customId?: string;
   readonly label: string;
-  readonly style?: 1 | 2 | 3 | 4;
+  readonly style?: 1 | 2 | 3 | 4 | 5;
   /** A no-op control (e.g. Previous on page 0) is disabled rather than given a colliding id. */
   readonly disabled?: boolean;
   /** item 2 — an optional custom-emoji icon (the Home control's bold house). */
   readonly emoji?: { name: string; id?: string };
+  /**
+   * UR-20261012-031 — a LINK button's destination. Present means Discord renders style 5 and sends
+   * no interaction, so `customId` is ignored.
+   */
+  readonly url?: string;
+}
+
+/** One page action control as a Discord button: a link when it carries a url, else an interaction. */
+function blockButton(action: PageActionButton): ButtonComponent {
+  if (action.url !== undefined) return linkButton(action.url, action.label, action.emoji);
+  return button(
+    action.customId ?? '',
+    action.label,
+    (action.style ?? 2) as 1 | 2 | 3 | 4,
+    action.disabled ?? false,
+    action.emoji,
+  );
 }
 
 /** item 17 — one action row; Discord shows up to five buttons per row. */
@@ -312,20 +332,9 @@ export class CoreRenderer {
           components.push(textDisplay(block.content));
         } else if (block.kind === 'section') {
           const a = block.accessory;
-          components.push(
-            section(
-              block.content,
-              button(a.customId, a.label, a.style ?? 2, a.disabled ?? false, a.emoji),
-            ),
-          );
+          components.push(section(block.content, blockButton(a)));
         } else if (block.kind === 'row') {
-          components.push(
-            actionRow(
-              block.buttons.map((b) =>
-                button(b.customId, b.label, b.style ?? 2, b.disabled ?? false, b.emoji),
-              ),
-            ),
-          );
+          components.push(actionRow(block.buttons.map((b) => blockButton(b))));
         } else {
           components.push(
             actionRow([
@@ -366,11 +375,7 @@ export class CoreRenderer {
       const rows: Component[] = [];
       for (const row of actions) {
         if (row.length === 0) continue;
-        rows.push(
-          actionRow(
-            row.map((b) => button(b.customId, b.label, b.style ?? 2, b.disabled ?? false, b.emoji)),
-          ),
-        );
+        rows.push(actionRow(row.map((b) => blockButton(b))));
       }
       if (rows.length > 0) {
         components.push(separator());

@@ -71,6 +71,7 @@ import { personaPresenceFromClient } from '../personas/persona-presence.js';
 import { createPersonaOAuthService } from '../personas/persona-oauth.js';
 import { openSealedText } from '../personas/persona-credentials.js';
 import { dashboardUrlFrom, personaSetupCard } from '../rendering/persona-setup.js';
+import { personaInviteUrl, publicBaseFrom } from '../personas/persona-invite.js';
 import {
   PostgresPersonaBindingStore,
   PostgresPersonaIdentityStore,
@@ -643,6 +644,13 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
       () => discordClient,
       (message) => logger.warn(message),
     ),
+    // UR-20261012-031 — the persona invite URL: the combined install+authorize link when the persona
+    // has an OAuth2 secret, else the plain bot install.
+    personaInvite: (input) =>
+      personaInviteUrl(input, {
+        publicBaseUrl: publicBaseFrom(config.get('OAUTH_REDIRECT_URI')),
+        permissions: config.get('BOT_INSTALL_PERMISSIONS'),
+      }),
   });
   // UR-20261012-030 (Route A) — one OAuth2 client per persona application, built from the client
   // secret the Twill registration sealed. An application without one resolves to undefined, which is
@@ -862,11 +870,28 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     disableConfirmation: moduleDisableConfirmation,
     // UR-20261012-029 — the private persona authorization setup card: the callback URL the persona's
     // application must register, the portal guide, and the link to the dashboard's invite flow.
-    personaSetup: () =>
-      personaSetupCard({
+    personaSetup: async (applicationId, guildId) => {
+      // UR-20261012-031 — the card states the callback URL to register and the guide around it, and
+      // carries the persona's own invite link once (and only when) its OAuth secret is in place.
+      const withOAuth = (await personaOAuth.clientForApplication(applicationId)) !== undefined;
+      const persona = await personaIdentities.findByApplicationId(applicationId);
+      return personaSetupCard({
         callbackUrl: config.get('OAUTH_REDIRECT_URI'),
         dashboardUrl: dashboardUrlFrom(config.get('OAUTH_REDIRECT_URI')),
-      }),
+        ...(persona === undefined ? {} : { personaName: persona.name }),
+        ...(guildId === null || applicationId === ''
+          ? {}
+          : {
+              inviteUrl: personaInviteUrl(
+                { applicationId, guildId, withOAuth },
+                {
+                  publicBaseUrl: publicBaseFrom(config.get('OAUTH_REDIRECT_URI')),
+                  permissions: config.get('BOT_INSTALL_PERMISSIONS'),
+                },
+              ),
+            }),
+      });
+    },
   });
   container.registerValue(CORE_TOKENS.EventBus, eventBus);
   container.registerValue(CORE_TOKENS.EventRouter, eventRouter);
@@ -1512,27 +1537,10 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
           logger,
           defaultGuildId: config.get('DEV_GUILD_ID'),
           applicationId: discordClient?.application?.id ?? '',
+          installPermissions: config.get('BOT_INSTALL_PERMISSIONS'),
           tokens: commandPermissionTokens,
           // UR-20261012-030 — a persona authorizes through its own application.
           personaClients: (appId) => personaOAuth.clientForApplication(appId),
-          listPersonas: async () => {
-            const rows = await personaIdentities.list();
-            return rows.map((row) => ({
-              id: row.id,
-              name: row.name,
-              discordApplicationId: row.discordApplicationId,
-              boundGuildId: row.boundGuildId,
-            }));
-          },
-          // UR-20261011-023 — the dashboard lists every guild the bot is in, each with its own
-          // Authorize link, so authorization is per guild rather than fixed to the dev guild.
-          listGuilds: async () => {
-            const rows = await db
-              .knex('guilds')
-              .select<{ id: string; name: string }[]>('id', 'name')
-              .whereNull('deletedAt');
-            return rows.map((row) => ({ id: row.id, name: row.name }));
-          },
         }
       : undefined,
     // Appendix C #18 — the MDIS module-delivery and operational-tooling surfaces.

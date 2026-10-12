@@ -220,7 +220,7 @@ describe('page-data provider', () => {
     ]);
   });
 
-  test('persona marks a registered persona active only when its bot is present', async () => {
+  test('persona reads Online, states presence separately, and offers the invite URL', async () => {
     const personaRegistry = {
       all: () => [mod('persona', 'core', ['persona']), mod('health', 'core', ['health'])],
     } as unknown as PageDataDeps['moduleRegistry'];
@@ -233,12 +233,14 @@ describe('page-data provider', () => {
         dmBehavior: 'prohibited',
         shardAllocation: 1,
         status: 'active',
+        oauthClientSecretSealed: { ciphertext: 'x' },
       },
     ];
     const knex = personaKnex([], personaRows);
     const isMember = vi.fn(
       async (_guildId: string, applicationId: string) => applicationId === 'app-9',
     );
+    const personaInvite = vi.fn(() => 'https://dumby.example/auth/authorize?app=app-9');
 
     const provider = createPageDataProvider(
       makeDeps({
@@ -246,27 +248,50 @@ describe('page-data provider', () => {
         moduleRegistry: personaRegistry,
         db: { knex },
         isMember,
+        personaInvite,
       }),
     );
     const data = await provider('persona', 'guild-1');
     // the guild's OWN registration is the opening profile when nothing owns this module
     expect(data['currentProfileId']).toBe('p-9');
     expect(isMember).toHaveBeenCalledWith('guild-1', 'app-9');
-    const profiles = data['profiles'] as Array<{ id: string; statusLabel: string }>;
-    expect(profiles.find((p) => p.id === 'p-9')?.statusLabel).toBe('Active');
+    const profiles = data['profiles'] as Array<{
+      id: string;
+      statusLabel: string;
+      present: boolean;
+      hasOAuth: boolean;
+      inviteUrl: string;
+    }>;
+    const nova = profiles.find((p) => p.id === 'p-9');
+    // registered => Online, whether or not its bot is in the guild
+    expect(nova?.statusLabel).toBe('Online');
+    expect(nova?.present).toBe(true);
+    expect(nova?.hasOAuth).toBe(true);
+    expect(nova?.inviteUrl).toBe('https://dumby.example/auth/authorize?app=app-9');
+    expect(personaInvite).toHaveBeenCalledWith({
+      applicationId: 'app-9',
+      guildId: 'guild-1',
+      withOAuth: true,
+    });
 
-    // absent from the guild → Inactive, never assumed present
+    // absent from the guild => still Online, but presence is false
     const away = createPageDataProvider(
       makeDeps({
         getClient: () => fakeClient,
         moduleRegistry: personaRegistry,
         db: { knex },
         isMember: async () => false,
+        personaInvite: () => 'u',
       }),
     );
-    const awayData = await away('persona', 'guild-1');
-    const awayProfiles = awayData['profiles'] as Array<{ id: string; statusLabel: string }>;
-    expect(awayProfiles.find((p) => p.id === 'p-9')?.statusLabel).toBe('Inactive');
+    const awayProfiles = (await away('persona', 'guild-1'))['profiles'] as Array<{
+      id: string;
+      statusLabel: string;
+      present: boolean;
+    }>;
+    const awayNova = awayProfiles.find((p) => p.id === 'p-9');
+    expect(awayNova?.statusLabel).toBe('Online');
+    expect(awayNova?.present).toBe(false);
   });
 
   test('persona warns and falls back to the main bot when the persona read fails', async () => {

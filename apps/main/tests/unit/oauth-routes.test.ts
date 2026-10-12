@@ -42,71 +42,42 @@ function build(client: unknown, tokens: unknown) {
 
 const OK_COOKIE = 'dumby_oauth_state=S; dumby_oauth_guild=g1';
 
-test('GET /dashboard shows the connect state for each token status', async () => {
-  const none = await build(makeClient(), undefined).inject({ method: 'GET', url: '/dashboard' });
-  expect(none.statusCode).toBe(200);
-  expect(none.body).toContain('Not connected');
-
-  for (const [status, expected] of [
-    ['active', 'Connected'],
-    ['revoked', 'revoked'],
-    ['expired', 'expired'],
-  ] as const) {
-    const res = await build(makeClient(), makeTokens(status)).inject({
-      method: 'GET',
-      url: '/dashboard',
-    });
-    expect(res.body).toContain(expected);
-  }
+test('GET /dashboard is one purpose and one control — no guild list', async () => {
+  const res = await build(makeClient(), makeTokens('active')).inject({
+    method: 'GET',
+    url: '/dashboard',
+  });
+  expect(res.statusCode).toBe(200);
+  expect(res.body).toContain('/auth/authorize?bot=1');
+  expect(res.body).toContain("Discord's own screen");
+  // the former guild list and per-guild Authorize controls are gone
+  expect(res.body).not.toContain('Authorize</a> <strong>');
 });
 
-test('GET /dashboard lists every guild with its own authorize link', async () => {
+test('GET /auth/authorize?bot=1 carries the install permission bitfield', async () => {
   const app = Fastify();
   registerOAuthRoutes(app, {
     client: makeClient() as never,
     logger,
     defaultGuildId: 'g1',
     applicationId: 'app1',
-    tokens: makeTokens('active') as never,
-    listGuilds: async () => [
-      { id: 'g1', name: 'Old Server' },
-      { id: 'g2', name: 'New Server' },
-    ],
+    installPermissions: '84992',
+    tokens: makeTokens() as never,
   });
-  const res = await app.inject({ method: 'GET', url: '/dashboard' });
-  expect(res.statusCode).toBe(200);
-  expect(res.body).toContain('Old Server');
-  expect(res.body).toContain('New Server');
-  expect(res.body).toContain('/auth/authorize?guild=g2');
-  // UR-20261012-028 — the install link adds the bot and stores its token in one step.
-  expect(res.body).toContain('/auth/authorize?bot=1');
-});
-
-test('GET /auth/authorize?bot=1 requests the install scopes, leaving the guild to Discord', async () => {
   const client = makeClient();
-  const res = await build(client, makeTokens()).inject({
-    method: 'GET',
-    url: '/auth/authorize?bot=1',
+  const withPerms = Fastify();
+  registerOAuthRoutes(withPerms, {
+    client: client as never,
+    logger,
+    defaultGuildId: 'g1',
+    applicationId: 'app1',
+    installPermissions: '84992',
+    tokens: makeTokens() as never,
   });
-  expect(res.statusCode).toBe(302);
+  await withPerms.inject({ method: 'GET', url: '/auth/authorize?bot=1' });
   const args = (client as { authorizeUrl: { mock: { calls: unknown[][] } } }).authorizeUrl.mock
     .calls[0]!;
-  const scopes = args[1] as string[];
-  expect(scopes).toContain('bot');
-  expect(scopes).toContain('applications.commands');
-  expect(scopes).toContain('applications.commands.permissions.update');
-  expect(args[2]).toEqual({});
-});
-
-test('GET /auth/authorize?bot=1&guild=g2 pins the guild on the picker', async () => {
-  const client = makeClient();
-  await build(client, makeTokens()).inject({
-    method: 'GET',
-    url: '/auth/authorize?bot=1&guild=g2',
-  });
-  const args = (client as { authorizeUrl: { mock: { calls: unknown[][] } } }).authorizeUrl.mock
-    .calls[0]!;
-  expect(args[2]).toEqual({ guildId: 'g2', disableGuildSelect: true });
+  expect(args[2]).toEqual({ permissions: '84992' });
 });
 
 test('GET /auth/authorize mints a state cookie and redirects to Discord', async () => {
@@ -212,7 +183,7 @@ test('GET /auth/callback surfaces a Discord exchange failure', async () => {
 
 // --- UR-20261012-030 (Route A) — per-persona authorization --------------------------------
 
-function buildWithPersonas(personaClients: unknown, listPersonas?: unknown) {
+function buildWithPersonas(personaClients: unknown) {
   const app = Fastify();
   registerOAuthRoutes(app, {
     client: makeClient() as never,
@@ -221,7 +192,6 @@ function buildWithPersonas(personaClients: unknown, listPersonas?: unknown) {
     applicationId: 'app1',
     tokens: makeTokens() as never,
     personaClients: personaClients as never,
-    ...(listPersonas !== undefined ? { listPersonas: listPersonas as never } : {}),
   });
   return app;
 }
@@ -282,25 +252,4 @@ test('GET /auth/callback exchanges with the persona client and stores against it
     'u9',
     expect.any(Object),
   );
-});
-
-test('GET /dashboard lists each persona with an invite + authorize link', async () => {
-  const res = await buildWithPersonas(
-    async () => personaClient as never,
-    async () => [{ id: 'p-1', name: 'Nova', discordApplicationId: 'app-9', boundGuildId: 'g1' }],
-  ).inject({ method: 'GET', url: '/dashboard' });
-  expect(res.statusCode).toBe(200);
-  expect(res.body).toContain('Nova');
-  expect(res.body).toContain('/auth/authorize?app=app-9&amp;guild=g1&amp;bot=1');
-});
-
-test('GET /dashboard says so when no personas are registered', async () => {
-  const res = await buildWithPersonas(
-    async () => personaClient as never,
-    async () => [],
-  ).inject({
-    method: 'GET',
-    url: '/dashboard',
-  });
-  expect(res.body).toContain('No personas are registered');
 });

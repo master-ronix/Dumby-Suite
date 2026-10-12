@@ -17,6 +17,9 @@ const data = {
       dmBehavior: 'Prohibited',
       statusKind: 'online',
       statusLabel: 'Online',
+      present: true,
+      hasOAuth: true,
+      inviteUrl: 'https://dumby.example/auth/authorize?app=142&guild=g1&bot=1',
       moduleCount: 2,
       commandCount: 3,
     },
@@ -27,8 +30,11 @@ const data = {
       applicationId: '999000111222333444',
       shards: '1',
       dmBehavior: 'Allowed',
-      statusKind: 'active',
-      statusLabel: 'Active',
+      statusKind: 'online',
+      statusLabel: 'Online',
+      present: false,
+      hasOAuth: false,
+      inviteUrl: 'https://discord.com/oauth2/authorize?client_id=999&guild_id=g1',
       moduleCount: 1,
       commandCount: 1,
     },
@@ -97,15 +103,29 @@ describe('personaBlocks', () => {
     );
   });
 
-  test('offers the authorization setup control only to a guild admin', () => {
+  test('offers the invite and setup controls only to a guild admin', () => {
     const asMember = personaBlocks(data, 'u1', { isAdmin: false });
     expect(asMember.some((b) => (b as Any)['kind'] === 'row')).toBe(false);
 
     const asAdmin = personaBlocks(data, 'u1', { isAdmin: true });
     const row = asAdmin.find((b) => (b as Any)['kind'] === 'row') as Any;
     const buttons = row['buttons'] as Array<Any>;
-    expect(buttons[0]?.['customId']).toBe('dumby:persona-setup:u1');
-    expect(buttons[0]?.['label']).toBe('Persona setup');
+    // The invite control is a LINK button; with OAuth registered it also authorizes.
+    expect(buttons[0]?.['url']).toBe('https://dumby.example/auth/authorize?app=142&guild=g1&bot=1');
+    expect(buttons[0]?.['label']).toBe('Invite + authorize persona');
+    expect(buttons[1]?.['customId']).toBe('dumby:persona-setup:u1:1422973358818988155');
+    expect(buttons[1]?.['label']).toBe('OAuth setup');
+  });
+
+  test('states presence in the headline subtext, separately from the online state', () => {
+    const away = {
+      ...data,
+      selectedProfileId: 'p-2',
+      currentProfileId: 'p-2',
+    };
+    const head = personaBlocks(away, 'u1')[0] as Any;
+    expect(String(head['content'])).toContain('Online');
+    expect(String(head['content'])).toContain('Not in this guild yet');
   });
 
   test('disables the switcher when only one profile is active', () => {

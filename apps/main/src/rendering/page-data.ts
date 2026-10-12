@@ -21,6 +21,12 @@ export interface PageDataDeps {
    * reports a persona as inactive rather than guessing.
    */
   isMember?: ((guildId: string, applicationId: string) => Promise<boolean>) | undefined;
+  /**
+   * UR-20261012-031 — builds a persona's invite URL. Kept as a dependency so the page layer never
+   * has to know the service's public origin or the install permission bitfield.
+   */
+  personaInvite?:
+    ((input: { applicationId: string; guildId: string; withOAuth: boolean }) => string) | undefined;
   moduleRegistry: ModuleRegistry;
   db: DbClient;
   redis: Redis;
@@ -63,7 +69,7 @@ const titleCaseId = (id: string): string =>
 export function createPageDataProvider(
   deps: PageDataDeps,
 ): (moduleId: string, guildId: string | null, page?: number, query?: string) => Promise<PageData> {
-  const { getClient, moduleRegistry, db, redis, config, logger, isMember } = deps;
+  const { getClient, moduleRegistry, db, redis, config, logger, isMember, personaInvite } = deps;
 
   /**
    * UR-20261011-011 — the guild's module enablement, read once. A module is "enabled" when its
@@ -210,6 +216,12 @@ export function createPageDataProvider(
     readonly dmBehavior: string;
     readonly statusKind: string;
     readonly statusLabel: string;
+    /** UR-20261012-031 — whether the persona's bot is actually in this guild. */
+    readonly present: boolean;
+    /** Whether an OAuth2 client secret is registered, so the invite can also authorize. */
+    readonly hasOAuth: boolean;
+    /** The invite URL for this persona ('' when it cannot be built). */
+    readonly inviteUrl: string;
     readonly moduleCount: number;
     readonly commandCount: number;
   }
@@ -243,6 +255,7 @@ export function createPageDataProvider(
       dmBehavior: string;
       shardAllocation: number;
       status: string;
+      hasOAuth: boolean;
     }> = [];
     if (guildId !== null) {
       try {
@@ -284,6 +297,10 @@ export function createPageDataProvider(
             shardAllocation:
               typeof row['shardAllocation'] === 'number' ? row['shardAllocation'] : 0,
             status: typeof row['status'] === 'string' ? row['status'] : 'active',
+            // The sealed secret itself never leaves the data layer — only whether one exists.
+            hasOAuth:
+              row['oauthClientSecretSealed'] !== null &&
+              row['oauthClientSecretSealed'] !== undefined,
           }));
       } catch (err) {
         logger.warn('page-data-persona-unavailable', { guildId, reason: String(err) });
@@ -313,6 +330,8 @@ export function createPageDataProvider(
       shard: string,
       statusKind: string,
       statusLabel: string,
+      present: boolean,
+      hasOAuth: boolean,
     ): PersonaProfile => {
       const owned = modulesOwnedBy(id);
       return {
@@ -324,6 +343,12 @@ export function createPageDataProvider(
         dmBehavior: dm,
         statusKind,
         statusLabel,
+        present,
+        hasOAuth,
+        inviteUrl:
+          isMain || guildId === null || personaInvite === undefined
+            ? ''
+            : personaInvite({ applicationId, guildId, withOAuth: hasOAuth }),
         moduleCount: owned.length,
         commandCount: owned.reduce((total, entry) => total + entry.manifest.commands.length, 0),
       };
@@ -339,6 +364,8 @@ export function createPageDataProvider(
         shards,
         online ? 'online' : 'offline',
         online ? 'Online' : 'Offline',
+        true,
+        false,
       ),
       ...(await Promise.all(
         registered.map(async (entry) => {
@@ -349,9 +376,9 @@ export function createPageDataProvider(
             isMember === undefined
               ? false
               : await isMember(guildId ?? '', entry.discordApplicationId);
+          // UR-20261012-031 — a registered persona reads ONLINE (it exists and is invitable);
+          // whether its bot is already in the guild is a separate, honest fact.
           const retired = entry.status !== 'active';
-          const statusKind = retired ? 'retired' : present ? 'active' : 'inactive';
-          const statusLabel = retired ? 'Retired' : present ? 'Active' : 'Inactive';
           return profileFor(
             entry.id,
             entry.name,
@@ -359,8 +386,10 @@ export function createPageDataProvider(
             false,
             entry.dmBehavior === 'allowed' ? 'Allowed' : 'Prohibited',
             String(entry.shardAllocation),
-            statusKind,
-            statusLabel,
+            retired ? 'retired' : 'online',
+            retired ? 'Retired' : 'Online',
+            present,
+            entry.hasOAuth,
           );
         }),
       )),

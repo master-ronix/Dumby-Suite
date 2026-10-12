@@ -41,6 +41,9 @@ interface ProfileShape {
   readonly dmBehavior: string;
   readonly statusKind: string;
   readonly statusLabel: string;
+  readonly present: boolean;
+  readonly hasOAuth: boolean;
+  readonly inviteUrl: string;
   readonly moduleCount: number;
   readonly commandCount: number;
 }
@@ -81,6 +84,9 @@ function asProfiles(value: unknown): readonly ProfileShape[] {
       dmBehavior: typeof p['dmBehavior'] === 'string' ? p['dmBehavior'] : '',
       statusKind: typeof p['statusKind'] === 'string' ? p['statusKind'] : 'offline',
       statusLabel: typeof p['statusLabel'] === 'string' ? p['statusLabel'] : 'Offline',
+      present: p['present'] === true,
+      hasOAuth: p['hasOAuth'] === true,
+      inviteUrl: typeof p['inviteUrl'] === 'string' ? p['inviteUrl'] : '',
       moduleCount: typeof p['moduleCount'] === 'number' ? p['moduleCount'] : 0,
       commandCount: typeof p['commandCount'] === 'number' ? p['commandCount'] : 0,
     });
@@ -139,7 +145,14 @@ export function personaBlocks(
   const subtext =
     selected === undefined
       ? ''
-      : `${selected.moduleCount} module${selected.moduleCount === 1 ? '' : 's'} · ${selected.commandCount} command${selected.commandCount === 1 ? '' : 's'}`;
+      : [
+          `${selected.moduleCount} module${selected.moduleCount === 1 ? '' : 's'}`,
+          `${selected.commandCount} command${selected.commandCount === 1 ? '' : 's'}`,
+          // UR-20261012-031 — presence is stated plainly, and is NOT the same as the online state.
+          selected.isMain ? '' : selected.present ? 'In this guild' : 'Not in this guild yet',
+        ]
+          .filter((part) => part !== '')
+          .join(' · ');
   blocks.push({
     kind: 'section',
     content: subtext === '' ? headline : `${headline}\n-# ${subtext}`,
@@ -216,17 +229,31 @@ export function personaBlocks(
   // private card carrying the callback URL the persona's application must register, the portal
   // guide, and the link through to the dashboard's invite flow.
   if (options.isAdmin === true) {
-    blocks.push({
-      kind: 'row',
-      buttons: [
-        {
-          customId: `dumby:persona-setup:${invokerId}`,
-          label: 'Persona setup',
-          style: 2,
-          emoji: customEmojiParts(INFO_ICON_NAME) ?? { name: INFO_FALLBACK },
-        },
-      ],
+    const controls: Array<{
+      customId?: string;
+      url?: string;
+      label: string;
+      style?: 1 | 2 | 3 | 4 | 5;
+      emoji?: { name: string; id?: string };
+    }> = [];
+    // UR-20261012-031 — the invite control. With an OAuth2 secret registered the same click also
+    // authorizes; without one it is a plain bot install. One control, never a menu of options.
+    if (selected !== undefined && selected.inviteUrl !== '') {
+      controls.push({
+        url: selected.inviteUrl,
+        label: selected.hasOAuth ? 'Invite + authorize persona' : 'Invite persona',
+        style: 5,
+        emoji: customEmojiParts(PROFILE_ICON_NAME) ?? { name: PROFILE_FALLBACK },
+      });
+    }
+    // The OAuth configuration path: the callback URL to register and the short portal guide.
+    controls.push({
+      customId: `dumby:persona-setup:${invokerId}:${selected?.applicationId ?? ''}`,
+      label: 'OAuth setup',
+      style: 2,
+      emoji: customEmojiParts(INFO_ICON_NAME) ?? { name: INFO_FALLBACK },
     });
+    blocks.push({ kind: 'row', buttons: controls });
   }
 
   return blocks;

@@ -59,6 +59,11 @@ export function validateOAuthState(expected: string, received: string | null | u
 export interface AuthorizeExtras {
   readonly guildId?: string | undefined;
   readonly disableGuildSelect?: boolean | undefined;
+  /**
+   * UR-20261012-031 — the bot-install permission bitfield. Only meaningful alongside the `bot`
+   * scope; Discord renders its permissions step from it.
+   */
+  readonly permissions?: string | undefined;
 }
 
 /** §19.7 — the Discord authorization URL the dashboard redirects to. */
@@ -78,6 +83,9 @@ export function buildAuthorizeUrl(
     url.searchParams.set('guild_id', extras.guildId);
   }
   if (extras.disableGuildSelect === true) url.searchParams.set('disable_guild_select', 'true');
+  if (extras.permissions !== undefined && extras.permissions !== '') {
+    url.searchParams.set('permissions', extras.permissions);
+  }
   return url.toString();
 }
 

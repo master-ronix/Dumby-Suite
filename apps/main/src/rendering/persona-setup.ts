@@ -20,8 +20,13 @@ import { customEmojiParts, PROFILE_FALLBACK, PROFILE_ICON_NAME } from './module-
 export interface PersonaSetupCardDeps {
   /** The URL the persona application must list under OAuth2 → Redirects. */
   callbackUrl: string;
-  /** The dashboard, where the persona's invite link is offered. */
+  /** The dashboard, used only when no persona invite URL is available. */
   dashboardUrl: string;
+  /**
+   * UR-20261012-031 — the persona's own invite URL. Preferred over the dashboard, so the control
+   * that summons the persona is the persona's invite, not a detour.
+   */
+  inviteUrl?: string | undefined;
   /** The persona's display name, when one is known. */
   personaName?: string | undefined;
 }
@@ -52,7 +57,9 @@ export function personaSetupCard(deps: PersonaSetupCardDeps): ComponentsV2Messag
       separator(false, 'small'),
       actionRow([
         linkButton(
-          deps.dashboardUrl,
+          deps.inviteUrl !== undefined && deps.inviteUrl !== ''
+            ? deps.inviteUrl
+            : deps.dashboardUrl,
           'Invite link of persona to the guild',
           customEmojiParts(PROFILE_ICON_NAME) ?? { name: PROFILE_FALLBACK },
         ),

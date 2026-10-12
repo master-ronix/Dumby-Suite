@@ -13,16 +13,16 @@ export const OAUTH_GUILD_COOKIE = 'dumby_oauth_guild';
 /** UR-20261012-030 — the Discord application the authorization is for (a persona, or the main bot). */
 export const OAUTH_APP_COOKIE = 'dumby_oauth_app';
 
-export interface OAuthGuildSummary {
-  id: string;
-  name: string;
-}
-
 export interface OAuthRoutesDeps {
   client: DiscordOAuth2Client;
   logger: Logger;
   /** The guild the dashboard's default button authorizes for. */
   defaultGuildId: string;
+  /**
+   * UR-20261012-031 — the bot-install permission bitfield. Supplying it is what makes Discord render
+   * its standard permissions step on the install screen.
+   */
+  installPermissions?: string | undefined;
   /**
    * UR-20261012-028 — the Discord application the flow authorizes for. The command-permissions
    * endpoint is per-application, so the token is stored against it.
@@ -30,8 +30,6 @@ export interface OAuthRoutesDeps {
   applicationId: string;
   /** Present when the token store is wired; absent the flow still runs but stores nothing. */
   tokens?: CommandPermissionTokenService | undefined;
-  /** UR-20261011-023 — the guilds the bot is in, so the dashboard can authorize per guild. */
-  listGuilds?: (() => Promise<readonly OAuthGuildSummary[]>) | undefined;
   /**
    * UR-20261012-030 (Route A) — resolves the OAuth2 client for a PERSONA application, so a persona's
    * own authorization can be run. Undefined for an application with no usable secret, which is
@@ -39,16 +37,6 @@ export interface OAuthRoutesDeps {
    */
   personaClients?:
     ((applicationId: string) => Promise<DiscordOAuth2Client | undefined>) | undefined;
-  /** UR-20261012-030 — the registered personas, so the dashboard can offer each one's invite link. */
-  listPersonas?: (() => Promise<readonly OAuthPersonaSummary[]>) | undefined;
-}
-
-/** One registered persona as the dashboard needs it. */
-export interface OAuthPersonaSummary {
-  id: string;
-  name: string;
-  discordApplicationId: string;
-  boundGuildId: string;
 }
 
 /** Manage Guild (0x20) or Administrator (0x8). */
@@ -248,46 +236,17 @@ export function registerOAuthRoutes(app: FastifyInstance, deps: OAuthRoutesDeps)
   app.get('/oauth/callback', handleCallback);
 
   app.get('/dashboard', async (_req, reply) => {
-    const statusOf = (appId: string, guildId: string): Promise<string> =>
-      tokens === undefined ? Promise.resolve('none') : tokens.status(appId, guildId);
-    const line = (status: string): string =>
-      status === 'active'
-        ? '<span class="ok">Connected — module disables hide commands instantly.</span>'
-        : status === 'revoked'
-          ? '<span class="bad">Authorization revoked. Re-authorize to restore instant hiding.</span>'
-          : status === 'expired'
-            ? '<span class="warn">Token expired and cannot refresh. Re-authorize.</span>'
-            : '<span class="warn">Not connected — commands are hidden on the next queue window, not instantly.</span>';
-
-    // UR-20261011-023 — one row per guild, each with its own Authorize link. The token is per guild,
-    // so authorizing covers only the guild named in the link.
-    const guilds =
-      deps.listGuilds === undefined ? [{ id: defaultGuildId, name: '' }] : await deps.listGuilds();
-    const rows = await Promise.all(
-      guilds.map(async (guild) => {
-        const status = await statusOf(applicationId, guild.id);
-        const label = guild.name === '' ? guild.id : guild.name;
-        return `<p><a class="btn" href="/auth/authorize?guild=${encodeURIComponent(guild.id)}">Authorize</a> <strong>${label}</strong><br><span class="mono">${guild.id} · ${line(status)}</span></p>`;
-      }),
-    );
-    // UR-20261012-030 — one row per registered persona: inviting it and authorizing it are the
-    // same step, because the install flow is what captures its command-permission token.
-    const personas = deps.listPersonas === undefined ? [] : await deps.listPersonas();
-    const personaRows = await Promise.all(
-      personas.map(async (persona) => {
-        const status = await statusOf(persona.discordApplicationId, persona.boundGuildId);
-        const href = `/auth/authorize?app=${encodeURIComponent(persona.discordApplicationId)}&guild=${encodeURIComponent(persona.boundGuildId)}&bot=1`;
-        return `<p><a class="btn" href="${href}">Invite + authorize</a> <strong>${persona.name}</strong><br><span class="mono">${persona.discordApplicationId} · ${persona.boundGuildId} · ${line(status)}</span></p>`;
-      }),
-    );
+    // UR-20261012-031 — the operator found the former page confusing: a guild list beside an install
+    // button, and per-guild Authorize controls duplicating it. This is one purpose and one control.
+    // Discord's own install screen picks the guild AND the bot's permissions, so nothing here needs
+    // to enumerate guilds or permissions.
     return reply.type('text/html').send(
       page(
         'Dumby Suite',
-        `<h1>Dumby Suite</h1><p class="sub">Command permissions dashboard</p>
-<p class="sub">Authorizing a guild lets Dumby hide a disabled module's commands there instantly. Do it once per guild.</p>\n<p><a class="btn" href="/auth/authorize?bot=1">Add Dumby to your server</a> <strong>Install + authorize in one step</strong><br><span class="mono">Adds the bot and stores its command-permission token together.</span></p>
-${rows.join('\n')}
-<h1>Personas</h1><p class="sub">Each persona is a separate application: invite and authorize it in one step.</p>
-${personaRows.length === 0 ? '<p class="sub">No personas are registered.</p>' : personaRows.join('\n')}`,
+        `<h1>Dumby Suite</h1>
+<p class="sub">One step adds the bot and authorizes it, so a disabled module's commands hide instantly.</p>
+<p><a class="btn" href="/auth/authorize?bot=1">Add Dumby to your server</a></p>
+<p class="sub">Choose the server and the bot's permissions on Discord's own screen. Already added? The same link re-authorizes it.</p>`,
       ),
     );
   });

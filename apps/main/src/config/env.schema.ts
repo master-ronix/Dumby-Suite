@@ -87,6 +87,11 @@ const baseEnvSchema = z
     OAUTH_CLIENT_ID: z.string().default(''),
     OAUTH_CLIENT_SECRET: z.string().default(''),
     OAUTH_REDIRECT_URI: z.string().default(''),
+    // UR-20261012-031 — the bot-install permission bitfield. Supplying it is what makes Discord show
+    // its standard "what permissions should this bot have?" step on the install screen. The default
+    // is the minimum a Components-V2 command bot needs: View Channels, Send Messages, Embed Links,
+    // Read Message History.
+    BOT_INSTALL_PERMISSIONS: z.string().default('84992'),
 
     DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
     DATABASE_REPLICA_URLS: csvIds(),

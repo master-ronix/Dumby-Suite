@@ -18,6 +18,18 @@ describe('personaSetupCard', () => {
     expect(text).toContain('https://dumby.example/dashboard');
   });
 
+  test('prefers the persona invite URL over the dashboard for the invite control', () => {
+    const card = personaSetupCard({
+      callbackUrl: 'https://dumby.example/auth/callback',
+      dashboardUrl: 'https://dumby.example/dashboard',
+      inviteUrl: 'https://dumby.example/auth/authorize?app=app-9&guild=g1&bot=1',
+    });
+    const flat = flatten(card);
+    expect(flat).toContain(
+      '"url":"https://dumby.example/auth/authorize?app=app-9&amp;guild=g1&amp;bot=1"',
+    );
+  });
+
   test('names the persona when one is given', () => {
     const card = personaSetupCard({
       callbackUrl: 'https://dumby.example/auth/callback',

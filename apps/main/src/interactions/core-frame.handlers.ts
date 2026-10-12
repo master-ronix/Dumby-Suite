@@ -69,7 +69,8 @@ export interface CoreFrameHandlerDeps {
    * UR-20261012-029 — builds the persona authorization setup card. Offered only from the /persona
    * control the page shows a guild admin; the card itself is private (ephemeral).
    */
-  personaSetup?: (() => unknown | Promise<unknown>) | undefined;
+  personaSetup?:
+    ((applicationId: string, guildId: string | null) => unknown | Promise<unknown>) | undefined;
 }
 
 export function registerCoreFrameHandlers(deps: CoreFrameHandlerDeps): void {
@@ -178,11 +179,15 @@ export function registerCoreFrameHandlers(deps: CoreFrameHandlerDeps): void {
     ack: 'ephemeral',
     parse: (customId) => {
       const parts = customId.split(':');
-      return { invoker: parts[2] };
+      // `dumby:persona-setup:<invoker>:<applicationId>` — the card is built for that application.
+      return { invoker: parts[2], applicationId: parts[3] };
     },
-    execute: async (interaction) => {
+    execute: async (interaction, context) => {
+      const { applicationId } = context as { applicationId?: string };
       if (personaSetup === undefined) return;
-      await interaction.editReply(await personaSetup());
+      await interaction.editReply(
+        await personaSetup(applicationId ?? '', interaction.guildId ?? null),
+      );
     },
   });
 

@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.35
+version: 5.5.36
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,25 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.36 — Persona Invites, Install Permissions, Cleaner Dashboard (UR-20261012-031) — 2026-10-12
+
+- 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- A registered persona now reads ONLINE (it exists and is invitable); whether its bot is already in the
+  guild is stated separately in the subtext. Presence no longer drives the status.
+- One invite control on the persona profile, admin-only: the combined install+authorize link when an
+  OAuth2 secret is registered, else a plain bot install pinned to the bound guild. OAuth configuration
+  stays optional behind the info control, whose card now also carries the invite link and names the
+  persona.
+- The install leg sends a permission bitfield (BOT_INSTALL_PERMISSIONS, default 84992), which is what
+  makes Discord render its standard permissions step -- the operator's report that the screen lacked
+  one.
+- /dashboard is reduced to one purpose and one control (no guild list, no per-guild Authorize rows, no
+  personas section): the guild and the bot's permissions are chosen on Discord's own screen.
+- PageActionButton gains an optional url, so a block can render a real Discord link button.
+- **Verification:** `typecheck`, `lint`, `format`, corpus gates 27/27.
 
 ---
 
