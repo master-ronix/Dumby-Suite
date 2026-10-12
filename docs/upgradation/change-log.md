@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.30
+version: 5.5.31
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,24 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.31 — Persona test fix + BCCM skip observability (UR-20261012-026 v1.1, UR-20261012-027) — 2026-10-12
+
+- 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- The profile-aware board's v1.0 commit failed CI on a fault in its own new test, not the code: it
+  passed the selected persona id in the `page` argument instead of `query`, so the page correctly
+  fell back to the running profile. The router passes `options.query` fourth, so production was
+  always right; the test now passes it fourth.
+- The first successful BCCM push also emitted `bccm-batch-command-skipped` with no readable detail.
+  The dropped name and reason now travel in the message string, per the UR-019 self-describing rule.
+  The skip was an **invalid name** (an unresolved name is still sent), and every first-party command
+  name is valid — so it was a guild rename/alias target.
+- **Finding, not fixed:** the `/queue` submit path does not validate a rename/alias name, so an
+  invalid rename is accepted and then silently dropped at push. It needs a new notice reason code to
+  reject properly, so it is left as a follow-up rather than half-fitted (UR-027 §6).
+- **Verification:** `typecheck`, `format`, corpus gates 27/27.
 
 ---
 

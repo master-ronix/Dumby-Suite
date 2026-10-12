@@ -1251,7 +1251,16 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
         const body = resolveCommandPayloads(
           commands.map((command) => command.name),
           commandRegistry,
-          (name, reason) => logger.warn('bccm-batch-command-skipped', { guildId, name, reason }),
+          // UR-20261012-027 — self-describing (UR-019): the operator's log viewer renders only the
+          // message, so the dropped command's name and reason travel in the string, not only in the
+          // structured fields. A name dropped here is a rename/alias target that is not a valid
+          // Discord command name, so the rename silently did not happen — this is the only record.
+          (name, reason) =>
+            logger.warn(`bccm-batch-command-skipped: ${name} (${reason})`, {
+              guildId,
+              name,
+              reason,
+            }),
         );
         await rest.put(Routes.applicationGuildCommands(applicationId, guildId), { body });
       },

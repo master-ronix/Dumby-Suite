@@ -195,7 +195,9 @@ describe('page-data provider', () => {
     expect(personaTiers.flatMap((t) => t.modules.map((m) => m.name))).toEqual(['persona']);
 
     // switching to the main bot shows the modules it still owns
-    const switched = await provider('persona', 'guild-1', 'main');
+    // the provider's signature is (moduleId, guildId, page, query) — the selected persona id
+    // travels on the query channel (as the router passes options.query fourth).
+    const switched = await provider('persona', 'guild-1', 0, 'main');
     expect(switched['selectedProfileId']).toBe('main');
     const mainTiers = switched['tiers'] as Array<{ modules: Array<{ name: string }> }>;
     expect(mainTiers.flatMap((t) => t.modules.map((m) => m.name))).toEqual([
