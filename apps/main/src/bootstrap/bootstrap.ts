@@ -74,7 +74,7 @@ import {
 import { PersonaCommandBindingService } from '../personas/persona-command-binding.service.js';
 import { personaPresenceFromClient } from '../personas/persona-presence.js';
 import { filterRegistryForModules, PersonaRuntime } from '../personas/persona-runtime.js';
-import { buildComponentInteractionHandler } from '../personas/persona-interaction-handler.js';
+import { buildPersonaInteractionHandler } from '../personas/persona-interaction-handler.js';
 import { createPersonaOAuthService } from '../personas/persona-oauth.js';
 import { openBotTokenOrEmpty, openSealedText } from '../personas/persona-credentials.js';
 import { dashboardUrlFrom, personaSetupCard } from '../rendering/persona-setup.js';
@@ -702,7 +702,12 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     registry: commandRegistry,
     logger,
   });
-  const commandRouter = new CommandRouter(commandRegistry, logger, {
+  // UR-20261012-049 — ONE description of how a router is configured, so a persona's router is
+  // configured exactly as the main bot's is (system-map §11: "the framework running again under a
+  // different identity"). `residentPersonaId` is the only thing that varies: the main bot sets it
+  // only when the process itself is a persona (`PERSONA_ID`), while a hosted persona always sets its
+  // own id so command ownership is enforced for it.
+  const commandRouterOptions = (residentPersonaId?: string) => ({
     devGuildId: config.get('DEV_GUILD_ID'),
     isModuleEnabledInGuild,
     permissionResolver,
@@ -714,10 +719,15 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     guildSuspensions,
     pageDataProvider,
     effectHandlers: bccmEffects,
-    resolveCommandOwner: (guildId, moduleSlug) =>
+    resolveCommandOwner: (guildId: string, moduleSlug: string) =>
       personaBindingService.resolveCommandOwner(guildId, moduleSlug),
-    ...(config.get('PERSONA_ID') !== '' ? { residentPersonaId: config.get('PERSONA_ID') } : {}),
+    ...(residentPersonaId !== undefined ? { residentPersonaId } : {}),
   });
+  const commandRouter = new CommandRouter(
+    commandRegistry,
+    logger,
+    commandRouterOptions(config.get('PERSONA_ID') !== '' ? config.get('PERSONA_ID') : undefined),
+  );
   // §2.4 / §11.3 - the frame's own interactive controls: the D/M/C density control and the
   // navigation dropdown. Registered after the router exists, since each re-enters it.
   // UR-20261011-009 — whether a module is enabled for a guild (a marketplace module the admin
@@ -1280,10 +1290,17 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
             );
           return body.length;
         },
-        // UR-20261012-043 (A2.1) — a persona answers its own in-message controls through the SAME
-        // adapters and the SAME component registry the main bot uses: the framework running again.
-        createInteractionHandler: () =>
-          buildComponentInteractionHandler({ registry: interactionRegistry, logger }),
+        // UR-20261012-043 (A2.1) / UR-20261012-049 — a persona answers BOTH its slash commands and
+        // its in-message controls, through the same adapters and the same registry the main bot uses,
+        // with a router built over this persona's own filtered registry. Without the command half a
+        // persona's commands were registered but dispatched by nothing.
+        createInteractionHandler: (persona, registry) =>
+          buildPersonaInteractionHandler({
+            registry: interactionRegistry,
+            createCommandRouter: () =>
+              new CommandRouter(registry, logger, commandRouterOptions(persona.id)),
+            logger,
+          }),
         logger,
       });
       const results = await personaRuntime.start();

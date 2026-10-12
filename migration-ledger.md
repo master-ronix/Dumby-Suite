@@ -84,6 +84,7 @@
 | M61 | A CORE module could be DENIED by a stale disabled guild_module_states row: the dispatch path read the row alone while page-data special-cased core, so /dashboard returned "not available in guild" (UR-20261012-046) | DONE (112 files / 1132 tests / 0 failures) |
 | M62 | UR-046 did NOT fix /dashboard: core commands return before the enablement check. The real cause was an UNDOCUMENTED eighth layer in the resolver -- a missing "explicit permission declaration" denied EVERY core command to every non-owner, inverting DIAGRAM 21-A's documented default-allow (UR-20261012-047) | DONE (112 files / 1133 tests / 0 failures, coverage green) |
 | M63 | Persona registration could NEVER succeed: nextPersonaId() returned `persona-<uuid>` while persona_identities.id and guild_persona_bindings.personaId are both `uuid`, so Postgres refused every insert with "invalid input syntax for type uuid" (UR-20261012-048) | DONE (113 files / 1139 tests / 0 failures, coverage green) |
+| M64 | A persona's SLASH COMMANDS were dispatched by nothing: buildDiscordClient attaches only error/warn and the runtime attached only the component path, so commands were registered and unhandled ("The application did not respond") (UR-20261012-049) | DONE (113 files / 1147 tests / 0 failures, coverage green) |
 
 Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (reason)`.
 

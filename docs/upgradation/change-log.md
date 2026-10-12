@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.54
+version: 5.5.55
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,37 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.55 — a persona's slash commands were dispatched by nothing (UR-20261012-049) — 2026-10-12
+
+- 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- THE GAP: UR-043 extracted the COMPONENT dispatch, which fixed a persona's buttons. It did not extract
+  the COMMAND dispatch, and nothing else supplied it:
+  - buildDiscordClient attaches only error and warn -- NO interactionCreate.
+  - the persona runtime attached only buildComponentInteractionHandler, which returns early for
+    anything that is not a button or a select menu.
+  So a hosted persona's slash commands were DEPLOYED to the guild and then reached nothing. In Discord
+  the command appears, runs, and the application never acknowledges it -- "The application did not
+  respond" after three seconds. The persona looked online and half-working, the most confusing possible
+  state to debug.
+- FOUND by reading the runtime's wiring while bringing the first live persona online, BEFORE the
+  operator hit it.
+- FIX:
+  - `buildPersonaInteractionHandler` is the full handler for one identity: chat-input commands go to the
+    persona's own router; buttons and selects go to the shared component registry; anything else is
+    ignored. It NEVER throws.
+  - The router is built from a thunk, once per persona rather than per interaction, and a router that
+    cannot be constructed DEGRADES that persona to components-only instead of stopping it starting.
+  - `commandRouterOptions(residentPersonaId?)` in bootstrap is now the single description of a router's
+    configuration, so a persona's router is configured exactly as the main bot's is (system-map s11).
+    residentPersonaId is the only variable: the main bot sets it only when the process itself is a
+    persona (PERSONA_ID); a hosted persona always sets its own id, so command ownership is enforced for
+    it by the router's existing assertPersonaOwnsCommand.
+- RECORDED: a handler that answers some interaction types and SILENTLY DROPS the rest is worse than one
+  that answers none. The uncovered types should be reported -- which persona-command-unhandled now does.
+- **Verification:** 113 files / 1147 tests / 0 failures WITH COVERAGE, no threshold error; typecheck, lint, format green; gates 27/27.
 
 ---
 
