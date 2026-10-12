@@ -76,6 +76,9 @@
 | M53 | Persona registration corrected to bring-your-own-identity: ownership proven by the bot token (GET /applications/@me), the registrar allowlist demoted to an OPTIONAL narrowing, and the persona page reduced to one info control carrying the invite (UR-20261012-041) | DONE (typecheck+lint+format) |
 | M54 | A2.2 — the build-provenance verifier arms from the `signing_keys` registry as well as config; a malformed row is skipped and a registry-only deployment is now armed (UR-20261012-042) | DONE (typecheck+lint+format) |
 | M55 | A2.1 — the interaction adapters and the component dispatch extracted out of bootstrap into tested modules; a hosted persona now attaches that dispatch and answers its own in-message controls (UR-20261012-043) | DONE (typecheck+lint+format) |
+| M56 | A2.3 — coverage floors made PER LAYER (TABLE 37-B mapped via §7.2's flat src/), core held at baseline with the documented 85/80 recorded as the ratchet target, repositories floor recorded unenforceable while excluded (UR-20261012-044) | DONE (typecheck+lint+format) |
+| M57 | A2.4 — a rename target inherits its source command's definition instead of `description: name` (UR-20261012-044) | DONE (typecheck+lint+format) |
+| M58 | A2.5 — the disabled-module lifecycle pinned by tests (excluded from the installed list, total drops, relisted in /browse); the reported "queue queue" wording confirmed absent from source (UR-20261012-044) | DONE (typecheck+lint+format) |
 
 Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (reason)`.
 

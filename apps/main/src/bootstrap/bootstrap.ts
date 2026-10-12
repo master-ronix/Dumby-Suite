@@ -1313,6 +1313,13 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
               name,
               reason,
             }),
+          // UR-20261012-044 — a rename target inherits its source command's definition, so a renamed
+          // command carries a real description rather than one repeating its own name.
+          new Map(
+            commands
+              .filter((command) => command.source !== undefined)
+              .map((command) => [command.name, command.source as string]),
+          ),
         );
         await rest.put(Routes.applicationGuildCommands(applicationId, guildId), { body });
       },

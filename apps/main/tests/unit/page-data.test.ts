@@ -461,6 +461,70 @@ describe('page-data provider', () => {
     expect((data['modules'] as unknown[]).length).toBe(3);
   });
 
+  test('a DISABLED standard module is EXCLUDED from the installed list (A2.5)', async () => {
+    // The /modules report recorded "module is disabled but still listed in the catalogue". The list
+    // shows what is ENABLED for the guild, so a disabled standard module must not appear — and this
+    // pins it, because the listing is where the defect would reappear.
+    const statesKnex = ((table: string) => ({
+      where: () => ({
+        whereNull: () => ({
+          select: async (): Promise<unknown[]> =>
+            table === 'guild_module_states'
+              ? [{ moduleSlug: 'hello-world', enabled: false, state: 'disabled' }]
+              : [],
+        }),
+      }),
+    })) as unknown as Dict;
+    statesKnex['raw'] = async (): Promise<unknown[]> => [{}];
+    const provider = createPageDataProvider(makeDeps({ db: { knex: statesKnex } }));
+    const data = await provider('modules', 'guild-1');
+    const ids = (data['modules'] as Array<{ id: string }>).map((m) => m.id);
+    expect(ids).not.toContain('hello-world');
+    // The enabled ones are still there: core is always enabled.
+    expect(ids).toContain('health');
+  });
+
+  test('a disabled module leaves the installed count and total (A2.5)', async () => {
+    const statesKnex = ((table: string) => ({
+      where: () => ({
+        whereNull: () => ({
+          select: async (): Promise<unknown[]> =>
+            table === 'guild_module_states'
+              ? [{ moduleSlug: 'hello-world', enabled: false, state: 'disabled' }]
+              : [],
+        }),
+      }),
+    })) as unknown as Dict;
+    statesKnex['raw'] = async (): Promise<unknown[]> => [{}];
+    const enabled = await createPageDataProvider(makeDeps())('modules', 'guild-1');
+    const disabled = await createPageDataProvider(makeDeps({ db: { knex: statesKnex } }))(
+      'modules',
+      'guild-1',
+    );
+    expect(disabled['total']).toBe((enabled['total'] as number) - 1);
+  });
+
+  test('a disabled standard module reappears in /browse so it can be re-enabled (A2.5)', async () => {
+    const statesKnex = ((table: string) => ({
+      where: () => ({
+        whereNull: () => ({
+          select: async (): Promise<unknown[]> =>
+            table === 'guild_module_states'
+              ? [{ moduleSlug: 'hello-world', enabled: false, state: 'disabled' }]
+              : [],
+        }),
+      }),
+    })) as unknown as Dict;
+    statesKnex['raw'] = async (): Promise<unknown[]> => [{}];
+    const data = await createPageDataProvider(makeDeps({ db: { knex: statesKnex } }))(
+      'browse',
+      'guild-1',
+    );
+    const mods = data['modules'] as Array<{ id: string; note?: string }>;
+    expect(mods.map((m) => m.id)).toContain('hello-world');
+    expect(mods.find((m) => m.id === 'hello-world')?.note).toContain('re-enable');
+  });
+
   test('installedModules paginates the module list (UR-20261011-009)', async () => {
     const many = Array.from({ length: 15 }, (_, i) =>
       mod(`std-${String(i).padStart(2, '0')}`, 'standard', ['x']),

@@ -9,6 +9,12 @@ export const RESERVATION_TTL_MS = 24 * 60 * 60 * 1000;
 /** A command as Discord knows it. Only `name` matters for the "is this new?" diff. */
 export interface RegisteredCommand {
   readonly name: string;
+  /**
+   * UR-20261012-044 — for a RENAME target, the command key it renamed. A rename changes what a
+   * command is called, never how it is invoked (§17.8), so the target is not a registry key; carrying
+   * the source lets the payload builder inherit that command's real definition.
+   */
+  readonly source?: string;
 }
 
 /**
@@ -98,6 +104,11 @@ export function resolveCommandPayloads(
   names: readonly string[],
   registry: CommandLookup,
   onProblem?: (name: string, reason: 'invalid-name' | 'unresolved') => void,
+  /**
+   * UR-20261012-044 — rename target → the command key it renamed. Optional: without it a rename
+   * target still resolves to a minimal valid object (A2.4's recorded behaviour).
+   */
+  sources?: ReadonlyMap<string, string>,
 ): object[] {
   const payloads: object[] = [];
   for (const name of names) {
@@ -107,12 +118,21 @@ export function resolveCommandPayloads(
       continue;
     }
     const definition = registry.get(name);
-    if (definition === undefined) {
-      onProblem?.(name, 'unresolved');
-      payloads.push({ name, description: name });
+    if (definition !== undefined) {
+      payloads.push({ ...definition.data, name });
       continue;
     }
-    payloads.push({ ...definition.data, name });
+    // UR-20261012-044 (A2.4) — a rename target is not a registry key, but its SOURCE is. Inherit that
+    // command's definition so a renamed command carries its real description and options instead of a
+    // description that merely repeats its own name.
+    const source = sources?.get(name);
+    const inherited = source === undefined ? undefined : registry.get(source);
+    if (inherited !== undefined) {
+      payloads.push({ ...inherited.data, name });
+      continue;
+    }
+    onProblem?.(name, 'unresolved');
+    payloads.push({ name, description: name });
   }
   return payloads;
 }
@@ -142,6 +162,20 @@ export function applyBatch(
 }
 
 /** New names = desired − registered, diffed against Discord (the authority for "new"). */
+/**
+ * UR-20261012-044 — rename target -> the command key it renamed. The desired-name set loses that
+ * provenance (`applyBatch` returns names only), so it is derived from the same entries.
+ */
+export function renameSources(entries: readonly BccmQueueEntry[]): Map<string, string> {
+  const sources = new Map<string, string>();
+  for (const entry of entries) {
+    if (entry.action === 'rename' && entry.newName !== undefined) {
+      sources.set(entry.newName, entry.commandKey);
+    }
+  }
+  return sources;
+}
+
 export function newNames(
   registered: readonly RegisteredCommand[],
   desired: readonly string[],
@@ -216,9 +250,15 @@ export async function runBccmBatchPush(deps: BccmBatchPushDeps): Promise<BccmBat
     // undercount the daily budget.
     await store.reserve(guildId, fresh, nowMs);
     try {
+      // UR-20261012-044 — a rename target travels with its source key so the payload can inherit the
+      // renamed command's real definition.
+      const sources = renameSources(entries);
       await discord.putCommands(
         guildId,
-        desired.map((name) => ({ name })),
+        desired.map((name) => {
+          const source = sources.get(name);
+          return source === undefined ? { name } : { name, source };
+        }),
       );
     } catch (err) {
       if (isDailyCreateLimitError(err)) {

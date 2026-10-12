@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.49
+version: 5.5.50
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,34 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.50 — A2.3/A2.4/A2.5: the last three optionals (UR-20261012-044) — 2026-10-12
+
+- 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- A2.3 — the coverage floors were ONE blanket 70/65/70/70, which §37.4 names outright as a defect.
+  They are now per layer, mapped from §7.2 of directory-file-structure.md: the Application Core IS the
+  flat apps/main/src/ (there is no src/core/ -- that tree was retired), so the core floor spans src/**
+  and the narrower layers carve theirs out. src/commands/** is enforced at the documented 75/70.
+  - RATCHET: the core floor spans every file and the app sits near 65% branch (64.87% failed this gate
+    once), so 85/80 there would fail EVERY push and block EVERY deploy. Core is held at the baseline
+    with the documented value recorded as the TARGET; each layer can now be raised on its own, which is
+    the property the blanket lacked. Recorded, not hidden.
+  - RECORDED GAP: TABLE 37-B's Repositories floor (70/65) is not enforceable while
+    src/db/repositories/** is coverage-EXCLUDED. Covering those files is the prerequisite.
+- A2.4 — a rename target is not a registry key (a rename changes the name, never the invocation, §17.8),
+  so resolveCommandPayloads fell back to `description: name` -- a description repeating the command's own
+  name. The target now travels with its SOURCE key (RegisteredCommand.source, from renameSources) and
+  inherits the source command's real definition. Without a source map the old behaviour holds.
+- A2.5 — the four /modules "current status" claims are ALREADY handled in code; what was missing was
+  PROOF. Three tests now pin the exclusion: a disabled standard module is absent from the installed
+  list, the total drops, and it reappears in /browse with a re-enable note. asPageInteraction preserves
+  the guild across a paging re-render, so a re-render cannot lose the filter.
+  - CORRECTED: the reported "Manage BCCM command queue queue actions" is NOT in the source -- the
+    manifest reads "command queue actions". It was an OCR double-read, recorded so it is not "fixed"
+    into a duplicate.
+- **Verification:** typecheck, lint, format, corpus gates 27/27, test-import guard.
 
 ---
 

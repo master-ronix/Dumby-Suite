@@ -4,6 +4,7 @@ import {
   applyBatch,
   isValidCommandName,
   newNames,
+  renameSources,
   resolveCommandPayloads,
   runBccmBatchPush,
   type BccmBatchStore,
@@ -277,6 +278,42 @@ describe('resolveCommandPayloads', () => {
       { name: 'ghost', description: 'ghost' },
     ]);
     expect(seen).toEqual(['ghost']);
+  });
+
+  test('a rename target inherits its SOURCE command definition (UR-20261012-044 / A2.4)', () => {
+    // A rename changes what a command is called, never how it is invoked (§17.8), so the target is
+    // not a registry key. Without the source map it would fall back to `description: name` — a
+    // description that merely repeats the command's own name.
+    const sources = new Map([['new', 'hello']]);
+    expect(resolveCommandPayloads(['new'], registry, undefined, sources)).toEqual([
+      { name: 'new', description: 'Says hello', type: 1 },
+    ]);
+  });
+
+  test('an unresolvable source still falls back and is reported', () => {
+    const seen: string[] = [];
+    const sources = new Map([['new', 'missing']]);
+    expect(resolveCommandPayloads(['new'], registry, (n) => seen.push(n), sources)).toEqual([
+      { name: 'new', description: 'new' },
+    ]);
+    expect(seen).toEqual(['new']);
+  });
+
+  test('without a source map the recorded A2.4 behaviour is unchanged', () => {
+    expect(resolveCommandPayloads(['new'], registry)).toEqual([
+      { name: 'new', description: 'new' },
+    ]);
+  });
+
+  test('renameSources maps each rename target to the key it renamed', () => {
+    const entries: BccmQueueEntry[] = [
+      { commandKey: 'hello', action: 'rename', newName: 'greet' },
+      { commandKey: 'queue', action: 'alias', alias: 'q' },
+      { commandKey: 'permit', action: 'disable' },
+      { commandKey: 'other', action: 'rename' },
+    ];
+    const sources = renameSources(entries);
+    expect([...sources.entries()]).toEqual([['greet', 'hello']]);
   });
 
   test('drops an invalid name entirely, because it would fail the whole bulk overwrite', () => {
