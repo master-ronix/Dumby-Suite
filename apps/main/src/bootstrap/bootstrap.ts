@@ -40,6 +40,7 @@ import { OperationalService } from '../operational/operational.service.js';
 import { PowerEngineDispatcher } from '../http/power-engine-dispatcher.js';
 import { loadModulesFromTierVolumes } from '../module-system/swastik-loader.js';
 import { PostgresBuildStore } from '../db/repositories/build.repository.js';
+import { PostgresSigningKeyStore } from '../db/repositories/signing-key.repository.js';
 import { rootKeyFromBase64 } from '../crypto/envelope.js';
 import { PostgresSealedCredentialStore } from '../db/repositories/sealed-credential.repository.js';
 import { SealedCredentialService } from '../credentials/sealed-credential.service.js';
@@ -64,10 +65,16 @@ import { createBccmEffectHandlers } from '../commands/bccm-effects.js';
 import { effectiveCommandName, resolveEffectiveCommandNames } from '../commands/command-renames.js';
 import { deleteGuildCommands, setGuildCommandPermissions } from '../commands/command-access.js';
 import { disableConfirmationDescriptor } from '../rendering/confirmations.js';
-import type { CommandInteraction } from '../commands/command-router.js';
+import {
+  readDiscoverModalSubmission,
+  toCommandInteraction,
+  toComponentInteraction,
+  type RawInteractionLike,
+} from '../interactions/interaction-adapters.js';
 import { PersonaCommandBindingService } from '../personas/persona-command-binding.service.js';
 import { personaPresenceFromClient } from '../personas/persona-presence.js';
 import { filterRegistryForModules, PersonaRuntime } from '../personas/persona-runtime.js';
+import { buildComponentInteractionHandler } from '../personas/persona-interaction-handler.js';
 import { createPersonaOAuthService } from '../personas/persona-oauth.js';
 import { openBotTokenOrEmpty, openSealedText } from '../personas/persona-credentials.js';
 import { dashboardUrlFrom, personaSetupCard } from '../rendering/persona-setup.js';
@@ -232,11 +239,14 @@ export async function bootstrapWorker(): Promise<void> {
   // UR-20261012-036 — the verifier needs only the PUBLIC key. UR-20261012-040 — resolution AND
   // registration live in one helper that cannot throw, so an unusable key degrades to a warning
   // instead of killing boot (which it did, as ERR_OSSL_UNSUPPORTED).
+  // UR-20261012-042 (A2.2) — the registry is the documented home for these keys; config is additive.
+  const registrySigningKeys = await new PostgresSigningKeyStore(db.knex).listActive();
   const provenance = armBuildProvenance(
     verifier,
     buildSigningKeyId,
     buildSigningPrivateKey,
     buildSigningPublicKey,
+    registrySigningKeys,
   );
   const provenanceGuardArmed = provenance.armed;
   if (provenance.error !== undefined) {
@@ -992,11 +1002,14 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   // UR-20261012-036 — the verifier needs only the PUBLIC key. UR-20261012-040 — resolution AND
   // registration live in one helper that cannot throw, so an unusable key degrades to a warning
   // instead of killing boot (which it did, as ERR_OSSL_UNSUPPORTED).
+  // UR-20261012-042 (A2.2) — the registry is the documented home for these keys; config is additive.
+  const registrySigningKeys = await new PostgresSigningKeyStore(db.knex).listActive();
   const provenance = armBuildProvenance(
     verifier,
     buildSigningKeyId,
     buildSigningPrivateKey,
     buildSigningPublicKey,
+    registrySigningKeys,
   );
   const provenanceGuardArmed = provenance.armed;
   if (provenance.error !== undefined) {
@@ -1157,67 +1170,12 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
       }
 
       if (interaction.isChatInputCommand()) {
-        const channel = (
-          interaction as unknown as {
-            channel?: { id: string; parentId?: string | null; isNSFW?: () => boolean } | null;
-          }
-        ).channel;
-        const member = (
-          interaction as unknown as {
-            member?: {
-              permissions?: { has: (p: string) => boolean };
-              roles?: { cache?: { keys: () => IterableIterator<string> } };
-            } | null;
-          }
-        ).member;
-        const memberPermissions = member?.permissions
-          ? [
-              'Administrator',
-              'ManageChannels',
-              'ManageGuild',
-              'ModerateMembers',
-              'BanMembers',
-              'KickMembers',
-            ].filter((p) => member.permissions?.has(p) === true)
-          : undefined;
-        // discord.js defines `channel` and `memberPermissions` as getter-only properties, so the
-        // interaction cannot be enriched in place - assigning to `channel` throws
-        // "Cannot set property channel of #<BaseInteraction> which has only a getter", which
-        // rejects the listener and leaves the interaction unacknowledged ("The application did
-        // not respond"). Build a plain adapter carrying the router's CommandInteraction shape
-        // instead - the same pattern the component branch below uses.
-        const commandInteraction: CommandInteraction = {
-          commandName: interaction.commandName,
-          user: { id: interaction.user.id },
-          guildId: interaction.guildId,
-          reply: interaction.reply.bind(interaction) as unknown as CommandInteraction['reply'],
-          deferReply: interaction.deferReply.bind(
-            interaction,
-          ) as unknown as CommandInteraction['deferReply'],
-          editReply: interaction.editReply.bind(
-            interaction,
-          ) as unknown as CommandInteraction['editReply'],
-          replied: interaction.replied,
-          deferred: interaction.deferred,
-          options: interaction.options,
-          ...(channel
-            ? {
-                channel: {
-                  id: channel.id,
-                  categoryId: channel.parentId ?? null,
-                  isNsfw: channel.isNSFW?.() ?? false,
-                },
-              }
-            : {}),
-          ...(memberPermissions !== undefined ? { memberPermissions } : {}),
-          ...(member?.roles?.cache ? { memberRoles: [...member.roles.cache.keys()] } : {}),
-          // §9.6 — the rank function reads the guild owner as OWNER, ahead of any permission bit.
-          // Omitting it made a guild owner who lacks an explicit Administrator bit evaluate as
-          // RESTRICTED and get a spurious FORBIDDEN (UR-20261011-018).
-          isGuildOwner:
-            (interaction as unknown as { guild?: { ownerId?: string } | null }).guild?.ownerId ===
-            interaction.user.id,
-        };
+        // UR-20261012-043 (A2.1) — the adapter is built by the shared, tested module. discord.js
+        // defines `channel` and `memberPermissions` as getter-only, so the interaction cannot be
+        // enriched in place; the adapter carries the router's CommandInteraction shape instead.
+        const commandInteraction = toCommandInteraction(
+          interaction as unknown as RawInteractionLike,
+        );
         void commandRouter.dispatch(commandInteraction).catch(async (err) => {
           logger.error('interaction-dispatch-failed', {
             command: interaction.commandName,
@@ -1229,61 +1187,29 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
 
       if (interaction.isModalSubmit()) {
         // item 5b — the Discover modal: re-render the /browse page with the submitted search query.
-        const modal = interaction as unknown as {
-          customId: string;
-          fields: { getTextInputValue(name: string): string };
-          update(options: unknown): Promise<void>;
+        const modal = interaction as unknown as RawInteractionLike & {
+          update(options: unknown): Promise<unknown>;
         };
-        const parts = modal.customId.split(':');
-        if (parts[0] === 'dumby' && parts[1] === 'discover' && parts[2] === 'submit') {
-          if (parts[3] === interaction.user.id) {
-            try {
-              const query = modal.fields.getTextInputValue('query');
-              const payload = await commandRouter.buildBrowseRender(
-                interaction.user.id,
-                interaction.guildId,
-                query,
-              );
-              await modal.update(payload);
-            } catch (err) {
-              logger.warn('discover-modal-submit-failed', { error: String(err) });
-            }
+        const submission = readDiscoverModalSubmission(modal, interaction.user.id);
+        if (submission !== undefined) {
+          try {
+            const payload = await commandRouter.buildBrowseRender(
+              interaction.user.id,
+              interaction.guildId,
+              submission.query,
+            );
+            await modal.update(payload);
+          } catch (err) {
+            logger.warn('discover-modal-submit-failed', { error: String(err) });
           }
         }
         return;
       }
 
       if (interaction.isButton() || interaction.isStringSelectMenu()) {
-        const componentInteraction = {
-          id: interaction.id,
-          customId: interaction.customId,
-          user: { id: interaction.user.id },
-          guildId: interaction.guildId,
-          reply: interaction.reply.bind(interaction) as unknown as (
-            options: unknown,
-          ) => Promise<void>,
-          deferReply: interaction.deferReply.bind(interaction) as unknown as (options?: {
-            flags?: number | bigint;
-          }) => Promise<void>,
-          editReply: interaction.editReply.bind(interaction) as unknown as (
-            options: unknown,
-          ) => Promise<void>,
-          ...(interaction.deferUpdate !== undefined
-            ? {
-                deferUpdate: interaction.deferUpdate.bind(
-                  interaction,
-                ) as unknown as () => Promise<void>,
-              }
-            : {}),
-          ...(interaction.isStringSelectMenu() ? { values: interaction.values } : {}),
-          ...(interaction.showModal !== undefined
-            ? {
-                showModal: interaction.showModal.bind(interaction) as unknown as (
-                  modal: unknown,
-                ) => Promise<void>,
-              }
-            : {}),
-        };
+        const componentInteraction = toComponentInteraction(
+          interaction as unknown as RawInteractionLike,
+        );
         const handled = await interactionRegistry.dispatch(componentInteraction);
 
         if (!handled) {
@@ -1349,6 +1275,10 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
             );
           return body.length;
         },
+        // UR-20261012-043 (A2.1) — a persona answers its own in-message controls through the SAME
+        // adapters and the SAME component registry the main bot uses: the framework running again.
+        createInteractionHandler: () =>
+          buildComponentInteractionHandler({ registry: interactionRegistry, logger }),
         logger,
       });
       const results = await personaRuntime.start();

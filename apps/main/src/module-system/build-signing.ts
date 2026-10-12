@@ -75,20 +75,54 @@ export interface ProvenanceArmResult {
  * a live outage. Keeping resolution AND registration inside this one helper is what makes the
  * failure non-fatal again, and the test that a bad key does not throw is the guard against repeating it.
  */
+export interface RegistrySigningKey {
+  readonly keyId: string;
+  readonly publicKey: string;
+}
+
+/**
+ * UR-20261012-042 (A2.2) — registers the `signing_keys` registry's active keys on a verifier.
+ *
+ * A row that cannot be parsed is skipped rather than allowed to fail the others: a bad row is one
+ * revoked-or-rotated key's problem, not a reason to disarm every other key. Never throws, for the
+ * same boot-path reason as `armBuildProvenance`. Returns how many keys were registered.
+ */
+export function armRegistryKeys(
+  verifier: KeyRegistrar,
+  rows: readonly RegistrySigningKey[],
+): number {
+  let registered = 0;
+  for (const row of rows) {
+    if (row.keyId === '' || row.publicKey.trim() === '') continue;
+    try {
+      verifier.registerKey(row.keyId, row.publicKey);
+      registered += 1;
+    } catch {
+      // A malformed row is skipped; the remaining keys still register.
+    }
+  }
+  return registered;
+}
+
 export function armBuildProvenance(
   verifier: KeyRegistrar,
   keyId: string,
   privateKey: string,
   publicKey: string,
+  registryKeys: readonly RegistrySigningKey[] = [],
 ): ProvenanceArmResult {
-  if (keyId === '') return { armed: false };
+  // UR-20261012-042 — the registry is armed FIRST so the configured key can override a same-id row.
+  // A registry-only deployment (no config key) is now armed, which it was not before.
+  let armed = armRegistryKeys(verifier, registryKeys) > 0;
+  if (keyId === '') return { armed };
   try {
     const key = resolveSigningPublicKey(privateKey, publicKey);
-    if (key === undefined) return { armed: false };
+    if (key === undefined) return { armed };
     verifier.registerKey(keyId, key);
-    return { armed: true };
+    armed = true;
+    return { armed };
   } catch (err) {
-    return { armed: false, error: err instanceof Error ? err.message : String(err) };
+    return { armed, error: err instanceof Error ? err.message : String(err) };
   }
 }
 

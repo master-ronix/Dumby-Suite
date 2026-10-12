@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.48
+version: 5.5.49
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,27 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.49 — A2.2 registry trust + A2.1 dispatcher extraction (UR-20261012-042/043) — 2026-10-12
+
+- 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- A2.2 (UR-042) — the verifier's trust set was a single deployment variable, so a key could not be
+  rotated without a redeploy and could not be revoked at all. It now arms from the `signing_keys`
+  registry (the documented home, public keys only) AND config. A malformed row is skipped rather than
+  disarming the rest, the registry read is best-effort so it cannot stop boot, and a registry-ONLY
+  deployment is now armed -- it was not before. Boot gains one argument and one statement, no branch.
+- A2.1 (UR-043) — THE LAST STRUCTURAL GAP. A persona was online with its commands registered and still
+  silent when one of its own buttons was pressed: the dispatch path lived inside bootstrap's
+  interactionCreate closure. system-map s11 says a persona is "the framework running again under a
+  different identity", so it must dispatch as the main bot does.
+  - `interactions/interaction-adapters.ts` -- toCommandInteraction, toComponentInteraction,
+    readDiscoverModalSubmission, all pure, closing over nothing.
+  - `personas/persona-interaction-handler.ts` -- the dispatch, never throwing.
+  - PersonaRuntime attaches it BEFORE login and builds it per persona.
+  - Bootstrap SHRINKS ~90 lines; the UR-018 guild-owner fix moved into the tested module intact.
+- **Verification:** typecheck, lint, format, corpus gates 27/27, test-import guard.
 
 ---
 

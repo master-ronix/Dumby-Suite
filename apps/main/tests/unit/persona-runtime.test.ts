@@ -69,6 +69,7 @@ const persona = (over: Partial<RuntimePersona> = {}): RuntimePersona =>
 function makeRuntime(personas: RuntimePersona[], over: Record<string, unknown> = {}) {
   const login = vi.fn(async () => 'ok');
   const destroy = vi.fn(async () => undefined);
+  const on = vi.fn();
   const deployCommands = vi.fn(async () => 3);
   const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
   const runtime = new PersonaRuntime({
@@ -76,12 +77,12 @@ function makeRuntime(personas: RuntimePersona[], over: Record<string, unknown> =
     openBotToken: vi.fn(() => 'bot-token'),
     modulesBoundTo: vi.fn(async () => ['persona']),
     buildRegistry: vi.fn(() => registryWith(['persona', 'persona', 'core'])),
-    createClient: vi.fn(() => ({ login, destroy })),
+    createClient: vi.fn(() => ({ login, destroy, on })),
     deployCommands,
     logger: logger as never,
     ...over,
   } as never);
-  return { runtime, login, destroy, deployCommands, logger };
+  return { runtime, login, destroy, deployCommands, logger, on };
 }
 
 describe('PersonaRuntime.start', () => {
@@ -168,5 +169,39 @@ describe('PersonaRuntime.stop', () => {
     // stopping twice is idempotent
     await expect(runtime.stop()).resolves.toBeUndefined();
     expect(logger.warn).not.toHaveBeenCalled();
+  });
+});
+
+describe('the persona dispatches its own controls (UR-20261012-043 / A2.1)', () => {
+  test('subscribes to interactionCreate BEFORE login, so no early interaction is missed', async () => {
+    const handler = vi.fn();
+    const order: string[] = [];
+    const on = vi.fn(() => order.push('on'));
+    const login = vi.fn(async () => {
+      order.push('login');
+      return 'ok';
+    });
+    const { runtime } = makeRuntime([persona()], {
+      createClient: () => ({ login, destroy: vi.fn(), on }),
+      createInteractionHandler: vi.fn(() => handler),
+    });
+    await runtime.start();
+    expect(on).toHaveBeenCalledWith('interactionCreate', handler);
+    expect(order).toEqual(['on', 'login']);
+  });
+
+  test('builds the handler for THIS persona and its filtered registry', async () => {
+    const createInteractionHandler = vi.fn(() => vi.fn());
+    const { runtime } = makeRuntime([persona()], { createInteractionHandler });
+    await runtime.start();
+    expect(createInteractionHandler).toHaveBeenCalledTimes(1);
+    expect(createInteractionHandler.mock.calls[0]?.[0]).toMatchObject({ id: 'persona-1' });
+  });
+
+  test('without a handler the persona still starts — controls are additive, not required', async () => {
+    const { runtime, on } = makeRuntime([persona()]);
+    const results = await runtime.start();
+    expect(results[0]?.started).toBe(true);
+    expect(on).not.toHaveBeenCalled();
   });
 });

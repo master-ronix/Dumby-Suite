@@ -9,10 +9,11 @@
  * persona's bound guild, and logs the persona's client in. The seams are injected so the whole
  * lifecycle is unit-testable without a gateway.
  *
- * Scope note (recorded, not hidden): this makes a persona ONLINE and gives it a real command surface.
- * Its interactive page controls (the buttons and select menus the Renderer emits) are wired by the
- * main bot's bootstrap-local interaction handler, which is not extracted here — so a persona answers
- * its slash commands but its in-message controls are the next step.
+ * UR-20261012-043 — a persona also answers its own IN-MESSAGE CONTROLS. The adapters and the component
+ * dispatch that were entangled with the main bot's boot closure are now extracted
+ * (`interactions/interaction-adapters.ts`, `personas/persona-interaction-handler.ts`), and the runtime
+ * attaches that handler to every client it logs in, so a persona dispatches exactly as the main bot
+ * does — the same adapters, the same registry contract, its own identity.
  */
 import { CommandRegistry } from '../commands/command-registry.js';
 import type { Logger } from '../logging/logger.js';
@@ -33,6 +34,11 @@ export interface PersonaClient {
   /** discord.js resolves the token string; the runtime ignores the value. */
   login(token: string): Promise<unknown>;
   destroy(): Promise<unknown>;
+  /**
+   * UR-20261012-043 — subscribes to the gateway. The runtime uses this for `interactionCreate`, so a
+   * persona answers its own controls. Optional so a test double need not implement it.
+   */
+  on?(event: 'interactionCreate', handler: (interaction: unknown) => void): unknown;
 }
 
 /** The outcome for one persona, so a partial failure is reported rather than swallowed. */
@@ -61,6 +67,14 @@ export interface PersonaRuntimeDeps {
     botToken: string,
     registry: CommandRegistry,
   ) => Promise<number>;
+  /**
+   * UR-20261012-043 — the `interactionCreate` handler this persona runs, built from the shared
+   * adapters and the persona's own registry. Omitted, the persona answers commands only.
+   */
+  createInteractionHandler?: (
+    persona: RuntimePersona,
+    registry: CommandRegistry,
+  ) => (interaction: unknown) => void;
   logger: Logger;
 }
 
@@ -133,6 +147,10 @@ export class PersonaRuntime {
         const registry = this.deps.buildRegistry(moduleSlugs);
         const client = this.deps.createClient();
         const deployed = await this.deps.deployCommands(persona, token, registry);
+        // UR-20261012-043 — attach the dispatch path BEFORE login so no early interaction is missed.
+        if (this.deps.createInteractionHandler !== undefined && client.on !== undefined) {
+          client.on('interactionCreate', this.deps.createInteractionHandler(persona, registry));
+        }
         await client.login(token);
         this.clients.set(persona.id, client);
         results.push({
