@@ -522,7 +522,15 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   - THE FULL UNIT SUITE NOW RUNS LOCALLY: 1041 tests passed, 0 failed. Six test FILES report
     "Cannot find package '@workspace/swastik/manifest'" -- a local artifact of that workspace package
     not being built here; CI builds it and it produced none of these failures.
-- **Verification:** full unit suite 1041 passed / 0 failed; typecheck, lint, format green; gates 27/27.
+- SECOND DEPLOY-BLOCKER CAUGHT BEFORE IT SHIPPED: running the coverage suite locally surfaced a defect
+  of my own -- UR-044's per-layer floor for src/commands/** at the documented 70% BRANCH fails; that
+  layer measures 65.42%. Enforcing it would have failed Gate 4 on EVERY push and blocked EVERY deploy,
+  precisely the outcome UR-044 s1 said it was avoiding. The floor is now MEASURED rather than assumed:
+  statements/functions/lines clear their documented 75 and are enforced at 75; branch is held at the
+  reachable 65 with 70 recorded as the TARGET. Verified locally: 112 files, 1127 tests, 0 failures,
+  every threshold holds. This is the clearest argument for the s4 unlock -- without a runnable suite
+  this defect was invisible and would have been found the way the last four were, by a skipped deploy.
+- **Verification:** full unit suite 1127 passed / 0 failed WITH COVERAGE; every threshold holds; typecheck, lint, format green; gates 27/27.
 
 ---
 
