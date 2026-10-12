@@ -286,5 +286,12 @@ export function openPersonaBotToken(persona: PersonaIdentity, rootKey: EnvelopeR
 
 function nextPersonaId(): string {
   // Appendix C #23 — ids must not come from a process-local counter (they collide across replicas).
-  return `persona-${randomUUID()}`;
+  //
+  // UR-20261012-048 — a BARE uuid, not `persona-<uuid>`. `persona_identities.id` is declared
+  // `table.uuid('id')` and `guild_persona_bindings.personaId` is a `uuid` FK to it, so a prefixed
+  // string is rejected by Postgres before anything is created:
+  //   invalid input syntax for type uuid: "persona-…"
+  // Registration could therefore NEVER succeed. The prefix was decorative — nothing reads it — so the
+  // generator was the side that disagreed with the schema.
+  return randomUUID();
 }

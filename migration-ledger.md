@@ -83,6 +83,7 @@
 | M60 | A second deploy-blocker caught pre-push: UR-044's src/commands/** branch floor of 70 fails against the measured 65.42%, so it is held at the measured value with 70 recorded as the target (UR-20261012-045) | DONE (112 files / 1127 tests / 0 failures, all thresholds hold) |
 | M61 | A CORE module could be DENIED by a stale disabled guild_module_states row: the dispatch path read the row alone while page-data special-cased core, so /dashboard returned "not available in guild" (UR-20261012-046) | DONE (112 files / 1132 tests / 0 failures) |
 | M62 | UR-046 did NOT fix /dashboard: core commands return before the enablement check. The real cause was an UNDOCUMENTED eighth layer in the resolver -- a missing "explicit permission declaration" denied EVERY core command to every non-owner, inverting DIAGRAM 21-A's documented default-allow (UR-20261012-047) | DONE (112 files / 1133 tests / 0 failures, coverage green) |
+| M63 | Persona registration could NEVER succeed: nextPersonaId() returned `persona-<uuid>` while persona_identities.id and guild_persona_bindings.personaId are both `uuid`, so Postgres refused every insert with "invalid input syntax for type uuid" (UR-20261012-048) | DONE (113 files / 1139 tests / 0 failures, coverage green) |
 
 Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (reason)`.
 

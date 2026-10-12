@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.53
+version: 5.5.54
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,34 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.54 — persona registration could never succeed: `persona-` is not a UUID (UR-20261012-048) — 2026-10-12
+
+- 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- THE REPORT: the first real persona registration (ELSA, app 1387991780934553600, guild
+  1062427177326497863) failed with `invalid input syntax for type uuid: "persona-…"`. Not a validation
+  error, not an authorization error -- Postgres refused the ROW.
+- THE DISAGREEMENT: `persona_identities.id` is `table.uuid('id')` and `guild_persona_bindings.personaId`
+  is a `uuid` FK to it -- the schema is consistently uuid. `nextPersonaId()` returned
+  `persona-${randomUUID()}`, and a prefixed string is not a UUID. The insert was rejected BEFORE
+  anything was created.
+- SO REGISTRATION COULD NEVER HAVE SUCCEEDED -- not for any input, not in any environment. This is not
+  an edge case; it is the whole path.
+- FIX: `nextPersonaId()` returns a bare `randomUUID()`. Nothing reads the prefix -- it was decoration,
+  and the schema was the side that was right. Appendix C #23 is unaffected: its point is that ids must
+  not come from a process-local counter, and a v4 UUID satisfies it directly.
+- WHY NOTHING CAUGHT IT: `buildPersonaIdentity` had NO unit test, and the route tests stub the service,
+  so the generator's output was never asserted against the column it is written into. The new
+  tests/unit/persona-identity.test.ts pins the id against a UUID shape, pins the absence of a prefix,
+  and pins that 200 identities never collide.
+- GENERAL LESSON, RECORDED: a generated identifier and its column type are one fact expressed twice.
+  Where they can drift, a test must bind them.
+- OPERATOR NOTE: the attempt carried live credentials pasted into a chat. The persona bot token, its
+  OAuth2 client secret, and the INTERNAL_API_KEY must all be treated as exposed and rotated, even
+  though the attempt failed and nothing was created.
+- **Verification:** 113 files / 1139 tests / 0 failures WITH COVERAGE, no threshold error; typecheck, lint, format green; gates 27/27.
 
 ---
 
