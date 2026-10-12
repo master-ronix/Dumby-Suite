@@ -55,18 +55,9 @@ test('GET /dashboard is one purpose and one control — no guild list', async ()
 });
 
 test('GET /auth/authorize?bot=1 carries the install permission bitfield', async () => {
+  const client = makeClient();
   const app = Fastify();
   registerOAuthRoutes(app, {
-    client: makeClient() as never,
-    logger,
-    defaultGuildId: 'g1',
-    applicationId: 'app1',
-    installPermissions: '84992',
-    tokens: makeTokens() as never,
-  });
-  const client = makeClient();
-  const withPerms = Fastify();
-  registerOAuthRoutes(withPerms, {
     client: client as never,
     logger,
     defaultGuildId: 'g1',
@@ -74,10 +65,27 @@ test('GET /auth/authorize?bot=1 carries the install permission bitfield', async 
     installPermissions: '84992',
     tokens: makeTokens() as never,
   });
-  await withPerms.inject({ method: 'GET', url: '/auth/authorize?bot=1' });
+  await app.inject({ method: 'GET', url: '/auth/authorize?bot=1' });
   const args = (client as { authorizeUrl: { mock: { calls: unknown[][] } } }).authorizeUrl.mock
     .calls[0]!;
+  // The guild-less install — the dashboard's own link — must still carry the bitfield.
   expect(args[2]).toEqual({ permissions: '84992' });
+
+  // And a named guild keeps the picker pinned while still carrying it.
+  const pinned = makeClient();
+  const pinnedApp = Fastify();
+  registerOAuthRoutes(pinnedApp, {
+    client: pinned as never,
+    logger,
+    defaultGuildId: 'g1',
+    applicationId: 'app1',
+    installPermissions: '84992',
+    tokens: makeTokens() as never,
+  });
+  await pinnedApp.inject({ method: 'GET', url: '/auth/authorize?bot=1&guild=g2' });
+  expect(
+    (pinned as { authorizeUrl: { mock: { calls: unknown[][] } } }).authorizeUrl.mock.calls[0]![2],
+  ).toEqual({ guildId: 'g2', disableGuildSelect: true, permissions: '84992' });
 });
 
 test('GET /auth/authorize mints a state cookie and redirects to Discord', async () => {

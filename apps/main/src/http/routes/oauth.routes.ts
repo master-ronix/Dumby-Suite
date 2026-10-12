@@ -118,8 +118,16 @@ export function registerOAuthRoutes(app: FastifyInstance, deps: OAuthRoutesDeps)
     ];
     reply.header('set-cookie', cookies);
     // The install flow leaves the guild to Discord's picker unless one was named explicitly.
-    const extras =
-      install && query.guild === undefined ? {} : { guildId, disableGuildSelect: install };
+    // The install flow leaves the guild to Discord's picker unless one was named explicitly, and
+    // ALWAYS carries the permission bitfield — that is what makes Discord render its permissions
+    // step. Dropping it on the guild-less case (the dashboard's own link) is what made the install
+    // screen arrive without a permissions list.
+    const extras = install
+      ? {
+          ...(query.guild === undefined ? {} : { guildId, disableGuildSelect: true }),
+          permissions: deps.installPermissions ?? '',
+        }
+      : {};
     return reply.redirect(
       activeClient.authorizeUrl(state, install ? installScopes : scopes, install ? extras : {}),
     );

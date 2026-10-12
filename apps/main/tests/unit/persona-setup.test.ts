@@ -25,9 +25,7 @@ describe('personaSetupCard', () => {
       inviteUrl: 'https://dumby.example/auth/authorize?app=app-9&guild=g1&bot=1',
     });
     const flat = flatten(card);
-    expect(flat).toContain(
-      '"url":"https://dumby.example/auth/authorize?app=app-9&amp;guild=g1&amp;bot=1"',
-    );
+    expect(flat).toContain('"url":"https://dumby.example/auth/authorize?app=app-9&guild=g1&bot=1"');
   });
 
   test('names the persona when one is given', () => {

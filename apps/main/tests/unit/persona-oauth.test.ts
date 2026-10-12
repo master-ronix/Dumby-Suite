@@ -5,15 +5,18 @@ import { createPersonaOAuthService } from '../../src/personas/persona-oauth.js';
 
 type Any = Record<string, unknown>;
 
+/** ONE root key for the whole file: sealing with a fresh key each time made opening impossible. */
+const rootKey = randomRootKey('local');
+
 function sealed(value: string): unknown {
-  return seal(new TextEncoder().encode(value), randomRootKey('local'));
+  return seal(new TextEncoder().encode(value), rootKey);
 }
 
 function makeService(persona: Any | undefined, overrides: Any = {}) {
   const createClient = vi.fn((config: unknown) => ({ config }) as never);
   const service = createPersonaOAuthService({
     identities: { findByApplicationId: vi.fn(async () => persona) } as never,
-    openSecret: (envelope) => openSealedText(envelope as never, randomRootKey('local')),
+    openSecret: (envelope) => openSealedText(envelope as never, rootKey),
     redirectUri: 'https://dumby.example/auth/callback',
     createClient,
     warn: vi.fn(),

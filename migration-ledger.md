@@ -64,6 +64,7 @@
 | M41 | Persona invite links (OAuth-aware), Online status with presence stated separately, install permission bitfield, and a single-purpose /dashboard (UR-20261012-031) | DONE (typecheck+lint+format) |
 | M42 | Residuals: rename/alias name validated at submit with an INVALID_INPUT notice; dead navigation control removed (UR-20261012-032) | DONE (typecheck+lint+format) |
 | M43 | Twill persona registration API served for real (register/detail/status/charter/bind/unbind), sealing both credentials and echoing none (UR-20261012-033) | DONE (typecheck+lint+format) |
+| M44 | Install permission bitfield now always sent (the guild-less dashboard link too); two test fixtures corrected (UR-20261012-031 v1.1) | DONE |
 
 Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (reason)`.
 

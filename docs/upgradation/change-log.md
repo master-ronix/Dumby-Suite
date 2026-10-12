@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.38
+version: 5.5.39
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,23 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.39 — Install permissions actually sent + test fixtures (UR-20261012-031 v1.1) — 2026-10-12
+
+- 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- CI found three faults across the four stacked commits. ONE WAS REAL: the v1.0 patch to the install
+  leg never applied, so the permission bitfield was attached only when a guild was named. The
+  dashboard's own guild-less link (/auth/authorize?bot=1) still sent no permissions, so Discord still
+  arrived WITHOUT its permissions step -- the exact fault UR-20261012-031 set out to fix. The install
+  leg now always carries the bitfield; the picker is pinned only when a guild is named.
+- The other two were faults in the new tests: a sealed fixture opened with a fresh root key instead of
+  the one it was sealed with (persona-oauth), and an assertion expecting HTML-escaped `&amp;` in a URL
+  that carries a raw `&` (persona-setup).
+- The run aborted at the tests, so COVERAGE WAS NEVER EVALUATED -- the 65% gate's verdict on this
+  batch is still unknown.
+- **Verification:** `typecheck`, `lint`, `format`, corpus gates 27/27.
 
 ---
 
