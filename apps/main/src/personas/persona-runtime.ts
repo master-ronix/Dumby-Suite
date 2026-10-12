@@ -95,7 +95,15 @@ export class PersonaRuntime {
 
   async start(): Promise<readonly PersonaStartResult[]> {
     const { listPersonas, logger } = this.deps;
-    const personas = await listPersonas();
+    // UR-20261012-040 — this runs at boot, so a read failure is reported and yields an empty run
+    // rather than propagating out of the start path.
+    let personas: readonly RuntimePersona[];
+    try {
+      personas = await listPersonas();
+    } catch (err) {
+      logger.warn(`persona-runtime-list-failed reason=${String(err)}`);
+      return [];
+    }
     const results: PersonaStartResult[] = [];
 
     for (const persona of personas) {

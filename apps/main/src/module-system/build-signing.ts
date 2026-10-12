@@ -55,6 +55,43 @@ export function resolveSigningPublicKey(
   return undefined;
 }
 
+/** The slice of the verifier the arming helper drives. */
+export interface KeyRegistrar {
+  registerKey(keyId: string, publicKey: string | KeyObject): unknown;
+}
+
+export interface ProvenanceArmResult {
+  readonly armed: boolean;
+  /** Present when the key could not be used; the caller logs it. Never thrown. */
+  readonly error?: string;
+}
+
+/**
+ * UR-20261012-040 — arms the build-provenance guard, and CANNOT throw.
+ *
+ * This is a boot-time path: an unusable key must degrade to "guard off, one warning", exactly as it
+ * did before UR-20261012-036. That record moved the key resolution outside the surrounding
+ * try/catch, so a malformed PEM threw during boot and the process died with ERR_OSSL_UNSUPPORTED —
+ * a live outage. Keeping resolution AND registration inside this one helper is what makes the
+ * failure non-fatal again, and the test that a bad key does not throw is the guard against repeating it.
+ */
+export function armBuildProvenance(
+  verifier: KeyRegistrar,
+  keyId: string,
+  privateKey: string,
+  publicKey: string,
+): ProvenanceArmResult {
+  if (keyId === '') return { armed: false };
+  try {
+    const key = resolveSigningPublicKey(privateKey, publicKey);
+    if (key === undefined) return { armed: false };
+    verifier.registerKey(keyId, key);
+    return { armed: true };
+  } catch (err) {
+    return { armed: false, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
 export const BUILD_SIGNING_ALGORITHM = 'Ed25519';
 export const HASH_ALGORITHM = 'sha256';
 export const HASH_PREFIX = 'sha256:';

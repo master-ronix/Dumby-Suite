@@ -3,6 +3,7 @@ import { PersonaCommandBindingService } from '../../src/personas/persona-command
 import {
   parseRegistrarSeed,
   seedRegistrars,
+  seedRegistrarsSafely,
   type PersonaRegistrarStore,
 } from '../../src/personas/persona-registrar.repository.js';
 import {
@@ -135,5 +136,31 @@ describe('seedRegistrars', () => {
     const written = await seedRegistrars(store, parseRegistrarSeed('a,b=app-2'));
     expect(written).toBe(2);
     expect(grant).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('seedRegistrarsSafely (boot safety)', () => {
+  test('a failing seed is warned about, returns 0, and DOES NOT THROW', async () => {
+    const warn = vi.fn();
+    const store = {
+      isAuthorised: vi.fn(),
+      grant: vi.fn(async () => {
+        throw new Error('relation does not exist');
+      }),
+      revoke: vi.fn(),
+      list: vi.fn(),
+    } as PersonaRegistrarStore;
+    await expect(seedRegistrarsSafely(store, parseRegistrarSeed('a'), warn)).resolves.toBe(0);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('persona-registrar-seed-failed'));
+  });
+
+  test('a healthy seed reports its count', async () => {
+    const store = {
+      isAuthorised: vi.fn(),
+      grant: vi.fn(async () => undefined),
+      revoke: vi.fn(),
+      list: vi.fn(),
+    } as PersonaRegistrarStore;
+    expect(await seedRegistrarsSafely(store, parseRegistrarSeed('a,b'), vi.fn())).toBe(2);
   });
 });

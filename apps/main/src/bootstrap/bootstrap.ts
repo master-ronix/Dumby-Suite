@@ -46,7 +46,7 @@ import { SealedCredentialService } from '../credentials/sealed-credential.servic
 import { PostgresCommandPermissionTokenStore } from '../db/repositories/command-permission-token.repository.js';
 import { CommandPermissionTokenService } from '../commands/command-permission-tokens.js';
 import { PostgresGrantWriter } from '../db/repositories/rbac-grant.repository.js';
-import { BuildSignatureVerifier, resolveSigningPublicKey } from '../module-system/build-signing.js';
+import { armBuildProvenance, BuildSignatureVerifier } from '../module-system/build-signing.js';
 import { InFlightTracker } from '../shutdown/in-flight-tracker.js';
 import {
   registerShutdownSignalHandlers,
@@ -79,7 +79,7 @@ import {
 import {
   parseRegistrarSeed,
   PostgresPersonaRegistrarStore,
-  seedRegistrars,
+  seedRegistrarsSafely,
 } from '../personas/persona-registrar.repository.js';
 import { MiddlewarePipeline } from '../middleware/middleware-pipeline.js';
 import { TraceMiddleware } from '../middleware/built-in/trace.js';
@@ -229,20 +229,21 @@ export async function bootstrapWorker(): Promise<void> {
   const buildSigningKeyId = config.get('BUILD_SIGNING_KEY_ID');
   const buildSigningPrivateKey = config.get('BUILD_SIGNING_PRIVATE_KEY');
   const buildSigningPublicKey = config.get('BUILD_SIGNING_PUBLIC_KEY');
-  // UR-20261012-036 — the verifier needs only the PUBLIC key. A private key is still accepted (the
-  // builder holds it), but the runtime no longer has to hold the platform's signing secret.
-  const signingPublicKey = resolveSigningPublicKey(buildSigningPrivateKey, buildSigningPublicKey);
-  let provenanceGuardArmed = false;
-  if (buildSigningKeyId !== '' && signingPublicKey !== undefined) {
-    try {
-      verifier.registerKey(buildSigningKeyId, signingPublicKey);
-      provenanceGuardArmed = true;
-    } catch (err) {
-      logger.warn(
-        `build-signing-key-invalid: ${String(err)} — BUILD_SIGNING_PUBLIC_KEY (or BUILD_SIGNING_PRIVATE_KEY) must be a single-line PEM with escaped newlines`,
-        { error: String(err) },
-      );
-    }
+  // UR-20261012-036 — the verifier needs only the PUBLIC key. UR-20261012-040 — resolution AND
+  // registration live in one helper that cannot throw, so an unusable key degrades to a warning
+  // instead of killing boot (which it did, as ERR_OSSL_UNSUPPORTED).
+  const provenance = armBuildProvenance(
+    verifier,
+    buildSigningKeyId,
+    buildSigningPrivateKey,
+    buildSigningPublicKey,
+  );
+  const provenanceGuardArmed = provenance.armed;
+  if (provenance.error !== undefined) {
+    logger.warn(
+      `build-signing-key-invalid: ${provenance.error} — BUILD_SIGNING_PUBLIC_KEY (or BUILD_SIGNING_PRIVATE_KEY) must be a single-line PEM with escaped newlines; the provenance guard stays OFF and boot continues`,
+      { error: provenance.error },
+    );
   }
   await loadModulesFromTierVolumes({
     modulesDir: config.get('MODULES_DIR'),
@@ -496,9 +497,10 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   // UR-20261012-037 — the registrar registry, seeded from configuration so a fresh install can
   // register its first persona without a chicken-and-egg.
   const personaRegistrars = new PostgresPersonaRegistrarStore(db.knex);
-  await seedRegistrars(
+  await seedRegistrarsSafely(
     personaRegistrars,
     parseRegistrarSeed(config.get('PERSONA_REGISTRAR_AUTHORITIES')),
+    (message) => logger.warn(message),
   );
   const personaBindingService = new PersonaCommandBindingService(
     personaIdentities,
@@ -987,20 +989,21 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   const buildSigningKeyId = config.get('BUILD_SIGNING_KEY_ID');
   const buildSigningPrivateKey = config.get('BUILD_SIGNING_PRIVATE_KEY');
   const buildSigningPublicKey = config.get('BUILD_SIGNING_PUBLIC_KEY');
-  // UR-20261012-036 — the verifier needs only the PUBLIC key. A private key is still accepted (the
-  // builder holds it), but the runtime no longer has to hold the platform's signing secret.
-  const signingPublicKey = resolveSigningPublicKey(buildSigningPrivateKey, buildSigningPublicKey);
-  let provenanceGuardArmed = false;
-  if (buildSigningKeyId !== '' && signingPublicKey !== undefined) {
-    try {
-      verifier.registerKey(buildSigningKeyId, signingPublicKey);
-      provenanceGuardArmed = true;
-    } catch (err) {
-      logger.warn(
-        `build-signing-key-invalid: ${String(err)} — BUILD_SIGNING_PUBLIC_KEY (or BUILD_SIGNING_PRIVATE_KEY) must be a single-line PEM with escaped newlines`,
-        { error: String(err) },
-      );
-    }
+  // UR-20261012-036 — the verifier needs only the PUBLIC key. UR-20261012-040 — resolution AND
+  // registration live in one helper that cannot throw, so an unusable key degrades to a warning
+  // instead of killing boot (which it did, as ERR_OSSL_UNSUPPORTED).
+  const provenance = armBuildProvenance(
+    verifier,
+    buildSigningKeyId,
+    buildSigningPrivateKey,
+    buildSigningPublicKey,
+  );
+  const provenanceGuardArmed = provenance.armed;
+  if (provenance.error !== undefined) {
+    logger.warn(
+      `build-signing-key-invalid: ${provenance.error} — BUILD_SIGNING_PUBLIC_KEY (or BUILD_SIGNING_PRIVATE_KEY) must be a single-line PEM with escaped newlines; the provenance guard stays OFF and boot continues`,
+      { error: provenance.error },
+    );
   }
   const discoveredModules = await loadModulesFromTierVolumes({
     modulesDir: config.get('MODULES_DIR'),

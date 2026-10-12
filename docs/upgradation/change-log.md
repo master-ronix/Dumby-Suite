@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.46
+version: 5.5.47
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,27 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.47 — Boot Safety / production outage fix (UR-20261012-040) — 2026-10-12
+
+- 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- PRODUCTION WAS FAILED: the service built then died on boot with ERR_OSSL_UNSUPPORTED and the
+  healthcheck never passed.
+- CAUSE, and it is UR-20261012-036's fault: before it, the key was resolved INSIDE a try/catch, so an
+  undecodable PEM produced a warning and the bot booted with the guard off. UR-036 restructured that
+  block and moved resolveSigningPublicKey() -- which calls createPublicKey -- OUTSIDE the try, so a
+  malformed key threw during boot and killed the process. The deployment had the private key set and
+  no public key, so the fallback ran and could not decode it. No configuration change could have fixed
+  it: the runtime must survive a bad key, which is what the old code did.
+- armBuildProvenance() does resolution AND registration inside one helper that CANNOT throw, returning
+  { armed, error? }. Both sites use it; the warning says the guard stays off and boot continues.
+- The same class of risk was audited and closed: seedRegistrarsSafely (a failing boot-time registry
+  write warns and returns 0) and PersonaRuntime.start (a failing persona listing yields an empty run).
+- A regression test now covers the exact failure, and the helper moved into a TESTED module -- the
+  gates and lint cannot execute a boot path, which is why the inline version shipped broken.
+- **Verification:** typecheck, lint, format, corpus gates 27/27, test-import guard.
 
 ---
 

@@ -94,3 +94,23 @@ export async function seedRegistrars(
   for (const record of seed) await store.grant(record);
   return seed.length;
 }
+
+/**
+ * UR-20261012-040 — the boot-time seed, which CANNOT throw.
+ *
+ * A boot path must not die on a registry write: an unwritable seed leaves the registry as it was,
+ * and registration simply stays refused (it already fails closed) rather than the process failing to
+ * start.
+ */
+export async function seedRegistrarsSafely(
+  store: PersonaRegistrarStore,
+  seed: readonly PersonaRegistrarRecord[],
+  warn: (message: string) => void,
+): Promise<number> {
+  try {
+    return await seedRegistrars(store, seed);
+  } catch (err) {
+    warn(`persona-registrar-seed-failed: ${String(err)} — the registry is left as it was`);
+    return 0;
+  }
+}

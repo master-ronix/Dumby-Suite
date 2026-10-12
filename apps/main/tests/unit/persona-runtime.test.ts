@@ -138,6 +138,20 @@ describe('PersonaRuntime.start', () => {
   });
 });
 
+describe('PersonaRuntime.start — boot safety', () => {
+  test('a listing failure yields an empty run instead of propagating', async () => {
+    const { runtime, logger } = makeRuntime([], {
+      listPersonas: vi.fn(async () => {
+        throw new Error('db down');
+      }),
+    });
+    await expect(runtime.start()).resolves.toEqual([]);
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('persona-runtime-list-failed'),
+    );
+  });
+});
+
 describe('PersonaRuntime.stop', () => {
   test('logs every hosted persona out and clears the count', async () => {
     const { runtime, destroy } = makeRuntime([persona()]);

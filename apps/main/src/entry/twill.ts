@@ -15,7 +15,7 @@ import { registerTwillPersonaRoutes } from '../personas/twill-registration.js';
 import {
   parseRegistrarSeed,
   PostgresPersonaRegistrarStore,
-  seedRegistrars,
+  seedRegistrarsSafely,
 } from '../personas/persona-registrar.repository.js';
 
 /**
@@ -45,7 +45,11 @@ async function start(): Promise<void> {
   const identities = new PostgresPersonaIdentityStore(db);
   const bindings = new PostgresPersonaBindingStore(db);
   const registrars = new PostgresPersonaRegistrarStore(db);
-  await seedRegistrars(registrars, parseRegistrarSeed(env.PERSONA_REGISTRAR_AUTHORITIES));
+  await seedRegistrarsSafely(
+    registrars,
+    parseRegistrarSeed(env.PERSONA_REGISTRAR_AUTHORITIES),
+    (message) => logger.warn(message),
+  );
   const service = new PersonaCommandBindingService(identities, bindings, logger, registrars);
 
   registerTwillPersonaRoutes(app, {
