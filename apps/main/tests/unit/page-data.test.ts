@@ -133,11 +133,17 @@ describe('page-data provider', () => {
     expect(groups.find((group) => group.name === 'Discord API')?.status).toBe('ok');
   });
 
-  test('persona lists the bound modules and command inventory', async () => {
+  test('persona reports the status, identity and tier-grouped inventory', async () => {
     const provider = createPageDataProvider(makeDeps({ getClient: () => fakeClient }));
     const data = await provider('persona', null);
     expect(data['title']).toBe('Active Personas');
-    expect(JSON.stringify(data)).toContain('Bound Modules');
+    expect(data['status']).toBe('online');
+    expect(String(data['summary'])).toContain('bound modules');
+    // UR-20261011-025 — the identity line and the tier-grouped inventory replaced the old group/rows.
+    expect(JSON.stringify(data['identity'])).toContain('Bound Server');
+    const tiers = data['tiers'] as Array<{ tier: string; modules: unknown[] }>;
+    expect(tiers.length).toBeGreaterThan(0);
+    expect(tiers[0]?.modules.length).toBeGreaterThan(0);
   });
 
   test('queue without a guild performs no query and reports none pending', async () => {

@@ -53,6 +53,7 @@
 | M30 | BCCM name validation (drop an invalid name, which fails the whole bulk overwrite) + `applied=N` in the hide log (UR-20261011-023 v1.1) | DONE |
 | M31 | Boot command deploy moved off the readiness path (UR-20261011-024) | DONE |
 | M32 | /persona interface revision — status headline + Refresh, identity line, tier-grouped inventory (UR-20261011-025) | DONE (typecheck+lint+format) |
+| M33 | Persona page-data test updated to the new shape (UR-20261011-025 v1.1) | DONE |
 
 Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (reason)`.
 
