@@ -7,6 +7,8 @@ import { HOME_SELECT_VALUE } from '../shared/constants/index.js';
 const MODE_PREFIX = 'dumby:mode:';
 const NAV_PREFIX = 'dumby:nav:';
 const ACT_PREFIX = 'dumby:act:';
+/** UR-20261012-029 — the persona authorization setup card (always private). */
+const PERSONA_SETUP_PREFIX = 'dumby:persona-setup:';
 
 const isRenderMode = (value: string | undefined): value is RenderMode =>
   value === 'D' || value === 'M' || value === 'C';
@@ -63,11 +65,17 @@ export interface CoreFrameHandlerDeps {
     guildId: string | null,
     invokerId: string,
   ) => unknown | Promise<unknown>;
+  /**
+   * UR-20261012-029 — builds the persona authorization setup card. Offered only from the /persona
+   * control the page shows a guild admin; the card itself is private (ephemeral).
+   */
+  personaSetup?: (() => unknown | Promise<unknown>) | undefined;
 }
 
 export function registerCoreFrameHandlers(deps: CoreFrameHandlerDeps): void {
   const { registry, router, moduleInfo, installModule, uninstallModule, disableConfirmation } =
     deps;
+  const { personaSetup } = deps;
 
   registry.register({
     customIdPrefix: MODE_PREFIX,
@@ -160,6 +168,21 @@ export function registerCoreFrameHandlers(deps: CoreFrameHandlerDeps): void {
         );
         return;
       }
+    },
+  });
+
+  // UR-20261012-029 — the persona authorization setup card is ALWAYS private (ephemeral), like the
+  // module detail card: ack: 'ephemeral' acknowledges it privately before the card is built.
+  registry.register({
+    customIdPrefix: PERSONA_SETUP_PREFIX,
+    ack: 'ephemeral',
+    parse: (customId) => {
+      const parts = customId.split(':');
+      return { invoker: parts[2] };
+    },
+    execute: async (interaction) => {
+      if (personaSetup === undefined) return;
+      await interaction.editReply(await personaSetup());
     },
   });
 

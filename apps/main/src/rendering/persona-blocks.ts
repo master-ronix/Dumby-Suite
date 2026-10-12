@@ -118,6 +118,7 @@ function asTiers(value: unknown): readonly TierShape[] {
 export function personaBlocks(
   data: Readonly<Record<string, unknown>> | undefined,
   invokerId: string,
+  options: { readonly isAdmin?: boolean } = {},
 ): readonly RenderBlock[] {
   const profiles = asProfiles(data?.['profiles']);
   const tiers = asTiers(data?.['tiers']);
@@ -210,6 +211,23 @@ export function personaBlocks(
   }
 
   if (note !== '') blocks.push({ kind: 'text', content: `${infoIcon()} ${note}` });
+
+  // UR-20261012-029 — the authorization setup control, offered ONLY to a guild admin. It opens a
+  // private card carrying the callback URL the persona's application must register, the portal
+  // guide, and the link through to the dashboard's invite flow.
+  if (options.isAdmin === true) {
+    blocks.push({
+      kind: 'row',
+      buttons: [
+        {
+          customId: `dumby:persona-setup:${invokerId}`,
+          label: 'Persona setup',
+          style: 2,
+          emoji: customEmojiParts(INFO_ICON_NAME) ?? { name: INFO_FALLBACK },
+        },
+      ],
+    });
+  }
 
   return blocks;
 }

@@ -97,6 +97,17 @@ describe('personaBlocks', () => {
     );
   });
 
+  test('offers the authorization setup control only to a guild admin', () => {
+    const asMember = personaBlocks(data, 'u1', { isAdmin: false });
+    expect(asMember.some((b) => (b as Any)['kind'] === 'row')).toBe(false);
+
+    const asAdmin = personaBlocks(data, 'u1', { isAdmin: true });
+    const row = asAdmin.find((b) => (b as Any)['kind'] === 'row') as Any;
+    const buttons = row['buttons'] as Array<Any>;
+    expect(buttons[0]?.['customId']).toBe('dumby:persona-setup:u1');
+    expect(buttons[0]?.['label']).toBe('Persona setup');
+  });
+
   test('disables the switcher when only one profile is active', () => {
     const single = { ...data, profiles: [data.profiles[0]] };
     const switcher = personaBlocks(single, 'u1').find(

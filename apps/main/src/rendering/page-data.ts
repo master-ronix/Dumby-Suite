@@ -15,6 +15,12 @@ import {
 
 export interface PageDataDeps {
   getClient: () => Client | undefined;
+  /**
+   * UR-20261012-029 — whether a bot is a member of a guild. A persona's active state is whether it
+   * is actually present in its bound guild, which only the host can resolve. Absent, the page
+   * reports a persona as inactive rather than guessing.
+   */
+  isMember?: ((guildId: string, applicationId: string) => Promise<boolean>) | undefined;
   moduleRegistry: ModuleRegistry;
   db: DbClient;
   redis: Redis;
@@ -57,7 +63,7 @@ const titleCaseId = (id: string): string =>
 export function createPageDataProvider(
   deps: PageDataDeps,
 ): (moduleId: string, guildId: string | null, page?: number, query?: string) => Promise<PageData> {
-  const { getClient, moduleRegistry, db, redis, config, logger } = deps;
+  const { getClient, moduleRegistry, db, redis, config, logger, isMember } = deps;
 
   /**
    * UR-20261011-011 — the guild's module enablement, read once. A module is "enabled" when its
@@ -233,6 +239,7 @@ export function createPageDataProvider(
       id: string;
       name: string;
       discordApplicationId: string;
+      boundGuildId: string;
       dmBehavior: string;
       shardAllocation: number;
       status: string;
@@ -249,32 +256,43 @@ export function createPageDataProvider(
             moduleSlug: row.moduleSlug as string,
             personaId: row.personaId as string,
           }));
+        // UR-20261012-029 — a persona is listed when this guild registered it (`boundGuildId`) OR
+        // when a binding points at it. A Twill registration is guild-bound, so the boundGuildId set
+        // is exactly "the personas this guild registered".
         const personaIds = [...new Set(bindings.map((binding) => binding.personaId))];
-        if (personaIds.length > 0) {
-          const personaRows = (await db
-            .knex('persona_identities')
-            .whereIn('id', personaIds)
-            .whereNull('deletedAt')) as ReadonlyArray<Record<string, unknown>>;
-          registered = personaRows
-            .filter((row) => typeof row['id'] === 'string' && typeof row['name'] === 'string')
-            .map((row) => ({
-              id: row['id'] as string,
-              name: row['name'] as string,
-              discordApplicationId:
-                typeof row['discordApplicationId'] === 'string' ? row['discordApplicationId'] : '',
-              dmBehavior: typeof row['dmBehavior'] === 'string' ? row['dmBehavior'] : 'prohibited',
-              shardAllocation:
-                typeof row['shardAllocation'] === 'number' ? row['shardAllocation'] : 0,
-              status: typeof row['status'] === 'string' ? row['status'] : 'active',
-            }));
-        }
+        const personaRows = (await db
+          .knex('persona_identities')
+          .whereNull('deletedAt')
+          .andWhere(
+            (builder: {
+              where: (column: string, value: string) => void;
+              orWhereIn: (column: string, values: string[]) => void;
+            }) => {
+              builder.where('boundGuildId', guildId);
+              if (personaIds.length > 0) builder.orWhereIn('id', personaIds);
+            },
+          )) as ReadonlyArray<Record<string, unknown>>;
+        registered = personaRows
+          .filter((row) => typeof row['id'] === 'string' && typeof row['name'] === 'string')
+          .map((row) => ({
+            id: row['id'] as string,
+            name: row['name'] as string,
+            discordApplicationId:
+              typeof row['discordApplicationId'] === 'string' ? row['discordApplicationId'] : '',
+            boundGuildId: typeof row['boundGuildId'] === 'string' ? row['boundGuildId'] : '',
+            dmBehavior: typeof row['dmBehavior'] === 'string' ? row['dmBehavior'] : 'prohibited',
+            shardAllocation:
+              typeof row['shardAllocation'] === 'number' ? row['shardAllocation'] : 0,
+            status: typeof row['status'] === 'string' ? row['status'] : 'active',
+          }));
       } catch (err) {
         logger.warn('page-data-persona-unavailable', { guildId, reason: String(err) });
       }
     }
 
     const ownerOf = new Map(bindings.map((binding) => [binding.moduleSlug, binding.personaId]));
-    const currentProfileId = ownerOf.get(moduleId) ?? MAIN_PROFILE_ID;
+    const guildRegistration = registered.find((entry) => entry.boundGuildId === guildId);
+    const currentProfileId = ownerOf.get(moduleId) ?? guildRegistration?.id ?? MAIN_PROFILE_ID;
 
     const allModules = moduleRegistry.all();
     // The main bot owns every module no persona is bound to; a persona owns exactly the modules
@@ -322,18 +340,30 @@ export function createPageDataProvider(
         online ? 'online' : 'offline',
         online ? 'Online' : 'Offline',
       ),
-      ...registered.map((entry) =>
-        profileFor(
-          entry.id,
-          entry.name,
-          entry.discordApplicationId,
-          false,
-          entry.dmBehavior === 'allowed' ? 'Allowed' : 'Prohibited',
-          String(entry.shardAllocation),
-          entry.status === 'active' ? 'active' : 'retired',
-          entry.status === 'active' ? 'Active' : 'Retired',
-        ),
-      ),
+      ...(await Promise.all(
+        registered.map(async (entry) => {
+          // UR-20261012-029 — a persona is ACTIVE only when its bot is invited and present in the
+          // guild; a retired registration is retired regardless. Presence that cannot be resolved
+          // is reported as inactive rather than assumed present.
+          const present =
+            isMember === undefined
+              ? false
+              : await isMember(guildId ?? '', entry.discordApplicationId);
+          const retired = entry.status !== 'active';
+          const statusKind = retired ? 'retired' : present ? 'active' : 'inactive';
+          const statusLabel = retired ? 'Retired' : present ? 'Active' : 'Inactive';
+          return profileFor(
+            entry.id,
+            entry.name,
+            entry.discordApplicationId,
+            false,
+            entry.dmBehavior === 'allowed' ? 'Allowed' : 'Prohibited',
+            String(entry.shardAllocation),
+            statusKind,
+            statusLabel,
+          );
+        }),
+      )),
     ];
 
     const selectedId =

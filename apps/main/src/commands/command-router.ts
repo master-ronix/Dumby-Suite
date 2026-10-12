@@ -33,6 +33,22 @@ import {
 import type { ComponentsV2Message } from '../shared/utils/components-v2.js';
 import { PersonaOccupiedError } from '../personas/persona.js';
 
+/** Manage Guild (0x20) and Administrator (0x8), as the decimal strings Discord sends. */
+const ADMINISTRATOR_PERMISSION = '8';
+const MANAGE_GUILD_PERMISSION = '32';
+
+/**
+ * UR-20261012-029 — whether the invoking member may administer the guild: the owner, an
+ * Administrator, or a Manage Server holder. Gates the persona authorization setup control.
+ */
+export function isGuildAdmin(interaction: CommandInteraction): boolean {
+  if (interaction.isGuildOwner === true) return true;
+  const permissions = interaction.memberPermissions ?? [];
+  return (
+    permissions.includes(ADMINISTRATOR_PERMISSION) || permissions.includes(MANAGE_GUILD_PERMISSION)
+  );
+}
+
 export interface CommandInteraction {
   commandName: string;
   user: { id: string };
@@ -303,7 +319,12 @@ export class CommandRouter {
                   ),
                 }
               : name === 'persona' && Array.isArray(declaredPageData?.['tiers'])
-                ? { blocks: personaBlocks(declaredPageData, interaction.user.id) }
+                ? {
+                    // UR-20261012-029 — the persona setup control is offered ONLY to a guild admin.
+                    blocks: personaBlocks(declaredPageData, interaction.user.id, {
+                      isAdmin: isGuildAdmin(interaction),
+                    }),
+                  }
                 : name === 'dashboard'
                   ? {
                       actions: this.pageActions(

@@ -29,6 +29,29 @@ const registry = {
   ],
 } as unknown as PageDataDeps['moduleRegistry'];
 
+/**
+ * A chainable, thenable knex stand-in for the persona tables. `andWhere` invokes its callback with
+ * the same builder so the grouped `boundGuildId OR id IN (...)` predicate is exercised.
+ */
+function personaKnex(bindingRows: unknown[], personaRows: unknown[]): Dict {
+  const knex = ((table: string) => {
+    const rows = table === 'guild_persona_bindings' ? bindingRows : personaRows;
+    const builder: Dict = {};
+    builder['where'] = () => builder;
+    builder['whereIn'] = () => builder;
+    builder['orWhereIn'] = () => builder;
+    builder['whereNull'] = () => builder;
+    builder['andWhere'] = (cb: (b: unknown) => void) => {
+      cb(builder);
+      return builder;
+    };
+    builder['then'] = (resolve: (v: unknown) => unknown) => Promise.resolve(rows).then(resolve);
+    return builder;
+  }) as unknown as Dict;
+  knex['raw'] = async () => [{}];
+  return knex;
+}
+
 const fakeClient = {
   ws: { ping: 42 },
   isReady: () => true,
@@ -167,16 +190,7 @@ describe('page-data provider', () => {
         status: 'active',
       },
     ];
-    const knex = ((table: string) => {
-      const rows = table === 'guild_persona_bindings' ? bindingRows : personaRows;
-      const builder: Dict = {};
-      builder['where'] = () => builder;
-      builder['whereIn'] = () => builder;
-      builder['whereNull'] = () => builder;
-      builder['then'] = (resolve: (v: unknown) => unknown) => Promise.resolve(rows).then(resolve);
-      return builder;
-    }) as unknown as Dict;
-    knex['raw'] = async () => [{}];
+    const knex = personaKnex(bindingRows, personaRows);
     const provider = createPageDataProvider(
       makeDeps({ getClient: () => fakeClient, moduleRegistry: personaRegistry, db: { knex } }),
     );
@@ -204,6 +218,55 @@ describe('page-data provider', () => {
       'health',
       'hello-world',
     ]);
+  });
+
+  test('persona marks a registered persona active only when its bot is present', async () => {
+    const personaRegistry = {
+      all: () => [mod('persona', 'core', ['persona']), mod('health', 'core', ['health'])],
+    } as unknown as PageDataDeps['moduleRegistry'];
+    const personaRows = [
+      {
+        id: 'p-9',
+        name: 'Nova',
+        discordApplicationId: 'app-9',
+        boundGuildId: 'guild-1',
+        dmBehavior: 'prohibited',
+        shardAllocation: 1,
+        status: 'active',
+      },
+    ];
+    const knex = personaKnex([], personaRows);
+    const isMember = vi.fn(
+      async (_guildId: string, applicationId: string) => applicationId === 'app-9',
+    );
+
+    const provider = createPageDataProvider(
+      makeDeps({
+        getClient: () => fakeClient,
+        moduleRegistry: personaRegistry,
+        db: { knex },
+        isMember,
+      }),
+    );
+    const data = await provider('persona', 'guild-1');
+    // the guild's OWN registration is the opening profile when nothing owns this module
+    expect(data['currentProfileId']).toBe('p-9');
+    expect(isMember).toHaveBeenCalledWith('guild-1', 'app-9');
+    const profiles = data['profiles'] as Array<{ id: string; statusLabel: string }>;
+    expect(profiles.find((p) => p.id === 'p-9')?.statusLabel).toBe('Active');
+
+    // absent from the guild → Inactive, never assumed present
+    const away = createPageDataProvider(
+      makeDeps({
+        getClient: () => fakeClient,
+        moduleRegistry: personaRegistry,
+        db: { knex },
+        isMember: async () => false,
+      }),
+    );
+    const awayData = await away('persona', 'guild-1');
+    const awayProfiles = awayData['profiles'] as Array<{ id: string; statusLabel: string }>;
+    expect(awayProfiles.find((p) => p.id === 'p-9')?.statusLabel).toBe('Inactive');
   });
 
   test('persona warns and falls back to the main bot when the persona read fails', async () => {

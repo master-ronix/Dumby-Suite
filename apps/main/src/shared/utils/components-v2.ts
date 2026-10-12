@@ -219,6 +219,27 @@ export function button(
   return result;
 }
 
+/**
+ * UR-20261012-029 — a LINK button (style 5). Discord requires a `url` in place of a `custom_id` on
+ * a link button, so it is built here rather than through `button()`.
+ */
+export function linkButton(
+  url: string,
+  label: string,
+  emoji?: string | { name: string; id?: string },
+): ButtonComponent {
+  const result = {
+    type: ComponentType.BUTTON,
+    style: 5 as const,
+    custom_id: '',
+    url,
+    disabled: false,
+  } as unknown as ButtonComponent & { url: string };
+  if (label !== '') result.label = label;
+  if (emoji !== undefined) result.emoji = typeof emoji === 'string' ? { name: emoji } : emoji;
+  return result;
+}
+
 export function actionRow(
   components: Array<ButtonComponent | StringSelectComponent>,
 ): ActionRowComponent {

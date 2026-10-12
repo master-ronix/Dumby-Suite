@@ -67,6 +67,8 @@ import { setGuildCommandPermissions } from '../commands/command-access.js';
 import { disableConfirmationDescriptor } from '../rendering/confirmations.js';
 import type { CommandInteraction } from '../commands/command-router.js';
 import { PersonaCommandBindingService } from '../personas/persona-command-binding.service.js';
+import { personaPresenceFromClient } from '../personas/persona-presence.js';
+import { dashboardUrlFrom, personaSetupCard } from '../rendering/persona-setup.js';
 import {
   PostgresPersonaBindingStore,
   PostgresPersonaIdentityStore,
@@ -630,6 +632,11 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     redis,
     config,
     logger,
+    // UR-20261012-029 — a persona's active state is whether its bot is present in its bound guild.
+    isMember: personaPresenceFromClient(
+      () => discordClient,
+      (message) => logger.warn(message),
+    ),
   });
   const bccmEffects = createBccmEffectHandlers({
     knex: db.knex,
@@ -837,6 +844,13 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     installModule,
     uninstallModule,
     disableConfirmation: moduleDisableConfirmation,
+    // UR-20261012-029 — the private persona authorization setup card: the callback URL the persona's
+    // application must register, the portal guide, and the link to the dashboard's invite flow.
+    personaSetup: () =>
+      personaSetupCard({
+        callbackUrl: config.get('OAUTH_REDIRECT_URI'),
+        dashboardUrl: dashboardUrlFrom(config.get('OAUTH_REDIRECT_URI')),
+      }),
   });
   container.registerValue(CORE_TOKENS.EventBus, eventBus);
   container.registerValue(CORE_TOKENS.EventRouter, eventRouter);

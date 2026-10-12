@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.33
+version: 5.5.34
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,26 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.34 — Persona Context Awareness + Setup Control (UR-20261012-029) — 2026-10-12
+
+- 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- The /persona board is now context-aware: it lists a persona when this guild REGISTERED it
+  (persona_identities.boundGuildId) or when a binding points at it, and opens on the persona bound to
+  this module, else the guild's own registration, else the main bot.
+- A persona's status is presence-based: Active only when its bot is actually invited and present in
+  its bound guild, else Inactive (a retired registration stays Retired). Presence is resolved at
+  render time via a new injected predicate; a bot user id equals its application id, so the main bot
+  resolves membership by fetching that id. The lookup is total and logs rather than throws.
+- A guild admin (owner / Administrator / Manage Server) sees an info-icon control opening a PRIVATE
+  card: the OAuth callback URL the persona's application must register, the portal guide, and a link
+  button labelled 'Invite link of persona to the guild' to the dashboard.
+- **Blocker surfaced:** /twill/personas/register is still an HTTP stub (501), so no persona row can
+  exist in production yet; the page renders the main bot alone. The logic is complete and unit-tested
+  against seeded rows.
+- **Verification:** `typecheck`, `lint`, `format`, corpus gates 27/27.
 
 ---
 
