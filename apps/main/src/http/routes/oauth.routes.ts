@@ -210,7 +210,7 @@ export function registerOAuthRoutes(app: FastifyInstance, deps: OAuthRoutesDeps)
       page(
         'Dumby Suite',
         `<h1>Dumby Suite</h1><p class="sub">Command permissions dashboard</p>
-<p class="sub">Authorizing a guild lets Dumby hide a disabled module's commands there instantly. Do it once per guild.</p>
+<p class="sub">Authorizing a guild lets Dumby hide a disabled module's commands there instantly. Do it once per guild.</p>\n<p><a class="btn" href="/auth/authorize?bot=1">Add Dumby to your server</a> <strong>Install + authorize in one step</strong><br><span class="mono">Adds the bot and stores its command-permission token together.</span></p>
 ${rows.join('\n')}`,
       ),
     );

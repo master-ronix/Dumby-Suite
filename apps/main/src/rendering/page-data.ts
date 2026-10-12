@@ -274,14 +274,15 @@ export function createPageDataProvider(
     }
 
     const ownerOf = new Map(bindings.map((binding) => [binding.moduleSlug, binding.personaId]));
-    const boundPersonaIds = new Set(ownerOf.values());
     const currentProfileId = ownerOf.get(moduleId) ?? MAIN_PROFILE_ID;
 
     const allModules = moduleRegistry.all();
+    // The main bot owns every module no persona is bound to; a persona owns exactly the modules
+    // bound to it. (The check is against the OWNERSHIP map, not the set of persona ids.)
     const modulesOwnedBy = (profileId: string) =>
       allModules.filter((entry) =>
         profileId === MAIN_PROFILE_ID
-          ? !boundPersonaIds.has(entry.manifest.name)
+          ? !ownerOf.has(entry.manifest.name)
           : ownerOf.get(entry.manifest.name) === profileId,
       );
 

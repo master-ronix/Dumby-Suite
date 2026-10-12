@@ -58,6 +58,7 @@
 | M35 | Persona switcher test passes the selected id as the query arg (UR-20261012-026 v1.1) | DONE |
 | M36 | `bccm-batch-command-skipped` names the dropped command in its message (UR-20261012-027) | DONE |
 | M37 | OAuth install flow: `/auth/authorize?bot=1` install link + returned-guild preference + token keyed by (application, guild) with boot adoption (UR-20261012-028) | DONE (typecheck+lint+format) |
+| M38 | Persona ownership check reads the ownership map (not the persona-id set); dashboard install link actually renders (UR-20261012-028 v1.1) | DONE |
 
 Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (reason)`.
 

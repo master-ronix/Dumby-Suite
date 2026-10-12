@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.32
+version: 5.5.33
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,18 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.33 — Persona ownership bug + dashboard install link (UR-20261012-028 v1.1) — 2026-10-12
+
+- 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- CI found two faults in the v5.5.32 work, both now fixed. (1) A REAL bug in the persona ownership
+  check: `modulesOwnedBy` compared a module's name against the set of persona IDS rather than the
+  ownership map, so the main bot wrongly retained a persona's module in its inventory. It now reads
+  the map. (2) The dashboard's install link never rendered, because the string patch that added it
+  silently failed to match; it is now in the page body and asserted by a test.
+- **Verification:** `typecheck`, `lint`, `format`, corpus gates 27/27.
 
 ---
 
