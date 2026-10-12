@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.37
+version: 5.5.38
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,23 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.38 — Twill Persona Registration API (UR-20261012-033) — 2026-10-12
+
+- 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- Closes the last blocker on the persona flow: /twill/personas/register no longer answers 501. ADR-011
+  makes the registration API the ONLY persona-creation surface, so serving it FULFILS that decision.
+- POST /twill/personas/register parses the body, SEALS the bot token and the optional OAuth2 client
+  secret (ADR-003), derives the digest, and answers 201 with identity only. publicPersonaView never
+  discloses a sealed envelope or the digest -- asserted by a test.
+- The rest of the control plane is served too: detail, status and charter reads, plus bind/unbind.
+  Presence is deliberately not reported here (it needs a gateway; the /persona page resolves it).
+- entry/twill.ts now builds the pool and services INSIDE the isMainEntry guard, so importing it in a
+  test has no side effect (ACC-ARCH-0007-2). Parsing and route shapes live in
+  personas/twill-registration.ts and are unit-tested without a process.
+- **Verification:** `typecheck`, `lint`, `format`, corpus gates 27/27.
 
 ---
 

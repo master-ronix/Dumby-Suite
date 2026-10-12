@@ -253,6 +253,14 @@ export function sealPersonaBotToken(botToken: string, rootKey: EnvelopeRootKey):
   return seal(Buffer.from(botToken, 'utf8'), rootKey);
 }
 
+/** UR-20261012-030 — seal a persona's OAuth2 client secret for at-rest storage. */
+export function sealPersonaOAuthClientSecret(
+  clientSecret: string,
+  rootKey: EnvelopeRootKey,
+): SealedEnvelope {
+  return seal(Buffer.from(clientSecret, 'utf8'), rootKey);
+}
+
 /** ADR-003 — read a persona's bot token back in process (Twill presents it to Discord). */
 export function openPersonaBotToken(persona: PersonaIdentity, rootKey: EnvelopeRootKey): string {
   return Buffer.from(open(persona.botTokenSealed, rootKey)).toString('utf8');
