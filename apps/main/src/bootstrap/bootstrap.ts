@@ -24,7 +24,7 @@ import { QueueManager } from '../queue/queue-manager.js';
 import { ModuleRegistry } from '../module-system/registry.js';
 import { loadPolicyLockfile } from '../module-system/policy-lockfile.js';
 import { ModuleLoader } from '../module-system/loader.js';
-import { defaultEnabledForTier } from '../module-system/tier-rules.js';
+import { defaultEnabledForTier, resolveModuleEnabled } from '../module-system/tier-rules.js';
 import { PermissionResolver } from '../permissions/resolver.js';
 import { AdminEvalGate } from '../permissions/admin-eval-gate.js';
 import { evaluateRank } from '../permissions/rank.js';
@@ -624,6 +624,11 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   const isModuleEnabledInGuild = async (moduleId: string, guildId: string): Promise<boolean> => {
     const tier = moduleRegistry.get(moduleId)?.manifest.tier ?? 'marketplace';
     try {
+      // UR-20261012-046 — a CORE module is always enabled (§13.2), so the row is never consulted for
+      // one. Without this the dispatch path denied `/dashboard` whenever a stale disabled row existed,
+      // while the page-data filter said it was enabled: two paths, two answers.
+      if (tier === 'core') return true;
+
       const row = await db
         .knex('guild_module_states')
         .where({ guildId, moduleSlug: moduleId })
@@ -631,7 +636,7 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
         .first<{ enabled: boolean; state: string }>();
 
       if (row === undefined) {
-        const enabled = defaultEnabledForTier(tier);
+        const enabled = resolveModuleEnabled(tier, undefined);
         if (enabled) {
           await db
             .knex('guild_module_states')
@@ -642,7 +647,7 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
         return enabled;
       }
 
-      return row.enabled === true && row.state === 'active';
+      return resolveModuleEnabled(tier, row);
     } catch (err) {
       // A Standard-tier module is enabled by default (§13), and the per-guild row is an override.
       // A missing table or a transient read failure must not turn `/hello` into a MODULE_ERROR

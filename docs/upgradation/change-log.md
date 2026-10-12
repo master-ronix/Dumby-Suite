@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.51
+version: 5.5.52
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,28 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.52 — a core module can no longer be denied by a stale row (UR-20261012-046) — 2026-10-12
+
+- 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- REPORTED FROM PRODUCTION: at 18:14 UTC `/dashboard` failed with "not available in guild
+  1062427177326497863". `dashboard` is a CORE module.
+- TWO PATHS, TWO ANSWERS. page-data.ts filters a listing with `if (tier === 'core') return true`;
+  isModuleEnabledInGuild -- the dispatch path, the one that DENIES a command -- read the per-guild
+  guild_module_states row alone. A stale `enabled:false` row for a core module therefore denied a
+  command that must never be unavailable, while the page said it was enabled.
+- §13.2 settles the intent: a core module is never uninstallable, so it can never be disabled. The row
+  is an override for a module that CAN be turned off; for core there is nothing to override.
+- FIX: `resolveModuleEnabled(tier, row)` in module-system/tier-rules.ts is now THE ONE RULE. Core
+  returns true without consulting the row -- which makes a stale row INERT instead of FATAL. No row
+  keeps the tier default; otherwise `enabled && state === 'active'`. The dispatch path returns early for
+  core and delegates otherwise, so the two paths can no longer drift.
+- NOT CHANGED, AND RECORDED: defaultEnabledForTier is `tier !== 'marketplace'`, so an ADMIN module is
+  enabled by default. That is not a "never enabled" tier -- what hides an admin module is the LISTING
+  and the admin-tier gate, not the enablement rule.
+- **Verification:** full suite 112 files / 1132 tests / 0 failures; typecheck, lint, format green; gates 27/27.
 
 ---
 

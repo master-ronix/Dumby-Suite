@@ -81,6 +81,7 @@
 | M58 | A2.5 — the disabled-module lifecycle pinned by tests (excluded from the installed list, total drops, relisted in /browse); the reported "queue queue" wording confirmed absent from source (UR-20261012-044) | DONE (typecheck+lint+format) |
 | M59 | Gate 4 was RED on 8ad10b8 (10 failures, all fixtures from UR-041/043), which is why every deploy was skipped: the ownership gate was never stubbed, registrarStore kept its old one-arg signature, and the handler fixture returned a raw function instead of a spy (UR-20261012-045) | DONE (full unit suite: 1041 passed, 0 failed) |
 | M60 | A second deploy-blocker caught pre-push: UR-044's src/commands/** branch floor of 70 fails against the measured 65.42%, so it is held at the measured value with 70 recorded as the target (UR-20261012-045) | DONE (112 files / 1127 tests / 0 failures, all thresholds hold) |
+| M61 | A CORE module could be DENIED by a stale disabled guild_module_states row: the dispatch path read the row alone while page-data special-cased core, so /dashboard returned "not available in guild" (UR-20261012-046) | DONE (112 files / 1132 tests / 0 failures) |
 
 Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (reason)`.
 
