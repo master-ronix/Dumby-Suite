@@ -31,7 +31,9 @@ export type NoticeReasonCode =
   | 'RATE_LIMITED'
   | 'GUILD_UNAVAILABLE'
   | 'MODULE_ERROR'
-  | 'OVERDUE';
+  | 'OVERDUE'
+  /** UR-20261012-032 — a submitted value is not acceptable (e.g. a rename name Discord rejects). */
+  | 'INVALID_INPUT';
 
 export interface RenderIdentity {
   surface: string;
@@ -57,12 +59,6 @@ export interface NavigationOption {
   readonly description?: string;
   readonly emoji?: string | { name: string; id?: string };
   readonly default?: boolean;
-}
-
-/** §11.3 — the navigation dropdown: one minted customId plus the page options. */
-export interface NavigationControl {
-  readonly customId: string;
-  readonly options: readonly NavigationOption[];
 }
 
 /** §1.2/§3.3 — the footer's D/M/C density control, one minted customId per mode. */
@@ -128,8 +124,6 @@ export interface RenderDescriptor extends RenderIdentity {
    * exists the slot is omitted rather than pointed at a URL that would 404.
    */
   banner?: string;
-  /** §11.3 — present in Modes D and M; omitted in Mode C. */
-  navigation?: NavigationControl;
   /** §1.2 — the footer density control. */
   modeControl?: ModeControl;
   /** item 11/15/17 — page-declared action buttons rendered below the footer. */
@@ -440,6 +434,8 @@ export class CoreRenderer {
     if (name === 'CommandNotFoundError') return 'UNKNOWN_COMMAND';
     if (name === 'CommandScopeDeniedError') return 'FORBIDDEN';
     if (name === 'PersonaOccupiedError') return 'FORBIDDEN';
+    // UR-20261012-032 — a rejected submission is an input fault, not a permission or module fault.
+    if (name === 'InvalidCommandNameError') return 'INVALID_INPUT';
     // blueprint.md §22.2 / Table 22-A — a Power Engine `suspendGuild` blocks dispatch in that guild,
     // so the user sees the GUILD_UNAVAILABLE formal notice rather than a partial render.
     if (name === 'GuildSuspendedError') return 'GUILD_UNAVAILABLE';
@@ -515,6 +511,8 @@ export class CoreRenderer {
         return 'Interaction overdue';
       case 'MODULE_ERROR':
         return 'Module error';
+      case 'INVALID_INPUT':
+        return 'Invalid input';
     }
   }
 
@@ -540,6 +538,8 @@ export class CoreRenderer {
         return 'The interaction expired before a final render was available.';
       case 'MODULE_ERROR':
         return 'The module failed while handling the interaction.';
+      case 'INVALID_INPUT':
+        return 'That value cannot be used here. Check it and try again.';
     }
   }
 }

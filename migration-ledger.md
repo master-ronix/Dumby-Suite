@@ -6,7 +6,7 @@
 > continued, never restarted.
 
 - **Created:** 2026-10-08
-- **Last updated:** 2026-10-12 · **Current item:** Persona invites + install permissions + clean dashboard (UR-20261012-031, executed) · blocker = /twill/personas/register is still a 501 stub · **Next action:** authorize each guild from /dashboard, then flip BCCM_BATCH_PUSH_DRY_RUN=false and watch for sent>0
+- **Last updated:** 2026-10-12 · **Current item:** Residuals closed (UR-20261012-032, executed) · blocker = /twill/personas/register is still a 501 stub · **Next action:** authorize each guild from /dashboard, then flip BCCM_BATCH_PUSH_DRY_RUN=false and watch for sent>0
 - **Protocol:** `docs/migration/migration-prompt.md` v5.2.0
 - **Coverage map:** the change-set brief (18 items) → one owning item each (M0–M17)
 - **Record shapes:** `docs/migration/ledger-template.md` §3 (item) and §4 (slice)
@@ -62,6 +62,7 @@
 | M39 | /persona context-aware profiles, presence-based Active/Inactive, and the admin-only authorization setup control (UR-20261012-029) | DONE (typecheck+lint+format) |
 | M40 | Persona authorization: per-application OAuth (Route A) + bot-token delete fallback (Route B), with the access override following the owning application (UR-20261012-030) | DONE (typecheck+lint+format) |
 | M41 | Persona invite links (OAuth-aware), Online status with presence stated separately, install permission bitfield, and a single-purpose /dashboard (UR-20261012-031) | DONE (typecheck+lint+format) |
+| M42 | Residuals: rename/alias name validated at submit with an INVALID_INPUT notice; dead navigation control removed (UR-20261012-032) | DONE (typecheck+lint+format) |
 
 Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (reason)`.
 

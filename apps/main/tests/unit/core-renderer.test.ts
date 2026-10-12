@@ -255,6 +255,12 @@ describe('CoreRenderer reason mapping', () => {
         Object.assign(new Error('x'), { name: 'CommandScopeDeniedError' }),
       ),
     ).toBe('FORBIDDEN');
+    // UR-20261012-032 — a rejected submission is an input fault, not a module fault.
+    expect(
+      renderer.noticeReasonFromError(
+        Object.assign(new Error('x'), { name: 'InvalidCommandNameError' }),
+      ),
+    ).toBe('INVALID_INPUT');
     expect(renderer.noticeReasonFromError(new Error('boom'))).toBe('MODULE_ERROR');
   });
 });

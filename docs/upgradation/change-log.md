@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.36
+version: 5.5.37
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,21 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.37 — Residuals: Rename Validation + Dead Code (UR-20261012-032) — 2026-10-12
+
+- 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- Closes the finding UR-20261012-027 s6 recorded: a rename/alias name is now validated WHERE IT IS
+  SUBMITTED, so it can no longer be accepted and then silently dropped at push. The same rule the push
+  path enforces is reused, not restated.
+- NoticeReasonCode gains INVALID_INPUT with its own heading/explanation, and noticeReasonFromError
+  maps InvalidCommandNameError to it -- a rejected submission renders through the standard notice
+  frame rather than as a module fault.
+- Removes the dead navigation control: CommandRouter.navigationControl was declared and never called,
+  and RenderDescriptor.navigation was never populated; both and the NavigationControl type are gone.
+- **Verification:** `typecheck`, `lint`, `format`, corpus gates 27/27.
 
 ---
 

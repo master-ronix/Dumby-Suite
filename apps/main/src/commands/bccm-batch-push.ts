@@ -68,6 +68,21 @@ export interface CommandLookup {
  * overwrite, one invalid name rejects the WHOLE batch and nothing changes — so an invalid name must
  * never be sent.
  */
+/**
+ * UR-20261012-032 — thrown when a submitted rename/alias name is not a legal Discord command name.
+ * Rejecting it at the point of entry is what stops a rename being accepted and then silently dropped
+ * at push time (UR-20261012-027 §6).
+ */
+export class InvalidCommandNameError extends Error {
+  constructor(readonly attempted: string) {
+    super(
+      `"${attempted}" is not a valid command name — Discord allows 1-32 lowercase characters from ` +
+        `letters, digits, hyphen and underscore`,
+    );
+    this.name = 'InvalidCommandNameError';
+  }
+}
+
 export function isValidCommandName(name: string): boolean {
   return /^[-_\p{L}\p{N}\p{sc=Deva}\p{sc=Thai}]{1,32}$/u.test(name) && name === name.toLowerCase();
 }

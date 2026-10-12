@@ -11,7 +11,6 @@ import {
   CoreRenderer,
   FOLLOWUP_ALARM_MS,
   type ModeControl,
-  type NavigationControl,
   type NavigationOption,
   type NoticeReasonCode,
   type PageActionRow,
@@ -605,31 +604,6 @@ export class CommandRouter {
       hello: 'Hello World',
     };
     return titles[commandName] ?? this.surfaceName(commandName);
-  }
-
-  /**
-   * §11.3 — Dashboard (Home) first, then every registered page. The installed/marketplace prefix
-   * lives in the option description only (§11.4), truncated to Discord's 100-character limit.
-   */
-  private navigationControl(current: string, invokerId: string): NavigationControl {
-    const commands = [...this.registry.all()].sort((a, b) =>
-      a.data.name === 'dashboard' ? -1 : b.data.name === 'dashboard' ? 1 : 0,
-    );
-    const options: NavigationOption[] = commands.map((command) => {
-      const name = command.data.name;
-      const isHome = name === 'dashboard';
-      const installed = this.registry.tierForCommand(command) !== 'marketplace';
-      const description = isHome
-        ? '🏠 Home'
-        : `${installed ? '✅ installed' : '🛒 marketplace'} — ${command.data.description}`;
-      return {
-        label: isHome ? 'Dashboard (Home)' : this.pageTitle(name),
-        value: name,
-        description: description.slice(0, 100),
-        ...(name === current ? { default: true } : {}),
-      };
-    });
-    return { customId: `dumby:nav:${invokerId}:${current}`, options };
   }
 
   /**
