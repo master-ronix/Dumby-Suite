@@ -73,6 +73,7 @@
 | M50 | Persona runtime: hosts each active persona's gateway, deploys its bound modules' commands, off by default (UR-20261012-038) | DONE (typecheck+lint+format) |
 | M51 | Residuals: Route B no longer throws on an unreadable token; Refresh keeps the selected profile; presence fetches an uncached guild (UR-20261012-039) | DONE (typecheck+lint+format) |
 | M52 | BOOT OUTAGE FIX: a malformed signing key threw from the boot path (ERR_OSSL_UNSUPPORTED) after UR-036 moved resolution outside its try/catch; armBuildProvenance cannot throw, and the same risk was closed for the registrar seed and the persona listing (UR-20261012-040) | DONE (typecheck+lint+format) |
+| M53 | Persona registration corrected to bring-your-own-identity: ownership proven by the bot token (GET /applications/@me), the registrar allowlist demoted to an OPTIONAL narrowing, and the persona page reduced to one info control carrying the invite (UR-20261012-041) | DONE (typecheck+lint+format) |
 
 Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (reason)`.
 

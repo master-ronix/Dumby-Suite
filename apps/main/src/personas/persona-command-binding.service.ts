@@ -31,14 +31,18 @@ export class PersonaCommandBindingService {
     input: PersonaRegistrationInput,
     costSignals: FreeCharterCostSignals,
   ): Promise<PersonaIdentity> {
-    // UR-20261012-037 — authorisation first: the internal API key proves the CALLER is trusted;
-    // this proves the caller may register THIS application.
-    const authorised =
-      this.registrars === undefined
-        ? false
-        : await this.registrars.isAuthorised(input.registrarAuthority, input.discordApplicationId);
-    if (!authorised) {
-      throw new RegistrarNotAuthorisedError(input.registrarAuthority, input.discordApplicationId);
+    // UR-20261012-041 — the registry is an OPTIONAL allowlist, NOT the gate. ADR-011/ADR-008 make
+    // registration bring-your-own-identity, so an EMPTY registry means "no allowlist configured"
+    // and registration proceeds; a non-empty one is an operator's deliberate narrowing and is
+    // enforced. Ownership of the application is proven separately, at the surface, by the bot token.
+    if (this.registrars !== undefined && (await this.registrars.hasAny())) {
+      const authorised = await this.registrars.isAuthorised(
+        input.registrarAuthority,
+        input.discordApplicationId,
+      );
+      if (!authorised) {
+        throw new RegistrarNotAuthorisedError(input.registrarAuthority, input.discordApplicationId);
+      }
     }
     const existing = await this.identities.findByApplicationId(input.discordApplicationId);
     assertApplicationNotRegistered(existing);

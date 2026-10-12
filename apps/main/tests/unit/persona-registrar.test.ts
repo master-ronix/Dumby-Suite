@@ -52,17 +52,33 @@ function registrarStore(authorised: boolean) {
   };
 }
 
-describe('registrar authorisation at registration', () => {
-  test('registers when the authority is recorded for the application', async () => {
-    const { store, isAuthorised } = registrarStore(true);
+describe('the registrar registry is an OPTIONAL allowlist (UR-20261012-041)', () => {
+  test('an EMPTY registry leaves registration open — bring-your-own-identity', async () => {
+    // ADR-011/ADR-008: a guild administrator registers their OWN persona. An unconfigured registry
+    // must not stand in the way; ownership is proven at the surface by the bot token.
+    const { store, isAuthorised } = registrarStore(false, false);
+    const { service, identities } = makeService(store);
+    await service.registerPersona(input(), signals);
+    expect(identities.create).toHaveBeenCalledTimes(1);
+    expect(isAuthorised).not.toHaveBeenCalled();
+  });
+
+  test('no registry wired at all also leaves registration open', async () => {
+    const { service, identities } = makeService(undefined);
+    await service.registerPersona(input(), signals);
+    expect(identities.create).toHaveBeenCalledTimes(1);
+  });
+
+  test('a CONFIGURED registry is enforced', async () => {
+    const { store, isAuthorised } = registrarStore(true, true);
     const { service, identities } = makeService(store);
     await service.registerPersona(input(), signals);
     expect(isAuthorised).toHaveBeenCalledWith('master_ronix', 'app-9');
     expect(identities.create).toHaveBeenCalledTimes(1);
   });
 
-  test('refuses an authority that is not recorded', async () => {
-    const { store } = registrarStore(false);
+  test('a configured registry refuses an authority that is not recorded', async () => {
+    const { store } = registrarStore(false, true);
     const { service, identities } = makeService(store);
     await expect(service.registerPersona(input(), signals)).rejects.toBeInstanceOf(
       RegistrarNotAuthorisedError,
@@ -70,26 +86,14 @@ describe('registrar authorisation at registration', () => {
     expect(identities.create).not.toHaveBeenCalled();
   });
 
-  test('refuses EVERY registration when no registry is wired, rather than waving it through', async () => {
-    const { service, identities } = makeService(undefined);
-    await expect(service.registerPersona(input(), signals)).rejects.toBeInstanceOf(
-      RegistrarNotAuthorisedError,
-    );
-    expect(identities.create).not.toHaveBeenCalled();
-  });
-
-  test('authorisation is checked BEFORE the duplicate check', async () => {
-    const { store } = registrarStore(false);
+  test('the allowlist is checked BEFORE the duplicate check', async () => {
+    const { store } = registrarStore(false, true);
     const { service, identities } = makeService(store);
     identities.findByApplicationId.mockResolvedValueOnce({} as never);
     await expect(service.registerPersona(input(), signals)).rejects.toBeInstanceOf(
       RegistrarNotAuthorisedError,
     );
-    await expect(
-      makeService(registrarStore(true).store).service.registerPersona(input(), signals),
-    ).resolves.toBeDefined();
-    // the duplicate path still exists, just after authorisation
-    const dup = makeService(registrarStore(true).store);
+    const dup = makeService(registrarStore(true, true).store);
     dup.identities.findByApplicationId.mockResolvedValueOnce({} as never);
     await expect(dup.service.registerPersona(input(), signals)).rejects.toBeInstanceOf(
       ApplicationAlreadyRegisteredError,
@@ -144,6 +148,7 @@ describe('seedRegistrarsSafely (boot safety)', () => {
     const warn = vi.fn();
     const store = {
       isAuthorised: vi.fn(),
+      hasAny: vi.fn(),
       grant: vi.fn(async () => {
         throw new Error('relation does not exist');
       }),
@@ -157,6 +162,7 @@ describe('seedRegistrarsSafely (boot safety)', () => {
   test('a healthy seed reports its count', async () => {
     const store = {
       isAuthorised: vi.fn(),
+      hasAny: vi.fn(),
       grant: vi.fn(async () => undefined),
       revoke: vi.fn(),
       list: vi.fn(),

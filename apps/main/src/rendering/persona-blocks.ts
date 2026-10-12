@@ -238,17 +238,9 @@ export function personaBlocks(
       style?: 1 | 2 | 3 | 4 | 5;
       emoji?: { name: string; id?: string };
     }> = [];
-    // UR-20261012-031 — the invite control. With an OAuth2 secret registered the same click also
-    // authorizes; without one it is a plain bot install. One control, never a menu of options.
-    if (selected !== undefined && selected.inviteUrl !== '') {
-      controls.push({
-        url: selected.inviteUrl,
-        label: selected.hasOAuth ? 'Invite + authorize persona' : 'Invite persona',
-        style: 5,
-        emoji: customEmojiParts(PROFILE_ICON_NAME) ?? { name: PROFILE_FALLBACK },
-      });
-    }
-    // The OAuth configuration path: the callback URL to register and the short portal guide.
+    // UR-20261012-041 — ONE control: the info card. It states the callback URL to register, the
+    // portal guide, and — once the redirect is configured — the persona's invite link, so the
+    // operator's flow is "open info, read, invite" rather than a row of competing options.
     controls.push({
       customId: `dumby:persona-setup:${invokerId}:${selected?.applicationId ?? ''}`,
       label: 'OAuth setup',

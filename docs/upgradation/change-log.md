@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.47
+version: 5.5.48
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,26 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.48 — Persona registration: ownership, not allowlist (UR-20261012-041) — 2026-10-12
+
+- 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- The operator challenged UR-20261012-037's registrar allowlist -- "Dumby is a public platform, anybody
+  can register a persona themselves" -- and THE DOCUMENTS AGREE. ADR-011: registration is
+  bring-your-own-identity, the ADMINISTRATOR supplies their own application. ADR-008 and system-map s11
+  say the same. So UR-037 built the wrong mechanism: the registrar is the guild administrator, not the
+  platform operator, and an allowlist of platform usernames gates the wrong party.
+- OWNERSHIP IS THE GATE: verifyApplicationOwnership asks Discord (GET /applications/@me) which
+  application a bot token belongs to and requires it to be the one claimed. Holding the token IS
+  holding the application -- a real proof, and it needs no operator in the loop.
+- The registry becomes an OPTIONAL allowlist, enforced ONLY when it has entries. The previous
+  fail-closed-on-empty rule was the defect. registrarAuthority is a recorded identifier, not a
+  permission. PERSONA_REGISTRAR_AUTHORITIES should now be LEFT EMPTY.
+- The surface refuses before creating anything, with a 403 naming the mismatch.
+- One control on the persona page: the invite link moved INSIDE the info card.
+- **Verification:** typecheck, lint, format, corpus gates 27/27, test-import guard.
 
 ---
 

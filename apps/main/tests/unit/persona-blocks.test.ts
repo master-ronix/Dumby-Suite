@@ -111,11 +111,11 @@ describe('personaBlocks', () => {
     const asAdmin = personaBlocks(data, 'u1', { isAdmin: true });
     const row = asAdmin.find((b) => (b as Any)['kind'] === 'row') as Any;
     const buttons = row['buttons'] as Array<Any>;
-    // The invite control is a LINK button; with OAuth registered it also authorizes.
-    expect(buttons[0]?.['url']).toBe('https://dumby.example/auth/authorize?app=142&guild=g1&bot=1');
-    expect(buttons[0]?.['label']).toBe('Invite + authorize persona');
-    expect(buttons[1]?.['customId']).toBe('dumby:persona-setup:u1:1422973358818988155');
-    expect(buttons[1]?.['label']).toBe('OAuth setup');
+    // UR-20261012-041 — ONE control. The invite link now lives in the info card, so the row carries
+    // only the setup control rather than a menu of competing options.
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0]?.['customId']).toBe('dumby:persona-setup:u1:1422973358818988155');
+    expect(buttons[0]?.['label']).toBe('OAuth setup');
   });
 
   test('states presence in the headline subtext, separately from the online state', () => {

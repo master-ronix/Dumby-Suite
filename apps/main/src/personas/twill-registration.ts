@@ -14,6 +14,7 @@ import type { EnvelopeRootKey, SealedEnvelope } from '../crypto/envelope.js';
 import type { Logger } from '../logging/logger.js';
 import type { PersonaBindingStore, PersonaIdentityStore } from './persona.repository.js';
 import type { PersonaRegistrarStore } from './persona-registrar.repository.js';
+import { verifyApplicationOwnership } from './application-ownership.js';
 import {
   derivePersonaBotTokenDigest,
   freeCharterStatus,
@@ -119,6 +120,8 @@ export interface TwillPersonaRouteDeps {
   logger: Logger;
   /** ADR-008 — the free-charter cost signals the registration gate reads. */
   costSignals: FreeCharterCostSignals;
+  /** Injectable for tests: the fetch used to prove application ownership. */
+  ownershipFetch?: typeof fetch | undefined;
 }
 
 /** HTTP status for a registration rejection, by error name. */
@@ -154,6 +157,18 @@ export function registerTwillPersonaRoutes(
       if (!parsed.ok) {
         logger.warn(`twill-register-rejected: ${parsed.reason}`);
         return reply.code(400).send({ error: 'Bad Request', reason: parsed.reason });
+      }
+      // UR-20261012-041 — prove the applicant HOLDS the application before anything is created.
+      // ADR-011/ADR-008: registration is bring-your-own-identity, so the bot token is the proof, and
+      // no operator allowlist stands between a guild administrator and their own persona.
+      const ownership = await verifyApplicationOwnership({
+        botToken: str(request.body?.botToken) ?? '',
+        discordApplicationId: parsed.input.discordApplicationId,
+        ...(deps.ownershipFetch !== undefined ? { fetchImpl: deps.ownershipFetch } : {}),
+      });
+      if (!ownership.owned) {
+        logger.warn(`twill-register-ownership-refused: ${ownership.reason}`);
+        return reply.code(403).send({ error: 'Ownership not proven', reason: ownership.reason });
       }
       try {
         const persona = await service.registerPersona(parsed.input, costSignals);

@@ -14,6 +14,11 @@ export interface PersonaRegistrarRecord {
 
 export interface PersonaRegistrarStore {
   isAuthorised(authority: string, discordApplicationId: string): Promise<boolean>;
+  /**
+   * UR-20261012-041 — whether ANY grant exists. An empty registry means the operator has not asked
+   * for an allowlist, so registration is governed by ownership alone (bring-your-own-identity).
+   */
+  hasAny(): Promise<boolean>;
   grant(record: PersonaRegistrarRecord): Promise<void>;
   revoke(authority: string, discordApplicationId: string): Promise<boolean>;
   list(): Promise<PersonaRegistrarRecord[]>;
@@ -56,6 +61,11 @@ export class PostgresPersonaRegistrarStore implements PersonaRegistrarStore {
         builder.where({ discordApplicationId }).orWhere({ discordApplicationId: '' });
       })
       .first();
+    return row !== undefined;
+  }
+
+  async hasAny(): Promise<boolean> {
+    const row = await this.knex('persona_registrars').whereNull('deletedAt').first();
     return row !== undefined;
   }
 
