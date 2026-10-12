@@ -192,48 +192,176 @@ export function createPageDataProvider(
     };
   }
 
-  async function persona(): Promise<PageData> {
-    const client = getClient();
-    const modules = moduleRegistry.all();
-    const online = client?.isReady() === true;
-    const displayName = client?.user?.username ?? 'Main Bot';
-    const shards = config.get('SHARD_COUNT');
+  /** The resident main bot's profile id on the /persona board. */
+  const MAIN_PROFILE_ID = 'main';
 
-    // UR-20261011-025 — the page carries the bot's identity as one compact field line and its
-    // command inventory grouped by tier, so every registered command stays visible without a
-    // run-on line. `personaBlocks` renders it; the renderer never sees this raw shape.
-    const identity: Array<readonly [string, string]> = [];
-    if (client?.application?.id !== undefined) {
-      identity.push(['Application ID', client.application.id]);
+  interface PersonaProfile {
+    readonly id: string;
+    readonly name: string;
+    readonly isMain: boolean;
+    readonly applicationId: string;
+    readonly shards: string;
+    readonly dmBehavior: string;
+    readonly statusKind: string;
+    readonly statusLabel: string;
+    readonly moduleCount: number;
+    readonly commandCount: number;
+  }
+
+  /**
+   * UR-20261012-026 — the /persona board. The page opens on the profile of the persona that is
+   * actually running the command in this guild (the persona bound to this module, else the resident
+   * main bot), lists every persona active in the guild for the switcher, and reports the commands
+   * the selected profile owns. A failed persona read degrades to the main bot alone rather than
+   * failing the page.
+   */
+  async function persona(
+    moduleId: string,
+    guildId: string | null,
+    selected?: string,
+  ): Promise<PageData> {
+    const client = getClient();
+    const online = client?.isReady() === true;
+    const mainName = client?.user?.username ?? 'Main Bot';
+    const mainAppId = client?.application?.id ?? '';
+    const shards = String(config.get('SHARD_COUNT'));
+
+    // The guild's persona bindings: (guildId, moduleSlug) -> personaId. A module bound to a persona
+    // is owned by that persona in this guild; every other module belongs to the resident main bot.
+    let bindings: Array<{ moduleSlug: string; personaId: string }> = [];
+    let registered: Array<{
+      id: string;
+      name: string;
+      discordApplicationId: string;
+      dmBehavior: string;
+      shardAllocation: number;
+      status: string;
+    }> = [];
+    if (guildId !== null) {
+      try {
+        const rows = (await db
+          .knex('guild_persona_bindings')
+          .where({ guildId })
+          .whereNull('deletedAt')) as ReadonlyArray<{ moduleSlug?: unknown; personaId?: unknown }>;
+        bindings = rows
+          .filter((row) => typeof row.moduleSlug === 'string' && typeof row.personaId === 'string')
+          .map((row) => ({
+            moduleSlug: row.moduleSlug as string,
+            personaId: row.personaId as string,
+          }));
+        const personaIds = [...new Set(bindings.map((binding) => binding.personaId))];
+        if (personaIds.length > 0) {
+          const personaRows = (await db
+            .knex('persona_identities')
+            .whereIn('id', personaIds)
+            .whereNull('deletedAt')) as ReadonlyArray<Record<string, unknown>>;
+          registered = personaRows
+            .filter((row) => typeof row['id'] === 'string' && typeof row['name'] === 'string')
+            .map((row) => ({
+              id: row['id'] as string,
+              name: row['name'] as string,
+              discordApplicationId:
+                typeof row['discordApplicationId'] === 'string' ? row['discordApplicationId'] : '',
+              dmBehavior: typeof row['dmBehavior'] === 'string' ? row['dmBehavior'] : 'prohibited',
+              shardAllocation:
+                typeof row['shardAllocation'] === 'number' ? row['shardAllocation'] : 0,
+              status: typeof row['status'] === 'string' ? row['status'] : 'active',
+            }));
+        }
+      } catch (err) {
+        logger.warn('page-data-persona-unavailable', { guildId, reason: String(err) });
+      }
     }
-    identity.push(['Display Name', displayName]);
-    identity.push(['Bound Server', 'this guild (primary deployment)']);
-    identity.push(['Shards', String(shards)]);
-    identity.push(['DM Behavior', 'Prohibited (main bot)']);
+
+    const ownerOf = new Map(bindings.map((binding) => [binding.moduleSlug, binding.personaId]));
+    const boundPersonaIds = new Set(ownerOf.values());
+    const currentProfileId = ownerOf.get(moduleId) ?? MAIN_PROFILE_ID;
+
+    const allModules = moduleRegistry.all();
+    const modulesOwnedBy = (profileId: string) =>
+      allModules.filter((entry) =>
+        profileId === MAIN_PROFILE_ID
+          ? !boundPersonaIds.has(entry.manifest.name)
+          : ownerOf.get(entry.manifest.name) === profileId,
+      );
+
+    const profileFor = (
+      id: string,
+      name: string,
+      applicationId: string,
+      isMain: boolean,
+      dm: string,
+      shard: string,
+      statusKind: string,
+      statusLabel: string,
+    ): PersonaProfile => {
+      const owned = modulesOwnedBy(id);
+      return {
+        id,
+        name,
+        isMain,
+        applicationId,
+        shards: shard,
+        dmBehavior: dm,
+        statusKind,
+        statusLabel,
+        moduleCount: owned.length,
+        commandCount: owned.reduce((total, entry) => total + entry.manifest.commands.length, 0),
+      };
+    };
+
+    const profiles: PersonaProfile[] = [
+      profileFor(
+        MAIN_PROFILE_ID,
+        mainName,
+        mainAppId,
+        true,
+        'Prohibited',
+        shards,
+        online ? 'online' : 'offline',
+        online ? 'Online' : 'Offline',
+      ),
+      ...registered.map((entry) =>
+        profileFor(
+          entry.id,
+          entry.name,
+          entry.discordApplicationId,
+          false,
+          entry.dmBehavior === 'allowed' ? 'Allowed' : 'Prohibited',
+          String(entry.shardAllocation),
+          entry.status === 'active' ? 'active' : 'retired',
+          entry.status === 'active' ? 'Active' : 'Retired',
+        ),
+      ),
+    ];
+
+    const selectedId =
+      selected !== undefined && profiles.some((profile) => profile.id === selected)
+        ? selected
+        : currentProfileId;
+    const selectedProfile = profiles.find((profile) => profile.id === selectedId) ?? profiles[0];
+    const ownedModules = modulesOwnedBy(selectedProfile?.id ?? MAIN_PROFILE_ID);
 
     const tierOrder = ['core', 'standard', 'marketplace'] as const;
     const tiers = tierOrder
       .map((tier) => ({
         tier,
-        modules: modules
+        modules: ownedModules
           .filter((entry) => entry.manifest.tier === tier)
           .map((entry) => ({
             name: entry.manifest.name,
+            icon: moduleIcon(entry.manifest.ui?.icon),
             commands: entry.manifest.commands.map((command) => command.name),
           })),
       }))
       .filter((group) => group.modules.length > 0);
 
-    const commandCount = modules.reduce(
-      (total, entry) => total + entry.manifest.commands.length,
-      0,
-    );
-
     return {
       title: 'Active Personas',
       status: online ? 'online' : 'offline',
-      summary: `${displayName} · ${shards} shard${shards === 1 ? '' : 's'} · ${modules.length} bound modules · ${commandCount} commands`,
-      identity,
+      currentProfileId,
+      selectedProfileId: selectedProfile?.id ?? MAIN_PROFILE_ID,
+      profiles,
       tiers,
       note: 'Persona creation and configuration are handled through the Twill registration API.',
     };
@@ -440,7 +568,7 @@ export function createPageDataProvider(
       case 'health':
         return health();
       case 'persona':
-        return persona();
+        return persona(moduleId, guildId, query);
       case 'queue':
         return queue(guildId);
       case 'permit':

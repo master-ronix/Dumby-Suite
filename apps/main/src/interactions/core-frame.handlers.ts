@@ -149,6 +149,17 @@ export function registerCoreFrameHandlers(deps: CoreFrameHandlerDeps): void {
         }
         await router.dispatch(asPageInteraction(interaction, 'browse'));
       }
+      if (action === 'profile') {
+        // UR-20261012-026 — the /persona profile switcher: re-dispatch the page with the selected
+        // persona id, so the board renders that profile's identity and command inventory. The id
+        // travels on the page-data query channel (the same one /browse's search reuses).
+        const selected = interaction.values?.[0];
+        await router.dispatch(
+          asPageInteraction(interaction, 'persona'),
+          selected !== undefined ? { query: selected } : undefined,
+        );
+        return;
+      }
     },
   });
 

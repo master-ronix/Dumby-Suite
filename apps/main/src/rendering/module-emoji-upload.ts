@@ -4,7 +4,12 @@ import type { Logger } from '../logging/logger.js';
 import {
   COMMAND_DECORATION_ICON_NAME,
   FALLBACK_MODULE_ICON_NAME,
+  IDENTITY_ICON_NAME,
+  INFO_ICON_NAME,
+  PROFILE_ICON_NAME,
   registerModuleEmoji,
+  STATUS_OFFLINE_ICON_NAME,
+  STATUS_ONLINE_ICON_NAME,
   UNINSTALL_ICON_NAME,
 } from './module-icons.js';
 
@@ -36,6 +41,12 @@ const ICON_ASSETS: ReadonlyArray<readonly [string, string]> = [
   ['dumby_persona', '../../assets/module-icons/persona.png'],
   ['dumby_permit', '../../assets/module-icons/permit.png'],
   ['dumby_modules', '../../assets/module-icons/modules.png'],
+  // UR-20261012-026 — the /persona page's indicator set.
+  [STATUS_ONLINE_ICON_NAME, '../../assets/status-online-icon.png'],
+  [STATUS_OFFLINE_ICON_NAME, '../../assets/status-offline-icon.png'],
+  [INFO_ICON_NAME, '../../assets/info-icon.png'],
+  [IDENTITY_ICON_NAME, '../../assets/identity-icon.png'],
+  [PROFILE_ICON_NAME, '../../assets/profile-icon.png'],
 ];
 
 /**

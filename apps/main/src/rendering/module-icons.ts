@@ -25,6 +25,25 @@ export const FALLBACK_MODULE_ICON = '\ud83d\udce6'; // package
 /** The uninstall / disable control's icon (the module-detail card's control). */
 export const UNINSTALL_ICON_NAME = 'dumby_uninstall';
 
+/**
+ * UR-20261012-026 — the /persona page's indicator set. The page uses custom application emojis
+ * rather than general unicode glyphs for its status, identity and info markers, so the board reads
+ * as one designed surface. Each resolves through `customEmojiRef`; a unicode fallback applies until
+ * the upload lands (or if it failed), so a page never renders without an indicator.
+ */
+export const STATUS_ONLINE_ICON_NAME = 'dumby_status_online';
+export const STATUS_OFFLINE_ICON_NAME = 'dumby_status_offline';
+export const INFO_ICON_NAME = 'dumby_info';
+export const IDENTITY_ICON_NAME = 'dumby_identity';
+export const PROFILE_ICON_NAME = 'dumby_profile';
+
+/** The unicode fallbacks for the indicator set, used only when the emoji is unavailable. */
+export const STATUS_ONLINE_FALLBACK = '\u{1F7E2}'; // green circle
+export const STATUS_OFFLINE_FALLBACK = '\u26AB'; // medium black circle
+export const INFO_FALLBACK = '\u2139\uFE0F'; // information
+export const IDENTITY_FALLBACK = '\u{1FAAA}'; // identification card
+export const PROFILE_FALLBACK = '\u{1F464}'; // bust in silhouette
+
 const emojiIds = new Map<string, string>();
 
 export function registerModuleEmoji(name: string, id: string): void {

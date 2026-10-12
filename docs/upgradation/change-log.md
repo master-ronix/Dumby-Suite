@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.29
+version: 5.5.30
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,23 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.30 — /persona Profile-Aware Board (UR-20261012-026) — 2026-10-12
+
+- 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- Operator corrections on the UR-025 board: use custom indicators rather than general emoji, drop the
+  restated guild, tidy the command inventory, and let members switch between the personas active in
+  the guild.
+- The page now opens on the persona **running the command** (the persona bound to this module, else
+  the resident main bot) instead of a hardcoded main bot, lists every persona active in the guild,
+  and renders the selected profile's identity and owned-command inventory.
+- Five indicator assets ship as application emojis (uploaded at bootstrap, unicode fallback until
+  then): `dumby_status_online`, `dumby_status_offline`, `dumby_info`, `dumby_identity`,
+  `dumby_profile`.
+- **Verification:** `typecheck`, `lint`, `format`, corpus gates 27/27. `persona-blocks.test.ts`
+  rewritten; `page-data.test.ts` covers the no-persona, bound-persona and failed-read paths.
 
 ---
 

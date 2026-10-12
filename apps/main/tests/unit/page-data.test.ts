@@ -133,17 +133,89 @@ describe('page-data provider', () => {
     expect(groups.find((group) => group.name === 'Discord API')?.status).toBe('ok');
   });
 
-  test('persona reports the status, identity and tier-grouped inventory', async () => {
+  test('persona opens on the main bot when the guild has no personas', async () => {
     const provider = createPageDataProvider(makeDeps({ getClient: () => fakeClient }));
     const data = await provider('persona', null);
     expect(data['title']).toBe('Active Personas');
     expect(data['status']).toBe('online');
-    expect(String(data['summary'])).toContain('bound modules');
-    // UR-20261011-025 — the identity line and the tier-grouped inventory replaced the old group/rows.
-    expect(JSON.stringify(data['identity'])).toContain('Bound Server');
+    expect(data['currentProfileId']).toBe('main');
+    const profiles = data['profiles'] as Array<{ id: string; name: string; isMain: boolean }>;
+    expect(profiles).toHaveLength(1);
+    expect(profiles[0]?.isMain).toBe(true);
+    expect(profiles[0]?.name).toBe('dumby');
     const tiers = data['tiers'] as Array<{ tier: string; modules: unknown[] }>;
     expect(tiers.length).toBeGreaterThan(0);
     expect(tiers[0]?.modules.length).toBeGreaterThan(0);
+  });
+
+  test('persona lists the guild personas and opens on the one running the command', async () => {
+    const personaRegistry = {
+      all: () => [
+        mod('persona', 'core', ['persona'], { icon: 'dumby_persona' }),
+        mod('health', 'core', ['health']),
+        mod('hello-world', 'standard', ['hello']),
+      ],
+    } as unknown as PageDataDeps['moduleRegistry'];
+    const bindingRows = [{ moduleSlug: 'persona', personaId: 'p-2' }];
+    const personaRows = [
+      {
+        id: 'p-2',
+        name: 'Aurora',
+        discordApplicationId: 'app-2',
+        dmBehavior: 'allowed',
+        shardAllocation: 1,
+        status: 'active',
+      },
+    ];
+    const knex = ((table: string) => {
+      const rows = table === 'guild_persona_bindings' ? bindingRows : personaRows;
+      const builder: Dict = {};
+      builder['where'] = () => builder;
+      builder['whereIn'] = () => builder;
+      builder['whereNull'] = () => builder;
+      builder['then'] = (resolve: (v: unknown) => unknown) => Promise.resolve(rows).then(resolve);
+      return builder;
+    }) as unknown as Dict;
+    knex['raw'] = async () => [{}];
+    const provider = createPageDataProvider(
+      makeDeps({ getClient: () => fakeClient, moduleRegistry: personaRegistry, db: { knex } }),
+    );
+
+    const data = await provider('persona', 'guild-1');
+    const profiles = data['profiles'] as Array<{
+      id: string;
+      isMain: boolean;
+      commandCount: number;
+    }>;
+    expect(profiles.map((p) => p.id)).toEqual(['main', 'p-2']);
+    // the persona bound to the `persona` module runs the command, so it is the opening profile
+    expect(data['currentProfileId']).toBe('p-2');
+    expect(data['selectedProfileId']).toBe('p-2');
+    const personaTiers = data['tiers'] as Array<{ modules: Array<{ name: string }> }>;
+    expect(personaTiers.flatMap((t) => t.modules.map((m) => m.name))).toEqual(['persona']);
+
+    // switching to the main bot shows the modules it still owns
+    const switched = await provider('persona', 'guild-1', 'main');
+    expect(switched['selectedProfileId']).toBe('main');
+    const mainTiers = switched['tiers'] as Array<{ modules: Array<{ name: string }> }>;
+    expect(mainTiers.flatMap((t) => t.modules.map((m) => m.name))).toEqual([
+      'health',
+      'hello-world',
+    ]);
+  });
+
+  test('persona warns and falls back to the main bot when the persona read fails', async () => {
+    const logger = { warn: vi.fn(), info: vi.fn(), error: vi.fn(), debug: vi.fn() };
+    const knex = (() => {
+      throw new Error('db down');
+    }) as unknown as Dict;
+    const provider = createPageDataProvider(
+      makeDeps({ getClient: () => fakeClient, db: { knex }, logger }),
+    );
+    const data = await provider('persona', 'guild-1');
+    const profiles = data['profiles'] as Array<{ id: string }>;
+    expect(profiles.map((p) => p.id)).toEqual(['main']);
+    expect(logger.warn).toHaveBeenCalledWith('page-data-persona-unavailable', expect.any(Object));
   });
 
   test('queue without a guild performs no query and reports none pending', async () => {

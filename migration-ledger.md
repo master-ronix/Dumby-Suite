@@ -6,7 +6,7 @@
 > continued, never restarted.
 
 - **Created:** 2026-10-08
-- **Last updated:** 2026-10-12 · **Current item:** /persona interface revision (UR-20261011-025, executed) · **Next action:** authorize each guild from /dashboard, then flip BCCM_BATCH_PUSH_DRY_RUN=false and watch for sent>0
+- **Last updated:** 2026-10-12 · **Current item:** /persona profile-aware board (UR-20261012-026, executed) · **Next action:** authorize each guild from /dashboard, then flip BCCM_BATCH_PUSH_DRY_RUN=false and watch for sent>0
 - **Protocol:** `docs/migration/migration-prompt.md` v5.2.0
 - **Coverage map:** the change-set brief (18 items) → one owning item each (M0–M17)
 - **Record shapes:** `docs/migration/ledger-template.md` §3 (item) and §4 (slice)
@@ -54,6 +54,7 @@
 | M31 | Boot command deploy moved off the readiness path (UR-20261011-024) | DONE |
 | M32 | /persona interface revision — status headline + Refresh, identity line, tier-grouped inventory (UR-20261011-025) | DONE (typecheck+lint+format) |
 | M33 | Persona page-data test updated to the new shape (UR-20261011-025 v1.1) | DONE |
+| M34 | /persona profile-aware board: custom indicators, no guild line, tidier inventory, profile switcher (UR-20261012-026) | DONE (typecheck+lint+format) |
 
 Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (reason)`.
 
