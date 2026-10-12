@@ -2,8 +2,11 @@ import { describe, expect, test, vi } from 'vitest';
 import { buildComponentInteractionHandler } from '../../src/personas/persona-interaction-handler.js';
 import type { InteractionRegistry } from '../../src/interactions/interaction-registry.js';
 
-function deps(dispatch: (i: unknown) => Promise<boolean>) {
+function deps(dispatchImpl: (i: unknown) => Promise<boolean>) {
   const warn = vi.fn();
+  // UR-20261012-043 — the registry's dispatch must be a SPY for the assertions; passing the raw
+  // function made every `.mock` access throw ("is not a spy").
+  const dispatch = vi.fn(dispatchImpl);
   const registry = { dispatch } as unknown as InteractionRegistry;
   return { deps: { registry, logger: { warn, info: vi.fn() } as never }, warn, dispatch };
 }

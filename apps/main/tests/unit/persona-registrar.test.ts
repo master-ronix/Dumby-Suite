@@ -39,16 +39,21 @@ function makeService(registrars: PersonaRegistrarStore | undefined) {
   return { service, identities };
 }
 
-function registrarStore(authorised: boolean) {
+function registrarStore(authorised: boolean, configured = true) {
   const isAuthorised = vi.fn(async () => authorised);
+  // UR-20261012-041 — `hasAny` is what decides whether the registry is an allowlist AT ALL: an empty
+  // registry leaves registration open, so the fake must expose it or registerPersona throws.
+  const hasAny = vi.fn(async () => configured);
   return {
     store: {
       isAuthorised,
+      hasAny,
       grant: vi.fn(),
       revoke: vi.fn(),
       list: vi.fn(),
     } as PersonaRegistrarStore,
     isAuthorised,
+    hasAny,
   };
 }
 
@@ -133,6 +138,7 @@ describe('seedRegistrars', () => {
     const grant = vi.fn(async () => undefined);
     const store = {
       isAuthorised: vi.fn(),
+      hasAny: vi.fn(),
       grant,
       revoke: vi.fn(),
       list: vi.fn(),

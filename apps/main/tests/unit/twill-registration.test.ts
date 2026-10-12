@@ -133,6 +133,13 @@ function buildRoutes(overrides: Record<string, unknown> = {}) {
     rootKey,
     logger: logger as never,
     costSignals: { dedicatedInfrastructureRequired: false, perPersonaCostMeasurable: false },
+    // UR-20261012-041 — the ownership proof is a real Discord call. Stub it to confirm the token
+    // belongs to the claimed application, or every register test gets the 403 the gate returns.
+    ownershipFetch: vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({ id: 'app-9' }),
+    })),
     ...overrides,
   } as never);
   return { app, service, identities, bindings, logger };

@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.50
+version: 5.5.51
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,34 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.51 — Gate 4 unblocked: the deploy-stopping failures were four test fixtures (UR-20261012-045) — 2026-10-12
+
+- 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- WHY NOTHING DEPLOYED: every deployment since 17:20 UTC was SKIPPED, and the cause was not Railway.
+  `Gates (D-8.4 strict sequence)` FAILED on 8ad10b8 with 11 annotations -- 10 failures, ALL in test
+  fixtures written in UR-041 and UR-043. Not one was a product defect.
+  - twill-registration (x2): received 403, expected 201/409 -- the UR-041 ownership gate is a real
+    Discord call and the fixture never stubbed it, so every register test was refused before the route
+    logic ran.
+  - persona-registrar (x3): `this.registrars.hasAny is not a function` -- the registrarStore fixture
+    kept its OLD one-argument signature; a UR-041 edit to it SILENTLY DID NOT APPLY, and the tests
+    already called it with two arguments.
+  - persona-interaction-handler (x4): "is not a spy or a call to a spy" -- the fixture returned the RAW
+    dispatch function, so every `.mock` access threw.
+- FIXES: buildRoutes stubs ownershipFetch; registrarStore(authorised, configured=true) exposes hasAny
+  (and duplicate hasAny lines a blind replace introduced are collapsed); the handler fixture wraps its
+  dispatch in vi.fn(...).
+- THE VERIFICATION UNLOCK: vitest could not run in the build sandbox -- it deadlocked inside esbuild.
+  The real cause was an ADDRESS-SPACE ULIMIT of 1.5 GB, which stopped V8 reserving its CodeRange and
+  stopped WebAssembly allocating at all (RangeError: WebAssembly.instantiate(): Out of memory).
+  Raising it (ulimit -v unlimited; the hard limit is already unlimited) makes the suite run.
+  - THE FULL UNIT SUITE NOW RUNS LOCALLY: 1041 tests passed, 0 failed. Six test FILES report
+    "Cannot find package '@workspace/swastik/manifest'" -- a local artifact of that workspace package
+    not being built here; CI builds it and it produced none of these failures.
+- **Verification:** full unit suite 1041 passed / 0 failed; typecheck, lint, format green; gates 27/27.
 
 ---
 
