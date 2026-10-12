@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.44
+version: 5.5.45
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,24 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.45 — The Persona Runtime (UR-20261012-038) — 2026-10-12
+
+- 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- A registered persona was listed and invitable but never actually ONLINE -- nothing hosted its
+  gateway. PersonaRuntime now hosts every ACTIVE persona: it opens the sealed bot token, builds a
+  registry containing ONLY that persona's bound modules, deploys those commands to the persona's bound
+  guild, and logs the client in. stop() logs them all out.
+- One persona's failure never takes the fleet down: each is started independently, the reason is
+  recorded, and the loop continues. The seams are injected, so the whole lifecycle is unit-tested
+  without a gateway. filterRegistryForModules keeps the source registry's tier bookkeeping.
+- OFF by default (PERSONA_RUNTIME_ENABLED): each persona costs one gateway connection.
+- SCOPE, recorded not hidden: the persona is online and its commands exist, but it does not yet answer
+  its in-message interactive controls -- that dispatch lives in bootstrap's entangled interactionCreate
+  handler, and extracting it blind would risk the main bot's command path. Deferred deliberately.
+- **Verification:** typecheck, lint, format, corpus gates 27/27, test-import guard.
 
 ---
 

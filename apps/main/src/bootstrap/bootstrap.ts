@@ -67,6 +67,7 @@ import { disableConfirmationDescriptor } from '../rendering/confirmations.js';
 import type { CommandInteraction } from '../commands/command-router.js';
 import { PersonaCommandBindingService } from '../personas/persona-command-binding.service.js';
 import { personaPresenceFromClient } from '../personas/persona-presence.js';
+import { filterRegistryForModules, PersonaRuntime } from '../personas/persona-runtime.js';
 import { createPersonaOAuthService } from '../personas/persona-oauth.js';
 import { openSealedText } from '../personas/persona-credentials.js';
 import { dashboardUrlFrom, personaSetupCard } from '../rendering/persona-setup.js';
@@ -1313,6 +1314,45 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     // UR-20261012-028 — adopt any command-permission token rows written before the store was keyed
     // by application, now that the running application's id is known. Non-fatal by design.
     await commandPermissionTokens.adoptLegacy(applicationId);
+
+    // UR-20261012-038 — host every active persona's gateway, so a Twill-registered persona is
+    // actually ONLINE in its bound guild rather than only listed. Off by default: each persona costs
+    // one gateway connection, which is an operator decision.
+    if (config.get('PERSONA_RUNTIME_ENABLED')) {
+      const personaRuntime = new PersonaRuntime({
+        listPersonas: () => personaIdentities.list(),
+        openBotToken: (sealed) => openSealedText(sealed, personaRootKey),
+        modulesBoundTo: async (personaId) =>
+          (await personaBindings.listForPersona(personaId)).map((binding) => binding.moduleSlug),
+        buildRegistry: (slugs) => filterRegistryForModules(commandRegistry, new Set(slugs)),
+        // The gateway intents/partials are computed for the main client in an earlier scope, so they
+        // are derived again here from the same source of truth: the module manifests.
+        createClient: () => {
+          const hosted = moduleRegistry.all();
+          return buildDiscordClient({
+            intents: computeIntentsBitfield(hosted.map((m) => m.manifest.intents)),
+            partials: computePartials(hosted.map((m) => m.manifest.partials)),
+            logger,
+          });
+        },
+        deployCommands: async (persona, botToken, registry) => {
+          const body = registry.toApiPayloads();
+          if (body.length === 0) return 0;
+          await new REST({ version: '10' })
+            .setToken(botToken)
+            .put(
+              Routes.applicationGuildCommands(persona.discordApplicationId, persona.boundGuildId),
+              { body },
+            );
+          return body.length;
+        },
+        logger,
+      });
+      const results = await personaRuntime.start();
+      logger.info(
+        `persona-runtime-start-complete hosted=${results.filter((r) => r.started).length} of ${results.length}`,
+      );
+    }
     const rest = new REST({ version: '10' }).setToken(config.get('BOT_TOKEN'));
     // §17.7 — the BCCM batch push's Discord surface. `getRegistered` is the authority for what
     // "new" means; `putCommands` is the idempotent bulk overwrite of the guild's command set.

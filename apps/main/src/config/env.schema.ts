@@ -101,6 +101,9 @@ const baseEnvSchema = z
     // bare authority (granted for ANY application) or `authority=applicationId`. Applied
     // idempotently at boot, so a fresh install is not chicken-and-egg.
     PERSONA_REGISTRAR_AUTHORITIES: z.string().default(''),
+    // UR-20261012-038 — host every active persona's gateway, so a registered persona is actually
+    // ONLINE in its bound guild. Off by default: it opens one gateway connection per persona.
+    PERSONA_RUNTIME_ENABLED: envBool(false),
 
     DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
     DATABASE_REPLICA_URLS: csvIds(),
