@@ -153,7 +153,13 @@ export function registerTwillPersonaRoutes(
       try {
         const persona = await service.registerPersona(parsed.input, costSignals);
         // The log viewer drops structured fields, so the outcome is in the message too.
-        logger.info(`persona-registered id=${persona.id} guild=${persona.boundGuildId}`);
+        // The log viewer drops structured fields, so the whole outcome is in the message. The
+        // registrar attestation is RECORDED here; it is not verified — there is no registrar
+        // registry to check it against. Authentication is the internal API key on this surface.
+        logger.info(
+          `persona-registered id=${persona.id} guild=${persona.boundGuildId} ` +
+            `authority=${parsed.input.registrarAuthority}`,
+        );
         return reply.code(201).send(publicPersonaView(persona));
       } catch (err) {
         logger.warn(`twill-register-failed: ${reasonOf(err)}`);

@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.39
+version: 5.5.40
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,23 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.40 — Twill Surface Reachability + Registrar Attestation (UR-20261012-034) — 2026-10-12
+
+- 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- REACHABILITY: the Twill process is not a deployed Railway service, so the registration API had
+  nowhere to run. A new TWILL_ROUTES_ON_API flag (default FALSE) mounts the Twill persona routes on
+  the API server as well, behind the same internal API key as /admin/, /mdis/ and /operational/. The
+  mount is opt-in because the endpoint accepts bot tokens and client secrets -- the public surface
+  must not grow by default.
+- ATTESTATION: registrarAuthority was required by the parser and then dropped (it is not a field on
+  the identity, and nothing read it). It is now written into the registration log line, so it is
+  auditable. It is explicitly an ATTESTATION, not a credential check: nothing verifies it, because
+  there is no registrar registry recording who may register which application. Authentication on the
+  surface is the internal API key, compared in constant time.
+- **Verification:** `typecheck`, `lint`, `format`, corpus gates 27/27.
 
 ---
 

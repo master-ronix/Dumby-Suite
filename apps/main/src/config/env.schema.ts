@@ -92,6 +92,11 @@ const baseEnvSchema = z
     // is the minimum a Components-V2 command bot needs: View Channels, Send Messages, Embed Links,
     // Read Message History.
     BOT_INSTALL_PERMISSIONS: z.string().default('84992'),
+    // UR-20261012-034 — serve the Twill persona registration API on the ALREADY-DEPLOYED API server
+    // as well as the dedicated Twill process, so it is usable without provisioning a new Railway
+    // service. OFF by default: the endpoint accepts bot tokens and client secrets, so the public
+    // surface must not grow unless the operator asks for it. It stays behind the internal API key.
+    TWILL_ROUTES_ON_API: envBool(false),
 
     DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
     DATABASE_REPLICA_URLS: csvIds(),

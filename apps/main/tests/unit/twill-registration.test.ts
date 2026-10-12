@@ -140,7 +140,7 @@ function buildRoutes(overrides: Record<string, unknown> = {}) {
 
 describe('twill persona routes', () => {
   test('POST /twill/personas/register creates a persona and returns identity only', async () => {
-    const { app, service } = buildRoutes();
+    const { app, service, logger } = buildRoutes();
     const res = await app.inject({
       method: 'POST',
       url: '/twill/personas/register',
@@ -150,6 +150,8 @@ describe('twill persona routes', () => {
     expect(res.json().name).toBe('Nova');
     expect(res.body).not.toContain('bot-secret');
     expect(service.registerPersona).toHaveBeenCalledTimes(1);
+    // The registrar attestation is RECORDED in the message (the viewer drops structured fields).
+    expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('authority=owner-of-app-9'));
   });
 
   test('POST rejects an incomplete body with 400 and a named reason', async () => {

@@ -19,6 +19,10 @@ import {
   type OperationalRoutesDeps,
 } from '../operational/operational.routes.js';
 import type { OAuthRoutesDeps } from './routes/oauth.routes.js';
+import {
+  registerTwillPersonaRoutes,
+  type TwillPersonaRouteDeps,
+} from '../personas/twill-registration.js';
 
 export interface BuildServerOptions {
   logger: Logger;
@@ -32,6 +36,12 @@ export interface BuildServerOptions {
   mdisDeps?: MdisRoutesDeps;
   /** Appendix C #18 — the operational tooling surface. */
   operationalDeps?: OperationalRoutesDeps;
+  /**
+   * UR-20261012-034 — the Twill persona registration surface, mounted here only when the operator
+   * opts in (TWILL_ROUTES_ON_API). It stays behind the internal API key like the other privileged
+   * surfaces.
+   */
+  twillPersonaDeps?: TwillPersonaRouteDeps | undefined;
 }
 
 const ADMIN_PATH_PREFIX = '/admin/';
@@ -64,7 +74,8 @@ export function buildApiServer(options: BuildServerOptions): FastifyInstance {
     shouldProtect: (request) =>
       request.url.startsWith(ADMIN_PATH_PREFIX) ||
       request.url.startsWith('/mdis/') ||
-      request.url.startsWith('/operational/'),
+      request.url.startsWith('/operational/') ||
+      request.url.startsWith('/twill/'),
     audit: async (outcome, detail) => {
       if (outcome === 'rejected') {
         options.logger.warn('admin-auth-rejected', detail);
@@ -88,6 +99,9 @@ export function buildApiServer(options: BuildServerOptions): FastifyInstance {
   }
   if (options.oauthDeps !== undefined) {
     registerOAuthRoutes(app, options.oauthDeps);
+  }
+  if (options.twillPersonaDeps !== undefined) {
+    registerTwillPersonaRoutes(app, options.twillPersonaDeps);
   }
 
   app.get('/assets/dumby-banner.png', async (_req, reply) => {

@@ -483,9 +483,10 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   // OAuth and Route B paths, so they are bound once here rather than rebuilt per call site.
   const personaIdentities = new PostgresPersonaIdentityStore(db.knex);
   const personaRootKey = rootKeyFromBase64('local', config.get('ENCRYPTION_ROOT_KEY'));
+  const personaBindings = new PostgresPersonaBindingStore(db.knex);
   const personaBindingService = new PersonaCommandBindingService(
     personaIdentities,
-    new PostgresPersonaBindingStore(db.knex),
+    personaBindings,
     logger,
   );
 
@@ -1541,6 +1542,19 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
           tokens: commandPermissionTokens,
           // UR-20261012-030 — a persona authorizes through its own application.
           personaClients: (appId) => personaOAuth.clientForApplication(appId),
+        }
+      : undefined,
+    // UR-20261012-034 — optionally serve the Twill persona registration API here, so it is usable
+    // without provisioning a separate Railway service. OFF by default; it stays behind the internal
+    // API key either way.
+    twillPersonaDeps: config.get('TWILL_ROUTES_ON_API')
+      ? {
+          service: personaBindingService,
+          identities: personaIdentities,
+          bindings: personaBindings,
+          rootKey: personaRootKey,
+          logger,
+          costSignals: { dedicatedInfrastructureRequired: false, perPersonaCostMeasurable: false },
         }
       : undefined,
     // Appendix C #18 — the MDIS module-delivery and operational-tooling surfaces.
