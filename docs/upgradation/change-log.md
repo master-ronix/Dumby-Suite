@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.41
+version: 5.5.42
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,18 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.42 — Signing-key test import (UR-20261012-035 v1.1) — 2026-10-12
+
+- 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- Gates failed with ReferenceError: describe is not defined -- the new normalizeSigningKey block used
+  describe but the file imported only test and expect. Fixed by importing it.
+- Third CI failure from the same class of mistake, so a local guard now checks that every vitest
+  global a test file CALLS is imported (statement-level calls only, so a variable named `it` is not a
+  false positive). It passes across the whole suite.
+- **Verification:** typecheck, lint, format, corpus gates 27/27, and the new import guard.
 
 ---
 

@@ -67,6 +67,7 @@
 | M44 | Install permission bitfield now always sent (the guild-less dashboard link too); two test fixtures corrected (UR-20261012-031 v1.1) | DONE |
 | M45 | Twill registration surface mountable on the deployed API server (TWILL_ROUTES_ON_API, default off, internal-key gated); registrar attestation recorded (UR-20261012-034) | DONE (typecheck+lint+format) |
 | M46 | Signing key normalised: the documented single-line escaped PEM was the form the code rejected, so the warning was unfixable by config (UR-20261012-035) | DONE (typecheck+lint+format) |
+| M47 | `describe` import missing in the new signing-key test block (UR-20261012-035 v1.1) | DONE |
 
 Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (reason)`.
 
