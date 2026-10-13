@@ -238,15 +238,30 @@ export function personaBlocks(
       style?: 1 | 2 | 3 | 4 | 5;
       emoji?: { name: string; id?: string };
     }> = [];
-    // UR-20261012-041 — ONE control: the info card. It states the callback URL to register, the
-    // portal guide, and — once the redirect is configured — the persona's invite link, so the
-    // operator's flow is "open info, read, invite" rather than a row of competing options.
+    // UR-20261012-051 — TWO controls, because the operator could not find either.
+    //
+    // The invite used to be reachable only through a control labelled "OAuth setup", which reads as a
+    // configuration chore rather than "here is how to add this persona". The card behind it already
+    // carries the invite; what was missing was a way to SEE it.
+    //
+    //   Info    — icon-only, opens the card (identity, the callback URL to register, the portal
+    //             guide, and the invite link).
+    //   Invite  — a direct LINK, rendered only when an invite URL exists, so summoning the persona is
+    //             one click rather than a detour through a card.
     controls.push({
       customId: `dumby:persona-setup:${invokerId}:${selected?.applicationId ?? ''}`,
-      label: 'OAuth setup',
+      label: '',
       style: 2,
       emoji: customEmojiParts(INFO_ICON_NAME) ?? { name: INFO_FALLBACK },
     });
+    if (selected !== undefined && selected.inviteUrl !== '') {
+      controls.push({
+        url: selected.inviteUrl,
+        label: 'Invite',
+        style: 5,
+        emoji: customEmojiParts(PROFILE_ICON_NAME) ?? { name: PROFILE_FALLBACK },
+      });
+    }
     blocks.push({ kind: 'row', buttons: controls });
   }
 

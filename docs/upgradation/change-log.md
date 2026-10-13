@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.56
+version: 5.5.57
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,34 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.57 — /persona opened on the wrong profile, and the invite had no way in (UR-20261012-051) — 2026-10-12
+
+- 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- DEFECT 1 -- THE DEFAULT PROFILE. `currentProfileId = ownerOf.get(moduleId) ?? guildRegistration?.id ??
+  MAIN_PROFILE_ID` asked two questions and neither was right: which persona owns the `persona` MODULE,
+  and which persona is registered for the guild. So `/persona` run from the MAIN BOT opened on a
+  PERSONA's profile -- exactly as the operator reported.
+  - The question the page was always trying to answer is WHICH IDENTITY IS RUNNING THE COMMAND. That is
+    PERSONA_ID: empty in the main bot's process, set in a dedicated persona process.
+  - FIXED: the opening profile is the resident identity, falling back to main when PERSONA_ID is unset
+    or names a persona this guild does not have. The ownership map and the guild registration still
+    decide which profiles are LISTED -- they no longer decide which one OPENS.
+- DEFECT 2 -- THE INVITE HAD NO WAY IN. The invite URL was COMPUTED and PARSED and NEVER RENDERED:
+  page-data built it, persona-blocks read it into the profile shape, and nothing drew it. The only path
+  was a control labelled "OAuth setup", admin-only, whose card carried the invite -- and "OAuth setup"
+  reads as a configuration chore, not as "here is how to add this persona".
+  - FIXED, two controls on the profile row:
+    - Info -- icon-only (no label), opens the card with the identity, the callback URL, the guide, and
+      the invite link.
+    - Invite -- a direct LINK button (style 5), rendered only when an invite URL exists.
+    Both remain admin-only: the invite is a privileged action.
+- RECORDED: a value computed, carried through a type, and never rendered is invisible in a way that
+  reads as "the feature was never built". inviteUrl had a field in TWO modules and no consumer. Where a
+  surface is expected to offer an action, the assertion belongs on the RENDERED output.
+- **Verification:** 113 files / 1151 tests / 0 failures; typecheck, lint (changed files), format, gates 27/27.
 
 ---
 

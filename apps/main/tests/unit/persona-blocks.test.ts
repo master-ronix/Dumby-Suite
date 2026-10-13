@@ -111,11 +111,15 @@ describe('personaBlocks', () => {
     const asAdmin = personaBlocks(data, 'u1', { isAdmin: true });
     const row = asAdmin.find((b) => (b as Any)['kind'] === 'row') as Any;
     const buttons = row['buttons'] as Array<Any>;
-    // UR-20261012-041 — ONE control. The invite link now lives in the info card, so the row carries
-    // only the setup control rather than a menu of competing options.
-    expect(buttons).toHaveLength(1);
+    // UR-20261012-051 — TWO controls, because the operator could not find either. The info control is
+    // icon-only (no label) and opens the card carrying the callback URL and the invite; the invite is
+    // ALSO rendered as a direct link, so summoning the persona is one click rather than a detour.
+    expect(buttons).toHaveLength(2);
     expect(buttons[0]?.['customId']).toBe('dumby:persona-setup:u1:1422973358818988155');
-    expect(buttons[0]?.['label']).toBe('OAuth setup');
+    expect(buttons[0]?.['label']).toBe('');
+    expect(buttons[1]?.['url']).toBe('https://dumby.example/auth/authorize?app=142&guild=g1&bot=1');
+    expect(buttons[1]?.['label']).toBe('Invite');
+    expect(buttons[1]?.['style']).toBe(5);
   });
 
   test('states presence in the headline subtext, separately from the online state', () => {

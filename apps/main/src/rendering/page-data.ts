@@ -308,8 +308,21 @@ export function createPageDataProvider(
     }
 
     const ownerOf = new Map(bindings.map((binding) => [binding.moduleSlug, binding.personaId]));
-    const guildRegistration = registered.find((entry) => entry.boundGuildId === guildId);
-    const currentProfileId = ownerOf.get(moduleId) ?? guildRegistration?.id ?? MAIN_PROFILE_ID;
+    // UR-20261012-051 — the DEFAULT profile is the identity RUNNING the command, not a profile chosen
+    // for the guild.
+    //
+    // The old chain was `ownerOf.get(moduleId) ?? guildRegistration?.id ?? MAIN_PROFILE_ID`: it asked
+    // which persona owned the `persona` MODULE, then fell back to the persona registered for the
+    // guild — so `/persona` run from the main bot opened on the PERSONA's profile instead of the main
+    // bot's own. The operator reported exactly that.
+    //
+    // `PERSONA_ID` is the identity this process runs as: empty for the main bot, set for a dedicated
+    // persona process. That is the question the page was always trying to answer.
+    const residentPersonaId = config.get('PERSONA_ID');
+    const currentProfileId =
+      residentPersonaId !== '' && registered.some((entry) => entry.id === residentPersonaId)
+        ? residentPersonaId
+        : MAIN_PROFILE_ID;
 
     const allModules = moduleRegistry.all();
     // The main bot owns every module no persona is bound to; a persona owns exactly the modules

@@ -202,11 +202,19 @@ describe('page-data provider', () => {
       commandCount: number;
     }>;
     expect(profiles.map((p) => p.id)).toEqual(['main', 'p-2']);
-    // the persona bound to the `persona` module runs the command, so it is the opening profile
-    expect(data['currentProfileId']).toBe('p-2');
-    expect(data['selectedProfileId']).toBe('p-2');
-    const personaTiers = data['tiers'] as Array<{ modules: Array<{ name: string }> }>;
-    expect(personaTiers.flatMap((t) => t.modules.map((m) => m.name))).toEqual(['persona']);
+    // UR-20261012-051 — the opening profile is the identity RUNNING the command. This provider runs in
+    // the main bot's process (`PERSONA_ID` unset), so the main bot's own `/persona` opens on the MAIN
+    // profile. It used to open on whichever persona owned the `persona` module, which is why the
+    // operator saw a persona profile instead of their own bot's.
+    expect(data['currentProfileId']).toBe('main');
+    expect(data['selectedProfileId']).toBe('main');
+    // The tiers describe the OPENING profile — now the main bot, so they list what IT owns: every
+    // module no persona is bound to. The persona's own tiers are asserted on the switched view below.
+    const openingTiers = data['tiers'] as Array<{ modules: Array<{ name: string }> }>;
+    expect(openingTiers.flatMap((t) => t.modules.map((m) => m.name)).sort()).toEqual([
+      'health',
+      'hello-world',
+    ]);
 
     // switching to the main bot shows the modules it still owns
     // the provider's signature is (moduleId, guildId, page, query) — the selected persona id
@@ -252,8 +260,9 @@ describe('page-data provider', () => {
       }),
     );
     const data = await provider('persona', 'guild-1');
-    // the guild's OWN registration is the opening profile when nothing owns this module
-    expect(data['currentProfileId']).toBe('p-9');
+    // UR-20261012-051 — a guild registration is NOT the opening profile. The identity running the
+    // command is, and that is the main bot here.
+    expect(data['currentProfileId']).toBe('main');
     expect(isMember).toHaveBeenCalledWith('guild-1', 'app-9');
     const profiles = data['profiles'] as Array<{
       id: string;
