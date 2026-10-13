@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.67
+version: 5.5.68
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,30 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.68 — the main bot registers its emojis under its own application id (UR-20261012-062) — 2026-10-12
+
+- 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- THE REGRESSION: the main bot rendered the SAME decoration box on every core command -- the fallback --
+  while a persona rendered the correct per-module logos. That is the signature of an emoji lookup that
+  MISSED.
+- WHY: UR-060 made the RENDER resolve an emoji by the application Discord states on the interaction --
+  for the main bot, its real application id. The main bot's UPLOAD still passed no application id and
+  registered under the DEFAULT scope (the empty string). A persona passes its own id on BOTH sides, so
+  it matched and kept its icons; the main bot's two keys disagreed and it lost all of them.
+  I CHANGED ONE HALF OF A PAIR AND NOT THE OTHER.
+- THE FIX: `ensureDefaultModuleEmoji(discordClient, logger, applicationId)`. The id was already computed
+  one line above. The next boot re-reads the existing emojis by name and registers their ids under the
+  real application id, so the main bot heals without re-uploading anything.
+- PINNED: tests/unit/module-emoji-upload.test.ts asserts the upload registers under the GIVEN id, that
+  that application resolves the emoji, and that another application does NOT borrow it.
+- RECORDED: a key is a pair, and I changed one end. The persona path was correct only because it
+  happened to pass its id in both places already -- which is exactly why the symptom looked like
+  "the persona works and the main bot doesn't" rather than like a broken lookup.
+- **Verification:** 114 files / 1168 tests / 0 failures; coverage 68.17% branch with NO threshold error;
+  build packages, typecheck, lint, lint:modules and format all clean with CI's own commands.
 
 ---
 

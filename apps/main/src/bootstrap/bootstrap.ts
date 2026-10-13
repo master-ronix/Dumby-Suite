@@ -1282,8 +1282,16 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     const applicationId = discordClient.application?.id ?? '';
     // item 9 - upload the framework's default white module icon as an application emoji (once).
     // Non-fatal: on failure the unicode fallback applies until the next boot.
+    //
+    // UR-20261012-062 — the MAIN BOT registers under its OWN application id, exactly as a persona does.
+    //
+    // UR-060 made the render look an emoji up by the application Discord states on the interaction —
+    // for the main bot, its real application id. This upload still used the DEFAULT scope (the empty
+    // string), so registration and lookup used different keys and the main bot missed EVERY icon while
+    // a persona (which passes its own id on both sides) resolved all of them. The render is right; the
+    // registration had to be brought into line with it.
     try {
-      await ensureDefaultModuleEmoji(discordClient, logger);
+      await ensureDefaultModuleEmoji(discordClient, logger, applicationId);
     } catch (err) {
       logger.warn('module-emoji-upload-failed', { error: String(err) });
     }
