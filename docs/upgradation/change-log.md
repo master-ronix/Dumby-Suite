@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.71
+version: 5.5.72
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,37 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.72 — an execution context (UR-20261012-067) — 2026-10-12
+
+- 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- THE FINDING: the framework hosts the main bot and any number of personas in ONE process, but the
+  module-facing contract -- `CommandContext` in the SDK -- carried exactly TWO things: `config` and
+  `data`. NO identity, NO guild, NO profile. A module could not tell which of the hosted identities was
+  running its command, which application it should speak as, or which guild it was bound to. Every
+  module-facing decision that depended on that had to be made by the core on the module's behalf --
+  which is how the core came to hold facts the modules own (UR-066).
+- THE CONTRACT NOW STATES: `identity` (profileId, kind, applicationId, profileName, guildId,
+  boundGuildId) and `module` (moduleId, tier, enabled, owner, ownedByCaller) -- BOTH REQUIRED.
+- ONE SOURCE, COMPILER-ENFORCED: identity is built in ONE place, the router's dispatch, from what the
+  interaction states plus what the router knows about its own identity. Requiring the field made
+  TypeScript enumerate the construction sites -- THERE WAS ONE. `module` is read from the registry's
+  tier declaration and the binding service, the same source the pages consult (UR-061), so a module's
+  standing cannot disagree with what /browse shows.
+- THE REGISTRY'S IDENTITY DIMENSION: it cannot know WHICH profile a command runs under (a per-guild
+  binding, resolved at dispatch), but it now states the tier that decides who MAY run it --
+  `modulesByTier(tier)`, beside the `getModuleTier` the standing is built from.
+- RECORDED: a contract that omits identity forces the core to hold it. The piecemeal patches of the past
+  week -- residentPersonaId, residentApplicationId, actingProfileId -- were all attempts to carry
+  identity through layers that had no concept of it.
+- ALSO RECORDED: `isModuleEnabledInGuild(moduleId, guildId)` takes TWO STRINGS, so a swapped argument
+  TYPECHECKS. I made that exact mistake here and caught it by reading the signature rather than trusting
+  the compiler. Two same-typed parameters are a defect class the type system cannot see.
+- **Verification:** 115 files / 1173 tests / 0 failures; coverage 68.57% branch, NO threshold error;
+  build packages, typecheck, lint, lint:modules, format and docs gates all clean; the modules still
+  bundle against the new SDK.
 
 ---
 

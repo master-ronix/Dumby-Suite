@@ -9,6 +9,8 @@ export { defineModule, moduleTiers, moduleManifestSchema } from "./manifest.js";
 export { validateManifest } from "./validate.js";
 export type {
   CommandContext,
+  ExecutionIdentity,
+  ModuleStanding,
   CommandDeclaration,
   CommandHandler,
   CommandPageData,

@@ -30,6 +30,7 @@ import {
   MARKETPLACE_MODULE_CAP,
 } from '../shared/constants/index.js';
 import type { ComponentsV2Message } from '../shared/utils/components-v2.js';
+import type { ExecutionIdentity, ModuleStanding } from '@workspace/swastik';
 import { PersonaOccupiedError } from '../personas/persona.js';
 
 /** Manage Guild (0x20) and Administrator (0x8), as the decimal strings Discord sends. */
@@ -128,6 +129,11 @@ export interface CommandRouterOptions {
    * because the main bot serves every guild it is installed in.
    */
   residentBoundGuildId?: string;
+  /**
+   * UR-20261012-067 — the acting identity's display name (the bot's username, or the persona's
+   * registered name). Supplied at construction, because the router is built PER IDENTITY.
+   */
+  residentProfileName?: string;
   /**
    * blueprint.md §22.2 / Table 22-A — the Power Engine `suspendGuild` state. When present, dispatch
    * consults it before anything else in the guild: a suspension overrides the guild's own
@@ -262,6 +268,10 @@ export class CommandRouter {
             this.renderer.createReadOnlyInteraction(interaction),
             {
               config: def.moduleConfig ?? {},
+              // UR-20261012-067 — who is running this, and where the module stands. The module can
+              // now answer both questions itself instead of the core deciding on its behalf.
+              identity: this.executionIdentity(interaction),
+              module: await this.moduleStanding(def, interaction),
               data:
                 (await this.options.pageDataProvider?.(
                   def.moduleId,
@@ -616,6 +626,61 @@ export class CommandRouter {
    */
   private emojiScope(interaction: CommandInteraction): string {
     return interaction.applicationId ?? DEFAULT_EMOJI_SCOPE;
+  }
+
+  /**
+   * UR-20261012-067 — WHO this dispatch is running as.
+   *
+   * Built once, at dispatch, from what the interaction states plus what the router already knows about
+   * its own identity. The application comes from the interaction (the same value the emoji scope uses,
+   * and the only thing that can be right for a message); the profile id, kind, bound guild and name
+   * come from the router, which is constructed per identity. Nothing here is re-derived downstream.
+   */
+  private executionIdentity(interaction: CommandInteraction): ExecutionIdentity {
+    const profileId = this.options.residentPersonaId ?? 'main';
+    const boundGuildId = this.options.residentBoundGuildId;
+    return {
+      profileId,
+      kind: this.options.residentPersonaId === undefined ? 'main' : 'persona',
+      applicationId: this.emojiScope(interaction),
+      profileName: this.options.residentProfileName ?? 'Dumby',
+      guildId: interaction.guildId,
+      ...(boundGuildId !== undefined && boundGuildId !== '' ? { boundGuildId } : {}),
+    };
+  }
+
+  /**
+   * UR-20261012-067 — this MODULE's own standing in the guild the dispatch is running in.
+   *
+   * "Where is it installed, where is it running, and whose is it." The tier is the module's own
+   * declaration (the registry holds it); ownership is the binding read, which is the same source the
+   * pages consult. Core is `shared`: no profile owns it, every profile runs it.
+   */
+  private async moduleStanding(
+    def: CommandDefinition,
+    interaction: CommandInteraction,
+  ): Promise<ModuleStanding> {
+    const tier = this.registry.getModuleTier(def.moduleId) ?? 'standard';
+    const identity = this.executionIdentity(interaction);
+    const shared = tier === 'core' || tier === 'admin';
+    const owner = shared
+      ? 'shared'
+      : ((interaction.guildId === null
+          ? undefined
+          : await this.options.resolveCommandOwner?.(interaction.guildId, def.moduleId)) ?? 'main');
+    const enabled = shared
+      ? true
+      : interaction.guildId === null
+        ? false
+        : await (this.options.isModuleEnabledInGuild?.(def.moduleId, interaction.guildId) ??
+            Promise.resolve(false));
+    return {
+      moduleId: def.moduleId,
+      tier,
+      enabled,
+      owner,
+      ownedByCaller: shared || owner === identity.profileId,
+    };
   }
 
   private async assertPersonaOwnsCommand(

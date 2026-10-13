@@ -93,6 +93,21 @@ export class CommandRegistry {
     return this.commands.size;
   }
 
+  /**
+   * UR-20261012-067 — the registry's own view of an identity dimension: every module's tier, and which
+   * modules the framework hosts.
+   *
+   * The registry cannot know WHICH profile a command runs under — that is a per-guild binding and is
+   * resolved at dispatch into `CommandContext.module.owner`. What it can state, and now does, is the
+   * module's own tier, which decides who MAY run it: `core` is shared by every profile, `admin` belongs
+   * to the operator, and `standard`/`marketplace` belong to whichever profile claimed them.
+   */
+  modulesByTier(tier: ModuleTier): readonly string[] {
+    return this.all()
+      .filter((def) => this.getModuleTier(def.moduleId) === tier)
+      .map((def) => def.moduleId);
+  }
+
   getModuleTier(moduleId: string): ModuleTier | undefined {
     return this.moduleTiers.get(moduleId);
   }

@@ -717,7 +717,11 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   // different identity"). `residentPersonaId` is the only thing that varies: the main bot sets it
   // only when the process itself is a persona (`PERSONA_ID`), while a hosted persona always sets its
   // own id so command ownership is enforced for it.
-  const commandRouterOptions = (residentPersonaId?: string, residentBoundGuildId?: string) => ({
+  const commandRouterOptions = (
+    residentPersonaId?: string,
+    residentBoundGuildId?: string,
+    residentProfileName?: string,
+  ) => ({
     devGuildId: config.get('DEV_GUILD_ID'),
     isModuleEnabledInGuild,
     permissionResolver,
@@ -736,6 +740,8 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     // emoji ids; the main bot uses the default scope.
     // UR-20261012-060 — a persona serves ONE guild; the main bot serves every guild it is installed in.
     ...(residentBoundGuildId !== undefined ? { residentBoundGuildId } : {}),
+    // UR-20261012-067 — the acting identity's display name, so a module can present whose page it is.
+    ...(residentProfileName !== undefined ? { residentProfileName } : {}),
   });
   const commandRouter = new CommandRouter(
     commandRegistry,
@@ -1374,7 +1380,7 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
               new CommandRouter(
                 registry,
                 logger,
-                commandRouterOptions(persona.id, persona.boundGuildId),
+                commandRouterOptions(persona.id, persona.boundGuildId, persona.name),
               ),
             logger,
           }),

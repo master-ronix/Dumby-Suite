@@ -19,8 +19,71 @@ export interface CommandPageData {
   readonly effects?: readonly CommandEffect[];
 }
 
+/**
+ * §11 (system-map) — WHO a dispatch is running as, and WHERE.
+ *
+ * The framework hosts the main bot and any number of personas in ONE process. Before this, a module
+ * could not tell which of them was running its command: `CommandContext` carried config and page data
+ * and nothing about identity, so a handler had no way to know whose signal it was answering, which
+ * application it should speak as, or which guild it was bound to. Every module-facing decision that
+ * depended on that had to be made by the core on the module's behalf — which is how the core came to
+ * hold facts the modules own.
+ *
+ * This is the module-facing half of the framework's identity: one object, built once at dispatch from
+ * the interaction Discord hands us, and never re-derived.
+ */
+export interface ExecutionIdentity {
+  /** `'main'` for the main bot, or the persona's id. The profile running this command. */
+  readonly profileId: string;
+  /** Which of the two this is. A persona is single-guild and can refuse; the main bot serves all. */
+  readonly kind: 'main' | 'persona';
+  /** The Discord application this identity speaks as — the one that owns its emoji and commands. */
+  readonly applicationId: string;
+  /** The identity's display name: the bot's username, or the persona's registered name. */
+  readonly profileName: string;
+  /** The guild the signal came from. `null` in a direct message. */
+  readonly guildId: string | null;
+  /**
+   * The ONE guild this identity serves. Absent for the main bot, which serves every guild it is
+   * installed in; present for a persona, which refuses everywhere else.
+   */
+  readonly boundGuildId?: string;
+}
+
+/**
+ * §11 / §13.2 — the module's OWN standing in the guild this dispatch is running in.
+ *
+ * "Where is this module installed, where is it running, and whose is it." A standard or marketplace
+ * module belongs to ONE profile per guild, first come; core belongs to nobody and runs for everyone.
+ */
+export interface ModuleStanding {
+  /** The module this command belongs to. */
+  readonly moduleId: string;
+  /** The module's tier, as its own manifest declares it. */
+  readonly tier: 'admin' | 'core' | 'standard' | 'marketplace';
+  /** Whether the module is enabled in this guild. Core is always enabled. */
+  readonly enabled: boolean;
+  /**
+   * Which profile HOLDS this module here: `'main'`, a persona id, or `'shared'` for core, which no
+   * profile owns and every profile runs.
+   */
+  readonly owner: string;
+  /** Whether the identity running this dispatch is the one that holds it. */
+  readonly ownedByCaller: boolean;
+}
+
 export interface CommandContext {
   readonly config: Readonly<Record<string, unknown>>;
+  /**
+   * §11 — who is running this command and where. Always present: a handler that needs to know whose
+   * signal it is answering can ask, instead of the core having to decide for it.
+   */
+  readonly identity: ExecutionIdentity;
+  /**
+   * §11 / §13.2 — this module's own standing in that guild: its tier, whether it is enabled, which
+   * profile holds it, and whether that is the caller.
+   */
+  readonly module: ModuleStanding;
   /**
    * Host-supplied data for the command's declared page. The framework gathers it at dispatch —
    * live metrics, the module registry, queue state, persona bindings — so a module can present

@@ -680,3 +680,95 @@ describe('/browse states module occupancy (UR-20261012-061)', () => {
     await expect(router.buildBrowseRender('u1', 'g1', 'nothing')).resolves.toBeDefined();
   });
 });
+
+const logger2 = makeLogger() as unknown as Logger;
+
+describe('a module can tell WHO it is running as (UR-20261012-067)', () => {
+  /** The context a handler actually receives. */
+  const captureContext = (reg: CommandRegistry, seen: { ctx?: unknown }) => {
+    reg.register({
+      data: { name: 'whoami', description: 'Who am I' },
+      execute: async (_i: unknown, context: unknown) => {
+        seen.ctx = context;
+        return { page: 'whoami', data: {} };
+      },
+      moduleId: 'hello-world',
+    } as never);
+  };
+
+  test('a persona dispatch carries its identity, application, binding and ownership', async () => {
+    const reg = new CommandRegistry();
+    reg.registerModule('hello-world', 'standard');
+    const seen: { ctx?: unknown } = {};
+    captureContext(reg, seen);
+    const router = new CommandRouter(reg, logger2, {
+      residentPersonaId: 'p-1',
+      residentBoundGuildId: 'g-bound',
+      residentProfileName: 'ELSA',
+      resolveCommandOwner: async () => 'p-1',
+      isModuleEnabledInGuild: async () => true,
+    } as never);
+    // A persona acts only in its bound guild, so the dispatch must come from there.
+    const interaction = {
+      ...makeInteraction('whoami'),
+      applicationId: 'app-elsa',
+      guildId: 'g-bound',
+    };
+
+    await router.dispatch(interaction);
+
+    const ctx = seen.ctx as {
+      identity: Record<string, unknown>;
+      module: Record<string, unknown>;
+    };
+    expect(ctx.identity['kind']).toBe('persona');
+    expect(ctx.identity['profileId']).toBe('p-1');
+    expect(ctx.identity['profileName']).toBe('ELSA');
+    // The application is the one Discord states on the interaction — never a second source.
+    expect(ctx.identity['applicationId']).toBe('app-elsa');
+    expect(ctx.identity['boundGuildId']).toBe('g-bound');
+    expect(ctx.module['moduleId']).toBe('hello-world');
+    expect(ctx.module['owner']).toBe('p-1');
+    expect(ctx.module['ownedByCaller']).toBe(true);
+  });
+
+  test('the main bot carries no bound guild, and sees a module it holds as its own', async () => {
+    const reg = new CommandRegistry();
+    reg.registerModule('hello-world', 'standard');
+    const seen: { ctx?: unknown } = {};
+    captureContext(reg, seen);
+    const router = new CommandRouter(reg, logger2, {
+      resolveCommandOwner: async () => undefined, // unbound: the main bot holds it
+      isModuleEnabledInGuild: async () => true,
+    } as never);
+
+    await router.dispatch({ ...makeInteraction('whoami'), applicationId: 'app-main' });
+
+    const ctx = seen.ctx as { identity: Record<string, unknown>; module: Record<string, unknown> };
+    expect(ctx).toBeDefined();
+    expect(ctx.identity['kind']).toBe('main');
+    expect(ctx.identity['profileId']).toBe('main');
+    // The main bot serves every guild it is installed in, so it declares no bound guild.
+    expect(ctx.identity['boundGuildId']).toBeUndefined();
+    expect(ctx.module['owner']).toBe('main');
+    expect(ctx.module['ownedByCaller']).toBe(true);
+  });
+
+  test('the main bot is REFUSED a module a persona holds — and that is the standing it sees', async () => {
+    // The ownership rule, reached through the new context: a standard module belongs to ONE profile,
+    // so the other one is refused rather than silently allowed.
+    const reg = new CommandRegistry();
+    reg.registerModule('hello-world', 'standard');
+    const seen: { ctx?: unknown } = {};
+    captureContext(reg, seen);
+    const router = new CommandRouter(reg, logger2, {
+      resolveCommandOwner: async () => 'p-1',
+      isModuleEnabledInGuild: async () => true,
+    } as never);
+
+    await router.dispatch({ ...makeInteraction('whoami'), applicationId: 'app-main' });
+
+    // Refused before the handler, so no context was handed over.
+    expect(seen.ctx).toBeUndefined();
+  });
+});
