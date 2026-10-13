@@ -1,7 +1,7 @@
 import { test, expect, vi, describe } from 'vitest';
 import type { Logger } from '../../src/logging/logger.js';
 import { CommandRegistry, CommandCollisionError } from '../../src/commands/command-registry.js';
-import { CommandRouter, CommandScopeDeniedError } from '../../src/commands/command-router.js';
+import { CommandRouter } from '../../src/commands/command-router.js';
 import { MiddlewarePipeline } from '../../src/middleware/middleware-pipeline.js';
 import { MiddlewareRejectError, type Middleware } from '../../src/middleware/base-middleware.js';
 import { PermissionResolver } from '../../src/permissions/resolver.js';

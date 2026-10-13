@@ -517,6 +517,11 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 - NOT IN THIS RECORD: the ownership/occupancy model (per-profile page scoping, the first-come claim,
   the "occupied by" indicator) -- stated in its own record before any code is written. See UR-20261012-059.
 - **Verification:** 20 persona-runtime + 28 router tests pass; typecheck, lint, format clean.
+- CORRECTION (same day): the first UR-058 commit's deploy was SKIPPED. Its rewritten router test left
+  `CommandScopeDeniedError` IMPORTED BUT UNUSED, so the lint step failed, Gates failed, and Railway
+  skipped Docker and Integration. Lint had been run on the source files but NOT on that test file --
+  the one file the change actually rewrote. RECORDED: lint the files you TOUCH, not the files you
+  expect to matter.
 
 ---
 
