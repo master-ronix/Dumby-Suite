@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.58
+version: 5.5.59
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,38 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.59 — permission names vs bit values (UR-20261012-053) — 2026-10-12
+
+- 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- HOW IT SURFACED: UR-051 put an Info control and an Invite link on the persona profile, admin-only. The
+  operator ran /persona on the build containing them and saw NEITHER -- because isGuildAdmin returned
+  false for them.
+- DEFECT ONE -- THE ADMIN GATE COMPARED BIT VALUES AGAINST NAMES:
+    `const ADMINISTRATOR_PERMISSION = '8'; const MANAGE_GUILD_PERMISSION = '32';`
+  Every producer of memberPermissions emits NAMES ('Administrator', 'ManageGuild'), because the rank
+  bundles are expressed in names (ADMINISTRATOR_BUNDLE = ['Administrator'], MODERATOR_BUNDLE =
+  ['KickMembers','BanMembers','ModerateMembers','ManageMessages']). So includes('8') could NEVER match,
+  and isGuildAdmin was false for every guild administrator who was not the OWNER. Only the owner was
+  recognised, through isGuildOwner -- which is exactly what kept the bug invisible.
+  FIXED: the constants are the names.
+- DEFECT TWO -- THE ADAPTER OMITTED ManageMessages: it collected a HAND-WRITTEN list
+  (Administrator, ManageChannels, ManageGuild, ModerateMembers, BanMembers, KickMembers) and omitted
+  ManageMessages -- the one permission BOTH MODERATOR_BUNDLE and HELPER_BUNDLE require. So holdsEveryBit
+  could never be satisfied for either, and a moderator or helper EVALUATED AS MEMBER, failing any command
+  requiring MODERATOR or above.
+  FIXED BY DERIVATION, not by adding the missing name: rank.ts now exports TRACKED_PERMISSION_NAMES,
+  built from the three bundles plus the two names the dispatch path asks about directly, and the adapter
+  uses it. The two lists can no longer disagree, because there is now only one.
+- RECORDED: both defects are the same failure -- a fact expressed in two places, in two forms,
+  disagreeing. One list said '8', the other said 'Administrator'; one forgot ManageMessages, the other
+  required it. Neither is a logic error; both are drift.
+- RECORDED: a test that only exercises the OWNER path will not find an administrator bug. isGuildOwner
+  short-circuits ahead of the permission check, so every owner-shaped test passed while every non-owner
+  administrator was refused.
+- **Verification:** 113 files / 1159 tests / 0 failures; typecheck, lint (changed files), format, gates 27/27.
 
 ---
 

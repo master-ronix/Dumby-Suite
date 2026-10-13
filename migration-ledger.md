@@ -88,6 +88,7 @@
 | M65 | "Persona registered no commands" was silent: the audit cleared every candidate defect (schema, store, filter, payload) and the real cause is the documented empty-registry early return, which `commands=0` could not distinguish from an unmatched binding. The runtime now names which case it is (UR-20261012-050) | DONE (113 files / 1151 tests / 0 failures) |
 | M66 | /persona opened on a PERSONA's profile when run from the main bot (the default asked which persona owned the `persona` MODULE, then fell back to the guild's registration); and the invite URL was computed, typed, and NEVER RENDERED, so there was no info control and no invite method (UR-20261012-051) | DONE (113 files / 1151 tests / 0 failures) |
 | M67 | Binding a module the guild had DISABLED succeeded, registered the command, and every invocation was then refused at dispatch -- a visible-but-dead command. The bindings surface now refuses it by name, before anything is created (UR-20261012-052) | DONE (113 files / 1153 tests / 0 failures) |
+| M68 | isGuildAdmin compared bit VALUES ('8'/'32') against permission NAMES, so it was false for every non-owner administrator (the owner was masked by isGuildOwner); and the adapter's hand-written list omitted ManageMessages, making MODERATOR and HELPER unreachable (UR-20261012-053) | DONE (113 files / 1159 tests / 0 failures) |
 
 Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (reason)`.
 

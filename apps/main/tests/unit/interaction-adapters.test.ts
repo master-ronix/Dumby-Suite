@@ -1,10 +1,18 @@
 import { describe, expect, test, vi } from 'vitest';
 import {
+  ADMIN_PERMISSION_BITS,
   readDiscoverModalSubmission,
   toCommandInteraction,
   toComponentInteraction,
   type RawInteractionLike,
 } from '../../src/interactions/interaction-adapters.js';
+import {
+  ADMINISTRATOR_BUNDLE,
+  HELPER_BUNDLE,
+  MODERATOR_BUNDLE,
+  TRACKED_PERMISSION_NAMES,
+  evaluateRank,
+} from '../../src/permissions/rank.js';
 
 function raw(over: Partial<RawInteractionLike> = {}): RawInteractionLike {
   return {
@@ -45,7 +53,9 @@ describe('toCommandInteraction (UR-20261012-043)', () => {
   test('collects only the admin permission bits the member actually holds', () => {
     const held = new Set(['ManageGuild', 'BanMembers']);
     const c = toCommandInteraction(raw({ member: { permissions: { has: (p) => held.has(p) } } }));
-    expect(c.memberPermissions).toEqual(['ManageGuild', 'BanMembers']);
+    // The collected list is DERIVED from the rank bundles (UR-20261012-053), so its ORDER is the
+    // bundles' order, not the member's. Assert membership, not sequence.
+    expect([...(c.memberPermissions ?? [])].sort()).toEqual(['BanMembers', 'ManageGuild']);
   });
 
   test('omits memberPermissions when the member exposes none', () => {
@@ -120,5 +130,46 @@ describe('readDiscoverModalSubmission (UR-20261012-043)', () => {
     expect(
       readDiscoverModalSubmission(raw({ customId: 'dumby:discover:submit:u1' }), 'u1'),
     ).toBeUndefined();
+  });
+});
+
+describe('the tracked permission names cannot drift from the rank bundles (UR-20261012-053)', () => {
+  test('every name a rank bundle requires is collected by the adapter', () => {
+    // The hand-written list omitted `ManageMessages`, which BOTH MODERATOR_BUNDLE and HELPER_BUNDLE
+    // require — so `holdsEveryBit` could never be satisfied and a moderator evaluated as MEMBER.
+    for (const bundle of [ADMINISTRATOR_BUNDLE, MODERATOR_BUNDLE, HELPER_BUNDLE]) {
+      for (const name of bundle) {
+        expect(TRACKED_PERMISSION_NAMES).toContain(name);
+        expect(ADMIN_PERMISSION_BITS).toContain(name);
+      }
+    }
+  });
+
+  test('a member holding the MODERATOR bundle is ranked MODERATOR, end to end', () => {
+    const held = new Set<string>(MODERATOR_BUNDLE);
+    const adapted = toCommandInteraction(
+      raw({ member: { permissions: { has: (p) => held.has(p) } } }),
+    );
+    expect(
+      evaluateRank({
+        permissions: adapted.memberPermissions ?? [],
+        isGuildOwner: false,
+        restricted: false,
+      }),
+    ).toBe('MODERATOR');
+  });
+
+  test('a member holding the HELPER bundle is ranked HELPER, end to end', () => {
+    const held = new Set<string>(HELPER_BUNDLE);
+    const adapted = toCommandInteraction(
+      raw({ member: { permissions: { has: (p) => held.has(p) } } }),
+    );
+    expect(
+      evaluateRank({
+        permissions: adapted.memberPermissions ?? [],
+        isGuildOwner: false,
+        restricted: false,
+      }),
+    ).toBe('HELPER');
   });
 });

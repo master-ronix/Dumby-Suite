@@ -1,5 +1,6 @@
-import { test, expect } from 'vitest';
+import { test, expect, describe } from 'vitest';
 import { resolvePermission, type PermissionContext } from '../../src/permissions/resolver.js';
+import { isGuildAdmin } from '../../src/commands/command-router.js';
 import { checkAdminTierGate } from '../../src/permissions/admin-tier-gate.js';
 
 const MOD_BITS = ['KickMembers', 'BanMembers', 'ModerateMembers', 'ManageMessages'];
@@ -454,4 +455,26 @@ test('AdminTierGate allows only bot owners and always requires an audit record',
   expect(allowed.mustAudit).toBe(true);
   expect(denied.mustAudit).toBe(true);
   expect(denied.silentRejectionMessage).toBe(allowed.silentRejectionMessage);
+});
+
+describe('isGuildAdmin reads NAMES, not bit values (UR-20261012-053)', () => {
+  const interaction = (over: Record<string, unknown>) =>
+    ({ commandName: 'persona', user: { id: 'u1' }, guildId: 'g1', ...over }) as never;
+
+  test('a guild administrator is recognised from the permission NAME', () => {
+    // These were compared against '8' and '32' — the Discord bitfield VALUES — while every producer of
+    // `memberPermissions` emits NAMES, so this was false for every non-owner administrator. Only
+    // `isGuildOwner` kept the owner working, which is what hid it.
+    expect(isGuildAdmin(interaction({ memberPermissions: ['Administrator'] }))).toBe(true);
+    expect(isGuildAdmin(interaction({ memberPermissions: ['ManageGuild'] }))).toBe(true);
+  });
+
+  test('the guild owner is recognised without any permission bit', () => {
+    expect(isGuildAdmin(interaction({ isGuildOwner: true }))).toBe(true);
+  });
+
+  test('an ordinary member is not an administrator', () => {
+    expect(isGuildAdmin(interaction({ memberPermissions: [] }))).toBe(false);
+    expect(isGuildAdmin(interaction({ memberPermissions: ['SendMessages'] }))).toBe(false);
+  });
 });

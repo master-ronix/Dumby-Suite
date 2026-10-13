@@ -33,8 +33,12 @@ import type { ComponentsV2Message } from '../shared/utils/components-v2.js';
 import { PersonaOccupiedError } from '../personas/persona.js';
 
 /** Manage Guild (0x20) and Administrator (0x8), as the decimal strings Discord sends. */
-const ADMINISTRATOR_PERMISSION = '8';
-const MANAGE_GUILD_PERMISSION = '32';
+// UR-20261012-053 — NAMES, not bit values. These were '8' and '32' (the Discord bitfield values)
+// while every producer of `memberPermissions` emits NAMES, so `includes` never matched and
+// `isGuildAdmin` was false for every guild administrator who was not the owner. The owner was still
+// recognised, via `isGuildOwner`, which is what kept the bug invisible.
+const ADMINISTRATOR_PERMISSION = 'Administrator';
+const MANAGE_GUILD_PERMISSION = 'ManageGuild';
 
 /**
  * UR-20261012-029 — whether the invoking member may administer the guild: the owner, an

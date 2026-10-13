@@ -45,6 +45,26 @@ export const MODERATOR_BUNDLE = [
 
 export const HELPER_BUNDLE = ['ManageMessages'] as const;
 
+/**
+ * UR-20261012-053 — every permission NAME the framework asks a member about, derived from the
+ * bundles above so it can never drift from them.
+ *
+ * The adapter that reads a Discord interaction has to decide WHICH permissions to collect, and it
+ * collected a hand-written list that omitted `ManageMessages` — the one permission both
+ * MODERATOR_BUNDLE and HELPER_BUNDLE require. So `holdsEveryBit` could never be satisfied for either,
+ * and a moderator or helper evaluated as MEMBER. One fact, written twice, disagreeing.
+ *
+ * `ManageChannels` and `ManageGuild` are included because the dispatch path asks about them directly
+ * (see `isGuildAdmin`), not because any rank bundle needs them.
+ */
+export const TRACKED_PERMISSION_NAMES: readonly string[] = [
+  ...ADMINISTRATOR_BUNDLE,
+  ...MODERATOR_BUNDLE,
+  ...HELPER_BUNDLE,
+  'ManageChannels',
+  'ManageGuild',
+];
+
 export function rankLevel(rank: Rank): number {
   return RANK_LEVEL[rank];
 }

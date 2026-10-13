@@ -17,17 +17,20 @@
  * plain adapter object carrying the shape the router and registry expect.
  */
 import type { CommandInteraction } from '../commands/command-router.js';
+import { TRACKED_PERMISSION_NAMES } from '../permissions/rank.js';
 import type { ComponentInteraction } from './interaction-registry.js';
 
-/** §9.6 — the permission bits that make a member a guild administrator for routing purposes. */
-export const ADMIN_PERMISSION_BITS = [
-  'Administrator',
-  'ManageChannels',
-  'ManageGuild',
-  'ModerateMembers',
-  'BanMembers',
-  'KickMembers',
-] as const;
+/**
+ * §9.6 — the permission NAMES this adapter collects from a member.
+ *
+ * UR-20261012-053 — DERIVED from `permissions/rank.ts`, not hand-written. The hand-written list had
+ * drifted: it omitted `ManageMessages`, which both MODERATOR_BUNDLE and HELPER_BUNDLE require, so no
+ * moderator or helper could ever satisfy their bundle and both evaluated as MEMBER.
+ *
+ * The rank bundles are expressed in NAMES (`'Administrator'`, `'KickMembers'`, …), so this list is in
+ * names too — a bit value like `'8'` can never match them.
+ */
+export const ADMIN_PERMISSION_BITS: readonly string[] = TRACKED_PERMISSION_NAMES;
 
 /** One of the permission bits above — the values these adapters ask Discord about. */
 export type AdminPermissionBit = (typeof ADMIN_PERMISSION_BITS)[number];
