@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.69
+version: 5.5.70
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,33 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.70 — one emoji scope per dispatch (UR-20261012-064) — 2026-10-12
+
+- 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- THE REPORT: the Home control fell back to the unicode glyph on every page, and most icons did so across
+  module pages.
+- THE CAUSE: five router call sites resolved the scope from a PER-ROUTER OPTION
+  (`this.options.residentApplicationId ?? DEFAULT_EMOJI_SCOPE`). That option is UNDEFINED FOR THE MAIN
+  BOT, so the lookup used the empty scope while the upload keys by the real application id (UR-062) --
+  every one missed: Home in both nav rows, Discover, the module decoration, and the browse Home option.
+  I HAD REVERTED THOSE FIVE TO THE OPTION MYSELF when fixing a type error, reasoning that "inside the
+  router the per-identity option is the authority". True for a persona, FALSE for the main bot.
+- THE FIX: residentApplicationId is REMOVED FROM THE ROUTER OPTIONS entirely, replaced by one accessor
+  `emojiScope(interaction)` returning `interaction.applicationId ?? DEFAULT_EMOJI_SCOPE` -- the same value
+  the upload keys by. With the option gone, TypeScript enumerated every site, including the two helpers
+  (pageActions, browseBlocks) which now take the scope as an explicit argument.
+  THERE IS DELIBERATELY NO SECOND SOURCE.
+- RECORDED: the same bug, three times, from the same cause -- TWO SOURCES FOR ONE KEY. UR-060 made the
+  read authoritative and left the write on the default; UR-062 brought the write into line; this removes
+  the last alternative source. Each fix was to DELETE A SECOND WAY OF ASKING, not to reconcile answers.
+- STILL OPEN (recorded, not fixed): the framework's icon assets are listed in the CORE
+  (module-emoji-upload.ts), including first-party module logos. The docs describe modules as
+  independently developed with their own asset paths, so those belong to the modules.
+- **Verification:** 115 files / 1169 tests / 0 failures; coverage 68.31% branch, NO threshold error;
+  typecheck, lint, format clean with CI's own commands.
 
 ---
 

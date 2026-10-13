@@ -124,13 +124,6 @@ export interface CommandRouterOptions {
   resolveCommandOwner?: (guildId: string, moduleSlug: string) => Promise<string | undefined>;
   residentPersonaId?: string;
   /**
-   * UR-20261012-057 — the Discord application this router renders FOR. Emoji ids belong to one
-   * application, so a persona's pages must reference the persona's own ids; the main bot uses the
-   * default scope. Without this a persona embedded the main bot's ids and every icon rendered as the
-   * literal `:dumby_browse:`.
-   */
-  residentApplicationId?: string;
-  /**
    * UR-20261012-060 — the ONE guild this identity serves. A persona sets it; the main bot does not,
    * because the main bot serves every guild it is installed in.
    */
@@ -275,9 +268,8 @@ export class CommandRouter {
                   interaction.guildId,
                   options.page,
                   options.query,
-                  // UR-20261012-060 — the application Discord says this interaction is for; the
-                  // router option is only a fallback.
-                  interaction.applicationId ?? this.options.residentApplicationId,
+                  // UR-20261012-064 — the interaction's application, and nothing else.
+                  this.emojiScope(interaction),
                 )) ?? {},
             },
           );
@@ -365,13 +357,17 @@ export class CommandRouter {
         // nav is Home/Next/Prev. Each block set attaches only when the page data carries its shape,
         // so a command that returns a plain render is left untouched.
         ...(name === 'browse'
-          ? { blocks: this.browseBlocks(declaredPageData, interaction.user.id) }
+          ? {
+              blocks: this.browseBlocks(
+                declaredPageData,
+                interaction.user.id,
+                this.emojiScope(interaction),
+              ),
+            }
           : name === 'health' && Array.isArray(declaredPageData?.['groups'])
             ? {
                 blocks: healthBlocks(declaredPageData, interaction.user.id, {
-                  ...(this.options.residentApplicationId !== undefined
-                    ? { applicationId: this.options.residentApplicationId }
-                    : {}),
+                  applicationId: this.emojiScope(interaction),
                 }),
               }
             : name === 'modules' && Array.isArray(declaredPageData?.['modules'])
@@ -382,6 +378,7 @@ export class CommandRouter {
                     declaredPageData,
                     interaction.user.id,
                     options.page,
+                    this.emojiScope(interaction),
                   ),
                 }
               : name === 'persona' && Array.isArray(declaredPageData?.['tiers'])
@@ -389,10 +386,8 @@ export class CommandRouter {
                     // UR-20261012-029 — the persona setup control is offered ONLY to a guild admin.
                     blocks: personaBlocks(declaredPageData, interaction.user.id, {
                       isAdmin: isGuildAdmin(interaction),
-                      // UR-20261012-057 — a persona's page uses the persona's own emoji ids.
-                      ...(this.options.residentApplicationId !== undefined
-                        ? { applicationId: this.options.residentApplicationId }
-                        : {}),
+                      // UR-20261012-064 — a persona's page uses the persona's own emoji ids.
+                      applicationId: this.emojiScope(interaction),
                     }),
                   }
                 : name === 'dashboard'
@@ -402,6 +397,7 @@ export class CommandRouter {
                         declaredPageData,
                         interaction.user.id,
                         options.page,
+                        this.emojiScope(interaction),
                       ),
                     }
                   : {}),
@@ -417,7 +413,7 @@ export class CommandRouter {
               interaction.guildId,
               options.page,
               undefined,
-              this.options.residentApplicationId,
+              this.emojiScope(interaction),
               this.options.residentPersonaId ?? 'main',
             )) ?? {};
           render.sections = derivePageSections(pageName, fresh);
@@ -610,6 +606,18 @@ export class CommandRouter {
     throw new PersonaBoundGuildError(guildId ?? 'a direct message', bound);
   }
 
+  /**
+   * UR-20261012-064 — THE emoji scope, and the only one.
+   *
+   * An application emoji may be referenced ONLY by the application that owns it, so the scope is the
+   * application Discord states on the interaction — the same value the upload keys by. There is
+   * deliberately NO second source: a per-router option is undefined for the main bot, and a lookup that
+   * used it while the upload used the real id missed every icon. One source, compiler-enforced.
+   */
+  private emojiScope(interaction: CommandInteraction): string {
+    return interaction.applicationId ?? DEFAULT_EMOJI_SCOPE;
+  }
+
   private async assertPersonaOwnsCommand(
     command: CommandDefinition,
     guildId: string | null,
@@ -702,6 +710,8 @@ export class CommandRouter {
     data: Readonly<Record<string, unknown>> | undefined,
     invokerId: string,
     page = 0,
+    /** UR-20261012-064 — the emoji scope for the acting application. */
+    scope: string,
   ): readonly PageActionRow[] {
     // UR-004 items 2/3 - the dashboard's navigation is Home (icon-only) / Next page / Previous
     // page; Next/Previous move between the main page (page 0) and the standard module pages.
@@ -718,10 +728,7 @@ export class CommandRouter {
           {
             customId: nav('home', 0),
             label: '',
-            emoji: customEmojiParts(
-              'dumby_home',
-              this.options.residentApplicationId ?? DEFAULT_EMOJI_SCOPE,
-            ) ?? { name: '🏠' },
+            emoji: customEmojiParts('dumby_home', scope) ?? { name: '🏠' },
             style: 2,
             disabled: page === 0,
           },
@@ -754,10 +761,7 @@ export class CommandRouter {
           {
             customId: paged('home', 0),
             label: '',
-            emoji: customEmojiParts(
-              'dumby_home',
-              this.options.residentApplicationId ?? DEFAULT_EMOJI_SCOPE,
-            ) ?? { name: '🏠' },
+            emoji: customEmojiParts('dumby_home', scope) ?? { name: '🏠' },
             style: 2,
           },
           {
@@ -787,6 +791,8 @@ export class CommandRouter {
   private browseBlocks(
     data: Readonly<Record<string, unknown>> | undefined,
     invokerId: string,
+    /** UR-20261012-064 — the emoji scope for the acting application. */
+    scope: string,
   ): readonly RenderBlock[] {
     const raw = Array.isArray(data?.['modules']) ? (data['modules'] as unknown[]) : [];
     const modules = raw
@@ -815,14 +821,8 @@ export class CommandRouter {
         } => typeof m.id === 'string',
       );
     const query = typeof data?.['query'] === 'string' ? (data['query'] as string) : '';
-    const defaultIcon = customEmojiParts(
-      'dumby_module',
-      this.options.residentApplicationId ?? DEFAULT_EMOJI_SCOPE,
-    );
-    const homeIcon = customEmojiParts(
-      'dumby_home',
-      this.options.residentApplicationId ?? DEFAULT_EMOJI_SCOPE,
-    );
+    const defaultIcon = customEmojiParts('dumby_module', scope);
+    const homeIcon = customEmojiParts('dumby_home', scope);
 
     const blocks: RenderBlock[] = [];
     // UR-20261011-007 — the title is a Section whose accessory is the Discover control, so Discover
@@ -837,10 +837,7 @@ export class CommandRouter {
       accessory: {
         customId: `dumby:discover:${invokerId}:browse`,
         label: 'Discover',
-        emoji: customEmojiParts(
-          'dumby_discover',
-          this.options.residentApplicationId ?? DEFAULT_EMOJI_SCOPE,
-        ) ?? { name: '🔍' },
+        emoji: customEmojiParts('dumby_discover', scope) ?? { name: '🔍' },
         style: 2,
       },
     });
@@ -901,6 +898,8 @@ export class CommandRouter {
     invokerId: string,
     guildId: string | null,
     query: string,
+    /** UR-20261012-064 — the acting application's emoji scope. */
+    scope: string = DEFAULT_EMOJI_SCOPE,
   ): Promise<ComponentsV2Message> {
     const data =
       (await this.options.pageDataProvider?.(
@@ -908,13 +907,13 @@ export class CommandRouter {
         guildId,
         0,
         query,
-        this.options.residentApplicationId,
+        scope,
         this.options.residentPersonaId ?? 'main',
       )) ?? {};
     return this.renderer.render({
       surface: this.pageTitle('browse'),
       moduleId: 'browse',
-      blocks: this.browseBlocks(data, invokerId),
+      blocks: this.browseBlocks(data, invokerId, scope),
     });
   }
 
