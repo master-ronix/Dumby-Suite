@@ -514,6 +514,14 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   check that can silently match nothing.
 - **Verification:** all five Gates steps re-run locally with CI's own commands -- build packages,
   typecheck, lint, lint:modules, format -- and all pass.
+- THEN THE COVERAGE GATE FAILED: `src/commands/**` branches at 63.36% against a 65 floor. The new
+  router branches -- the occupancy option's label and description, the scope fallbacks, the empty
+  browse path -- were untested. Tests added that drive `buildBrowseRender` with an occupied entry and
+  with a provider returning nothing. Branches now clear the floor: All files 68.04% branch, NO threshold
+  error, 113 files / 1167 tests / 0 failures.
+- RECORDED: the gates are a SEQUENCE, and passing the first five says nothing about the sixth. Format
+  hid a coverage failure, and the coverage failure hid nothing -- I only found it by running the whole
+  sequence rather than the steps I expected to be risky.
 
 ---
 

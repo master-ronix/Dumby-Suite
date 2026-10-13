@@ -638,3 +638,45 @@ describe('a persona is bound to ONE guild (UR-20261012-060)', () => {
     expect(handler).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('/browse states module occupancy (UR-20261012-061)', () => {
+  test('an occupied module is labelled and described as occupied, and a free one is not', async () => {
+    const reg = new CommandRegistry();
+    const logger = makeLogger() as unknown as Logger;
+    const router = new CommandRouter(reg, logger, {
+      residentPersonaId: 'p-1',
+      residentApplicationId: 'app-2',
+      pageDataProvider: async () => ({
+        query: '',
+        modules: [
+          {
+            id: 'hello-world',
+            name: 'hello-world',
+            description: 'A hello module',
+            icon: '🧊',
+            occupied: true,
+            occupiedBy: 'the main bot',
+            note: 'Occupied by the main bot in this server — a persona cannot take it',
+          },
+          { id: 'free-mod', name: 'free-mod', description: 'Free', icon: '🆓' },
+        ],
+      }),
+    });
+
+    const rendered = JSON.stringify(await router.buildBrowseRender('u1', 'g1', ''));
+
+    // The occupied option carries the fact in its LABEL (a Discord select cannot disable one option).
+    expect(rendered).toContain('hello-world — occupied');
+    expect(rendered).toContain('Occupied by the main bot');
+    // The free module is offered normally.
+    expect(rendered).toContain('free-mod');
+  });
+
+  test('a browse render survives a provider that returns nothing', async () => {
+    const reg = new CommandRegistry();
+    const logger = makeLogger() as unknown as Logger;
+    const router = new CommandRouter(reg, logger, { pageDataProvider: async () => ({}) });
+    // The empty path must still render a frame rather than throw.
+    await expect(router.buildBrowseRender('u1', 'g1', 'nothing')).resolves.toBeDefined();
+  });
+});
