@@ -564,3 +564,42 @@ describe('page-data provider', () => {
     expect(await provider('nope', null)).toEqual({});
   });
 });
+
+describe('module ownership is PER PROFILE (UR-20261012-061)', () => {
+  test('a module claimed by a persona is not installed for the main bot, and vice versa', async () => {
+    // The operator's report: installing a module in the main bot made it appear as installed for the
+    // persona too. Ownership is per profile, first come — one profile holds a module, not the guild.
+    const provider = createPageDataProvider(
+      makeDeps({
+        resolveOwner: async (_guildId: string, slug: string) =>
+          slug === 'hello-world' ? 'p-1' : undefined,
+      }),
+    );
+    const namesOf = (d: Dict): string[] => (d['modules'] as Array<{ id: string }>).map((m) => m.id);
+
+    const asMain = await provider('modules', 'guild-1', 0, undefined, 'app-1', 'main');
+    const asPersona = await provider('modules', 'guild-1', 0, undefined, 'app-2', 'p-1');
+
+    // hello-world is held by the persona, so the main bot does NOT list it...
+    expect(namesOf(asMain)).not.toContain('hello-world');
+    // ...and the persona does.
+    expect(namesOf(asPersona)).toContain('hello-world');
+    // Core is shared: both list it.
+    expect(namesOf(asMain)).toContain('health');
+    expect(namesOf(asPersona)).toContain('health');
+  });
+
+  test('/browse marks a module another profile holds as occupied, and does not offer it', async () => {
+    const provider = createPageDataProvider(
+      makeDeps({
+        resolveOwner: async (_guildId: string, slug: string) =>
+          slug === 'hello-world' ? 'p-1' : undefined,
+      }),
+    );
+    const asMain = await provider('browse', 'guild-1', 0, undefined, 'app-1', 'main');
+    const entries = asMain['modules'] as Array<{ id: string; occupied?: boolean; note?: string }>;
+    const hello = entries.find((m) => m.id === 'hello-world');
+    expect(hello?.occupied).toBe(true);
+    expect(String(hello?.note)).toContain('Occupied by a persona');
+  });
+});

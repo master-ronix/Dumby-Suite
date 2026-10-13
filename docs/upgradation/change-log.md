@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.65
+version: 5.5.66
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,30 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.66 — module ownership is PER PROFILE (UR-20261012-061) — 2026-10-12
+
+- 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- THE REPORT: "persona & main bot's modules are shared not synced -- if I install a module in main bot
+  the persona shows that module installed and listed in its /dashboard /modules /browse /persona
+  everywhere."
+- WHY: /modules, /dashboard and /browse filtered by the GUILD's enablement and consulted NO OWNERSHIP
+  at all. The ownership data existed (guild_persona_bindings) but those pages never read it; only
+  /persona was scoped (UR-054).
+- THE RULE (UR-059): core shared, owned by nobody; standard/marketplace owned by ONE profile per guild,
+  first come; the other profile refused and told who holds it.
+- THE CHANGE: ONE ownership read -- resolveOwner is now a PageDataDeps dependency backed by
+  PersonaCommandBindingService.resolveCommandOwner and memoized per guild+module, consulted by every
+  page. Every page takes actingProfileId ('main' or a persona id). /modules and /dashboard list core
+  plus only what the acting profile holds. /browse lists what it may install PLUS what another profile
+  holds, marked occupied with the holder named in the section and in the dropdown option (a Discord
+  select cannot disable one option, so the fact is stated and the INSTALL refuses). A persona installing
+  an unclaimed module CLAIMS it -- the binding is written, which is what makes "first come" real.
+- RECORDED: the data existed; the pages did not ask. Ownership was already modelled and already
+  enforced on the command path -- the page layer simply had no concept of "whose page is this".
+- **Verification:** 94 tests across the affected files pass; typecheck, lint, format clean; docs gates OK.
 
 ---
 

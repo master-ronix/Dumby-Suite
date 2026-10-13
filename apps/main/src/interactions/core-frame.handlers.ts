@@ -63,7 +63,13 @@ export interface CoreFrameHandlerDeps {
     applicationId?: string,
   ) => unknown | Promise<unknown>;
   /** item 9 — installs a marketplace module for the guild (the install-dropdown action). */
-  installModule?: (moduleId: string, guildId: string | null, userId: string) => Promise<void>;
+  installModule?: (
+    moduleId: string,
+    guildId: string | null,
+    userId: string,
+    /** UR-20261012-061 — the application acting, so an OCCUPIED module can be refused by name. */
+    applicationId?: string,
+  ) => Promise<void>;
   /** UR-20261011-009 — disables/uninstalls a module for the guild (the detail card's control). */
   uninstallModule?: (moduleId: string, guildId: string | null, userId: string) => Promise<void>;
   /**
@@ -172,7 +178,12 @@ export function registerCoreFrameHandlers(deps: CoreFrameHandlerDeps): void {
           selected !== HOME_SELECT_VALUE &&
           installModule !== undefined
         ) {
-          await installModule(selected, interaction.guildId, interaction.user.id);
+          await installModule(
+            selected,
+            interaction.guildId,
+            interaction.user.id,
+            interaction.applicationId,
+          );
         }
         await router.dispatch(asPageInteraction(interaction, 'browse'));
       }

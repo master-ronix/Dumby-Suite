@@ -27,6 +27,12 @@ export interface PageDataDeps {
    */
   personaInvite?:
     ((input: { applicationId: string; guildId: string; withOAuth: boolean }) => string) | undefined;
+  /**
+   * UR-20261012-061 — WHICH PROFILE OWNS A MODULE in a guild. A standard/marketplace module belongs
+   * to one profile per guild (first come); core belongs to nobody. Kept as a dependency so the page
+   * layer never re-derives ownership from a second source.
+   */
+  resolveOwner?: ((guildId: string, moduleSlug: string) => Promise<string | undefined>) | undefined;
   moduleRegistry: ModuleRegistry;
   db: DbClient;
   redis: Redis;
@@ -69,7 +75,8 @@ const titleCaseId = (id: string): string =>
 export function createPageDataProvider(
   deps: PageDataDeps,
 ): (moduleId: string, guildId: string | null, page?: number, query?: string) => Promise<PageData> {
-  const { getClient, moduleRegistry, db, redis, config, logger, isMember, personaInvite } = deps;
+  const { getClient, moduleRegistry, db, redis, config, logger, isMember, personaInvite, resolveOwner } =
+    deps;
 
   /**
    * UR-20261011-011 — the guild's module enablement, read once. A module is "enabled" when its
@@ -207,6 +214,41 @@ export function createPageDataProvider(
 
   /** The resident main bot's profile id on the /persona board. */
   const MAIN_PROFILE_ID = 'main';
+
+  /**
+   * UR-20261012-061 — the ONE ownership rule, read once per page.
+   *
+   *   * CORE is shared: owned by nobody, visible to every profile.
+   *   * STANDARD / MARKETPLACE belong to ONE profile in the guild — whoever claimed it first.
+   *
+   * `ownedBy` is the only thing any page consults, so /persona, /modules, /browse and /dashboard can
+   * no longer disagree about who holds a module.
+   */
+  const ownerCache = new Map<string, string | undefined>();
+  const holderOf = async (guildId: string | null, slug: string): Promise<string | undefined> => {
+    if (guildId === null || resolveOwner === undefined) return undefined;
+    const key = `${guildId}\u0000${slug}`;
+    if (ownerCache.has(key)) return ownerCache.get(key);
+    let owner: string | undefined;
+    try {
+      owner = await resolveOwner(guildId, slug);
+    } catch {
+      owner = undefined;
+    }
+    ownerCache.set(key, owner);
+    return owner;
+  };
+
+  /** True when `actingProfileId` holds this module in this guild. Core is held by everyone. */
+  const ownedBy = async (
+    guildId: string | null,
+    slug: string,
+    tier: string,
+    actingProfileId: string,
+  ): Promise<boolean> => {
+    if (tier === 'core') return true;
+    return ((await holderOf(guildId, slug)) ?? MAIN_PROFILE_ID) === actingProfileId;
+  };
 
   interface PersonaProfile {
     readonly id: string;
@@ -525,15 +567,24 @@ export function createPageDataProvider(
     page: number,
     guildId: string | null,
     applicationId: string,
+    actingProfileId: string,
   ): Promise<PageData> {
     const all = moduleRegistry.all();
     // UR-20261011-011 — a disabled standard module has NO page on the dashboard (its commands are
     // not registered for the guild either, §17.6).
     const enabledBySlug = await enabledStates(guildId);
-    const standard = all.filter(
-      (entry) =>
-        entry.manifest.tier === 'standard' && (enabledBySlug.get(entry.manifest.name) ?? true),
+    // UR-20261012-061 — only the standard modules THIS profile holds.
+    const dashboardEntries = await Promise.all(
+      all
+        .filter((entry) => entry.manifest.tier === 'standard')
+        .map(async (entry) => ({
+          entry,
+          mine: await ownedBy(guildId, entry.manifest.name, 'standard', actingProfileId),
+        })),
     );
+    const standard = dashboardEntries
+      .filter((r) => r.mine && (enabledBySlug.get(r.entry.manifest.name) ?? true))
+      .map((r) => r.entry);
     const pageTotal = 1 + standard.length;
 
     if (page >= 1 && page <= standard.length) {
@@ -583,17 +634,31 @@ export function createPageDataProvider(
     query: string | undefined,
     guildId: string | null,
     applicationId: string,
+    actingProfileId: string,
   ): Promise<PageData> {
     const all = moduleRegistry.all();
     // UR-20261011-010/011 — the catalogue lists what a guild can INSTALL or RE-ENABLE: marketplace
     // modules not enabled for the guild, and standard modules the guild has disabled
     // ("Previously Installed", §13.2). Core/Admin are never listed.
     const enabledBySlug = await enabledStates(guildId);
-    const available = all.filter((entry) => {
+    // UR-20261012-061 — the catalogue shows what THIS profile may install, PLUS what another profile
+    // holds (marked as occupied, so the operator is told rather than shown a control that refuses).
+    const candidates = all.filter((entry) => {
       const tier = entry.manifest.tier;
-      if (tier !== 'marketplace' && tier !== 'standard') return false;
-      const enabled = enabledBySlug.get(entry.manifest.name) ?? defaultEnabledForTier(tier);
-      return !enabled;
+      return tier === 'marketplace' || tier === 'standard';
+    });
+    const ownedFlags = await Promise.all(
+      candidates.map((entry) =>
+        ownedBy(guildId, entry.manifest.name, entry.manifest.tier, actingProfileId),
+      ),
+    );
+    const available = candidates.filter((entry, i) => {
+      const tier = entry.manifest.tier;
+      const slug = entry.manifest.name;
+      const enabled = enabledBySlug.get(slug) ?? defaultEnabledForTier(tier);
+      if (!enabled) return true; // installable, or re-enableable
+      // Enabled: offer it only when this profile does NOT hold it — i.e. when it is occupied.
+      return ownedFlags[i] !== true;
     });
     const q = (query ?? '').trim().toLowerCase();
     const matched =
@@ -605,16 +670,36 @@ export function createPageDataProvider(
               entry.manifest.description.toLowerCase().includes(q),
           );
     const shown = matched.slice(0, MARKETPLACE_MODULE_CAP);
-    const modules = shown.map((entry) => ({
-      id: entry.manifest.name,
-      name: entry.manifest.name,
-      description: entry.manifest.description,
-      icon: moduleIcon(entry.manifest.ui?.icon, applicationId),
-      // A disabled STANDARD module is "Previously Installed": selecting it re-enables it.
-      ...(entry.manifest.tier === 'standard'
-        ? { note: 'Previously installed — select to re-enable' }
-        : {}),
-    }));
+    const modules = await Promise.all(
+      shown.map(async (entry) => {
+      const slug = entry.manifest.name;
+      const tier = entry.manifest.tier;
+      const enabled = enabledBySlug.get(slug) ?? defaultEnabledForTier(tier);
+      const holder = await holderOf(guildId, slug);
+      // Occupied: enabled, and held by the OTHER profile. Stated plainly and NOT offered.
+      const occupied = enabled && !(await ownedBy(guildId, slug, tier, actingProfileId));
+      return {
+        id: slug,
+        name: slug,
+        description: entry.manifest.description,
+        icon: moduleIcon(entry.manifest.ui?.icon, applicationId),
+        ...(occupied
+          ? {
+              occupied: true,
+              occupiedBy: holder === undefined ? 'the main bot' : 'a persona',
+              note:
+                holder === undefined
+                  ? 'Occupied by the main bot in this server — a persona cannot take it'
+                  : 'Occupied by a persona in this server — the main bot cannot take it',
+            }
+          : {}),
+        // A disabled STANDARD module is "Previously Installed": selecting it re-enables it.
+        ...(!occupied && tier === 'standard'
+          ? { note: 'Previously installed — select to re-enable' }
+          : {}),
+        };
+      }),
+    );
     const lines: string[] =
       modules.length === 0
         ? [
@@ -633,14 +718,22 @@ export function createPageDataProvider(
     page: number,
     guildId: string | null,
     applicationId: string,
+    actingProfileId: string,
   ): Promise<PageData> {
-    // UR-20261011-011 — the list shows what is ENABLED for the guild: core always, standard unless
-    // disabled, marketplace only when installed. A disabled module is not "installed".
+    // UR-20261012-061 — what THIS PROFILE holds, not what the guild has. Core is shared and always
+    // listed; a standard/marketplace module appears only for the profile that claimed it, and only
+    // when it is enabled. Installing a module in the main bot no longer makes it appear here.
     const enabledBySlug = await enabledStates(guildId);
-    const enabledModules = moduleRegistry.all().filter((entry) => {
+    const heldFlags = await Promise.all(
+      moduleRegistry
+        .all()
+        .map((entry) => ownedBy(guildId, entry.manifest.name, entry.manifest.tier, actingProfileId)),
+    );
+    const enabledModules = moduleRegistry.all().filter((entry, i) => {
       const tier = entry.manifest.tier;
-      if (tier === 'core') return true;
       if (tier === 'admin') return false;
+      if (heldFlags[i] !== true) return false;
+      if (tier === 'core') return true;
       return enabledBySlug.get(entry.manifest.name) ?? defaultEnabledForTier(tier);
     });
     const total = enabledModules.length;
@@ -669,6 +762,9 @@ export function createPageDataProvider(
     // UR-20261012-057 — the application rendering the page. Its emoji ids are the only ones a message
     // from that application may reference.
     applicationId: string = DEFAULT_EMOJI_SCOPE,
+    // UR-20261012-061 — WHICH profile this page reports for. 'main' for the main bot, a persona id
+    // for a persona. Every page scopes its modules by it.
+    actingProfileId: string = MAIN_PROFILE_ID,
   ): Promise<PageData> => {
     switch (moduleId) {
       case 'health':
@@ -680,11 +776,11 @@ export function createPageDataProvider(
       case 'permit':
         return permit(applicationId);
       case 'dashboard':
-        return dashboard(page, guildId, applicationId);
+        return dashboard(page, guildId, applicationId, actingProfileId);
       case 'browse':
-        return marketplace(query, guildId, applicationId);
+        return marketplace(query, guildId, applicationId, actingProfileId);
       case 'modules':
-        return installedModules(page, guildId, applicationId);
+        return installedModules(page, guildId, applicationId, actingProfileId);
       default:
         return {};
     }

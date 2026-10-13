@@ -158,6 +158,11 @@ export interface CommandRouterOptions {
      * the page data must resolve its icons against the right one.
      */
     applicationId?: string,
+    /**
+     * UR-20261012-061 — WHICH profile the page reports for: 'main' for the main bot, a persona id for
+     * a persona. Every page scopes its modules by it.
+     */
+    actingProfileId?: string,
   ) => Promise<Readonly<Record<string, unknown>>>;
   /**
    * §6.7 — performs the side effects a handler declares. Keyed by effect kind; an undeclared kind
@@ -413,6 +418,7 @@ export class CommandRouter {
               options.page,
               undefined,
               this.options.residentApplicationId,
+              this.options.residentPersonaId ?? 'main',
             )) ?? {};
           render.sections = derivePageSections(pageName, fresh);
         }
@@ -792,6 +798,7 @@ export class CommandRouter {
               description?: unknown;
               icon?: unknown;
               note?: unknown;
+              occupied?: unknown;
             })
           : {},
       )
@@ -804,6 +811,7 @@ export class CommandRouter {
           description?: unknown;
           icon?: unknown;
           note?: unknown;
+          occupied?: unknown;
         } => typeof m.id === 'string',
       );
     const query = typeof data?.['query'] === 'string' ? (data['query'] as string) : '';
@@ -861,12 +869,21 @@ export class CommandRouter {
       description: 'Return to the browse main view.',
       ...(homeIcon !== undefined ? { emoji: homeIcon } : {}),
     };
-    const moduleOptions: NavigationOption[] = modules.slice(0, MARKETPLACE_MODULE_CAP).map((m) => ({
-      label: String(m.name ?? m.id),
-      value: m.id,
-      description: String(m.description ?? '').slice(0, 100),
-      ...(defaultIcon !== undefined ? { emoji: defaultIcon } : {}),
-    }));
+    // UR-20261012-061 — an OCCUPIED module is stated in the option itself. Discord cannot disable a
+    // single option, so the label and description carry the fact and the install refuses it.
+    const moduleOptions: NavigationOption[] = modules.slice(0, MARKETPLACE_MODULE_CAP).map((m) => {
+      const occupied = m.occupied === true;
+      const name = String(m.name ?? m.id);
+      return {
+        label: occupied ? `${name} — occupied`.slice(0, 100) : name,
+        value: m.id,
+        description: (occupied
+          ? String(m.note ?? 'Occupied by another profile in this server.')
+          : String(m.description ?? '')
+        ).slice(0, 100),
+        ...(defaultIcon !== undefined ? { emoji: defaultIcon } : {}),
+      };
+    });
     blocks.push({
       kind: 'select',
       customId: `dumby:act:${invokerId}:install:browse`,
@@ -892,6 +909,7 @@ export class CommandRouter {
         0,
         query,
         this.options.residentApplicationId,
+        this.options.residentPersonaId ?? 'main',
       )) ?? {};
     return this.renderer.render({
       surface: this.pageTitle('browse'),

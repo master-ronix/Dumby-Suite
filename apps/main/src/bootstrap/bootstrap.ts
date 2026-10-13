@@ -71,6 +71,7 @@ import {
   toComponentInteraction,
   type RawInteractionLike,
 } from '../interactions/interaction-adapters.js';
+import { PersonaOccupiedError } from '../personas/persona.js';
 import { PersonaCommandBindingService } from '../personas/persona-command-binding.service.js';
 import {
   PersonaRuntime,
@@ -672,6 +673,10 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   // getter closes over the client the live branch assigns later.
   let discordClient: Client | undefined;
   const pageDataProvider = createPageDataProvider({
+    // UR-20261012-061 — the ONE ownership read. /persona, /modules, /browse and /dashboard all
+    // consult it, so they cannot disagree about which profile holds a module.
+    resolveOwner: (guildId, moduleSlug) =>
+      personaBindingService.resolveCommandOwner(guildId, moduleSlug),
     getClient: () => discordClient,
     moduleRegistry,
     db,
@@ -888,8 +893,35 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     moduleId: string,
     guildId: string | null,
     userId: string,
+    applicationId?: string,
   ): Promise<void> => {
     if (guildId === null || moduleRegistry.get(moduleId) === undefined) return;
+
+    // UR-20261012-061 — OWNERSHIP. A standard/marketplace module belongs to ONE profile in a guild,
+    // whoever claimed it first. Installing it from the other profile is refused, not silently allowed.
+    const owner = await personaBindingService.resolveCommandOwner(guildId, moduleId);
+    const acting =
+      applicationId === undefined
+        ? undefined
+        : await personaIdentities.findByApplicationId(applicationId);
+    if (owner !== undefined && acting?.id !== owner) {
+      logger.warn(
+        `marketplace-module-occupied module=${moduleId} guild=${guildId} owner=${owner} actor=${acting?.id ?? 'main'}`,
+      );
+      throw new PersonaOccupiedError(guildId, moduleId, owner);
+    }
+    // A PERSONA installing an unclaimed module CLAIMS it: the first profile to install owns it.
+    if (owner === undefined && acting !== undefined) {
+      await personaBindingService.bindModuleToPersona({
+        guildId,
+        moduleSlug: moduleId,
+        personaId: acting.id,
+      });
+      logger.info(
+        `marketplace-module-claimed module=${moduleId} guild=${guildId} persona=${acting.id}`,
+      );
+    }
+
     await db
       .knex('guild_module_states')
       .insert({ guildId, moduleSlug: moduleId, enabled: true, state: 'active' })
