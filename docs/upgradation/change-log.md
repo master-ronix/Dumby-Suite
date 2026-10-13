@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.59
+version: 5.5.60
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,36 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.60 — the /persona page rebuilt (UR-20261012-054) — 2026-10-12
+
+- 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- THE CONTROL VANISHED ON THE SECOND RENDER. asPageInteraction -- which EVERY switch and refresh goes
+  through -- dropped memberPermissions and isGuildOwner. The first paint is a real command interaction
+  and had the admin context; every re-render had none, isGuildAdmin returned false, and the control was
+  not drawn. FIXED AT THE SOURCE: the component adapter now captures the same context the command
+  adapter does, and asPageInteraction carries it into the re-entry.
+- CLAIMED MODULES ONLY. Core is gone from a profile entirely: a core module is shared without dispute,
+  so listing it was noise and made every profile look identical. A persona's claim is ONLY its bindings
+  (a standard module the main bot already has enabled is the main bot's); the main bot's claim is
+  non-core modules ENABLED for the guild that no persona has bound.
+- THE COMMAND INVENTORY IS GONE. A profile's commands are the framework's, not a property of the
+  profile, and the inventory buried the one thing that section is for. The switcher now counts CLAIMS,
+  and a profile with nothing claimed says so.
+- THE SWITCHER SITS BELOW THE FOOTER. The renderer gained a TRAILING placement: a block may declare
+  `placement: 'trailing'` and renders after the footer. A selector acts on the whole page.
+- THE INFO CONTROL: personas only (the main bot has no OAuth redirect and nothing to invite), admin-only,
+  and the card carries the OAuth redirect callback guide AND NOTHING ELSE. The install guide and the
+  invite button were rejected -- and the reason is sound: DISCORD PUBLISHES NO API FOR AN APPLICATION'S
+  REDIRECT LIST, so whether the URL the card asks for is registered cannot be read. A link that works
+  only if the operator already did the thing the card asks for is worse than no link.
+- THE STATUS ASSETS ARE REDRAWN: status-online, status-offline, info, identity and profile are now
+  minimalist, thick, bold, WHITE icons on transparency, drawn at 4x and downsampled for clean edges.
+- NOT IN THIS RECORD: the persona's command REGISTRATION (same global + guild set as the main bot,
+  clearing stale registrations, the guild binding as the only restriction) is a separate runtime change.
+- **Verification:** 113 files / 1157 tests / 0 failures; typecheck, lint, format, gates 27/27.
 
 ---
 

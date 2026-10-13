@@ -146,8 +146,9 @@ export function personaBlocks(
     selected === undefined
       ? ''
       : [
-          `${selected.moduleCount} module${selected.moduleCount === 1 ? '' : 's'}`,
-          `${selected.commandCount} command${selected.commandCount === 1 ? '' : 's'}`,
+          // UR-20261012-054 — the module count only. The command inventory is gone from this page by
+          // request, so a command count would count something the page no longer shows.
+          `${selected.moduleCount} claimed module${selected.moduleCount === 1 ? '' : 's'}`,
           // UR-20261012-031 — presence is stated plainly, and is NOT the same as the online state.
           selected.isMain ? '' : selected.present ? 'In this guild' : 'Not in this guild yet',
         ]
@@ -175,13 +176,16 @@ export function personaBlocks(
       value: p.id,
       description:
         p.id === currentId
-          ? `Running this command · ${p.commandCount} commands`
-          : `${p.commandCount} commands`,
+          ? `Running this command · ${p.moduleCount} claimed`
+          : `${p.moduleCount} claimed`,
       ...(profileIcon !== undefined ? { emoji: profileIcon } : { emoji: PROFILE_FALLBACK }),
       ...(p.id === selectedId ? { default: true } : {}),
     }));
     blocks.push({
       kind: 'select',
+      // UR-20261012-054 — BELOW the footer, as asked. A selector acts on the whole page, and the
+      // footer closes the content above it.
+      placement: 'trailing',
       customId: `dumby:act:${invokerId}:profile:persona`,
       placeholder:
         profiles.length < 2
@@ -207,30 +211,38 @@ export function personaBlocks(
     }
   }
 
-  // The command inventory: one tier header carrying its module count, then one tidy line per module
-  // — its own logo, its name, and the commands it owns.
+  // UR-20261012-054 — CLAIMED modules only, one line each: its logo and its name. No command
+  // inventory: a profile's commands are the framework's, not a property of the profile, and listing
+  // every command of every module buried the one thing this section is for — what this profile holds.
+  if (tiers.length === 0) {
+    blocks.push({
+      kind: 'text',
+      content:
+        selected !== undefined && selected.isMain
+          ? '-# No claimed modules — every module this guild has is bound to a persona.'
+          : '-# No claimed modules — bind one to this persona and restart.',
+    });
+  }
   for (const group of tiers) {
     const lines = group.modules
-      .map((mod) => {
-        const commands =
-          mod.commands.length === 0 ? '—' : mod.commands.map((c) => `\`/${c}\``).join(' · ');
-        const logo = mod.icon === '' ? '' : `${mod.icon} `;
-        return `${logo}**${mod.name}** — ${commands}`;
-      })
+      .map((mod) => `${mod.icon === '' ? '' : `${mod.icon} `}**${mod.name}**`)
       .join('\n');
     const count = group.modules.length;
     blocks.push({
       kind: 'text',
-      content: `**${TIER_LABEL[group.tier] ?? group.tier}** · ${count} module${count === 1 ? '' : 's'}\n${lines}`,
+      content: `**${TIER_LABEL[group.tier] ?? group.tier}** · ${count} claimed\n${lines}`,
     });
   }
 
   if (note !== '') blocks.push({ kind: 'text', content: `${infoIcon()} ${note}` });
 
-  // UR-20261012-029 — the authorization setup control, offered ONLY to a guild admin. It opens a
-  // private card carrying the callback URL the persona's application must register, the portal
-  // guide, and the link through to the dashboard's invite flow.
-  if (options.isAdmin === true) {
+  // UR-20261012-054 — the Info control, and ONLY on a registered persona.
+  //
+  //   * Never on the main bot's profile: the main bot is not a persona, has no OAuth redirect to
+  //     register, and nothing to invite. Showing a setup control there was meaningless.
+  //   * Admin-only, and it OPENS A CARD carrying the OAuth redirect callback guide and nothing else.
+  //     The install guide and the invite link were rejected, so neither is rendered.
+  if (options.isAdmin === true && selected !== undefined && selected.isMain !== true) {
     const controls: Array<{
       customId?: string;
       url?: string;
@@ -238,30 +250,12 @@ export function personaBlocks(
       style?: 1 | 2 | 3 | 4 | 5;
       emoji?: { name: string; id?: string };
     }> = [];
-    // UR-20261012-051 — TWO controls, because the operator could not find either.
-    //
-    // The invite used to be reachable only through a control labelled "OAuth setup", which reads as a
-    // configuration chore rather than "here is how to add this persona". The card behind it already
-    // carries the invite; what was missing was a way to SEE it.
-    //
-    //   Info    — icon-only, opens the card (identity, the callback URL to register, the portal
-    //             guide, and the invite link).
-    //   Invite  — a direct LINK, rendered only when an invite URL exists, so summoning the persona is
-    //             one click rather than a detour through a card.
     controls.push({
-      customId: `dumby:persona-setup:${invokerId}:${selected?.applicationId ?? ''}`,
+      customId: `dumby:persona-setup:${invokerId}:${selected.applicationId}`,
       label: '',
       style: 2,
       emoji: customEmojiParts(INFO_ICON_NAME) ?? { name: INFO_FALLBACK },
     });
-    if (selected !== undefined && selected.inviteUrl !== '') {
-      controls.push({
-        url: selected.inviteUrl,
-        label: 'Invite',
-        style: 5,
-        emoji: customEmojiParts(PROFILE_ICON_NAME) ?? { name: PROFILE_FALLBACK },
-      });
-    }
     blocks.push({ kind: 'row', buttons: controls });
   }
 

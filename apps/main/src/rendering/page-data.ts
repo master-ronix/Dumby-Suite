@@ -325,14 +325,27 @@ export function createPageDataProvider(
         : MAIN_PROFILE_ID;
 
     const allModules = moduleRegistry.all();
-    // The main bot owns every module no persona is bound to; a persona owns exactly the modules
-    // bound to it. (The check is against the OWNERSHIP map, not the set of persona ids.)
-    const modulesOwnedBy = (profileId: string) =>
-      allModules.filter((entry) =>
-        profileId === MAIN_PROFILE_ID
-          ? !ownerOf.has(entry.manifest.name)
-          : ownerOf.get(entry.manifest.name) === profileId,
-      );
+    // UR-20261012-054 — CLAIMED ownership, which is what the operator asked the page to show.
+    //
+    //   * CORE is never listed. A core module is shared without dispute (neither a persona nor the
+    //     main bot "owns" it), so listing it under a profile is noise — and it made every profile look
+    //     identical.
+    //   * A persona's claim is its BINDING, and only its binding. A standard module the main bot
+    //     already has enabled is the main bot's; a persona does not inherit it by existing.
+    //   * The main bot's claim is a non-core module ENABLED for the guild that no persona has bound.
+    //     The moment a persona binds one, it leaves the main bot's list.
+    const enabledBySlugForClaims = await enabledStates(guildId);
+    const claimedModulesFor = (profileId: string) =>
+      allModules.filter((entry) => {
+        const tier = entry.manifest.tier;
+        if (tier === 'core' || tier === 'admin') return false;
+        const slug = entry.manifest.name;
+        if (profileId === MAIN_PROFILE_ID) {
+          if (ownerOf.has(slug)) return false;
+          return enabledBySlugForClaims.get(slug) ?? defaultEnabledForTier(tier);
+        }
+        return ownerOf.get(slug) === profileId;
+      });
 
     const profileFor = (
       id: string,
@@ -346,7 +359,7 @@ export function createPageDataProvider(
       present: boolean,
       hasOAuth: boolean,
     ): PersonaProfile => {
-      const owned = modulesOwnedBy(id);
+      const owned = claimedModulesFor(id);
       return {
         id,
         name,
@@ -363,7 +376,10 @@ export function createPageDataProvider(
             ? ''
             : personaInvite({ applicationId, guildId, withOAuth: hasOAuth }),
         moduleCount: owned.length,
-        commandCount: owned.reduce((total, entry) => total + entry.manifest.commands.length, 0),
+        // UR-20261012-054 — the command inventory is gone from this page by request, so a command
+        // COUNT is meaningless here too. Kept at zero rather than removed so the profile shape stays
+        // stable for any other reader.
+        commandCount: 0,
       };
     };
 
@@ -413,9 +429,10 @@ export function createPageDataProvider(
         ? selected
         : currentProfileId;
     const selectedProfile = profiles.find((profile) => profile.id === selectedId) ?? profiles[0];
-    const ownedModules = modulesOwnedBy(selectedProfile?.id ?? MAIN_PROFILE_ID);
+    const ownedModules = claimedModulesFor(selectedProfile?.id ?? MAIN_PROFILE_ID);
 
-    const tierOrder = ['core', 'standard', 'marketplace'] as const;
+    // Only the tiers a profile can CLAIM. Core is absent by design.
+    const tierOrder = ['standard', 'marketplace'] as const;
     const tiers = tierOrder
       .map((tier) => ({
         tier,
@@ -424,7 +441,6 @@ export function createPageDataProvider(
           .map((entry) => ({
             name: entry.manifest.name,
             icon: moduleIcon(entry.manifest.ui?.icon),
-            commands: entry.manifest.commands.map((command) => command.name),
           })),
       }))
       .filter((group) => group.modules.length > 0);

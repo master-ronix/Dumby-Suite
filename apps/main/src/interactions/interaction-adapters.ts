@@ -110,11 +110,15 @@ export function toCommandInteraction(interaction: RawInteractionLike): CommandIn
 
 /** Builds the registry's `ComponentInteraction` from a button or string-select interaction. */
 export function toComponentInteraction(interaction: RawInteractionLike): ComponentInteraction {
+  const componentPermissions = memberPermissions(interaction.member);
   return {
     ...(interaction.id !== undefined ? { id: interaction.id } : {}),
     customId: interaction.customId ?? '',
     user: { id: interaction.user?.id ?? '' },
     guildId: interaction.guildId ?? null,
+    // UR-20261012-054 — same context as the command adapter, so a re-render keeps the admin gate.
+    ...(componentPermissions !== undefined ? { memberPermissions: componentPermissions } : {}),
+    isGuildOwner: interaction.guild?.ownerId === interaction.user?.id,
     reply: interaction.reply.bind(interaction) as unknown as ComponentInteraction['reply'],
     deferReply: interaction.deferReply.bind(
       interaction,

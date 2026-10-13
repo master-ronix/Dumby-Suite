@@ -208,13 +208,20 @@ describe('page-data provider', () => {
     // operator saw a persona profile instead of their own bot's.
     expect(data['currentProfileId']).toBe('main');
     expect(data['selectedProfileId']).toBe('main');
-    // The tiers describe the OPENING profile — now the main bot, so they list what IT owns: every
-    // module no persona is bound to. The persona's own tiers are asserted on the switched view below.
-    const openingTiers = data['tiers'] as Array<{ modules: Array<{ name: string }> }>;
+    // UR-20261012-054 — the tiers describe the OPENING profile's CLAIMED modules, and CORE IS NEVER
+    // LISTED: a core module is shared without dispute, so listing it under a profile is noise and
+    // made every profile look identical. Only the standard module the main bot actually holds appears.
+    const openingTiers = data['tiers'] as Array<{ tier: string; modules: Array<{ name: string }> }>;
     expect(openingTiers.flatMap((t) => t.modules.map((m) => m.name)).sort()).toEqual([
-      'health',
       'hello-world',
     ]);
+    expect(openingTiers.map((t) => t.tier)).not.toContain('core');
+    // No command inventory travels with a module any more.
+    expect(
+      openingTiers.every((t) =>
+        t.modules.every((m) => (m as { commands?: unknown }).commands === undefined),
+      ),
+    ).toBe(true);
 
     // switching to the main bot shows the modules it still owns
     // the provider's signature is (moduleId, guildId, page, query) — the selected persona id
@@ -222,10 +229,8 @@ describe('page-data provider', () => {
     const switched = await provider('persona', 'guild-1', 0, 'main');
     expect(switched['selectedProfileId']).toBe('main');
     const mainTiers = switched['tiers'] as Array<{ modules: Array<{ name: string }> }>;
-    expect(mainTiers.flatMap((t) => t.modules.map((m) => m.name))).toEqual([
-      'health',
-      'hello-world',
-    ]);
+    // UR-20261012-054 — same rule on the switched view: claimed non-core modules only.
+    expect(mainTiers.flatMap((t) => t.modules.map((m) => m.name))).toEqual(['hello-world']);
   });
 
   test('persona reads Online, states presence separately, and offers the invite URL', async () => {

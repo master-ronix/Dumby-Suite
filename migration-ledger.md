@@ -89,6 +89,7 @@
 | M66 | /persona opened on a PERSONA's profile when run from the main bot (the default asked which persona owned the `persona` MODULE, then fell back to the guild's registration); and the invite URL was computed, typed, and NEVER RENDERED, so there was no info control and no invite method (UR-20261012-051) | DONE (113 files / 1151 tests / 0 failures) |
 | M67 | Binding a module the guild had DISABLED succeeded, registered the command, and every invocation was then refused at dispatch -- a visible-but-dead command. The bindings surface now refuses it by name, before anything is created (UR-20261012-052) | DONE (113 files / 1153 tests / 0 failures) |
 | M68 | isGuildAdmin compared bit VALUES ('8'/'32') against permission NAMES, so it was false for every non-owner administrator (the owner was masked by isGuildOwner); and the adapter's hand-written list omitted ManageMessages, making MODERATOR and HELPER unreachable (UR-20261012-053) | DONE (113 files / 1159 tests / 0 failures) |
+| M69 | /persona rebuilt: the Info control vanished on every re-render (asPageInteraction dropped the permission context); core modules removed from profiles (claimed modules only); the command inventory wiped; the switcher moved below the footer via a new trailing placement; the Info card reduced to the OAuth redirect guide; and the status assets redrawn as thick bold white icons (UR-20261012-054) | DONE (113 files / 1157 tests / 0 failures) |
 
 Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (reason)`.
 

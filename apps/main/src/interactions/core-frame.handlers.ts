@@ -22,10 +22,16 @@ function asPageInteraction(
   interaction: ComponentInteraction,
   commandName: string,
 ): CommandInteraction {
+  const memberPermissions = interaction.memberPermissions;
+  const isGuildOwner = interaction.isGuildOwner;
   return {
     commandName,
     user: { id: interaction.user.id },
     guildId: interaction.guildId,
+    // UR-20261012-054 — the permission context travels with the re-entry. Dropping it made every
+    // admin-gated control disappear on the first switch or refresh.
+    ...(memberPermissions !== undefined ? { memberPermissions } : {}),
+    ...(isGuildOwner !== undefined ? { isGuildOwner } : {}),
     // The registry has already acknowledged this component interaction with `deferUpdate`, so a
     // reply or defer here would be a second acknowledgement, which Discord rejects. Only `editReply`
     // should act, and it edits the navigation message in place (§2.2).

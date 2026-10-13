@@ -112,6 +112,12 @@ export type RenderBlock =
       readonly placeholder: string;
       readonly options: readonly NavigationOption[];
       readonly disabled?: boolean;
+      /**
+       * UR-20261012-054 — render this block BELOW the footer instead of above it. The operator asked
+       * for the profile switcher to sit under the footer: a selector is a control for the whole page,
+       * and the footer closes the content above it.
+       */
+      readonly placement?: 'trailing';
     };
 
 export interface RenderDescriptor extends RenderIdentity {
@@ -295,6 +301,12 @@ export class CoreRenderer {
     const developer = input.developer ?? DEFAULT_DEVELOPER;
     const components: Component[] = [];
 
+    // UR-20261012-054 — blocks that declare themselves `trailing` render BELOW the footer, so the
+    // split is made once, here, rather than at each render site.
+    const trailingBlocks = (input.blocks ?? []).filter(
+      (b) => b.kind === 'select' && b.placement === 'trailing',
+    );
+
     // §1.2 / §1.3 / §1.4 - the banner slot opens the frame, and is present in Mode D only.
     // item 6 - a module's own banner wins; then the default. The dashboard carries its own.
     const moduleBanner =
@@ -320,33 +332,35 @@ export class CoreRenderer {
       components.push(textDisplay(this.condensedRender(sections)));
     } else if (hasBlocks) {
       // item 8 — richer blocks: a Section (text with an inline accessory), a text block, or a Select.
-      input.blocks?.forEach((block) => {
-        // item 3 — no extra dividers between blocks; the page's own bands already separate them.
-        if (block.kind === 'text') {
-          components.push(textDisplay(block.content));
-        } else if (block.kind === 'section') {
-          const a = block.accessory;
-          components.push(section(block.content, blockButton(a)));
-        } else if (block.kind === 'row') {
-          components.push(actionRow(block.buttons.map((b) => blockButton(b))));
-        } else {
-          components.push(
-            actionRow([
-              stringSelect(
-                block.customId,
-                block.options.map((o) => ({
-                  label: o.label,
-                  value: o.value,
-                  ...(o.description !== undefined ? { description: o.description } : {}),
-                  ...(o.emoji !== undefined ? { emoji: o.emoji } : {}),
-                })),
-                block.placeholder,
-                block.disabled,
-              ),
-            ]),
-          );
-        }
-      });
+      (input.blocks ?? [])
+        .filter((b) => !(b.kind === 'select' && b.placement === 'trailing'))
+        .forEach((block) => {
+          // item 3 — no extra dividers between blocks; the page's own bands already separate them.
+          if (block.kind === 'text') {
+            components.push(textDisplay(block.content));
+          } else if (block.kind === 'section') {
+            const a = block.accessory;
+            components.push(section(block.content, blockButton(a)));
+          } else if (block.kind === 'row') {
+            components.push(actionRow(block.buttons.map((b) => blockButton(b))));
+          } else {
+            components.push(
+              actionRow([
+                stringSelect(
+                  block.customId,
+                  block.options.map((o) => ({
+                    label: o.label,
+                    value: o.value,
+                    ...(o.description !== undefined ? { description: o.description } : {}),
+                    ...(o.emoji !== undefined ? { emoji: o.emoji } : {}),
+                  })),
+                  block.placeholder,
+                  block.disabled,
+                ),
+              ]),
+            );
+          }
+        });
     } else {
       sections.forEach((section, index) => {
         if (index > 0) components.push(separator());
@@ -359,6 +373,30 @@ export class CoreRenderer {
     if (footer !== undefined) {
       components.push(separator());
       components.push(textDisplay(footer));
+    }
+
+    // UR-20261012-054 — TRAILING blocks: a control the page wants BELOW the footer. The profile
+    // switcher is one: it acts on the whole page, and the footer closes the content above it.
+    if (trailingBlocks.length > 0) {
+      components.push(separator());
+      for (const block of trailingBlocks) {
+        if (block.kind !== 'select') continue;
+        components.push(
+          actionRow([
+            stringSelect(
+              block.customId,
+              block.options.map((o) => ({
+                label: o.label,
+                value: o.value,
+                ...(o.description !== undefined ? { description: o.description } : {}),
+                ...(o.emoji !== undefined ? { emoji: o.emoji } : {}),
+              })),
+              block.placeholder,
+              block.disabled,
+            ),
+          ]),
+        );
+      }
     }
 
     // items 3/10/11/15/17 - page-declared action controls render INSIDE the container, at the

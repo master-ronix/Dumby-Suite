@@ -6,6 +6,16 @@ export interface ComponentInteraction {
   customId: string;
   user: { id: string };
   guildId: string | null;
+  /**
+   * UR-20261012-054 — the member's permission context, carried so a control that re-enters the router
+   * (`asPageInteraction`) does not LOSE it.
+   *
+   * Without these, an admin-gated control rendered on a page's first paint and vanished on every
+   * re-render: the component path had no permissions, so `isGuildAdmin` returned false and the control
+   * was not drawn. The operator saw the Info control appear and then disappear on switch or refresh.
+   */
+  memberPermissions?: readonly string[];
+  isGuildOwner?: boolean;
   reply: (options: unknown) => Promise<void>;
   deferReply: (options?: { flags?: number | bigint }) => Promise<void>;
   deferUpdate?: () => Promise<void>;

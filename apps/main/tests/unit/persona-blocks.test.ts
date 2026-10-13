@@ -61,7 +61,8 @@ describe('personaBlocks', () => {
     expect(String(head['content'])).toContain('🟢');
     expect(String(head['content'])).toContain('Dumby');
     expect(String(head['content'])).toContain('Online');
-    expect(String(head['content'])).toContain('2 modules');
+    // UR-20261012-054 — the count is of CLAIMED modules, and there is no command count.
+    expect(String(head['content'])).toContain('2 claimed modules');
     const accessory = head['accessory'] as Any;
     expect(accessory['label']).toBe('Refresh');
     // The selected profile rides along so Refresh does not drop the member back to the running one.
@@ -86,15 +87,22 @@ describe('personaBlocks', () => {
     expect(String(identity['content'])).not.toContain('Bound Server');
   });
 
-  test('lists each tier with its module count and the commands the profile owns', () => {
+  test('lists each tier with its CLAIM count and NO command inventory (UR-20261012-054)', () => {
+    // The command inventory was removed by request: a profile's commands are the framework's, not a
+    // property of the profile, and listing them buried the one thing this section is for.
     const blocks = personaBlocks(data, 'u1');
-    const core = blocks.find((b) => String((b as Any)['content']).startsWith('**Core**')) as Any;
-    expect(String(core['content'])).toContain('2 modules');
-    expect(String(core['content'])).toContain('`/persona`');
     const standard = blocks.find((b) =>
       String((b as Any)['content']).startsWith('**Standard**'),
     ) as Any;
-    expect(String(standard['content'])).toContain('`/hello`');
+    expect(String(standard['content'])).toContain('claimed');
+    const all = blocks.map((b) => String((b as Any)['content'] ?? '')).join('\n');
+    expect(all).not.toContain('`/hello`');
+    expect(all).not.toContain('`/persona`');
+  });
+
+  test('the profile switcher is TRAILING, so it renders below the footer', () => {
+    const switcher = personaBlocks(data, 'u1').find((b) => (b as Any)['kind'] === 'select') as Any;
+    expect(switcher['placement']).toBe('trailing');
   });
 
   test('ends with the Twill note', () => {
@@ -104,22 +112,25 @@ describe('personaBlocks', () => {
     );
   });
 
-  test('offers the invite and setup controls only to a guild admin', () => {
-    const asMember = personaBlocks(data, 'u1', { isAdmin: false });
+  test('offers the Info control ONLY on a persona profile, and only to an admin (UR-20261012-054)', () => {
+    // The main bot is not a persona: no OAuth redirect to register, nothing to invite. A setup control
+    // there was meaningless, so it is not rendered.
+    const onMain = personaBlocks(data, 'u1', { isAdmin: true });
+    expect(onMain.some((b) => (b as Any)['kind'] === 'row')).toBe(false);
+
+    const personaView = { ...data, selectedProfileId: 'p-2' };
+    const asMember = personaBlocks(personaView, 'u1', { isAdmin: false });
     expect(asMember.some((b) => (b as Any)['kind'] === 'row')).toBe(false);
 
-    const asAdmin = personaBlocks(data, 'u1', { isAdmin: true });
+    const asAdmin = personaBlocks(personaView, 'u1', { isAdmin: true });
     const row = asAdmin.find((b) => (b as Any)['kind'] === 'row') as Any;
     const buttons = row['buttons'] as Array<Any>;
-    // UR-20261012-051 — TWO controls, because the operator could not find either. The info control is
-    // icon-only (no label) and opens the card carrying the callback URL and the invite; the invite is
-    // ALSO rendered as a direct link, so summoning the persona is one click rather than a detour.
-    expect(buttons).toHaveLength(2);
-    expect(buttons[0]?.['customId']).toBe('dumby:persona-setup:u1:1422973358818988155');
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0]?.['customId']).toBe('dumby:persona-setup:u1:999000111222333444');
     expect(buttons[0]?.['label']).toBe('');
-    expect(buttons[1]?.['url']).toBe('https://dumby.example/auth/authorize?app=142&guild=g1&bot=1');
-    expect(buttons[1]?.['label']).toBe('Invite');
-    expect(buttons[1]?.['style']).toBe(5);
+    // NO invite link anywhere: whether the redirect is registered cannot be read from Discord, so a
+    // link offered here would be a guess.
+    expect(buttons.some((b) => b['url'] !== undefined)).toBe(false);
   });
 
   test('states presence in the headline subtext, separately from the online state', () => {
@@ -147,12 +158,33 @@ describe('personaBlocks', () => {
     expect(String((blocks[0] as Any)['content'])).toContain('Unavailable');
   });
 
-  test('shows an em dash for a module that declares no commands', () => {
+  test('a profile with no claimed modules says so instead of rendering an empty section', () => {
     const blocks = personaBlocks(
-      { status: 'online', tiers: [{ tier: 'core', modules: [{ name: 'Empty', commands: [] }] }] },
+      {
+        status: 'online',
+        selectedProfileId: 'p-2',
+        profiles: [
+          {
+            id: 'p-2',
+            name: 'Aurora',
+            isMain: false,
+            applicationId: '9',
+            shards: '1',
+            dmBehavior: 'Prohibited',
+            statusKind: 'online',
+            statusLabel: 'Online',
+            present: true,
+            hasOAuth: false,
+            inviteUrl: '',
+            moduleCount: 0,
+            commandCount: 0,
+          },
+        ],
+        tiers: [],
+      },
       'u1',
     );
-    const core = blocks.find((b) => String((b as Any)['content']).startsWith('**Core**')) as Any;
-    expect(String(core['content'])).toContain('—');
+    const all = blocks.map((b) => String((b as Any)['content'] ?? '')).join('\n');
+    expect(all).toContain('No claimed modules');
   });
 });

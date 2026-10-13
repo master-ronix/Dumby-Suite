@@ -77,7 +77,7 @@ import { filterRegistryForModules, PersonaRuntime } from '../personas/persona-ru
 import { buildPersonaInteractionHandler } from '../personas/persona-interaction-handler.js';
 import { createPersonaOAuthService } from '../personas/persona-oauth.js';
 import { openBotTokenOrEmpty, openSealedText } from '../personas/persona-credentials.js';
-import { dashboardUrlFrom, personaSetupCard } from '../rendering/persona-setup.js';
+import { personaSetupCard } from '../rendering/persona-setup.js';
 import { personaInviteUrl, publicBaseFrom } from '../personas/persona-invite.js';
 import {
   PostgresPersonaBindingStore,
@@ -913,28 +913,14 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     installModule,
     uninstallModule,
     disableConfirmation: moduleDisableConfirmation,
-    // UR-20261012-029 — the private persona authorization setup card: the callback URL the persona's
-    // application must register, the portal guide, and the link to the dashboard's invite flow.
-    personaSetup: async (applicationId, guildId) => {
-      // UR-20261012-031 — the card states the callback URL to register and the guide around it, and
-      // carries the persona's own invite link once (and only when) its OAuth secret is in place.
-      const withOAuth = (await personaOAuth.clientForApplication(applicationId)) !== undefined;
+    // UR-20261012-029 / UR-20261012-054 — the private persona Info card: the OAuth redirect callback
+    // guide and nothing else. The install guide and the invite link were rejected — Discord publishes
+    // no API for an application's redirect list, so a link offered here could not be verified.
+    personaSetup: async (applicationId) => {
       const persona = await personaIdentities.findByApplicationId(applicationId);
       return personaSetupCard({
         callbackUrl: config.get('OAUTH_REDIRECT_URI'),
-        dashboardUrl: dashboardUrlFrom(config.get('OAUTH_REDIRECT_URI')),
         ...(persona === undefined ? {} : { personaName: persona.name }),
-        ...(guildId === null || applicationId === ''
-          ? {}
-          : {
-              inviteUrl: personaInviteUrl(
-                { applicationId, guildId, withOAuth },
-                {
-                  publicBaseUrl: publicBaseFrom(config.get('OAUTH_REDIRECT_URI')),
-                  permissions: config.get('BOT_INSTALL_PERMISSIONS'),
-                },
-              ),
-            }),
       });
     },
   });
