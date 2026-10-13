@@ -78,7 +78,9 @@ export async function ensureDefaultModuleEmoji(
       const found = existing.find((emoji) => emoji.name === name);
       if (found !== undefined) {
         registerModuleEmoji(name, found.id, applicationId);
-        logger.info('module-emoji-ready', { name, id: found.id });
+        logger.info(
+          `module-emoji-ready app=${applicationId || 'main'} name=${name} id=${found.id}`,
+        );
         continue;
       }
       const attachment = await readFile(new URL(rel, import.meta.url));
@@ -86,7 +88,9 @@ export async function ensureDefaultModuleEmoji(
       registerModuleEmoji(name, created.id, applicationId);
       logger.info('module-emoji-created', { name, id: created.id });
     } catch (err) {
-      logger.warn('module-emoji-upload-failed', { name, reason: String(err) });
+      logger.warn(
+        `module-emoji-upload-failed app=${applicationId || 'main'} name=${name} reason=${String(err)}`,
+      );
     }
   }
 }

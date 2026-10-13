@@ -171,12 +171,24 @@ export class CommandRouter {
     const name = interaction.commandName;
     const identity: RenderIdentity = { surface: this.pageTitle(name) };
 
+    const traceId = this.renderer.createTraceId();
+
     if (interaction.guildId === null) {
       this.logger.warn('dm-interaction-rejected', { command: name, userId: interaction.user.id });
-      throw new CommandScopeDeniedError(name, 'main-bot', 'core', null);
+      // UR-20261012-058 — ANSWER. Throwing here produced no reply at all, so Discord showed
+      // "The application did not respond" — which tells the member nothing. DM use is prohibited by
+      // design; say so plainly instead of failing silently.
+      await this.renderer.replyNotice(interaction, {
+        ...identity,
+        reason: 'FORBIDDEN',
+        traceId,
+        heading: 'Direct messages are not supported',
+        explanation:
+          'This command runs inside a server. Direct messages are prohibited for this bot — use it from a server where it is installed.',
+      });
+      return;
     }
 
-    const traceId = this.renderer.createTraceId();
     await this.renderer.sendBuffer(interaction, identity);
 
     // §22.2 / Table 22-A: a suspended guild blocks dispatch fleet-wide, ahead of the guild's own

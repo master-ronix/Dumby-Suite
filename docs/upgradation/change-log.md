@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.63
+version: 5.5.64
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,28 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.64 — the persona's scope split, and answering a DM (UR-20261012-058) — 2026-10-12
+
+- 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- THE SCOPE SPLIT: the operator's instruction was that a persona registers "the exact same guild
+  specific commands and global commands as main bot" -- the same SPLIT, not the same payload twice.
+  command-deployer.ts is the authority: CORE global, standard/marketplace per guild, admin per guild
+  and EXCLUDED for a persona. Each command lands in EXACTLY ONE scope.
+- I GOT IT WRONG TWICE IN OPPOSITE DIRECTIONS: UR-055 wrote the same payload to both routes (every
+  command twice); UR-056 over-corrected to the guild only, so a persona had NO global core commands and
+  /health did nothing in a DM or in any guild but her bound one. Same mistake both times: satisfying the
+  instruction mechanically instead of reading the deployer that already answers it.
+- A DM NOW GETS AN ANSWER: it used to THROW before replying, so Discord showed "The application did not
+  respond". DM use is prohibited by design; the refusal says so, via a new replyNotice (editNotice edits
+  a reply that already exists, and here there is none).
+- THE EMOJI UPLOAD LOG names its application (`app=<id|main>`) IN THE MESSAGE, so a persona's upload can
+  be confirmed from a log viewer that drops structured fields.
+- NOT IN THIS RECORD: the ownership/occupancy model (per-profile page scoping, the first-come claim,
+  the "occupied by" indicator) -- stated in its own record before any code is written. See UR-20261012-059.
+- **Verification:** 20 persona-runtime + 28 router tests pass; typecheck, lint, format clean.
 
 ---
 

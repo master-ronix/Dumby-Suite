@@ -394,7 +394,9 @@ describe('CommandRouter', () => {
     expect(lastEditText(interaction)).toContain('Healthy');
   });
 
-  test('rejects guild-only commands in direct messages by default', async () => {
+  test('ANSWERS a direct-message invocation with a refusal (UR-20261012-058)', async () => {
+    // It used to THROW before replying, so Discord showed "The application did not respond" — which
+    // tells the member nothing. DM use is prohibited by design; the refusal says so.
     const reg = new CommandRegistry();
     reg.registerModule('health', 'core');
     reg.register({
@@ -404,10 +406,13 @@ describe('CommandRouter', () => {
     });
     const logger = makeLogger() as unknown as Logger;
     const router = new CommandRouter(reg, logger);
+    const interaction = { ...makeInteraction('health'), guildId: null };
 
-    await expect(
-      router.dispatch({ ...makeInteraction('health'), guildId: null }),
-    ).rejects.toBeInstanceOf(CommandScopeDeniedError);
+    await expect(router.dispatch(interaction)).resolves.toBeUndefined();
+    expect(interaction.reply).toHaveBeenCalledTimes(1);
+    const sent = JSON.stringify(interaction.reply.mock.calls[0]?.[0]);
+    expect(sent).toContain('Direct messages are not supported');
+    expect(sent).toContain('prohibited');
   });
 
   test('renders an UNKNOWN_COMMAND notice for an unregistered command', async () => {

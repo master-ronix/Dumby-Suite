@@ -72,7 +72,11 @@ import {
   type RawInteractionLike,
 } from '../interactions/interaction-adapters.js';
 import { PersonaCommandBindingService } from '../personas/persona-command-binding.service.js';
-import { PersonaRuntime, deployPersonaCommands } from '../personas/persona-runtime.js';
+import {
+  PersonaRuntime,
+  deployPersonaCommands,
+  splitPersonaPayloads,
+} from '../personas/persona-runtime.js';
 import { personaPresenceFromClient } from '../personas/persona-presence.js';
 import { buildPersonaInteractionHandler } from '../personas/persona-interaction-handler.js';
 import { createPersonaOAuthService } from '../personas/persona-oauth.js';
@@ -1276,11 +1280,12 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
         },
         deployCommands: async (persona, botToken, registry) => {
           const rest = new REST({ version: '10' }).setToken(botToken);
-          // UR-20261012-054 — global AND guild, always. See `deployPersonaCommands`.
+          // UR-20261012-058 — the SAME split the main bot uses: core global, standard/marketplace to
+          // the bound guild. See `splitPersonaPayloads` / `deployPersonaCommands`.
           return deployPersonaCommands(
             persona.discordApplicationId,
             persona.boundGuildId,
-            registry.toApiPayloads(),
+            splitPersonaPayloads(registry),
             async (route, body) => rest.put(route as `/${string}`, { body }),
           );
         },

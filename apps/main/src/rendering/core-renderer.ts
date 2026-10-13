@@ -270,6 +270,19 @@ export class CoreRenderer {
     await interaction.editReply(this.renderNotice(descriptor));
   }
 
+  /**
+   * UR-20261012-058 — ANSWER with a notice where nothing has been sent yet. `editNotice` edits a reply
+   * that already exists; a refusal raised before the buffer is drawn (a DM, say) has none, so editing
+   * would itself fail and the member would see Discord's "The application did not respond" instead of
+   * the reason.
+   */
+  async replyNotice(
+    interaction: RendererInteraction,
+    descriptor: FormalNoticeDescriptor,
+  ): Promise<void> {
+    await interaction.reply(this.renderNotice(descriptor));
+  }
+
   renderBuffer(identity: RenderIdentity): ComponentsV2Message {
     return this.frame([
       createTitleBlock(identity.surface, identity.developer ?? DEFAULT_DEVELOPER),

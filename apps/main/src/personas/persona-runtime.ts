@@ -99,27 +99,52 @@ export interface PersonaRuntimeDeps {
  *
  * `put` is injected so the contract is testable without a live Discord call.
  */
+/**
+ * UR-20261012-058 — a persona registers the SAME SPLIT the main bot does.
+ *
+ * `command-deployer.ts` is the authority: CORE commands are registered GLOBALLY and
+ * standard/marketplace commands are registered PER GUILD. Each command lands in EXACTLY ONE scope, so
+ * nothing is duplicated, and a core command works in DMs and in any guild the bot is in.
+ *
+ * Two earlier attempts got this wrong in opposite directions: UR-055 wrote the same payload to BOTH
+ * routes (every command twice), and UR-056 over-corrected to the guild ONLY — which left a persona with
+ * no global core commands, so `/health` and friends did nothing in a DM or in any other guild.
+ *
+ * A persona is bound to one guild, so its guild-scoped set goes to that guild. The `admin` tier is
+ * EXCLUDED: admin commands belong to the framework's own operator surface, not to a persona.
+ */
+export function splitPersonaPayloads(registry: CommandRegistry): {
+  global: readonly unknown[];
+  guild: readonly unknown[];
+} {
+  const global: unknown[] = [];
+  const guild: unknown[] = [];
+  for (const def of registry.all()) {
+    const tier = registry.getModuleTier(def.moduleId);
+    if (tier === 'admin') continue;
+    if (tier === 'core') global.push(def.data);
+    else guild.push(def.data);
+  }
+  return { global, guild };
+}
+
 export async function deployPersonaCommands(
   applicationId: string,
   guildId: string,
-  payloads: readonly unknown[],
+  payloads: { readonly global: readonly unknown[]; readonly guild: readonly unknown[] },
   put: (route: string, body: readonly unknown[]) => Promise<unknown>,
 ): Promise<number> {
-  // UR-20261012-056 — mirror the main bot EXACTLY: clear both scopes, then register the set ONCE.
-  //
-  // UR-055 PUT the same payload to the global route AND the guild route, which registers every
-  // command TWICE — Discord then lists each one as both a global and a this-server command. The main
-  // bot never does this: `command-deployer.ts` clears the global set and the guild set, then registers
-  // each command in EXACTLY ONE scope (development puts every tier in the development guild;
-  // production puts core globally and the rest per guild).
-  //
-  // A persona is bound to one guild, so its case is the development case: clear both, register
-  // everything to the bound guild. The clear is what retires a stale set, and registering once is what
-  // prevents the duplicate.
+  // CLEAR both scopes first — a PUT is a bulk overwrite, so this is what retires a stale set — then
+  // register each command in exactly ONE scope.
   await put(`/applications/${applicationId}/commands`, []);
   await put(`/applications/${applicationId}/guilds/${guildId}/commands`, []);
-  await put(`/applications/${applicationId}/guilds/${guildId}/commands`, payloads);
-  return payloads.length;
+  if (payloads.global.length > 0) {
+    await put(`/applications/${applicationId}/commands`, payloads.global);
+  }
+  if (payloads.guild.length > 0) {
+    await put(`/applications/${applicationId}/guilds/${guildId}/commands`, payloads.guild);
+  }
+  return payloads.global.length + payloads.guild.length;
 }
 
 export function filterRegistryForModules(
