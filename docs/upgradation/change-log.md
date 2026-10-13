@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.55
+version: 5.5.56
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,38 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.56 — why a persona has no commands is now reported, not inferred (UR-20261012-050) — 2026-10-12
+
+- 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- THE REPORT: the first live persona came online but registered NO commands on its bound server.
+- THE AUDIT CLEARED EVERY CANDIDATE DEFECT (the useful part of this record):
+  - guild_persona_bindings.moduleSlug EXISTS -- migration ...000034 drops and recreates the table with
+    moduleSlug and a composite PK (guildId, moduleSlug); the earlier ...000021 shape is superseded.
+  - bind()/listForPersona() correct: conflict target (guildId, moduleSlug), read filtered by personaId.
+  - filterRegistryForModules correct: matches def.moduleId against the bound slugs, carries the tier.
+  - moduleId IS mod.manifest.name -- the slug an operator binds is the key the registry uses.
+  - toApiPayloads() correct: all().map(c => c.data), and every defineCommand carries a description.
+- SO NOTHING WAS BROKEN. A persona deploys commands for its BOUND modules only (core modules stay with
+  the main bot), and the deploy RETURNS EARLY on an empty payload:
+    `const body = registry.toApiPayloads(); if (body.length === 0) return 0;`
+  That early return is correct -- and it is why the symptom was SILENT: the only signal was
+  `persona-runtime-started ... commands=0`, which cannot distinguish "nothing is bound" from "a bound
+  slug matches no registered module". The second is the quiet one.
+- FIX: the runtime now REPORTS which case it is, in the message (the viewer drops structured fields):
+  - `persona-no-modules-bound id=... -- it will come online with NO commands; bind a module and restart`
+  - `persona-bound-module-unregistered id=... modules=<slugs> -- bound but contributing no commands`
+  And persona-runtime-started now carries BOTH counts: `... bound=2 commands=7`.
+- ALSO RECORDED: a persona never registers GLOBAL commands, by design. It is single-server-bound, so it
+  registers guild commands in its bound guild only. "No global commands" is not a defect.
+- OPERATOR NOTE: the deploy runs AT BOOT, and it needs the application in the guild. Discord refuses a
+  guild-command PUT for a guild the application is not in; if refused, deployCommands throws and the
+  persona is reported persona-runtime-failed -- OFFLINE, not command-less. So "online with zero commands"
+  is an empty-registry case, and "absent" is more likely a failed deploy.
+  THE ORDER THAT WORKS: invite the persona first, then bind a module, then restart.
+- **Verification:** 113 files / 1151 tests / 0 failures; typecheck, lint (changed files), format, gates 27/27.
 
 ---
 

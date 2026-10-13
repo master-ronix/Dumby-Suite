@@ -145,6 +145,23 @@ export class PersonaRuntime {
         }
         const moduleSlugs = await this.deps.modulesBoundTo(persona.id);
         const registry = this.deps.buildRegistry(moduleSlugs);
+        // UR-20261012-050 — WHY a persona has no commands is now REPORTED, not silent.
+        //
+        // A persona deploys only its bound modules, and the deploy returns early on an empty payload,
+        // so "the persona registered no commands" had exactly one signal: `commands=0`. That does not
+        // say whether nothing is bound or a bound slug simply matches no registered module — and a
+        // binding for a slug that is not a module id contributes nothing, silently.
+        const contributing = new Set(registry.all().map((def) => def.moduleId));
+        const unmatched = moduleSlugs.filter((slug) => !contributing.has(slug));
+        if (moduleSlugs.length === 0) {
+          logger.warn(
+            `persona-no-modules-bound id=${persona.id} — it will come online with NO commands; bind a module and restart`,
+          );
+        } else if (unmatched.length > 0) {
+          logger.warn(
+            `persona-bound-module-unregistered id=${persona.id} modules=${unmatched.join(',')} — bound but contributing no commands`,
+          );
+        }
         const client = this.deps.createClient();
         const deployed = await this.deps.deployCommands(persona, token, registry);
         // UR-20261012-043 — attach the dispatch path BEFORE login so no early interaction is missed.
@@ -161,7 +178,7 @@ export class PersonaRuntime {
         });
         // The log viewer drops structured fields, so the outcome is in the message too.
         logger.info(
-          `persona-runtime-started id=${persona.id} guild=${persona.boundGuildId} commands=${deployed}`,
+          `persona-runtime-started id=${persona.id} guild=${persona.boundGuildId} bound=${moduleSlugs.length} commands=${deployed}`,
         );
       } catch (err) {
         const reason = err instanceof Error ? err.message : String(err);

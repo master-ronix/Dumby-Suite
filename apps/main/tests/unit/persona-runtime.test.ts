@@ -205,3 +205,50 @@ describe('the persona dispatches its own controls (UR-20261012-043 / A2.1)', () 
     expect(on).not.toHaveBeenCalled();
   });
 });
+
+describe('why a persona has no commands is reported (UR-20261012-050)', () => {
+  test('nothing bound is called out, because the persona will come online empty', async () => {
+    const { runtime, logger } = makeRuntime([persona()], { modulesBoundTo: vi.fn(async () => []) });
+    await runtime.start();
+    const warned = logger.warn.mock.calls.map((c) => String(c[0])).join('\n');
+    expect(warned).toContain('persona-no-modules-bound');
+    expect(warned).toContain('NO commands');
+  });
+
+  test('a bound slug that contributes no commands is named', async () => {
+    // A binding whose slug is not a module id contributes nothing — silently, before this.
+    const { runtime, logger } = makeRuntime([persona()], {
+      modulesBoundTo: vi.fn(async () => ['ghost-module']),
+      buildRegistry: vi.fn(() => registryWith(['persona'])),
+    });
+    await runtime.start();
+    const warned = logger.warn.mock.calls.map((c) => String(c[0])).join('\n');
+    expect(warned).toContain('persona-bound-module-unregistered');
+    expect(warned).toContain('ghost-module');
+  });
+
+  test('a fully-matched binding set warns about neither', async () => {
+    const { runtime, logger } = makeRuntime([persona()], {
+      modulesBoundTo: vi.fn(async () => ['persona']),
+      buildRegistry: vi.fn(() => registryWith(['persona', 'persona'])),
+    });
+    await runtime.start();
+    const warned = logger.warn.mock.calls.map((c) => String(c[0])).join('\n');
+    expect(warned).not.toContain('persona-no-modules-bound');
+    expect(warned).not.toContain('persona-bound-module-unregistered');
+  });
+
+  test('the started line carries the binding count as well as the command count', async () => {
+    const { runtime, logger } = makeRuntime([persona()], {
+      modulesBoundTo: vi.fn(async () => ['persona']),
+      buildRegistry: vi.fn(() => registryWith(['persona', 'persona'])),
+    });
+    await runtime.start();
+    const started = logger.info.mock.calls
+      .map((c) => String(c[0]))
+      .find((m) => m.startsWith('persona-runtime-started'));
+    expect(started).toContain('bound=1');
+    // `makeRuntime`'s deployCommands resolves 3, so the line reports the DEPLOYED count.
+    expect(started).toContain('commands=3');
+  });
+});
