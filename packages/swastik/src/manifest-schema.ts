@@ -104,6 +104,11 @@ export const moduleUiSchema = z
     banner: z.string().min(1).optional(),
     accent: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'accent must be a #RRGGBB hex colour').optional(),
     icon: z.string().min(1).optional(),
+    /**
+     * UR-20261012-066 — the module-relative path to the logo image the core registers as the emoji
+     * named by `icon`. Mirrors `banner`: a module-supplied asset, declared by the module that owns it.
+     */
+    iconAsset: z.string().min(1).optional(),
     displayName: z.string().min(1).optional(),
     devUsername: z.string().min(1).optional(),
   })

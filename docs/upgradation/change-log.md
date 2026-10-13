@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.70
+version: 5.5.71
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,34 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.71 — the module logos go home (UR-20261012-066) — 2026-10-12
+
+- 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- WHAT WAS WRONG: seven first-party module logos were hardcoded in the CORE while each module already
+  declared its emoji name in its own manifest -- one fact, two owners, the wrong one authoritative. The
+  intended layout already existed and was EMPTY: structure.md lists packages/modules/<slug>/assets/ and
+  building-a-module.md calls it "static assets your module serves".
+- THE CHAIN, VERIFIED END TO END (not assumed): packages/modules/<slug>/assets -> build:modules ->
+  apps/main/dist-modules/<slug>/assets -> place-first-party-modules.mjs (cpSync of the whole built
+  directory) -> /mnt/modules/modules-<tier>/<slug>/assets -> apps/main/Dockerfile COPY --from=builder
+  /mnt/modules /app/baked-modules -> MODULES_DIR=/app/baked-modules (what the loader reads).
+- THE ONE MISSING LINK WAS `build:modules`, WHICH COPIED locales/ BUT NOT assets/. That is a ONE-LINE
+  addition mirroring the copy beside it, and it is what makes the move SAFE rather than risky. Confirmed
+  by running it: the asset appears in dist-modules and in the baked tree.
+- THE CHANGE: build carries assets; LoadedModule.root set in swastik-loader where moduleDir was already
+  computed and only logged; ui.iconAsset on the manifest UI schema (mirroring ui.banner); the seven PNGs
+  move into their modules; the upload takes its module list from the registry, leaving ONLY framework
+  chrome in the core -- which ADR-012 places with the framework.
+- A module that declares no asset, or whose root was not recorded, is SKIPPED and the framework fallback
+  applies: ADR-012's "absent a declaration, the default applies".
+- RECORDED: the blocker was a PACKAGING fact, and it was worth finding. UR-065 could have shipped on the
+  assumption that a file move is a file move; tracing the chain showed the move alone would have
+  reproduced the fallback symptom SILENTLY.
+- **Verification:** 115 files / 1170 tests / 0 failures; coverage 68.25% branch, NO threshold error;
+  typecheck, lint, lint:modules, format and docs gates all clean.
 
 ---
 

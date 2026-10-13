@@ -1,7 +1,10 @@
 {
   "name": "modules",
   "version": "1.0.0",
-  "ui": { "icon": "dumby_modules" },
+  "ui": {
+    "icon": "dumby_modules",
+    "iconAsset": "assets/icon.png"
+  },
   "description": "View activated/installed/standard-tier modules and manage them.",
   "tier": "core",
   "hardcoded": false,

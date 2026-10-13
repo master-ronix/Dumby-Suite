@@ -26,6 +26,14 @@ export interface ModuleTaskDeclaration {
 
 export interface LoadedModule {
   manifest: ModuleManifest;
+  /**
+   * UR-20261012-066 — the module's own directory inside the image.
+   *
+   * A module's visuals belong to the module (ADR-012's pattern: a declared UI field, with a framework
+   * default). Resolving `ui.iconAsset` needs this root; without it the core can only reach the assets
+   * it happens to carry itself, which is how the module logos ended up hardcoded in the core.
+   */
+  root?: string;
   /** §1.7 (UR-11) — the module's schema-declared commands; the loader registers them. */
   commands?: readonly CommandDeclaration[];
   /** §5.9 — the module's job processors; the loader registers their queues. */

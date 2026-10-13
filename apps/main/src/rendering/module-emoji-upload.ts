@@ -35,13 +35,6 @@ const ICON_ASSETS: ReadonlyArray<readonly [string, string]> = [
   ['dumby_home', '../../assets/home-icon.png'],
   ['dumby_discover', '../../assets/discover-icon.png'],
   ['dumby_refresh', '../../assets/refresh-icon.png'],
-  ['dumby_dashboard', '../../assets/module-icons/dashboard.png'],
-  ['dumby_health', '../../assets/module-icons/health.png'],
-  ['dumby_browse', '../../assets/module-icons/browse.png'],
-  ['dumby_queue', '../../assets/module-icons/queue.png'],
-  ['dumby_persona', '../../assets/module-icons/persona.png'],
-  ['dumby_permit', '../../assets/module-icons/permit.png'],
-  ['dumby_modules', '../../assets/module-icons/modules.png'],
   // UR-20261012-026 — the /persona page's indicator set.
   [STATUS_ONLINE_ICON_NAME, '../../assets/status-online-icon.png'],
   [STATUS_OFFLINE_ICON_NAME, '../../assets/status-offline-icon.png'],
@@ -56,6 +49,21 @@ const ICON_ASSETS: ReadonlyArray<readonly [string, string]> = [
  * Idempotent: an emoji of the same name is reused rather than duplicated. Any per-asset failure is
  * non-fatal — the caller logs it and the unicode fallback applies.
  */
+/**
+ * UR-20261012-066 — a module's OWN logo, as its manifest declares it.
+ *
+ * The module names the emoji (`ui.icon`) and points at the image (`ui.iconAsset`, relative to the
+ * module's root). The core resolves and registers it; it does not carry a copy of either. That is
+ * ADR-012's pattern — a declared UI field, with a framework default — applied to the logo, which is
+ * what `assets/` in every module package is for.
+ */
+export interface ModuleIconAsset {
+  /** The emoji name the module declares (`ui.icon`). */
+  readonly name: string;
+  /** The absolute path to the image, resolved against the module's root. */
+  readonly path: string;
+}
+
 export async function ensureDefaultModuleEmoji(
   client: Client,
   logger: Logger,
@@ -63,6 +71,8 @@ export async function ensureDefaultModuleEmoji(
   // uploads the same set to its OWN application, because an emoji belongs to one application and a
   // message may only reference an emoji its own application owns.
   applicationId: string = DEFAULT_EMOJI_SCOPE,
+  /** UR-20261012-066 — the module logos, collected from the registry by the caller. */
+  moduleIcons: readonly ModuleIconAsset[] = [],
 ): Promise<void> {
   // discord.js types `client.application` as `Application | null` until the client is ready;
   // a missing application is a skip, not a failure, and the unicode fallback applies.
@@ -73,7 +83,13 @@ export async function ensureDefaultModuleEmoji(
   }
 
   const existing = await application.emojis.fetch();
-  for (const [name, rel] of ICON_ASSETS) {
+  // The framework's own chrome, then every module's declared logo. One list, assembled from two
+  // owners — and each owner states its own fact exactly once.
+  const assets: ReadonlyArray<readonly [string, string]> = [
+    ...ICON_ASSETS,
+    ...moduleIcons.map((icon) => [icon.name, icon.path] as const),
+  ];
+  for (const [name, rel] of assets) {
     try {
       const found = existing.find((emoji) => emoji.name === name);
       if (found !== undefined) {
@@ -83,7 +99,8 @@ export async function ensureDefaultModuleEmoji(
         );
         continue;
       }
-      const attachment = await readFile(new URL(rel, import.meta.url));
+      // A framework path is relative to this file; a module path is already absolute.
+      const attachment = await readFile(rel.startsWith('/') ? rel : new URL(rel, import.meta.url));
       const created = await application.emojis.create({ attachment, name });
       registerModuleEmoji(name, created.id, applicationId);
       logger.info('module-emoji-created', { name, id: created.id });

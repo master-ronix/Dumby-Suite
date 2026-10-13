@@ -71,6 +71,7 @@ import {
   toComponentInteraction,
   type RawInteractionLike,
 } from '../interactions/interaction-adapters.js';
+import { join } from 'node:path';
 import { PersonaOccupiedError } from '../personas/persona.js';
 import { PersonaCommandBindingService } from '../personas/persona-command-binding.service.js';
 import {
@@ -884,6 +885,26 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   };
   // item 9 — the install/enable action enables the module for the guild (guild_module_states) and
   // queues its commands' re-registration (BCCM).
+  /**
+   * UR-20261012-066 — the module logos, collected from the registry.
+   *
+   * Each module declares its own emoji name (`ui.icon`) and its own image (`ui.iconAsset`, relative to
+   * the module's root). The core resolves the pair; it holds no copy of either. A module that declares
+   * no asset — or whose root the loader did not record — is skipped, and the framework fallback icon
+   * applies, which is ADR-012's "absent a declaration, the default applies".
+   */
+  const collectModuleIcons = (): readonly { name: string; path: string }[] => {
+    const icons: { name: string; path: string }[] = [];
+    for (const entry of moduleRegistry.all()) {
+      const name = entry.manifest.ui?.icon;
+      const asset = entry.manifest.ui?.iconAsset;
+      const root = entry.root;
+      if (name === undefined || asset === undefined || root === undefined) continue;
+      icons.push({ name, path: join(root, asset) });
+    }
+    return icons;
+  };
+
   const installModule = async (
     moduleId: string,
     guildId: string | null,
@@ -1286,7 +1307,7 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     // a persona (which passes its own id on both sides) resolved all of them. The render is right; the
     // registration had to be brought into line with it.
     try {
-      await ensureDefaultModuleEmoji(discordClient, logger, applicationId);
+      await ensureDefaultModuleEmoji(discordClient, logger, applicationId, collectModuleIcons());
     } catch (err) {
       logger.warn('module-emoji-upload-failed', { error: String(err) });
     }
@@ -1343,6 +1364,7 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
             client as unknown as Client,
             logger,
             persona.discordApplicationId,
+            collectModuleIcons(),
           );
         },
         createInteractionHandler: (persona, registry) =>
