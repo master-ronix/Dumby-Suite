@@ -98,7 +98,19 @@ export async function deployPersonaCommands(
   payloads: readonly unknown[],
   put: (route: string, body: readonly unknown[]) => Promise<unknown>,
 ): Promise<number> {
-  await put(`/applications/${applicationId}/commands`, payloads);
+  // UR-20261012-056 — mirror the main bot EXACTLY: clear both scopes, then register the set ONCE.
+  //
+  // UR-055 PUT the same payload to the global route AND the guild route, which registers every
+  // command TWICE — Discord then lists each one as both a global and a this-server command. The main
+  // bot never does this: `command-deployer.ts` clears the global set and the guild set, then registers
+  // each command in EXACTLY ONE scope (development puts every tier in the development guild;
+  // production puts core globally and the rest per guild).
+  //
+  // A persona is bound to one guild, so its case is the development case: clear both, register
+  // everything to the bound guild. The clear is what retires a stale set, and registering once is what
+  // prevents the duplicate.
+  await put(`/applications/${applicationId}/commands`, []);
+  await put(`/applications/${applicationId}/guilds/${guildId}/commands`, []);
   await put(`/applications/${applicationId}/guilds/${guildId}/commands`, payloads);
   return payloads.length;
 }

@@ -256,9 +256,12 @@ describe('why a persona has no commands is reported (UR-20261012-050)', () => {
   });
 });
 
-describe('a persona registers the same set the main bot does (UR-20261012-054)', () => {
-  test('registers BOTH global and guild, in that order, with the same payload', async () => {
-    const puts: Array<{ route: string; body: unknown }> = [];
+describe('a persona registers the same set the main bot does (UR-20261012-054/-056)', () => {
+  test('CLEARS both scopes, then registers ONCE to the bound guild — no duplicate', async () => {
+    // UR-056 — the earlier form PUT the same payload to the global AND the guild route, so every
+    // command appeared twice. The main bot clears both scopes and registers each command in exactly
+    // one; a persona, bound to one guild, is the development case.
+    const puts: Array<{ route: string; body: readonly unknown[] }> = [];
     const count = await deployPersonaCommands(
       'app-1',
       'g-1',
@@ -270,22 +273,29 @@ describe('a persona registers the same set the main bot does (UR-20261012-054)',
     );
     expect(count).toBe(2);
     expect(puts.map((p) => p.route)).toEqual([
-      '/applications/app-1/commands',
-      '/applications/app-1/guilds/g-1/commands',
+      '/applications/app-1/commands', // clear stale global
+      '/applications/app-1/guilds/g-1/commands', // clear stale guild
+      '/applications/app-1/guilds/g-1/commands', // register once
     ]);
-    expect(puts[0]?.body).toBe(puts[1]?.body);
+    expect(puts[0]?.body).toEqual([]);
+    expect(puts[1]?.body).toEqual([]);
+    expect(puts[2]?.body).toEqual([{ name: 'a' }, { name: 'b' }]);
+    // The payload reaches EXACTLY ONE registration route.
+    expect(puts.filter((p) => Array.isArray(p.body) && p.body.length > 0)).toHaveLength(1);
   });
 
-  test('an EMPTY set still PUTs, so a stale registration is cleared', async () => {
-    // The old form returned early on an empty payload — which is why a persona with nothing bound
-    // neither registered anything nor cleared what it had registered before. The overwrite is the
-    // clear, so it must happen even with nothing to send.
-    const puts: string[] = [];
-    const count = await deployPersonaCommands('app-1', 'g-1', [], async (route) => {
-      puts.push(route);
+  test('an EMPTY set still CLEARS both scopes', async () => {
+    const puts: Array<{ route: string; body: readonly unknown[] }> = [];
+    const count = await deployPersonaCommands('app-1', 'g-1', [], async (route, body) => {
+      puts.push({ route, body });
       return {};
     });
     expect(count).toBe(0);
-    expect(puts).toHaveLength(2);
+    // The overwrite is the clear, so it must happen even with nothing to send.
+    expect(puts.map((p) => p.route)).toEqual([
+      '/applications/app-1/commands',
+      '/applications/app-1/guilds/g-1/commands',
+      '/applications/app-1/guilds/g-1/commands',
+    ]);
   });
 });

@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.61
+version: 5.5.62
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,26 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.62 — a persona registers each command ONCE (UR-20261012-056) — 2026-10-12
+
+- 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- WHAT I GOT WRONG IN UR-055: it PUT the SAME payload to the global route and the guild route, which
+  registers EVERY COMMAND TWICE. Discord then lists each one as both a global command and a
+  this-server command. The operator saw exactly that.
+- WHAT THE MAIN BOT ACTUALLY DOES: command-deployer.ts CLEARS BOTH SCOPES, then registers each command
+  in EXACTLY ONE scope. Development: clear global, clear guild, register every tier to the development
+  guild. Production: clear global, register core globally, then per guild clear that guild's set and
+  register that guild's own commands. NEVER BOTH.
+- THE FIX: a persona is bound to one guild, so its case IS the development case -- clear both scopes,
+  register everything to the bound guild. The clear retires a stale set; registering once prevents the
+  duplicate.
+- RECORDED: UR-055 fixed the right problem with the wrong mechanism. The operator's model -- "register
+  the same set the main bot does" -- was correct, and I satisfied it by writing the payload to every
+  scope instead of READING how the main bot decides which scope a command belongs to.
+- **Verification:** 113 files / 1159 tests / 0 failures; typecheck, lint, format clean.
 
 ---
 
