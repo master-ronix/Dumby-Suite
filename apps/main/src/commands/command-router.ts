@@ -105,6 +105,13 @@ export interface CommandRouterOptions {
   resolveCommandOwner?: (guildId: string, moduleSlug: string) => Promise<string | undefined>;
   residentPersonaId?: string;
   /**
+   * UR-20261012-057 — the Discord application this router renders FOR. Emoji ids belong to one
+   * application, so a persona's pages must reference the persona's own ids; the main bot uses the
+   * default scope. Without this a persona embedded the main bot's ids and every icon rendered as the
+   * literal `:dumby_browse:`.
+   */
+  residentApplicationId?: string;
+  /**
    * blueprint.md §22.2 / Table 22-A — the Power Engine `suspendGuild` state. When present, dispatch
    * consults it before anything else in the guild: a suspension overrides the guild's own
    * configuration rather than editing it.
@@ -122,6 +129,11 @@ export interface CommandRouterOptions {
     page?: number,
     /** item 5b — the /browse search query, when one was submitted. */
     query?: string,
+    /**
+     * UR-20261012-057 — the application rendering the page. Emoji ids belong to ONE application, so
+     * the page data must resolve its icons against the right one.
+     */
+    applicationId?: string,
   ) => Promise<Readonly<Record<string, unknown>>>;
   /**
    * §6.7 — performs the side effects a handler declares. Keyed by effect kind; an undeclared kind
@@ -221,6 +233,8 @@ export class CommandRouter {
                   interaction.guildId,
                   options.page,
                   options.query,
+                  // UR-20261012-057 — the rendering application's emoji scope.
+                  this.options.residentApplicationId,
                 )) ?? {},
             },
           );
@@ -310,7 +324,13 @@ export class CommandRouter {
         ...(name === 'browse'
           ? { blocks: this.browseBlocks(declaredPageData, interaction.user.id) }
           : name === 'health' && Array.isArray(declaredPageData?.['groups'])
-            ? { blocks: healthBlocks(declaredPageData, interaction.user.id) }
+            ? {
+                blocks: healthBlocks(declaredPageData, interaction.user.id, {
+                  ...(this.options.residentApplicationId !== undefined
+                    ? { applicationId: this.options.residentApplicationId }
+                    : {}),
+                }),
+              }
             : name === 'modules' && Array.isArray(declaredPageData?.['modules'])
               ? {
                   blocks: modulesBlocks(declaredPageData, interaction.user.id),
@@ -326,6 +346,10 @@ export class CommandRouter {
                     // UR-20261012-029 — the persona setup control is offered ONLY to a guild admin.
                     blocks: personaBlocks(declaredPageData, interaction.user.id, {
                       isAdmin: isGuildAdmin(interaction),
+                      // UR-20261012-057 — a persona's page uses the persona's own emoji ids.
+                      ...(this.options.residentApplicationId !== undefined
+                        ? { applicationId: this.options.residentApplicationId }
+                        : {}),
                     }),
                   }
                 : name === 'dashboard'
@@ -349,6 +373,8 @@ export class CommandRouter {
               def.moduleId,
               interaction.guildId,
               options.page,
+              undefined,
+              this.options.residentApplicationId,
             )) ?? {};
           render.sections = derivePageSections(pageName, fresh);
         }
@@ -795,7 +821,14 @@ export class CommandRouter {
     guildId: string | null,
     query: string,
   ): Promise<ComponentsV2Message> {
-    const data = (await this.options.pageDataProvider?.('browse', guildId, 0, query)) ?? {};
+    const data =
+      (await this.options.pageDataProvider?.(
+        'browse',
+        guildId,
+        0,
+        query,
+        this.options.residentApplicationId,
+      )) ?? {};
     return this.renderer.render({
       surface: this.pageTitle('browse'),
       moduleId: 'browse',

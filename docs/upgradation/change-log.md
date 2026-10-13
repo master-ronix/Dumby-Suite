@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.62
+version: 5.5.63
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,32 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.63 — emoji ids are per-application (UR-20261012-057) — 2026-10-12
+
+- 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- WHAT THE OPERATOR SAW: a page rendered by a persona showed every icon as literal text -- `:dumby_browse:`
+  -- where the main bot shows the icon. Two things were true at once: the persona NEVER registered the
+  emoji set on its own application, and the registry was ONE process-wide map, so a persona's page
+  embedded the MAIN BOT's id.
+- WHY THAT RENDERS AS `:name:`: a Discord APPLICATION EMOJI BELONGS TO ONE APPLICATION, and a message
+  may only reference an emoji its own application owns. Sending another application's id does not fail
+  loudly -- Discord renders the literal `:name:`. The multi-persona runtime hosts personas in the SAME
+  PROCESS as the main bot, which is why one shared map produced this.
+- THE FIX: the registry is keyed by application (registerModuleEmoji/customEmojiRef/customEmojiParts/
+  moduleIcon/commandDecorationIcon all take a scope), with DELIBERATELY NO cross-application fallback --
+  an id from the wrong application is worse than no id at all, because the unicode fallback renders and
+  the wrong id does not. A persona registers the set on its OWN application after login via a new
+  ensureEmojis seam. The acting application id reaches the render: the router carries
+  residentApplicationId (a persona passes persona.discordApplicationId; the main bot passes nothing and
+  uses the default scope, where its own uploads land) and passes it to the page-data provider and to the
+  blocks that build their own emoji references.
+- RECORDED: a process-global registry cannot describe a per-application resource. The map answered
+  "what is the id of dumby_browse?" -- but the real question is "what is THIS APPLICATION's id for it?",
+  and the runtime hosts several applications in one process. The wrong answer was SILENT.
+- **Verification:** 113 files / 1161 tests / 0 failures; typecheck, lint, format clean.
 
 ---
 

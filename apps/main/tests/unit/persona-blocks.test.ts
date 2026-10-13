@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { personaBlocks } from '../../src/rendering/persona-blocks.js';
+import { registerModuleEmoji, resetModuleEmojis } from '../../src/rendering/module-icons.js';
 
 type Any = Record<string, unknown>;
 
@@ -186,5 +187,37 @@ describe('personaBlocks', () => {
     );
     const all = blocks.map((b) => String((b as Any)['content'] ?? '')).join('\n');
     expect(all).toContain('No claimed modules');
+  });
+});
+
+describe('emoji ids are per-application (UR-20261012-057)', () => {
+  test('a persona does NOT borrow the main bot\u2019s emoji ids', () => {
+    // The bug: the registry was one process-wide map, so a persona's page embedded the MAIN BOT's ids
+    // — and Discord renders an id belonging to another application as the literal `:dumby_browse:`,
+    // which is exactly what the operator saw.
+    resetModuleEmojis();
+    registerModuleEmoji('dumby_status_online', '111'); // the default (main bot) scope
+    registerModuleEmoji('dumby_status_online', '999', 'persona-app');
+
+    const main = personaBlocks({ ...data, selectedProfileId: 'p-2' }, 'u1');
+    const persona = personaBlocks({ ...data, selectedProfileId: 'p-2' }, 'u1', {
+      applicationId: 'persona-app',
+    });
+
+    expect(JSON.stringify(main)).toContain('<:dumby_status_online:111>');
+    expect(JSON.stringify(persona)).toContain('<:dumby_status_online:999>');
+    // And the persona NEVER carries the main bot's emoji id.
+    expect(JSON.stringify(persona)).not.toContain('<:dumby_status_online:111>');
+    resetModuleEmojis();
+  });
+
+  test('an application with no emojis falls back to unicode, never to another app\u2019s id', () => {
+    resetModuleEmojis();
+    registerModuleEmoji('dumby_status_online', '111'); // main bot only
+    const other = personaBlocks({ ...data, selectedProfileId: 'p-2' }, 'u1', {
+      applicationId: 'unknown-app',
+    });
+    expect(JSON.stringify(other)).not.toContain('<:dumby_status_online:111>');
+    resetModuleEmojis();
   });
 });

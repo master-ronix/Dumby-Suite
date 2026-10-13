@@ -61,6 +61,13 @@ export interface PersonaRuntimeDeps {
   buildRegistry: (moduleSlugs: readonly string[]) => CommandRegistry;
   /** Creates a client for a persona's token. */
   createClient: () => PersonaClient;
+  /**
+   * UR-20261012-057 — runs once the persona's client is logged in, so the framework icon set can be
+   * registered on the PERSONA'S OWN application. An emoji belongs to one application and a message may
+   * only reference an emoji its own application owns, so without this a persona's pages embedded the
+   * main bot's ids and every icon rendered as the literal `:dumby_browse:`.
+   */
+  ensureEmojis?: (persona: RuntimePersona, client: PersonaClient) => Promise<void>;
   /** Registers the registry's commands in the persona's bound guild, with the persona's own token. */
   deployCommands: (
     persona: RuntimePersona,
@@ -202,6 +209,15 @@ export class PersonaRuntime {
           client.on('interactionCreate', this.deps.createInteractionHandler(persona, registry));
         }
         await client.login(token);
+        // UR-20261012-057 — after login, register the framework icons on this persona's application.
+        // Non-fatal: a failure leaves the unicode fallback in place rather than stopping the persona.
+        if (this.deps.ensureEmojis !== undefined) {
+          try {
+            await this.deps.ensureEmojis(persona, client);
+          } catch (err) {
+            logger.warn(`persona-emoji-upload-failed id=${persona.id} reason=${String(err)}`);
+          }
+        }
         this.clients.set(persona.id, client);
         results.push({
           personaId: persona.id,

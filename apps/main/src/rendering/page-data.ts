@@ -6,7 +6,7 @@ import type { Logger } from '../logging/logger.js';
 import type { ModuleRegistry } from '../module-system/registry.js';
 import { MARKETPLACE_MODULE_CAP, MODULES_PAGE_SIZE } from '../shared/constants/index.js';
 import { defaultEnabledForTier } from '../module-system/tier-rules.js';
-import { commandDecorationIcon, moduleIcon } from './module-icons.js';
+import { DEFAULT_EMOJI_SCOPE, commandDecorationIcon, moduleIcon } from './module-icons.js';
 import {
   effectiveCommandName,
   resolveCommandStatuses,
@@ -99,7 +99,8 @@ export function createPageDataProvider(
     return map;
   };
 
-  async function health(): Promise<PageData> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- the scope is uniform across pages
+  async function health(applicationId: string): Promise<PageData> {
     const client = getClient();
     const memory = process.memoryUsage();
 
@@ -236,7 +237,8 @@ export function createPageDataProvider(
   async function persona(
     moduleId: string,
     guildId: string | null,
-    selected?: string,
+    selected: string | undefined,
+    applicationId: string,
   ): Promise<PageData> {
     const client = getClient();
     const online = client?.isReady() === true;
@@ -440,7 +442,7 @@ export function createPageDataProvider(
           .filter((entry) => entry.manifest.tier === tier)
           .map((entry) => ({
             name: entry.manifest.name,
-            icon: moduleIcon(entry.manifest.ui?.icon),
+            icon: moduleIcon(entry.manifest.ui?.icon, applicationId),
           })),
       }))
       .filter((group) => group.modules.length > 0);
@@ -498,10 +500,10 @@ export function createPageDataProvider(
     };
   }
 
-  async function permit(): Promise<PageData> {
+  async function permit(applicationId: string): Promise<PageData> {
     const lines: string[] = ['Choose a module command to manage grant access:', ''];
     for (const entry of moduleRegistry.all()) {
-      const icon = moduleIcon(entry.manifest.ui?.icon);
+      const icon = moduleIcon(entry.manifest.ui?.icon, applicationId);
       for (const command of entry.manifest.commands) {
         lines.push(`${icon} /${command.name}   ${entry.manifest.name} — ${command.description}`);
       }
@@ -519,7 +521,11 @@ export function createPageDataProvider(
   // items 4/5/8 — every module command list carries the module icon asset beside it (the main page
   // and every module page alike), and a module page lists only that module's commands, under their
   // CURRENT (BCCM-effective) name and status.
-  async function dashboard(page: number, guildId: string | null): Promise<PageData> {
+  async function dashboard(
+    page: number,
+    guildId: string | null,
+    applicationId: string,
+  ): Promise<PageData> {
     const all = moduleRegistry.all();
     // UR-20261011-011 — a disabled standard module has NO page on the dashboard (its commands are
     // not registered for the guild either, §17.6).
@@ -537,7 +543,7 @@ export function createPageDataProvider(
         const statuses = await resolveCommandStatuses(db.knex, guildId);
         // UR-20261011-009 — a module page's command list carries the neutral white-square
         // DECORATION (not a module logo), so the list reads as "this module's commands".
-        const icon = commandDecorationIcon();
+        const icon = commandDecorationIcon(applicationId);
         const lines = entry.manifest.commands.map((command) => {
           const current = effectiveCommandName(effective, command.name);
           const status = statuses.get(command.name) ?? 'enabled';
@@ -560,7 +566,7 @@ export function createPageDataProvider(
     const lines: string[] = [];
     for (const entry of all) {
       if (entry.manifest.tier !== 'core') continue;
-      const icon = moduleIcon(entry.manifest.ui?.icon);
+      const icon = moduleIcon(entry.manifest.ui?.icon, applicationId);
       for (const command of entry.manifest.commands) {
         lines.push(`${icon} \`/${command.name}\``);
       }
@@ -573,7 +579,11 @@ export function createPageDataProvider(
   // with a search query (item 5b) it lists only the name/description matches. The listing caps at
   // MARKETPLACE_MODULE_CAP (UR-20261011-006): one dropdown slot is reserved for the permanent Home
   // entry, so the listing and the install dropdown stay in sync within Discord's 25-option ceiling.
-  async function marketplace(query?: string, guildId?: string | null): Promise<PageData> {
+  async function marketplace(
+    query: string | undefined,
+    guildId: string | null,
+    applicationId: string,
+  ): Promise<PageData> {
     const all = moduleRegistry.all();
     // UR-20261011-010/011 — the catalogue lists what a guild can INSTALL or RE-ENABLE: marketplace
     // modules not enabled for the guild, and standard modules the guild has disabled
@@ -599,7 +609,7 @@ export function createPageDataProvider(
       id: entry.manifest.name,
       name: entry.manifest.name,
       description: entry.manifest.description,
-      icon: moduleIcon(entry.manifest.ui?.icon),
+      icon: moduleIcon(entry.manifest.ui?.icon, applicationId),
       // A disabled STANDARD module is "Previously Installed": selecting it re-enables it.
       ...(entry.manifest.tier === 'standard'
         ? { note: 'Previously installed — select to re-enable' }
@@ -619,7 +629,11 @@ export function createPageDataProvider(
   // item 17 — /modules lists installed/enabled modules, one page at a time (UR-20261011-009). The
   // page renders as content blocks (a Section per module, each with an inline Info control); `lines`
   // remains for the condensed (M/C) fallback.
-  async function installedModules(page = 0, guildId?: string | null): Promise<PageData> {
+  async function installedModules(
+    page: number,
+    guildId: string | null,
+    applicationId: string,
+  ): Promise<PageData> {
     // UR-20261011-011 — the list shows what is ENABLED for the guild: core always, standard unless
     // disabled, marketplace only when installed. A disabled module is not "installed".
     const enabledBySlug = await enabledStates(guildId);
@@ -641,7 +655,7 @@ export function createPageDataProvider(
       name: entry.manifest.ui?.displayName ?? titleCaseId(entry.manifest.name),
       tier: entry.manifest.tier,
       description: entry.manifest.description,
-      icon: moduleIcon(entry.manifest.ui?.icon),
+      icon: moduleIcon(entry.manifest.ui?.icon, applicationId),
     }));
     const lines = modules.map((m) => `${m.icon} ${m.name} (${m.tier}) — ${m.description}`);
     return { title: 'Installed Modules', lines, modules, page: current, pageTotal, total };
@@ -652,22 +666,25 @@ export function createPageDataProvider(
     guildId: string | null,
     page = 0,
     query?: string,
+    // UR-20261012-057 — the application rendering the page. Its emoji ids are the only ones a message
+    // from that application may reference.
+    applicationId: string = DEFAULT_EMOJI_SCOPE,
   ): Promise<PageData> => {
     switch (moduleId) {
       case 'health':
-        return health();
+        return health(applicationId);
       case 'persona':
-        return persona(moduleId, guildId, query);
+        return persona(moduleId, guildId, query, applicationId);
       case 'queue':
         return queue(guildId);
       case 'permit':
-        return permit();
+        return permit(applicationId);
       case 'dashboard':
-        return dashboard(page, guildId);
+        return dashboard(page, guildId, applicationId);
       case 'browse':
-        return marketplace(query, guildId);
+        return marketplace(query, guildId, applicationId);
       case 'modules':
-        return installedModules(page, guildId);
+        return installedModules(page, guildId, applicationId);
       default:
         return {};
     }

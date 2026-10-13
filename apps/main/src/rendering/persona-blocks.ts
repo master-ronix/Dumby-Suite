@@ -24,6 +24,7 @@ import {
   STATUS_OFFLINE_ICON_NAME,
   STATUS_ONLINE_FALLBACK,
   STATUS_ONLINE_ICON_NAME,
+  DEFAULT_EMOJI_SCOPE,
 } from './module-icons.js';
 
 const TIER_LABEL: Readonly<Record<string, string>> = {
@@ -58,15 +59,17 @@ interface TierShape {
 }
 
 /** The status indicator for a profile: the custom emoji when uploaded, else its unicode fallback. */
-function statusIcon(kind: string): string {
+function statusIcon(kind: string, emojiScope: string): string {
   const online = kind === 'online' || kind === 'active';
   return online
-    ? (customEmojiRef(STATUS_ONLINE_ICON_NAME) ?? STATUS_ONLINE_FALLBACK)
-    : (customEmojiRef(STATUS_OFFLINE_ICON_NAME) ?? STATUS_OFFLINE_FALLBACK);
+    ? (customEmojiRef(STATUS_ONLINE_ICON_NAME, emojiScope) ?? STATUS_ONLINE_FALLBACK)
+    : (customEmojiRef(STATUS_OFFLINE_ICON_NAME, emojiScope) ?? STATUS_OFFLINE_FALLBACK);
 }
 
-const identityIcon = (): string => customEmojiRef(IDENTITY_ICON_NAME) ?? IDENTITY_FALLBACK;
-const infoIcon = (): string => customEmojiRef(INFO_ICON_NAME) ?? INFO_FALLBACK;
+const identityIcon = (emojiScope: string): string =>
+  customEmojiRef(IDENTITY_ICON_NAME, emojiScope) ?? IDENTITY_FALLBACK;
+const infoIcon = (emojiScope: string): string =>
+  customEmojiRef(INFO_ICON_NAME, emojiScope) ?? INFO_FALLBACK;
 
 function asProfiles(value: unknown): readonly ProfileShape[] {
   if (!Array.isArray(value)) return [];
@@ -124,8 +127,11 @@ function asTiers(value: unknown): readonly TierShape[] {
 export function personaBlocks(
   data: Readonly<Record<string, unknown>> | undefined,
   invokerId: string,
-  options: { readonly isAdmin?: boolean } = {},
+  options: { readonly isAdmin?: boolean; readonly applicationId?: string } = {},
 ): readonly RenderBlock[] {
+  // UR-20261012-057 — the emoji scope: the application this page is rendered for. Its ids are the
+  // only ones the message may reference.
+  const emojiScope = options.applicationId ?? DEFAULT_EMOJI_SCOPE;
   const profiles = asProfiles(data?.['profiles']);
   const tiers = asTiers(data?.['tiers']);
   const note = typeof data?.['note'] === 'string' ? (data['note'] as string) : '';
@@ -140,8 +146,8 @@ export function personaBlocks(
   // right of the text line). `refresh` re-dispatches the page, re-gathering the live state.
   const headline =
     selected === undefined
-      ? `${statusIcon('offline')} **No profile** · Unavailable`
-      : `${statusIcon(selected.statusKind)} **${selected.name}** · ${selected.statusLabel}`;
+      ? `${statusIcon('offline', emojiScope)} **No profile** · Unavailable`
+      : `${statusIcon(selected.statusKind, emojiScope)} **${selected.name}** · ${selected.statusLabel}`;
   const subtext =
     selected === undefined
       ? ''
@@ -170,7 +176,7 @@ export function personaBlocks(
   // The profile switcher — present whenever the guild has at least one profile, and disabled while
   // there is nothing to switch to, so the control teaches its own affordance without dead-ending.
   if (profiles.length > 0) {
-    const profileIcon = customEmojiParts(PROFILE_ICON_NAME);
+    const profileIcon = customEmojiParts(PROFILE_ICON_NAME, emojiScope);
     const options: NavigationOption[] = profiles.map((p) => ({
       label: p.name.length > 0 ? p.name : p.id,
       value: p.id,
@@ -206,7 +212,7 @@ export function personaBlocks(
     if (fields.length > 0) {
       blocks.push({
         kind: 'text',
-        content: `${identityIcon()} **Identity**\n-# ${fields.join(' · ')}`,
+        content: `${identityIcon(emojiScope)} **Identity**\n-# ${fields.join(' · ')}`,
       });
     }
   }
@@ -234,7 +240,7 @@ export function personaBlocks(
     });
   }
 
-  if (note !== '') blocks.push({ kind: 'text', content: `${infoIcon()} ${note}` });
+  if (note !== '') blocks.push({ kind: 'text', content: `${infoIcon(emojiScope)} ${note}` });
 
   // UR-20261012-054 — the Info control, and ONLY on a registered persona.
   //
@@ -254,7 +260,7 @@ export function personaBlocks(
       customId: `dumby:persona-setup:${invokerId}:${selected.applicationId}`,
       label: '',
       style: 2,
-      emoji: customEmojiParts(INFO_ICON_NAME) ?? { name: INFO_FALLBACK },
+      emoji: customEmojiParts(INFO_ICON_NAME, emojiScope) ?? { name: INFO_FALLBACK },
     });
     blocks.push({ kind: 'row', buttons: controls });
   }

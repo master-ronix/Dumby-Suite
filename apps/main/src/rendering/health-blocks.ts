@@ -5,7 +5,7 @@
  * a degraded subsystem is marked in place.
  */
 import type { RenderBlock } from './core-renderer.js';
-import { customEmojiParts } from './module-icons.js';
+import { customEmojiParts, DEFAULT_EMOJI_SCOPE } from './module-icons.js';
 
 const STATUS_DOT: Readonly<Record<string, string>> = {
   ok: '🟢',
@@ -52,7 +52,10 @@ function asGroups(value: unknown): readonly GroupShape[] {
 export function healthBlocks(
   data: Readonly<Record<string, unknown>> | undefined,
   invokerId: string,
+  options: { readonly applicationId?: string } = {},
 ): readonly RenderBlock[] {
+  // UR-20261012-057 — the emoji scope for the rendering application.
+  const emojiScope = options.applicationId ?? DEFAULT_EMOJI_SCOPE;
   const status = typeof data?.['status'] === 'string' ? (data['status'] as string) : 'operational';
   const statusLabel =
     typeof data?.['statusLabel'] === 'string' ? (data['statusLabel'] as string) : 'Operational';
@@ -69,7 +72,7 @@ export function healthBlocks(
     accessory: {
       customId: `dumby:act:${invokerId}:refresh:health`,
       label: 'Refresh',
-      emoji: customEmojiParts('dumby_refresh') ?? { name: '🔄' },
+      emoji: customEmojiParts('dumby_refresh', emojiScope) ?? { name: '🔄' },
       style: 2,
     },
   });

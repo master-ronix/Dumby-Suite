@@ -11,6 +11,7 @@ import {
   STATUS_OFFLINE_ICON_NAME,
   STATUS_ONLINE_ICON_NAME,
   UNINSTALL_ICON_NAME,
+  DEFAULT_EMOJI_SCOPE,
 } from './module-icons.js';
 
 /**
@@ -55,7 +56,14 @@ const ICON_ASSETS: ReadonlyArray<readonly [string, string]> = [
  * Idempotent: an emoji of the same name is reused rather than duplicated. Any per-asset failure is
  * non-fatal — the caller logs it and the unicode fallback applies.
  */
-export async function ensureDefaultModuleEmoji(client: Client, logger: Logger): Promise<void> {
+export async function ensureDefaultModuleEmoji(
+  client: Client,
+  logger: Logger,
+  // UR-20261012-057 — WHOSE application to upload to. The main bot uses the default scope; a persona
+  // uploads the same set to its OWN application, because an emoji belongs to one application and a
+  // message may only reference an emoji its own application owns.
+  applicationId: string = DEFAULT_EMOJI_SCOPE,
+): Promise<void> {
   // discord.js types `client.application` as `Application | null` until the client is ready;
   // a missing application is a skip, not a failure, and the unicode fallback applies.
   const application = client.application;
@@ -69,13 +77,13 @@ export async function ensureDefaultModuleEmoji(client: Client, logger: Logger): 
     try {
       const found = existing.find((emoji) => emoji.name === name);
       if (found !== undefined) {
-        registerModuleEmoji(name, found.id);
+        registerModuleEmoji(name, found.id, applicationId);
         logger.info('module-emoji-ready', { name, id: found.id });
         continue;
       }
       const attachment = await readFile(new URL(rel, import.meta.url));
       const created = await application.emojis.create({ attachment, name });
-      registerModuleEmoji(name, created.id);
+      registerModuleEmoji(name, created.id, applicationId);
       logger.info('module-emoji-created', { name, id: created.id });
     } catch (err) {
       logger.warn('module-emoji-upload-failed', { name, reason: String(err) });

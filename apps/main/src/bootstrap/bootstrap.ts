@@ -707,7 +707,7 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   // different identity"). `residentPersonaId` is the only thing that varies: the main bot sets it
   // only when the process itself is a persona (`PERSONA_ID`), while a hosted persona always sets its
   // own id so command ownership is enforced for it.
-  const commandRouterOptions = (residentPersonaId?: string) => ({
+  const commandRouterOptions = (residentPersonaId?: string, residentApplicationId?: string) => ({
     devGuildId: config.get('DEV_GUILD_ID'),
     isModuleEnabledInGuild,
     permissionResolver,
@@ -722,6 +722,9 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     resolveCommandOwner: (guildId: string, moduleSlug: string) =>
       personaBindingService.resolveCommandOwner(guildId, moduleSlug),
     ...(residentPersonaId !== undefined ? { residentPersonaId } : {}),
+    // UR-20261012-057 — the application this router renders for. A persona must reference ITS OWN
+    // emoji ids; the main bot uses the default scope.
+    ...(residentApplicationId !== undefined ? { residentApplicationId } : {}),
   });
   const commandRouter = new CommandRouter(
     commandRegistry,
@@ -1285,11 +1288,25 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
         // its in-message controls, through the same adapters and the same registry the main bot uses,
         // with a router built over this persona's own filtered registry. Without the command half a
         // persona's commands were registered but dispatched by nothing.
+        // UR-20261012-057 — register the framework icon set on the PERSONA'S application. An emoji
+        // belongs to one application; without this her pages embedded the main bot's ids and every
+        // icon rendered as the literal `:dumby_browse:`.
+        ensureEmojis: async (persona, client) => {
+          await ensureDefaultModuleEmoji(
+            client as unknown as Client,
+            logger,
+            persona.discordApplicationId,
+          );
+        },
         createInteractionHandler: (persona, registry) =>
           buildPersonaInteractionHandler({
             registry: interactionRegistry,
             createCommandRouter: () =>
-              new CommandRouter(registry, logger, commandRouterOptions(persona.id)),
+              new CommandRouter(
+                registry,
+                logger,
+                commandRouterOptions(persona.id, persona.discordApplicationId),
+              ),
             logger,
           }),
         logger,
