@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.68
+version: 5.5.69
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,32 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.69 — a BCCM rename survives a boot (UR-20261012-063) — 2026-10-12
+
+- 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- WHAT THE OPERATOR SAW: /hello renamed to namaste through the BCCM /queue, and afterwards NEITHER name
+  was visible in that guild -- while the persona still answered hello.
+- WHAT IS ACTUALLY RIGHT: the rename mechanism is sound. applyBatch removes the old key and adds the
+  new; resolveCommandPayloads inherits the source command's real definition; and a successful push
+  writes the persistent `guild_command_renames` table (guildId, commandKey, newName).
+- THE DEFECT: command-deployer.ts NEVER READ THAT TABLE -- no reference to bccm, rename, alias, queue or
+  overrides at all. Every boot re-registered the guild's set FROM THE REGISTRY (the manifest's names) and
+  silently REVERTED the rename. The result is a FLAPPING state: the rename lands on a queue window, the
+  next restart puts the old name back, a later window re-applies it -- so depending on when the operator
+  looked they saw the old name, the new one, or neither.
+- THE FIX: the deployer takes a commandRenames(guildId) dependency, wired in bootstrap to read
+  guild_command_renames, and applies it to the set it registers -- REUSING resolveCommandPayloads with a
+  source map, the same machinery the BCCM push uses, so a renamed command keeps its real definition on
+  both paths.
+- RECORDED: two components wrote the same fact and only one read it. The table existed the whole time;
+  the deployer simply had no dependency that could see it.
+- STILL OPEN (recorded, not fixed): the table persists RENAMES ONLY. An alias or a disable applied
+  through the queue is not persisted, so those are still reverted by a boot.
+- **Verification:** 115 files / 1169 tests / 0 failures; coverage 68.17% branch with NO threshold error;
+  lint, format, typecheck clean with CI's own commands.
 
 ---
 

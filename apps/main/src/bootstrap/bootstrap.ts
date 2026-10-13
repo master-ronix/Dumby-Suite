@@ -1501,6 +1501,25 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
       });
     }, 30_000).unref();
     const commandDeployer = new CommandDeployer({
+      // UR-20261012-063 — the applied renames, so a boot registers the RENAMED set instead of reverting
+      // every BCCM rename back to the registry's name.
+      commandRenames: async (guildId: string) => {
+        const map = new Map<string, string>();
+        try {
+          const rows = (await db
+            .knex('guild_command_renames')
+            .where({ guildId })
+            .whereNull('deletedAt')
+            .select<{ commandKey: string; newName: string }[]>('commandKey', 'newName')) as Array<{
+            commandKey: string;
+            newName: string;
+          }>;
+          for (const row of rows) map.set(String(row.commandKey), String(row.newName));
+        } catch (err) {
+          logger.warn(`command-renames-read-failed guild=${guildId} reason=${String(err)}`);
+        }
+        return map;
+      },
       registry: commandRegistry,
       logger,
       config: {

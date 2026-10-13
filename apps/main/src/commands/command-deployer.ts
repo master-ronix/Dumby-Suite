@@ -3,6 +3,7 @@ import type { CommandRegistry } from './command-registry.js';
 import type { CommandDefinition } from './command-registry.js';
 import type { Logger } from '../logging/logger.js';
 import type { ModuleTier } from '../module-system/tier-rules.js';
+import { resolveCommandPayloads } from './bccm-batch-push.js';
 
 export interface DeployerConfig {
   botToken: string;
@@ -21,6 +22,15 @@ export interface CommandDeployerDeps {
   config: DeployerConfig;
   rest?: DiscordRestClient;
   enabledGuildResolver?: (moduleSlug: string) => Promise<readonly string[]>;
+  /**
+   * UR-20261012-063 — the APPLIED renames for a guild: command key -> its current name, from
+   * `guild_command_renames` (written when a BCCM rename is pushed).
+   *
+   * WITHOUT THIS the deployer re-registered the registry's names at every boot and silently REVERTED
+   * every rename: a rename applied on a queue window was undone by the next restart, so the operator
+   * saw the old name, then the new one, then neither.
+   */
+  commandRenames?: (guildId: string) => Promise<ReadonlyMap<string, string>>;
 }
 
 const isGuildScopedTier = (tier: ModuleTier): boolean =>
@@ -95,11 +105,34 @@ export class CommandDeployer {
 
         for (const [guildId, guildCommands] of guilds) {
           const guildLabel = guildId === config.devGuildId ? 'dev' : 'guild';
+          // UR-20261012-063 — register the RENAMED set, not the registry's names. The applied renames
+          // live in `guild_command_renames`; reusing `resolveCommandPayloads` with a source map means a
+          // renamed command keeps its real definition here exactly as it does on the BCCM push.
+          const renamed = await (this.deps.commandRenames?.(guildId) ?? new Map<string, string>());
+          const payloads =
+            renamed.size === 0
+              ? guildCommands
+              : resolveCommandPayloads(
+                  guildCommands.map(
+                    (command) =>
+                      renamed.get((command as { name?: string }).name ?? '') ??
+                      (command as { name?: string }).name ??
+                      '',
+                  ),
+                  registry,
+                  (name, reason) =>
+                    logger.warn(`command-deployer-command-skipped: ${name} (${reason})`, {
+                      guildId,
+                      name,
+                      reason,
+                    }),
+                  new Map([...renamed].map(([key, next]) => [next, key])),
+                );
           await rest.put(Routes.applicationGuildCommands(config.applicationId, guildId), {
             body: [],
           });
           await rest.put(Routes.applicationGuildCommands(config.applicationId, guildId), {
-            body: guildCommands,
+            body: payloads,
           });
           logger.info(`command-deployer-${guildLabel}-registered`, {
             commandCount: guildCommands.length,
