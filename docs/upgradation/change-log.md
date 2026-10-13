@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.57
+version: 5.5.58
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,33 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.58 — a binding for a disabled module produced a registered-but-refused command (UR-20261012-052) — 2026-10-12
+
+- 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- THE TRAP: assertBindingAllowed checks the guild match and occupancy -- it does NOT consult the guild's
+  module state, and NEITHER DOES THE COMMAND DEPLOY. So binding a module the guild has DISABLED
+  succeeds: the binding is created, the command is registered, and every invocation is then REFUSED at
+  dispatch, because the persona's router consults the same isModuleEnabledInGuild the main bot does.
+  The result is a command that appears in Discord and does nothing -- it reads as "the persona is
+  broken", not as "the guild turned this module off", which is the same misleading shape UR-047 spent
+  two attempts untangling.
+- FIX: the bindings surface REFUSES it, by name, before anything is created:
+    409 Binding refused -- module "hello-world" is not enabled in guild 1062427177326497863;
+    enable it first (for a standard module, re-enable it from /browse)
+  One /browse step at the moment the operator is already thinking about that module, instead of an hour
+  debugging a command that silently declines.
+- The check is optional on the route (isModuleEnabledInGuild), so a surface without guild context skips
+  it rather than guessing. RECORDED LIMITATION: the dedicated Twill process (entry/twill.ts) has no
+  module registry and does not perform this check; the API mount (TWILL_ROUTES_ON_API, the surface in
+  use here) does.
+- RECORDED: two checks that each look reasonable can compose into a state neither intends. "The bind
+  does not need the module enabled" and "the dispatch respects guild enablement" are individually
+  defensible; together they create a command that exists and cannot run. Where two gates touch the same
+  resource, the earlier one should refuse what the later one will not allow.
+- **Verification:** 113 files / 1153 tests / 0 failures; typecheck, lint (changed files), format, gates 27/27.
 
 ---
 

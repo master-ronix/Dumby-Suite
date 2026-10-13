@@ -207,6 +207,33 @@ describe('twill persona routes', () => {
     expect(found.json().oauthConfigured).toBe(false);
   });
 
+  test('a binding for a DISABLED module is refused by name (UR-20261012-052)', async () => {
+    // The bind itself does not need the module enabled, and neither does the deploy — so binding a
+    // disabled module SUCCEEDED, the command was registered, and every invocation was then refused at
+    // dispatch ("not available in guild"). A visible-but-dead command reads as a broken persona.
+    const { app, service } = buildRoutes({ isModuleEnabledInGuild: async () => false });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/twill/personas/persona-1/bindings',
+      payload: { guildId: 'g1', moduleSlug: 'hello-world' },
+    });
+    expect(res.statusCode).toBe(409);
+    expect(res.json().reason).toContain('hello-world');
+    expect(res.json().reason).toContain('not enabled');
+    expect(service.bindModuleToPersona).not.toHaveBeenCalled();
+  });
+
+  test('an enabled module binds as before', async () => {
+    const { app, service } = buildRoutes({ isModuleEnabledInGuild: async () => true });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/twill/personas/persona-1/bindings',
+      payload: { guildId: 'g1', moduleSlug: 'hello-world' },
+    });
+    expect(res.statusCode).toBe(201);
+    expect(service.bindModuleToPersona).toHaveBeenCalledTimes(1);
+  });
+
   test('POST bindings requires both fields and binds otherwise', async () => {
     const { app, service } = buildRoutes();
     const bad = await app.inject({

@@ -122,6 +122,11 @@ export interface TwillPersonaRouteDeps {
   costSignals: FreeCharterCostSignals;
   /** Injectable for tests: the fetch used to prove application ownership. */
   ownershipFetch?: typeof fetch | undefined;
+  /**
+   * UR-20261012-052 — the guild's module enablement, so a binding for a module the guild has turned
+   * OFF is refused at the surface. Optional: without it the check is skipped.
+   */
+  isModuleEnabledInGuild?: (moduleId: string, guildId: string) => Promise<boolean>;
 }
 
 /** HTTP status for a registration rejection, by error name. */
@@ -290,6 +295,25 @@ export function registerTwillPersonaRoutes(
       return reply
         .code(400)
         .send({ error: 'Bad Request', reason: 'guildId and moduleSlug are required' });
+    }
+    // UR-20261012-052 — refuse a binding for a module the guild has DISABLED.
+    //
+    // The bind itself does not need the module to be enabled, and neither does the command deploy —
+    // so binding a disabled module SUCCEEDS, the command is registered, and then every invocation is
+    // refused at dispatch ("not available in guild"). That is a visible-but-dead command, which reads
+    // as a broken persona rather than as a module the guild turned off. Failing here, by name, costs
+    // the operator one `/browse` step and saves them an hour of debugging.
+    if (deps.isModuleEnabledInGuild !== undefined) {
+      const enabled = await deps.isModuleEnabledInGuild(moduleSlug, guildId);
+      if (!enabled) {
+        logger.warn(
+          `twill-bind-refused guild=${guildId} module=${moduleSlug} reason=module-not-enabled`,
+        );
+        return reply.code(409).send({
+          error: 'Binding refused',
+          reason: `module "${moduleSlug}" is not enabled in guild ${guildId} — enable it first (for a standard module, re-enable it from /browse)`,
+        });
+      }
     }
     try {
       const binding = await service.bindModuleToPersona({

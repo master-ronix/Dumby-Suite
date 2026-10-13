@@ -1578,6 +1578,9 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
           bindings: personaBindings,
           registrars: personaRegistrars,
           rootKey: personaRootKey,
+          // UR-20261012-052 — so a binding for a module this guild has DISABLED is refused at the
+          // surface, instead of producing a registered-but-refused command.
+          isModuleEnabledInGuild,
           logger,
           costSignals: { dedicatedInfrastructureRequired: false, perPersonaCostMeasurable: false },
         }
