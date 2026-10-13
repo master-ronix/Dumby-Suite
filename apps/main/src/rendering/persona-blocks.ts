@@ -168,7 +168,7 @@ export function personaBlocks(
       // member back to the running persona.
       customId: `dumby:act:${invokerId}:refresh:persona:${selected?.id ?? ''}`,
       label: 'Refresh',
-      emoji: customEmojiParts('dumby_refresh') ?? { name: '\u{1F504}' },
+      emoji: customEmojiParts('dumby_refresh', emojiScope) ?? { name: '\u{1F504}' },
       style: 2,
     },
   });

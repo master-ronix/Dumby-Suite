@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.64
+version: 5.5.65
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,30 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.65 — required emoji scope, and one bound guild (UR-20261012-060) — 2026-10-12
+
+- 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- "ONLY SOME EMOJI" -- EIGHT call sites omitted the emoji scope and silently fell back to the MAIN BOT's
+  ids, so on a persona they rendered as the literal `:name:`: the Home/Next/Prev nav, the Discover
+  button, the module decoration, the Home icon, the module Info card's logo, its uninstall control, and
+  the /persona Refresh accessory. My earlier sweep used a regex for CONSTANT names and missed the string
+  literals -- the same miss that had already hidden `dumby_refresh` in health-blocks.
+- THE FIX IS STRUCTURAL: the scope is now a REQUIRED argument on customEmojiRef / customEmojiParts /
+  moduleIcon / commandDecorationIcon. TypeScript enumerated all eight sites itself and cannot miss a
+  future one. Discord states the application on every interaction, so CommandInteraction.applicationId
+  is carried by the adapters and is the authoritative value; the shared core-frame handlers read it from
+  the interaction, while the per-identity router may use its own option.
+- A PERSONA MUST ACT ONLY IN ITS BOUND GUILD: it registers core commands GLOBALLY, so her commands were
+  visible in servers she does not serve, and nothing refused them (assertPersonaOwnsCommand checked
+  module ownership, never the guild). assertBoundGuild now runs at dispatch; a new PersonaBoundGuildError
+  maps to a new OUT_OF_BOUND_GUILD notice -- "This is not my server".
+- RECORDED: a default argument is a silent fallback. The same bug appeared twice because a defaulted
+  parameter lets a caller be WRONG WITHOUT BEING INCORRECT. Making it required turned an invisible
+  runtime fault into eight compile errors -- the only reason the sweep was complete this time.
+- **Verification:** 30 router tests pass; typecheck, lint, format clean; docs gates OK.
 
 ---
 

@@ -22,6 +22,7 @@ export const FOLLOWUP_ALARM_MS = 13 * 60 * 1000;
 export type RenderMode = 'D' | 'M' | 'C';
 
 export type NoticeReasonCode =
+  | 'OUT_OF_BOUND_GUILD'
   | 'UNKNOWN_COMMAND'
   | 'MAINTENANCE'
   | 'NOT_FOUND'
@@ -485,6 +486,8 @@ export class CoreRenderer {
     if (name === 'CommandNotFoundError') return 'UNKNOWN_COMMAND';
     if (name === 'CommandScopeDeniedError') return 'FORBIDDEN';
     if (name === 'PersonaOccupiedError') return 'FORBIDDEN';
+    // UR-20261012-060 — a persona is bound to ONE guild; anywhere else it refuses everything.
+    if (name === 'PersonaBoundGuildError') return 'OUT_OF_BOUND_GUILD';
     // UR-20261012-032 — a rejected submission is an input fault, not a permission or module fault.
     if (name === 'InvalidCommandNameError') return 'INVALID_INPUT';
     // blueprint.md §22.2 / Table 22-A — a Power Engine `suspendGuild` blocks dispatch in that guild,
@@ -544,6 +547,8 @@ export class CoreRenderer {
 
   private defaultNoticeHeading(reason: NoticeReasonCode): string {
     switch (reason) {
+      case 'OUT_OF_BOUND_GUILD':
+        return 'This is not my server';
       case 'UNKNOWN_COMMAND':
         return 'Unknown command';
       case 'MAINTENANCE':
@@ -569,6 +574,8 @@ export class CoreRenderer {
 
   private defaultNoticeExplanation(reason: NoticeReasonCode): string {
     switch (reason) {
+      case 'OUT_OF_BOUND_GUILD':
+        return 'This persona is bound to one server and refuses every command and action everywhere else. Invite the main bot, or use the persona in its own server.';
       case 'UNKNOWN_COMMAND':
         return 'That command is not registered or is not available here.';
       case 'MAINTENANCE':

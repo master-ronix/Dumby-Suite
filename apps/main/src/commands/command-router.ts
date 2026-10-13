@@ -20,7 +20,7 @@ import {
   type RenderMode,
   derivePageSections,
 } from '../rendering/core-renderer.js';
-import { customEmojiParts } from '../rendering/module-icons.js';
+import { customEmojiParts, DEFAULT_EMOJI_SCOPE } from '../rendering/module-icons.js';
 import { healthBlocks } from '../rendering/health-blocks.js';
 import { modulesBlocks } from '../rendering/modules-blocks.js';
 import { personaBlocks } from '../rendering/persona-blocks.js';
@@ -65,6 +65,11 @@ export interface CommandInteraction {
   memberPermissions?: readonly string[];
   memberRoles?: readonly string[];
   isGuildOwner?: boolean;
+  /**
+   * UR-20261012-060 — the application this interaction is FOR, as Discord states it. The authoritative
+   * emoji scope: an application emoji may only be referenced by the application that owns it.
+   */
+  applicationId?: string;
   /** §6.7 — the interaction's option accessor, so a handler can read its own arguments. */
   options?: unknown;
 }
@@ -73,6 +78,20 @@ export class CommandNotFoundError extends Error {
   constructor(name: string) {
     super(`No handler registered for command "${name}"`);
     this.name = 'CommandNotFoundError';
+  }
+}
+
+/**
+ * UR-20261012-060 — a persona is bound to ONE guild. It registers core commands GLOBALLY (so they work
+ * in a DM and in any guild the MAIN bot is in), which means its commands are visible in servers it does
+ * not serve; every one of them must be refused there.
+ */
+export class PersonaBoundGuildError extends Error {
+  constructor(guildId: string, boundGuildId: string) {
+    super(
+      `This persona is bound to guild \"${boundGuildId}\" and refuses to act in \"${guildId}\"`,
+    );
+    this.name = 'PersonaBoundGuildError';
   }
 }
 
@@ -111,6 +130,11 @@ export interface CommandRouterOptions {
    * literal `:dumby_browse:`.
    */
   residentApplicationId?: string;
+  /**
+   * UR-20261012-060 — the ONE guild this identity serves. A persona sets it; the main bot does not,
+   * because the main bot serves every guild it is installed in.
+   */
+  residentBoundGuildId?: string;
   /**
    * blueprint.md §22.2 / Table 22-A — the Power Engine `suspendGuild` state. When present, dispatch
    * consults it before anything else in the guild: a suspension overrides the guild's own
@@ -227,6 +251,7 @@ export class CommandRouter {
     const watchdog = this.armFollowupWatchdog(interaction, identity, traceId);
 
     try {
+      this.assertBoundGuild(interaction.guildId);
       await this.assertCommandInScope(def, interaction.guildId);
       await this.assertPermissionAllowed(def, interaction);
       await this.assertPersonaOwnsCommand(def, interaction.guildId);
@@ -245,8 +270,9 @@ export class CommandRouter {
                   interaction.guildId,
                   options.page,
                   options.query,
-                  // UR-20261012-057 — the rendering application's emoji scope.
-                  this.options.residentApplicationId,
+                  // UR-20261012-060 — the application Discord says this interaction is for; the
+                  // router option is only a fallback.
+                  interaction.applicationId ?? this.options.residentApplicationId,
                 )) ?? {},
             },
           );
@@ -567,6 +593,17 @@ export class CommandRouter {
     }
   }
 
+  /**
+   * UR-20261012-060 — a bound identity acts ONLY in its bound guild. Nothing to do for the main bot,
+   * which sets no bound guild.
+   */
+  private assertBoundGuild(guildId: string | null): void {
+    const bound = this.options.residentBoundGuildId;
+    if (bound === undefined || bound === '') return;
+    if (guildId === bound) return;
+    throw new PersonaBoundGuildError(guildId ?? 'a direct message', bound);
+  }
+
   private async assertPersonaOwnsCommand(
     command: CommandDefinition,
     guildId: string | null,
@@ -675,7 +712,10 @@ export class CommandRouter {
           {
             customId: nav('home', 0),
             label: '',
-            emoji: customEmojiParts('dumby_home') ?? { name: '🏠' },
+            emoji: customEmojiParts(
+              'dumby_home',
+              this.options.residentApplicationId ?? DEFAULT_EMOJI_SCOPE,
+            ) ?? { name: '🏠' },
             style: 2,
             disabled: page === 0,
           },
@@ -708,7 +748,10 @@ export class CommandRouter {
           {
             customId: paged('home', 0),
             label: '',
-            emoji: customEmojiParts('dumby_home') ?? { name: '🏠' },
+            emoji: customEmojiParts(
+              'dumby_home',
+              this.options.residentApplicationId ?? DEFAULT_EMOJI_SCOPE,
+            ) ?? { name: '🏠' },
             style: 2,
           },
           {
@@ -764,8 +807,14 @@ export class CommandRouter {
         } => typeof m.id === 'string',
       );
     const query = typeof data?.['query'] === 'string' ? (data['query'] as string) : '';
-    const defaultIcon = customEmojiParts('dumby_module');
-    const homeIcon = customEmojiParts('dumby_home');
+    const defaultIcon = customEmojiParts(
+      'dumby_module',
+      this.options.residentApplicationId ?? DEFAULT_EMOJI_SCOPE,
+    );
+    const homeIcon = customEmojiParts(
+      'dumby_home',
+      this.options.residentApplicationId ?? DEFAULT_EMOJI_SCOPE,
+    );
 
     const blocks: RenderBlock[] = [];
     // UR-20261011-007 — the title is a Section whose accessory is the Discover control, so Discover
@@ -780,7 +829,10 @@ export class CommandRouter {
       accessory: {
         customId: `dumby:discover:${invokerId}:browse`,
         label: 'Discover',
-        emoji: customEmojiParts('dumby_discover') ?? { name: '🔍' },
+        emoji: customEmojiParts(
+          'dumby_discover',
+          this.options.residentApplicationId ?? DEFAULT_EMOJI_SCOPE,
+        ) ?? { name: '🔍' },
         style: 2,
       },
     });

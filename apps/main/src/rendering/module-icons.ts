@@ -45,6 +45,13 @@ export const IDENTITY_FALLBACK = '\u{1FAAA}'; // identification card
 export const PROFILE_FALLBACK = '\u{1F464}'; // bust in silhouette
 
 /**
+ * UR-20261012-060 — EVERY reader takes the application id as a REQUIRED argument.
+ *
+ * With a default, a call site that forgot it silently borrowed the MAIN BOT's ids, and Discord renders
+ * an id belonging to another application as the literal `:name:` — so the failure was invisible in code
+ * review and visible only on a persona's page. Required arguments make the compiler enumerate every
+ * site that has not decided which application it is rendering for.
+ *
  * UR-20261012-057 — the emoji ids are kept PER APPLICATION, not in one process-wide map.
  *
  * An application emoji belongs to ONE Discord application, and a message may only reference an emoji
@@ -81,10 +88,7 @@ function emojiIdFor(name: string, applicationId: string): string | undefined {
 }
 
 /** The `<:name:id>` reference for an uploaded custom emoji, or undefined when it is not available. */
-export function customEmojiRef(
-  name: string,
-  applicationId: string = DEFAULT_EMOJI_SCOPE,
-): string | undefined {
+export function customEmojiRef(name: string, applicationId: string): string | undefined {
   const id = emojiIdFor(name, applicationId);
   return id === undefined ? undefined : `<:${name}:${id}>`;
 }
@@ -96,7 +100,7 @@ export function customEmojiRef(
  */
 export function customEmojiParts(
   name: string,
-  applicationId: string = DEFAULT_EMOJI_SCOPE,
+  applicationId: string,
 ): { name: string; id: string } | undefined {
   const id = emojiIdFor(name, applicationId);
   return id === undefined ? undefined : { name, id };
@@ -106,7 +110,7 @@ export function customEmojiParts(
  * A module's logo: the declared `ui.icon` — a custom-emoji name resolved to its `<:name:id>`
  * reference, or a unicode glyph used verbatim — else the framework **fallback logo**.
  */
-export function moduleIcon(declared?: string, applicationId: string = DEFAULT_EMOJI_SCOPE): string {
+export function moduleIcon(declared: string | undefined, applicationId: string): string {
   if (declared !== undefined && declared.length > 0) {
     const custom = customEmojiRef(declared, applicationId);
     if (custom !== undefined) return custom;
@@ -122,6 +126,6 @@ export function moduleIcon(declared?: string, applicationId: string = DEFAULT_EM
  * UR-20261011-009 — the neutral white-square decoration beside each command in a module's own
  * command list on the dashboard's module page (never a logo fallback).
  */
-export function commandDecorationIcon(applicationId: string = DEFAULT_EMOJI_SCOPE): string {
+export function commandDecorationIcon(applicationId: string): string {
   return customEmojiRef(COMMAND_DECORATION_ICON_NAME, applicationId) ?? COMMAND_DECORATION_FALLBACK;
 }

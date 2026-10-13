@@ -42,6 +42,8 @@ export interface RawInteractionLike {
   readonly id?: string;
   readonly user?: { readonly id?: string };
   readonly guildId?: string | null;
+  /** UR-20261012-060 — Discord states the application an interaction is for. */
+  readonly applicationId?: string;
   readonly guild?: { readonly ownerId?: string | null } | null;
   readonly channel?: {
     readonly id?: string;
@@ -80,6 +82,9 @@ export function toCommandInteraction(interaction: RawInteractionLike): CommandIn
     commandName: interaction.commandName ?? '',
     user: { id: interaction.user?.id ?? '' },
     guildId: interaction.guildId ?? null,
+    ...(interaction.applicationId !== undefined
+      ? { applicationId: interaction.applicationId }
+      : {}),
     reply: interaction.reply.bind(interaction) as unknown as CommandInteraction['reply'],
     deferReply: interaction.deferReply.bind(
       interaction,
@@ -116,6 +121,9 @@ export function toComponentInteraction(interaction: RawInteractionLike): Compone
     customId: interaction.customId ?? '',
     user: { id: interaction.user?.id ?? '' },
     guildId: interaction.guildId ?? null,
+    ...(interaction.applicationId !== undefined
+      ? { applicationId: interaction.applicationId }
+      : {}),
     // UR-20261012-054 — same context as the command adapter, so a re-render keeps the admin gate.
     ...(componentPermissions !== undefined ? { memberPermissions: componentPermissions } : {}),
     isGuildOwner: interaction.guild?.ownerId === interaction.user?.id,

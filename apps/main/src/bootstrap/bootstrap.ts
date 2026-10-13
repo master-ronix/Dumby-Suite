@@ -711,7 +711,11 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   // different identity"). `residentPersonaId` is the only thing that varies: the main bot sets it
   // only when the process itself is a persona (`PERSONA_ID`), while a hosted persona always sets its
   // own id so command ownership is enforced for it.
-  const commandRouterOptions = (residentPersonaId?: string, residentApplicationId?: string) => ({
+  const commandRouterOptions = (
+    residentPersonaId?: string,
+    residentApplicationId?: string,
+    residentBoundGuildId?: string,
+  ) => ({
     devGuildId: config.get('DEV_GUILD_ID'),
     isModuleEnabledInGuild,
     permissionResolver,
@@ -729,6 +733,8 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     // UR-20261012-057 — the application this router renders for. A persona must reference ITS OWN
     // emoji ids; the main bot uses the default scope.
     ...(residentApplicationId !== undefined ? { residentApplicationId } : {}),
+    // UR-20261012-060 — a persona serves ONE guild; the main bot serves every guild it is installed in.
+    ...(residentBoundGuildId !== undefined ? { residentBoundGuildId } : {}),
   });
   const commandRouter = new CommandRouter(
     commandRegistry,
@@ -783,6 +789,7 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   // attributes the developer by NAME (not the raw `devId`). A CORE module carries NO uninstall
   // control at all — it can never be uninstalled (§13.2).
   const moduleInfoPayload = async (
+    applicationId: string,
     moduleId: string,
     guildId: string | null,
     invokerId: string,
@@ -808,7 +815,7 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
         ? 'none'
         : m.commands.map((command) => `\`/${command.name}\``).join(', ');
     const block = [
-      `${moduleIcon(m.ui?.icon)} **${displayName}** · ${TIER_LABEL[m.tier] ?? m.tier}`,
+      `${moduleIcon(m.ui?.icon, applicationId)} **${displayName}** · ${TIER_LABEL[m.tier] ?? m.tier}`,
       `-# ${m.description}`,
       '',
       `**Developer**  ${developerName(m.devId)}`,
@@ -830,7 +837,7 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
                 {
                   customId: `dumby:act:${invokerId}:uninstall:${m.name}`,
                   label: '',
-                  emoji: customEmojiParts(UNINSTALL_ICON_NAME) ?? { name: '🗑️' },
+                  emoji: customEmojiParts(UNINSTALL_ICON_NAME, applicationId) ?? { name: '🗑️' },
                   style: 4,
                   disabled: !uninstallable,
                 },
@@ -915,8 +922,8 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   registerCoreFrameHandlers({
     registry: interactionRegistry,
     router: commandRouter,
-    moduleInfo: (moduleId, guildId, invokerId, surface) =>
-      moduleInfoPayload(moduleId, guildId, invokerId, surface),
+    moduleInfo: (moduleId, guildId, invokerId, surface, applicationId) =>
+      moduleInfoPayload(applicationId ?? '', moduleId, guildId, invokerId, surface),
     installModule,
     uninstallModule,
     disableConfirmation: moduleDisableConfirmation,
@@ -1310,7 +1317,11 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
               new CommandRouter(
                 registry,
                 logger,
-                commandRouterOptions(persona.id, persona.discordApplicationId),
+                commandRouterOptions(
+                  persona.id,
+                  persona.discordApplicationId,
+                  persona.boundGuildId,
+                ),
               ),
             logger,
           }),

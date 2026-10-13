@@ -595,3 +595,46 @@ describe('CommandRouter', () => {
     }
   });
 });
+
+describe('a persona is bound to ONE guild (UR-20261012-060)', () => {
+  test('refuses every command in a guild it is not bound to', async () => {
+    // A persona registers core commands GLOBALLY, so her commands are visible in servers she does not
+    // serve. Every one of them must be refused there.
+    const reg = new CommandRegistry();
+    reg.registerModule('health', 'core');
+    reg.register({
+      data: { name: 'health', description: 'Health' },
+      execute: async () => {},
+      moduleId: 'health',
+    });
+    const logger = makeLogger() as unknown as Logger;
+    const router = new CommandRouter(reg, logger, {
+      residentPersonaId: 'p-1',
+      residentBoundGuildId: 'g-bound',
+    });
+    const elsewhere = makeInteraction('health'); // guildId 'g1', which is NOT 'g-bound'
+
+    await expect(router.dispatch(elsewhere)).resolves.toBeUndefined();
+    const sent = JSON.stringify(elsewhere.editReply.mock.calls.at(-1)?.[0]);
+    expect(sent).toContain('not my server');
+  });
+
+  test('acts normally in its own bound guild', async () => {
+    const reg = new CommandRegistry();
+    reg.registerModule('health', 'core');
+    const handler = vi.fn().mockResolvedValue(undefined);
+    reg.register({
+      data: { name: 'health', description: 'Health' },
+      execute: handler,
+      moduleId: 'health',
+    });
+    const logger = makeLogger() as unknown as Logger;
+    const router = new CommandRouter(reg, logger, {
+      residentPersonaId: 'p-1',
+      residentBoundGuildId: 'g1',
+    });
+
+    await router.dispatch(makeInteraction('health'));
+    expect(handler).toHaveBeenCalledTimes(1);
+  });
+});

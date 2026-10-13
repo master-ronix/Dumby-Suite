@@ -24,12 +24,14 @@ function asPageInteraction(
 ): CommandInteraction {
   const memberPermissions = interaction.memberPermissions;
   const isGuildOwner = interaction.isGuildOwner;
+  const applicationId = interaction.applicationId;
   return {
     commandName,
     user: { id: interaction.user.id },
     guildId: interaction.guildId,
     // UR-20261012-054 — the permission context travels with the re-entry. Dropping it made every
     // admin-gated control disappear on the first switch or refresh.
+    ...(applicationId !== undefined ? { applicationId } : {}),
     ...(memberPermissions !== undefined ? { memberPermissions } : {}),
     ...(isGuildOwner !== undefined ? { isGuildOwner } : {}),
     // The registry has already acknowledged this component interaction with `deferUpdate`, so a
@@ -57,6 +59,8 @@ export interface CoreFrameHandlerDeps {
     invokerId: string,
     /** The invoking surface: 'modules' (the detail card, with its control) or 'browse' (info only). */
     surface?: string,
+    /** UR-20261012-060 — the application rendering, so the card's icons resolve. */
+    applicationId?: string,
   ) => unknown | Promise<unknown>;
   /** item 9 — installs a marketplace module for the guild (the install-dropdown action). */
   installModule?: (moduleId: string, guildId: string | null, userId: string) => Promise<void>;
@@ -146,7 +150,13 @@ export function registerCoreFrameHandlers(deps: CoreFrameHandlerDeps): void {
           );
         } else if (moduleInfo !== undefined) {
           await interaction.editReply(
-            await moduleInfo(target, interaction.guildId, interaction.user.id, 'modules'),
+            await moduleInfo(
+              target,
+              interaction.guildId,
+              interaction.user.id,
+              'modules',
+              interaction.applicationId,
+            ),
           );
         }
         return;
@@ -235,7 +245,13 @@ export function registerCoreFrameHandlers(deps: CoreFrameHandlerDeps): void {
       const { surface, moduleId } = context as { surface?: string; moduleId?: string };
       if (moduleId === undefined || moduleInfo === undefined) return;
       await interaction.editReply(
-        await moduleInfo(moduleId, interaction.guildId, interaction.user.id, surface),
+        await moduleInfo(
+          moduleId,
+          interaction.guildId,
+          interaction.user.id,
+          surface,
+          interaction.applicationId,
+        ),
       );
     },
   });

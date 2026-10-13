@@ -7,6 +7,12 @@ export interface ComponentInteraction {
   user: { id: string };
   guildId: string | null;
   /**
+   * UR-20261012-060 — the application this interaction is FOR, as Discord states it. This is the
+   * authoritative emoji scope: an application emoji may only be referenced by the application that
+   * owns it, so the render must use the id of the application that received the interaction.
+   */
+  applicationId?: string;
+  /**
    * UR-20261012-054 — the member's permission context, carried so a control that re-enters the router
    * (`asPageInteraction`) does not LOSE it.
    *
