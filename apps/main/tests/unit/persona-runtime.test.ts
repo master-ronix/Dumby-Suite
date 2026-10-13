@@ -4,6 +4,7 @@ import {
   filterRegistryForModules,
   PersonaRuntime,
   type RuntimePersona,
+  deployPersonaCommands,
 } from '../../src/personas/persona-runtime.js';
 
 const def = (name: string, moduleId: string): CommandDefinition =>
@@ -207,12 +208,14 @@ describe('the persona dispatches its own controls (UR-20261012-043 / A2.1)', () 
 });
 
 describe('why a persona has no commands is reported (UR-20261012-050)', () => {
-  test('nothing bound is called out, because the persona will come online empty', async () => {
+  test('nothing bound is called out, because the persona owns nothing', async () => {
     const { runtime, logger } = makeRuntime([persona()], { modulesBoundTo: vi.fn(async () => []) });
     await runtime.start();
     const warned = logger.warn.mock.calls.map((c) => String(c[0])).join('\n');
     expect(warned).toContain('persona-no-modules-bound');
-    expect(warned).toContain('NO commands');
+    // UR-20261012-054 — a persona now REGISTERS the full command set; what it lacks is ownership, so
+    // it refuses everything it is not bound to. The warning says that, not "no commands".
+    expect(warned).toContain('OWNS nothing');
   });
 
   test('a bound slug that contributes no commands is named', async () => {
@@ -250,5 +253,39 @@ describe('why a persona has no commands is reported (UR-20261012-050)', () => {
     expect(started).toContain('bound=1');
     // `makeRuntime`'s deployCommands resolves 3, so the line reports the DEPLOYED count.
     expect(started).toContain('commands=3');
+  });
+});
+
+describe('a persona registers the same set the main bot does (UR-20261012-054)', () => {
+  test('registers BOTH global and guild, in that order, with the same payload', async () => {
+    const puts: Array<{ route: string; body: unknown }> = [];
+    const count = await deployPersonaCommands(
+      'app-1',
+      'g-1',
+      [{ name: 'a' }, { name: 'b' }],
+      async (route, body) => {
+        puts.push({ route, body });
+        return {};
+      },
+    );
+    expect(count).toBe(2);
+    expect(puts.map((p) => p.route)).toEqual([
+      '/applications/app-1/commands',
+      '/applications/app-1/guilds/g-1/commands',
+    ]);
+    expect(puts[0]?.body).toBe(puts[1]?.body);
+  });
+
+  test('an EMPTY set still PUTs, so a stale registration is cleared', async () => {
+    // The old form returned early on an empty payload — which is why a persona with nothing bound
+    // neither registered anything nor cleared what it had registered before. The overwrite is the
+    // clear, so it must happen even with nothing to send.
+    const puts: string[] = [];
+    const count = await deployPersonaCommands('app-1', 'g-1', [], async (route) => {
+      puts.push(route);
+      return {};
+    });
+    expect(count).toBe(0);
+    expect(puts).toHaveLength(2);
   });
 });

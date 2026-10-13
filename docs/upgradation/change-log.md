@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.60
+version: 5.5.61
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,32 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.61 — a persona registers the same command set as the main bot (UR-20261012-055) — 2026-10-12
+
+- 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- WHAT WAS WRONG: a persona built a FILTERED registry (only its bound modules) and deployed only GUILD
+  commands, with `if (body.length === 0) return 0` ahead of the PUT. Two consequences:
+  - A persona with nothing bound registered NOTHING -- the payload was empty and the deploy returned
+    before making a request. A freshly registered persona had no commands at all and looked BROKEN
+    rather than empty.
+  - STALE registrations were never cleared. A PUT on a command route is a BULK OVERWRITE -- the set
+    sent replaces what was registered -- but that only helps if the PUT HAPPENS. The early return
+    skipped it, so whatever an earlier state registered stayed.
+- THE MODEL, AS STATED: a persona registers THE SAME global and guild command set as the main bot. What
+  it may ANSWER is decided by OWNERSHIP, in the router (assertPersonaOwnsCommand), not by what it
+  registers. Being bound to exactly one guild makes its registration elsewhere inert. REGISTRATION IS
+  NOT THE RESTRICTION; THE BINDING IS.
+- FIX: buildRegistry returns the FULL registry; the deploy PUTs BOTH routes, ALWAYS, via an extracted
+  and testable deployPersonaCommands(). An empty payload still PUTs, because THE OVERWRITE IS THE CLEAR.
+- The boot warning is reworded to match: persona-no-modules-bound now says the persona OWNS nothing and
+  will refuse what it is not bound to -- not that it will have no commands, which is no longer true.
+- RECORDED: an early return that skips a request also skips the cleanup that request performs. The
+  empty-payload guard read as a sensible optimisation, but a PUT on a command route is not only an
+  install, it is a REPLACEMENT.
+- **Verification:** 113 files / 1159 tests / 0 failures; typecheck, lint, format, gates 27/27.
 
 ---
 

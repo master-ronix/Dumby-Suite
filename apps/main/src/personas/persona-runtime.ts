@@ -82,6 +82,27 @@ export interface PersonaRuntimeDeps {
  * A registry containing only `moduleIds`' commands — the same tier bookkeeping as the source, so a
  * persona's router behaves exactly as the main bot's does for those modules.
  */
+/**
+ * UR-20261012-054 — the persona's command registration.
+ *
+ * GLOBAL and GUILD, and ALWAYS. Both PUTs are BULK OVERWRITES: the set sent replaces whatever was
+ * registered, so a stale command left by an earlier state is cleared by the same call that installs the
+ * new one. The previous form returned early on an empty payload, which is exactly why a persona with
+ * nothing bound neither registered anything nor cleared what it had registered before.
+ *
+ * `put` is injected so the contract is testable without a live Discord call.
+ */
+export async function deployPersonaCommands(
+  applicationId: string,
+  guildId: string,
+  payloads: readonly unknown[],
+  put: (route: string, body: readonly unknown[]) => Promise<unknown>,
+): Promise<number> {
+  await put(`/applications/${applicationId}/commands`, payloads);
+  await put(`/applications/${applicationId}/guilds/${guildId}/commands`, payloads);
+  return payloads.length;
+}
+
 export function filterRegistryForModules(
   source: CommandRegistry,
   moduleIds: ReadonlySet<string>,
@@ -155,7 +176,7 @@ export class PersonaRuntime {
         const unmatched = moduleSlugs.filter((slug) => !contributing.has(slug));
         if (moduleSlugs.length === 0) {
           logger.warn(
-            `persona-no-modules-bound id=${persona.id} — it will come online with NO commands; bind a module and restart`,
+            `persona-no-modules-bound id=${persona.id} — it OWNS nothing, so it will refuse every command it is not bound to; bind a module and restart`,
           );
         } else if (unmatched.length > 0) {
           logger.warn(

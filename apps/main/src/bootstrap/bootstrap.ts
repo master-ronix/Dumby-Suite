@@ -72,8 +72,8 @@ import {
   type RawInteractionLike,
 } from '../interactions/interaction-adapters.js';
 import { PersonaCommandBindingService } from '../personas/persona-command-binding.service.js';
+import { PersonaRuntime, deployPersonaCommands } from '../personas/persona-runtime.js';
 import { personaPresenceFromClient } from '../personas/persona-presence.js';
-import { filterRegistryForModules, PersonaRuntime } from '../personas/persona-runtime.js';
 import { buildPersonaInteractionHandler } from '../personas/persona-interaction-handler.js';
 import { createPersonaOAuthService } from '../personas/persona-oauth.js';
 import { openBotTokenOrEmpty, openSealedText } from '../personas/persona-credentials.js';
@@ -1254,7 +1254,13 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
         openBotToken: (sealed) => openSealedText(sealed, personaRootKey),
         modulesBoundTo: async (personaId) =>
           (await personaBindings.listForPersona(personaId)).map((binding) => binding.moduleSlug),
-        buildRegistry: (slugs) => filterRegistryForModules(commandRegistry, new Set(slugs)),
+        // UR-20261012-054 — the FULL registry, not a filtered one.
+        //
+        // A persona registers the SAME command set as the main bot. What it may ANSWER is decided by
+        // ownership, in the router (`assertPersonaOwnsCommand`), not by what it registers: registering
+        // only the bound modules meant a persona with nothing bound registered NOTHING, so its commands
+        // never existed and stale ones were never cleared. The guild binding is the restriction.
+        buildRegistry: () => commandRegistry,
         // The gateway intents/partials are computed for the main client in an earlier scope, so they
         // are derived again here from the same source of truth: the module manifests.
         createClient: () => {
@@ -1266,15 +1272,14 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
           });
         },
         deployCommands: async (persona, botToken, registry) => {
-          const body = registry.toApiPayloads();
-          if (body.length === 0) return 0;
-          await new REST({ version: '10' })
-            .setToken(botToken)
-            .put(
-              Routes.applicationGuildCommands(persona.discordApplicationId, persona.boundGuildId),
-              { body },
-            );
-          return body.length;
+          const rest = new REST({ version: '10' }).setToken(botToken);
+          // UR-20261012-054 — global AND guild, always. See `deployPersonaCommands`.
+          return deployPersonaCommands(
+            persona.discordApplicationId,
+            persona.boundGuildId,
+            registry.toApiPayloads(),
+            async (route, body) => rest.put(route as `/${string}`, { body }),
+          );
         },
         // UR-20261012-043 (A2.1) / UR-20261012-049 — a persona answers BOTH its slash commands and
         // its in-message controls, through the same adapters and the same registry the main bot uses,
