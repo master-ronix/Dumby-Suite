@@ -75,8 +75,17 @@ const titleCaseId = (id: string): string =>
 export function createPageDataProvider(
   deps: PageDataDeps,
 ): (moduleId: string, guildId: string | null, page?: number, query?: string) => Promise<PageData> {
-  const { getClient, moduleRegistry, db, redis, config, logger, isMember, personaInvite, resolveOwner } =
-    deps;
+  const {
+    getClient,
+    moduleRegistry,
+    db,
+    redis,
+    config,
+    logger,
+    isMember,
+    personaInvite,
+    resolveOwner,
+  } = deps;
 
   /**
    * UR-20261011-011 — the guild's module enablement, read once. A module is "enabled" when its
@@ -672,31 +681,31 @@ export function createPageDataProvider(
     const shown = matched.slice(0, MARKETPLACE_MODULE_CAP);
     const modules = await Promise.all(
       shown.map(async (entry) => {
-      const slug = entry.manifest.name;
-      const tier = entry.manifest.tier;
-      const enabled = enabledBySlug.get(slug) ?? defaultEnabledForTier(tier);
-      const holder = await holderOf(guildId, slug);
-      // Occupied: enabled, and held by the OTHER profile. Stated plainly and NOT offered.
-      const occupied = enabled && !(await ownedBy(guildId, slug, tier, actingProfileId));
-      return {
-        id: slug,
-        name: slug,
-        description: entry.manifest.description,
-        icon: moduleIcon(entry.manifest.ui?.icon, applicationId),
-        ...(occupied
-          ? {
-              occupied: true,
-              occupiedBy: holder === undefined ? 'the main bot' : 'a persona',
-              note:
-                holder === undefined
-                  ? 'Occupied by the main bot in this server — a persona cannot take it'
-                  : 'Occupied by a persona in this server — the main bot cannot take it',
-            }
-          : {}),
-        // A disabled STANDARD module is "Previously Installed": selecting it re-enables it.
-        ...(!occupied && tier === 'standard'
-          ? { note: 'Previously installed — select to re-enable' }
-          : {}),
+        const slug = entry.manifest.name;
+        const tier = entry.manifest.tier;
+        const enabled = enabledBySlug.get(slug) ?? defaultEnabledForTier(tier);
+        const holder = await holderOf(guildId, slug);
+        // Occupied: enabled, and held by the OTHER profile. Stated plainly and NOT offered.
+        const occupied = enabled && !(await ownedBy(guildId, slug, tier, actingProfileId));
+        return {
+          id: slug,
+          name: slug,
+          description: entry.manifest.description,
+          icon: moduleIcon(entry.manifest.ui?.icon, applicationId),
+          ...(occupied
+            ? {
+                occupied: true,
+                occupiedBy: holder === undefined ? 'the main bot' : 'a persona',
+                note:
+                  holder === undefined
+                    ? 'Occupied by the main bot in this server — a persona cannot take it'
+                    : 'Occupied by a persona in this server — the main bot cannot take it',
+              }
+            : {}),
+          // A disabled STANDARD module is "Previously Installed": selecting it re-enables it.
+          ...(!occupied && tier === 'standard'
+            ? { note: 'Previously installed — select to re-enable' }
+            : {}),
         };
       }),
     );
@@ -727,7 +736,9 @@ export function createPageDataProvider(
     const heldFlags = await Promise.all(
       moduleRegistry
         .all()
-        .map((entry) => ownedBy(guildId, entry.manifest.name, entry.manifest.tier, actingProfileId)),
+        .map((entry) =>
+          ownedBy(guildId, entry.manifest.name, entry.manifest.tier, actingProfileId),
+        ),
     );
     const enabledModules = moduleRegistry.all().filter((entry, i) => {
       const tier = entry.manifest.tier;

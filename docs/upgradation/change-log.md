@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.66
+version: 5.5.67
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,25 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.67 — the false-passing format check (UR-20261012-060/061 deploy) — 2026-10-12
+
+- 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- UR-060 and UR-061 were SKIPPED: the `format` step failed on `src/rendering/page-data.ts`, so Gates
+  failed and Railway skipped Docker and Integration.
+- WHY I DID NOT SEE IT: my local check ran `prettier --check "src/**/*.ts"` FROM apps/main. THE SHELL
+  DOES NOT EXPAND THAT GLOB, so prettier matched NOTHING and printed "All matched files use Prettier
+  code style" -- A FALSE PASS, repeated across several commits. CI runs `prettier --check .`.
+- THE SAME TRAP had already shown itself: an eslint run with the same glob answered "No files matching
+  the pattern "src/**/*.ts" were found" -- I read that as a path mistake and re-ran from the right
+  directory, without noticing that PRETTIER gives the same condition a green tick.
+- RECORDED: run the CI STEP'S OWN COMMAND. `pnpm --filter @workspace/dumby format` and
+  `pnpm --filter @workspace/dumby lint` are the commands CI runs; a hand-written glob is a different
+  check that can silently match nothing.
+- **Verification:** all five Gates steps re-run locally with CI's own commands -- build packages,
+  typecheck, lint, lint:modules, format -- and all pass.
 
 ---
 
