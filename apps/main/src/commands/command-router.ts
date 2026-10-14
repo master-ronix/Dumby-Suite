@@ -773,6 +773,13 @@ export class CommandRouter {
   ): Promise<void> {
     if (guildId === null) return;
     if (this.options.resolveCommandOwner === undefined) return;
+    // UR-20261012-080 — CORE and ADMIN are SHARED (§13.2): "Core is `shared`: no profile owns it,
+    // every profile runs it." They have no binding and are always enabled, so the ownership read
+    // answers `'main'` for them — correct for standard and marketplace, WRONG for core. This is the
+    // one consumer that does not short-circuit the tier, so a persona was refused every core command:
+    // /dashboard, /modules, /browse, /persona, /permit, /queue, /health.
+    const tier = this.registry.getModuleTier(command.moduleId);
+    if (tier === 'core' || tier === 'admin') return;
     // UR-20261012-068 — same rule: an unreadable binding is not a refusal.
     let owner: string | undefined;
     try {

@@ -798,3 +798,17 @@ Acceptance ids: `ACC-UR-078-1…6`.
 
 **Verification.** 121 files / 1238 tests / 0 failures; `typecheck`, `lint`, `format` green locally.
 Acceptance ids: `ACC-UR-079-1…5`.
+
+---
+
+## A Persona Could Not Run Any Core Command (UR-20261012-080) — 2026-10-14
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-169 | The regression found: core modules read as the main bot's, refusing every core command | DONE |
+| DP-170 | The dispatch assertion short-circuits the shared tiers | DONE |
+| DP-171 | `resolveCommandOwner` answers `'shared'` for core/admin | DONE |
+| DP-172 | A persona runs a core command; a persona is still refused a main-bot standard module | DONE |
+
+**Verification.** 121 files / 1240 tests / 0 failures; `typecheck`, `lint`, `format` green locally.
+Acceptance ids: `ACC-UR-080-1…4`.

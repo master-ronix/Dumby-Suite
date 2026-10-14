@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.84
+version: 5.5.85
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,42 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.85 — a persona could not run any core command (UR-20261012-080) — 2026-10-14
+
+- 2026-10-14 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- THE FINDING: a screenshot shows the persona (Magma) running `/dashboard` and receiving "Not
+  permitted -- Your permissions do not allow this action. reason: FORBIDDEN". `/dashboard` is a CORE
+  command, and §13.2 is explicit: "Core is `shared`: no profile owns it, every profile runs it." A
+  persona being refused it is not a permissions decision -- it is a defect, and one UR-078 introduced.
+- THE MECHANISM: UR-078 made the ownership read answer 'main' for any module ENABLED with no persona
+  binding -- correct for standard and marketplace, WRONG for core, because a core module has NO
+  binding (nothing binds a shared module) and is ALWAYS enabled (the read short-circuits core to true
+  by design). Both conditions held, so EVERY CORE MODULE READ AS THE MAIN BOT'S, and the dispatch
+  assertion saw owner='main' against a persona's own id and refused. Blast radius: every core command
+  -- /dashboard, /modules, /browse, /persona, /permit, /queue, /health. A persona could run almost
+  nothing. PersonaOccupiedError maps to FORBIDDEN, which is why the notice said "your permissions do
+  not allow this action" -- the wrong message again, for the same reason as UR-074.
+- WHAT CHANGED: the dispatch assertion SHORT-CIRCUITS the shared tiers (core and admin return before
+  the ownership check, so a shared module is never "occupied"); the READ states the truth --
+  `resolveCommandOwner` answers 'shared' for a core or admin module rather than 'main'. Its callers
+  that matter already short-circuited the tier, but a read that states something false is a read
+  waiting for a caller that believes it. The tier comes in as another optional dependency.
+- RECORDED: a read that answers a question it was not asked is dangerous. The read answers "who owns
+  this module"; for a shared module the honest answer is "nobody" and the code said "the main bot" --
+  a claim about ownership where there is none. Two of three consumers happened to guard against it; the
+  third did not, and the guard in the first two was never the reason it worked.
+- RECORDED: the THIRD instance of the same lesson in three URs. UR-078 changed a read; UR-079 found a
+  PRESENTATION consumer keyed on the old sentinel; this found a DECISION consumer that never accounted
+  for the new value. The pattern is not "check the consumers" -- a shared read with a newly-possible
+  return value needs the new value enumerated at every consumer, and "the other two short-circuit" is
+  not a reason the third will.
+- RECORDED: a LIVE regression found by a screenshot, not by the suite. 1238 tests passed with a persona
+  unable to run any core command. The tests covered the tiers separately and the ownership read
+  separately; nothing exercised the two together.
+- **Verification:** 121 files / 1240 tests / 0 failures; typecheck, lint, format clean.
 
 ---
 

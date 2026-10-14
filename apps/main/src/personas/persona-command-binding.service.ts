@@ -32,6 +32,13 @@ export class PersonaCommandBindingService {
      * construct the service; absent, ownership is unanswered rather than guessed.
      */
     private readonly isModuleEnabled?: (guildId: string, moduleSlug: string) => Promise<boolean>,
+    /**
+     * UR-20261012-080 — a module's tier, so a SHARED one is never reported as a profile's. Optional;
+     * absent, the shared tiers are not special-cased here (the callers that matter short-circuit).
+     */
+    private readonly tierOf?: (
+      moduleSlug: string,
+    ) => 'admin' | 'core' | 'standard' | 'marketplace' | undefined,
   ) {}
 
   async registerPersona(
@@ -110,6 +117,10 @@ export class PersonaCommandBindingService {
   async resolveCommandOwner(guildId: string, moduleSlug: string): Promise<string | undefined> {
     const binding = await this.bindings.findLive(guildId, moduleSlug);
     if (binding !== undefined) return binding.personaId;
+    // UR-20261012-080 — a SHARED tier is owned by nobody. The enablement read answers TRUE for core
+    // (it is always enabled), which would otherwise make core modules look like the main bot's.
+    if (this.tierOf?.(moduleSlug) === 'core' || this.tierOf?.(moduleSlug) === 'admin')
+      return 'shared';
     if (this.isModuleEnabled === undefined) return undefined;
     try {
       return (await this.isModuleEnabled(guildId, moduleSlug)) ? 'main' : undefined;

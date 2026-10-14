@@ -970,3 +970,53 @@ describe('the primary render carries the acting profile (UR-20261012-075)', () =
     expect(seen.every((id) => id === 'main')).toBe(true);
   });
 });
+
+describe('a persona may run SHARED commands (UR-20261012-080)', () => {
+  test('a CORE command is not treated as owned by the main bot', async () => {
+    // UR-078 made the ownership read answer 'main' for any enabled module with no binding. Core
+    // modules have no binding and are ALWAYS enabled, so every core command read as the main bot's
+    // and a persona was refused all of them: /dashboard, /modules, /browse, /persona, /permit,
+    // /queue, /health. §13.2: "Core is `shared`: no profile owns it, every profile runs it."
+    const reg = new CommandRegistry();
+    reg.registerModule('dashboard', 'core');
+    const executed = vi.fn(async () => ({ page: 'dashboard', data: {} }));
+    reg.register({
+      data: { name: 'dashboard', description: 'Dashboard' },
+      moduleId: 'dashboard',
+      execute: executed,
+    } as never);
+    const router = new CommandRouter(reg, logger2, {
+      isModuleEnabledInGuild: async () => true,
+      // What the real read now answers for a shared tier.
+      resolveCommandOwner: async () => 'shared',
+      residentPersonaId: 'persona-1',
+    } as never);
+
+    const interaction = { ...makeInteraction('dashboard'), applicationId: 'app-persona' };
+    await router.dispatch(interaction);
+
+    expect(executed).toHaveBeenCalledTimes(1);
+  });
+
+  test('a STANDARD module the main bot holds is still refused to a persona', async () => {
+    // The refusal itself must not have been weakened by the fix above.
+    const reg = new CommandRegistry();
+    reg.registerModule('hello-world', 'standard');
+    const executed = vi.fn(async () => ({ page: 'hello', data: {} }));
+    reg.register({
+      data: { name: 'hello', description: 'Says hello' },
+      moduleId: 'hello-world',
+      execute: executed,
+    } as never);
+    const router = new CommandRouter(reg, logger2, {
+      isModuleEnabledInGuild: async () => true,
+      resolveCommandOwner: async () => 'main',
+      residentPersonaId: 'persona-1',
+    } as never);
+
+    const interaction = { ...makeInteraction('hello'), applicationId: 'app-persona' };
+    await router.dispatch(interaction);
+
+    expect(executed).not.toHaveBeenCalled();
+  });
+});

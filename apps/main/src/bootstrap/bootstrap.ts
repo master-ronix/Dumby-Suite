@@ -563,6 +563,8 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
       moduleEnabledForOwnership === undefined
         ? Promise.resolve(false)
         : moduleEnabledForOwnership(guildId, moduleSlug),
+    // UR-20261012-080 — the tier, so a SHARED one is never reported as a profile's.
+    (moduleSlug) => moduleRegistry.get(moduleSlug)?.manifest.tier,
   );
 
   const guildConfigService = new GuildConfigService(
