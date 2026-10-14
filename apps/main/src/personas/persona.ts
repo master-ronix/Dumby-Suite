@@ -80,14 +80,24 @@ export interface CharterStatus {
 }
 
 export class PersonaOccupiedError extends Error {
+  /**
+   * UR-20261012-077 — the ACTOR is named, not only the owner.
+   *
+   * The message used to read "occupied by another persona ... already bound to persona X" whatever
+   * the actor was. When the MAIN BOT was refused a module a persona owned, that phrasing led a
+   * careful reader to conclude a persona had been refused for holding its own module — the wrong
+   * diagnosis, reached from the message alone. A refusal has two parties; naming one is half a
+   * message.
+   */
   constructor(
     readonly guildId: string,
     readonly moduleSlug: string,
     readonly personaId: string,
+    readonly actorId: string = 'main',
   ) {
     super(
-      `Command key "${moduleSlug}" in guild "${guildId}" is occupied by another persona ` +
-        `(guildId, moduleSlug pair already bound to persona "${personaId}")`,
+      `Command key "${moduleSlug}" in guild "${guildId}" is owned by persona "${personaId}", ` +
+        `so "${actorId}" may not install or claim it`,
     );
     this.name = 'PersonaOccupiedError';
   }

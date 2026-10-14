@@ -986,7 +986,8 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
       logger.warn(
         `marketplace-module-occupied module=${moduleId} guild=${guildId} owner=${owner} actor=${acting?.id ?? 'main'}`,
       );
-      throw new PersonaOccupiedError(guildId, moduleId, owner);
+      // UR-20261012-077 — name the actor. This is the refusal logged as occupied by "another persona", which read as if the persona had been refused her own module.
+      throw new PersonaOccupiedError(guildId, moduleId, owner, acting?.id ?? 'main');
     }
     // A PERSONA installing an unclaimed module CLAIMS it: the first profile to install owns it.
     if (owner === undefined && acting !== undefined) {

@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.81
+version: 5.5.82
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,37 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.82 — a refusal names the actor (UR-20261012-077) — 2026-10-14
+
+- 2026-10-14 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- THE REPORT: `PersonaOccupiedError: Command key "hello-world" ... is occupied by another persona
+  (... already bound to persona "39eaaf0f-...")`, read by the Railway session as "a persona claiming a
+  module it already holds is being treated as a conflict" -- i.e. that ELSA was refused her OWN module.
+- WHAT IT ACTUALLY WAS: the same log line carries `actor=main`. The actor was the MAIN BOT and the
+  persona named is the OWNER. The refusal was CORRECT -- the main bot may not install or claim a module
+  a persona holds. The diagnosis was wrong, and it was reached from the MESSAGE alone.
+- A MESSAGE THAT NAMES ONE PARTY IS HALF A MESSAGE: a refusal has two parties -- who was refused, and
+  who owns it. The message named only the owner, in wording ("occupied by another persona") that
+  invites the reader to assume the actor IS a persona. When the actor is the main bot -- which is not a
+  persona at all -- that assumption is exactly wrong. `PersonaOccupiedError` now takes the actor and
+  says both: 'Command key "..." in guild "..." is owned by persona "...", so "main" may not install or
+  claim it'. Both throw sites pass the actor.
+- THE ASYMMETRY IT WAS STANDING ON, recorded not silently fixed: THE MAIN BOT NEVER RECORDS A CLAIM.
+  The claim branch is `if (owner === undefined && acting !== undefined)` -- PERSONA-ONLY. So a module
+  the MAIN BOT installs leaves no binding, `owner` stays undefined, and any persona may later claim what
+  the main bot enabled. The operator's own model is the opposite ("if the hello module is enabled by the
+  main bot then it is the property of the main bot only"). Closing it means the ownership read must
+  answer 'main' for an enabled but unbound module -- a change to the shared read every page consults, so
+  it wants its own UR and its own tests.
+- ALSO CORRECTED: UR-076 claimed "every recent commit was skipped". That was WRONG -- UR-066 through
+  UR-073 each deployed and were replaced in turn; the live build was `d36d5f3` (UR-073). ONLY UR-074 and
+  UR-075 were skipped. Reading one red check as a week of lost work overstated the damage.
+- RECORDED: a message that misled a careful reader is a defect, not a documentation gap. RECORDED: the
+  correct diagnosis was ONE FIELD AWAY -- `actor=main` was already in the log line.
+- **Verification:** typecheck, lint, format clean.
 
 ---
 

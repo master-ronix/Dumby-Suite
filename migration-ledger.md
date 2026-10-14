@@ -755,3 +755,17 @@ Acceptance ids: `ACC-UR-075-1…5`.
 
 **Verification.** `typecheck`, `lint`, `format` green locally; the flow suite runs against live Postgres
 in CI. Acceptance ids: `ACC-UR-076-1…4`.
+
+---
+
+## A Refusal Names the Actor (UR-20261012-077) — 2026-10-14
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-155 | `PersonaOccupiedError` names the actor and the owner | DONE |
+| DP-156 | Both throw sites pass the actor | DONE |
+| DP-157 | The misdiagnosis corrected in the record (`actor=main`) | DONE |
+| DP-158 | The main-bot claim asymmetry recorded as its own finding | DONE |
+| DP-159 | UR-076's "every commit was skipped" claim corrected (only UR-074/075) | DONE |
+
+**Verification.** `typecheck`, `lint`, `format` green locally. Acceptance ids: `ACC-UR-077-1…4`.

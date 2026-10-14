@@ -791,7 +791,13 @@ export class CommandRouter {
     }
     if (owner === undefined) return;
     if (owner === this.options.residentPersonaId) return;
-    throw new PersonaOccupiedError(guildId, command.moduleId, owner);
+    // UR-20261012-077 — name the actor (this router's own identity).
+    throw new PersonaOccupiedError(
+      guildId,
+      command.moduleId,
+      owner,
+      this.options.residentPersonaId ?? 'main',
+    );
   }
 
   private armFollowupWatchdog(
