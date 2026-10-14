@@ -28,6 +28,22 @@ export type ModuleCommandManifest = z.infer<typeof commandManifestSchema>;
 export interface ModuleLifecycle<Container = unknown> {
   onLoad?: (container: Container) => Promise<void> | void;
   onReady?: (container: Container) => Promise<void> | void;
+  /**
+   * UR-20261012-071 — §11.7: start active processes on the DISABLED → ENABLED transition (a polling
+   * loop, an external connection, a scheduled task). Optional; idempotent; ≤ 5 s.
+   *
+   * These are GLOBAL transitions — load, re-enable, shutdown — not per-guild ones. §13.7 is explicit
+   * that a per-guild toggle "never touches the module's loaded state, DI registrations, or event
+   * subscriptions", so disabling a module in ONE guild must not stop a process that other guilds are
+   * still served by. The per-guild case is handled by the execution gates (UR-20261012-069).
+   */
+  onEnable?: (container: Container) => Promise<void> | void;
+  /**
+   * UR-20261012-071 — §11.7: stop them on the ENABLED → DISABLED transition. Optional; idempotent;
+   * ≤ 5 s. A throw is logged and the module still transitions to DISABLED. Always runs BEFORE
+   * `onUnload`.
+   */
+  onDisable?: () => Promise<void> | void;
   onUnload?: () => Promise<void> | void;
 }
 

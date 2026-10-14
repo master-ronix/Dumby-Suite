@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.75
+version: 5.5.76
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,38 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.76 — a module can stop what it started (UR-20261012-071) — 2026-10-12
+
+- 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- THE FINDING: §11.7 declares SIX lifecycle hooks. The SDK declared THREE -- onLoad, onReady, onUnload.
+  So the framework could tell a module to INITIALISE and to TEAR DOWN, but not to STOP WHAT IT HAD
+  STARTED. A module that opened a polling loop, a websocket or a scheduled task had nowhere to be told
+  to close it -- the hooks the specification gives it for exactly that did not exist in its contract.
+- WHAT THEY ARE: `onEnable` (DISABLED → ENABLED) starts active processes; a throw leaves the module
+  DISABLED. `onDisable` (ENABLED → DISABLED) stops them; a throw is logged but the module STILL
+  transitions to DISABLED, and it ALWAYS runs before `onUnload`. Both idempotent, both ≤ 5 s.
+- THE DISTINCTION THAT IS THE WHOLE POINT: these are GLOBAL transitions, not per-guild ones. §13.7 is
+  explicit that toggling a module in a guild "never touches the module's loaded state, DI registrations,
+  or event subscriptions". A module can be enabled in guild A and disabled in guild B at once, and a
+  polling loop is process-wide -- firing `onDisable` for one guild would stop a process other guilds are
+  still being served by. The per-guild case belongs to the EXECUTION GATES (UR-069). This UR
+  deliberately does NOT fire these hooks on a per-guild toggle.
+- WHAT CHANGED: `ModuleLifecycle` (SDK) and `LoadedModule` (app) declare both hooks. `readyAll` calls
+  `onEnable` AFTER `onReady` succeeds -- a freshly loaded module becomes ENABLED, so its processes start
+  once the gateway is up. `unloadAll` calls `onDisable` BEFORE `onUnload`, caught SEPARATELY, so a
+  module that fails to stop cleanly is never left half-unloaded. `unloadAll` is the shutdown path, so
+  shutdown now disables every module before unloading it, as §11.6 describes.
+- RECORDED: a hook the spec gives a module but the contract does not is a capability the module does
+  not have. The disable flow stops the framework's own processing; only the module can stop a process
+  the framework does not own -- and only if it is told.
+- RECORDED (divergence, left standing): §11.6 describes shutdown disabling modules in TIER order
+  (Marketplace, Standard, Core, Admin). `unloadAll` reverses the LOAD order, which is topological --
+  dependents before dependencies, but not tier order. Topological is arguably safer for teardown, so
+  this is recorded rather than changed without a decision.
+- **Verification:** typecheck, lint, format clean; SDK builds; the new suite 6 tests green.
 
 ---
 

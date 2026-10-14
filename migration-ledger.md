@@ -666,3 +666,18 @@ Acceptance ids: `ACC-UR-068-1…5`.
 
 **Verification.** `typecheck`, `lint`, `format` green locally; SDK builds; the context suite 10 tests
 green. Acceptance ids: `ACC-UR-070-1…7`.
+
+---
+
+## A Module Can Stop What It Started (UR-20261012-071) — 2026-10-12
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-126 | `ModuleLifecycle` (SDK) declares `onEnable` and `onDisable` | DONE |
+| DP-127 | `LoadedModule` (app) declares both hooks | DONE |
+| DP-128 | `readyAll` fires `onEnable` after `onReady`; a throw leaves the module DISABLED | DONE |
+| DP-129 | `unloadAll` fires `onDisable` before `onUnload`, caught separately | DONE |
+| DP-130 | A per-guild toggle does NOT fire the hooks (§13.7); that is the execution gates' job | DONE |
+
+**Verification.** `typecheck`, `lint`, `format` green locally; SDK builds; the lifecycle suite 6 tests
+green. Acceptance ids: `ACC-UR-071-1…7`.

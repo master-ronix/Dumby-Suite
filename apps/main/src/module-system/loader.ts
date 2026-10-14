@@ -283,7 +283,13 @@ export class ModuleLoader {
       if (!mod) continue;
       try {
         await mod.onReady?.(this.container);
+        // UR-20261012-071 — §11.7: the module is now ENABLED, so its active processes start. This is
+        // a GLOBAL transition, not a per-guild one (§13.7): a per-guild disable must not stop a
+        // process other guilds still rely on.
+        await mod.onEnable?.(this.container);
       } catch (err) {
+        // §11.7 — a throw here (from onReady OR onEnable) leaves the module DISABLED; the bot stays
+        // live and every other module continues.
         this.logger.error('module-ready-failed-non-fatal', { module: name, error: String(err) });
         readyFailures.push(name);
       }
@@ -298,6 +304,14 @@ export class ModuleLoader {
     for (const name of [...order].reverse()) {
       const mod = this.registry.get(name);
       if (!mod) continue;
+      // UR-20261012-071 — §11.7: onDisable ALWAYS runs before onUnload. It is caught SEPARATELY
+      // because the spec is explicit that a throw here is logged and the module STILL transitions to
+      // DISABLED — a module that fails to stop cleanly must not be left half-unloaded.
+      try {
+        await mod.onDisable?.();
+      } catch (err) {
+        this.logger.error('module-disable-failed', { module: name, error: String(err) });
+      }
       try {
         await mod.onUnload?.();
       } catch (err) {

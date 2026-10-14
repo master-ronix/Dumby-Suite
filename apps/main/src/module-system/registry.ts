@@ -44,6 +44,10 @@ export interface LoadedModule {
   tasks?: readonly ModuleTaskDeclaration[];
   onLoad?: (container: Container) => Promise<void> | void;
   onReady?: (container: Container) => Promise<void> | void;
+  /** UR-20261012-071 — §11.7's DISABLED → ENABLED hook: start the module's active processes. */
+  onEnable?: (container: Container) => Promise<void> | void;
+  /** UR-20261012-071 — §11.7's ENABLED → DISABLED hook: stop them. Always before `onUnload`. */
+  onDisable?: () => Promise<void> | void;
   onUnload?: () => Promise<void> | void;
 }
 
