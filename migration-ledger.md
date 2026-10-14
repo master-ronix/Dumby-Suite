@@ -894,3 +894,15 @@ Acceptance ids: `ACC-UR-085-1…6`.
 
 **Verification.** 122 files / 1268 tests / 0 failures; `typecheck`, `lint`, `format` green locally.
 Acceptance ids: `ACC-UR-086-1…4`.
+
+## There Was No Way to Restart One Persona (UR-20261012-087) — 2026-10-14
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-206 | The finding: `reloadPersona` existed but was never exposed | DONE |
+| DP-207 | `POST /twill/personas/:personaId/reload` reloads one persona | DONE |
+| DP-208 | An absent result is reported as `reload: null`, not hidden | DONE |
+| DP-209 | `501` when the runtime is disabled; `404` for an unknown persona | DONE |
+
+**Verification.** 122 files / 1268 tests / 0 failures; `typecheck`, `lint`, `format` green locally.
+Acceptance ids: `ACC-UR-087-1…4`.

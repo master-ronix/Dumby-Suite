@@ -501,6 +501,54 @@ export function registerTwillPersonaRoutes(
    * Revoke a persona: retired and soft-deleted, its bindings released. Its application id becomes
    * free to register again, which is the difference between "revoked" and "temporarily switched off".
    */
+  /**
+   * UR-20261012-087 — restart ONE persona, without restarting the service.
+   *
+   * Reloads her from her CURRENT row: a fresh gateway login, her commands re-deployed from her current
+   * bindings, her presence re-applied. The runtime reads all of that once, at boot, so this is the
+   * operator's "restart her" — and unlike a process restart it does not blip the main bot.
+   *
+   * The management surface calls this automatically after a registration, a binding and a credential
+   * rotation (UR-20261012-085). This route is for everything else: an out-of-band change to her row, a
+   * module's commands changing underneath her, or simply an operator who wants her cycled.
+   */
+  app.post<{ Params: { personaId: string } }>(
+    '/twill/personas/:personaId/reload',
+    async (request, reply) => {
+      const persona = await identities.findById(request.params.personaId);
+      if (persona === undefined) {
+        return reply.code(404).send({
+          error: 'Unknown persona',
+          reason: `No persona "${request.params.personaId}" exists`,
+        });
+      }
+      if (deps.reloadPersona === undefined) {
+        // Honest rather than a 200 that did nothing: without the runtime there is nothing to reload.
+        return reply.code(501).send({
+          error: 'Not configured',
+          reason: 'the persona runtime is not enabled on this deployment',
+        });
+      }
+      try {
+        const result = await deps.reloadPersona({
+          id: persona.id,
+          name: persona.name,
+          discordApplicationId: persona.discordApplicationId,
+          boundGuildId: persona.boundGuildId,
+          botTokenSealed: persona.botTokenSealed,
+          status: persona.status,
+        });
+        logger.info(`twill-reload-requested id=${persona.id} result=${JSON.stringify(result)}`);
+        // The persona's own view, plus what the reload did — an absent result means her row no longer
+        // matched (for example she was revoked), which is information, not an error.
+        return reply.code(200).send({ ...publicPersonaView(persona), reload: result ?? null });
+      } catch (err) {
+        logger.warn(`twill-reload-failed id=${persona.id} reason=${reasonOf(err)}`);
+        return reply.code(statusFor(err)).send({ error: 'Reload failed', reason: reasonOf(err) });
+      }
+    },
+  );
+
   app.delete<{ Params: { personaId: string } }>(
     '/twill/personas/:personaId',
     async (request, reply) => {

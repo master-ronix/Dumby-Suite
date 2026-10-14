@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.91
+version: 5.5.92
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,38 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.92 — there was no way to restart one persona (UR-20261012-087) — 2026-10-14
+
+- 2026-10-14 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- THE FINDING: the operator asked for a command to restart a persona. There was none. UR-085 built
+  `PersonaRuntime.reloadPersona` and wired it to three operations -- registration, binding, credential
+  rotation -- and NEVER EXPOSED IT. The only way to cycle a persona was to restart the whole Railway
+  service, which restarts the main bot too and costs a visible blip. The capability existed in the
+  runtime and had no surface.
+- THE MECHANISM: `reloadPersona` was reachable from exactly three call sites, all inside the route
+  module, all in response to a write the route had just performed. Nothing external could ask for a
+  reload -- not after an out-of-band row edit, not after a module's commands changed underneath a
+  persona, and not when an operator simply wanted her cycled as a first diagnostic step.
+- WHAT CHANGED: `POST /twill/personas/:personaId/reload` reloads one persona from her current row -- a
+  fresh gateway login, her commands re-deployed from her current bindings, her presence re-applied. The
+  response is her public view plus a `reload` field carrying what the reload did. An ABSENT result is
+  REPORTED, not hidden: `reloadPersona` returns `undefined` when her row no longer matches (she was
+  revoked between the read and the reload) and the route returns `"reload": null` rather than a bare
+  success. `501` when the runtime is not enabled -- without PERSONA_RUNTIME_ENABLED there is nothing to
+  reload and a 200 that did nothing would be a lie. `404` for an unknown persona.
+- RECORDED: a capability with no surface is not a capability. `reloadPersona` was correct, tested and
+  used three times by the code that needed it -- and the operator still could not restart a persona.
+  Building the mechanism and not exposing it left the original problem in place, one layer down.
+- RECORDED: the three call sites were ALL writes the route itself had made. That is a tell -- when every
+  caller of an operation is the same module performing its own follow-up, the operation is probably also
+  a legitimate standalone action and nothing is asking for it yet.
+- RECORDED: the operator's second request in two URs for something that should already have existed.
+  UR-085 was "why isn't she online"; this is "how do I restart her". Both were answered by capability the
+  runtime already had; the gap was never the mechanism but the surface.
+- **Verification:** 122 files / 1268 tests / 0 failures; typecheck, lint, format clean.
 
 ---
 
