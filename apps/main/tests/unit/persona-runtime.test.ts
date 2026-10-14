@@ -332,3 +332,54 @@ describe('PersonaRuntime.applyPresence (UR-20261012-082)', () => {
     expect(runtime.applyPresence('persona-1', { status: 'idle' })).toBe(false);
   });
 });
+
+describe('PersonaRuntime.stopPersona (UR-20261012-083)', () => {
+  test('destroys the client and clears her commands — a revoke takes effect now', async () => {
+    const destroy = vi.fn();
+    const clearCommands = vi.fn(async () => 0);
+    const { runtime } = makeRuntime([persona()], {
+      createClient: () => ({ login: vi.fn(), destroy, on: vi.fn() }),
+      clearCommands,
+    } as never);
+    await runtime.start();
+    expect(runtime.hostedCount()).toBe(1);
+
+    const stopped = await runtime.stopPersona(persona());
+
+    expect(stopped).toBe(true);
+    expect(destroy).toHaveBeenCalledTimes(1);
+    expect(runtime.hostedCount()).toBe(0);
+    // Her commands are registered against her APPLICATION, so they outlive the client.
+    expect(clearCommands).toHaveBeenCalledTimes(1);
+  });
+
+  test('a persona that is not hosted reports false, but her commands are STILL cleared', async () => {
+    const clearCommands = vi.fn(async () => 0);
+    const { runtime } = makeRuntime([], { clearCommands } as never);
+
+    const stopped = await runtime.stopPersona(persona());
+
+    expect(stopped).toBe(false);
+    expect(clearCommands).toHaveBeenCalledTimes(1);
+  });
+
+  test('a failing destroy does not stop the commands from being cleared', async () => {
+    const clearCommands = vi.fn(async () => 0);
+    const { runtime } = makeRuntime([persona()], {
+      createClient: () => ({
+        login: vi.fn(),
+        destroy: vi.fn(() => {
+          throw new Error('gateway already gone');
+        }),
+        on: vi.fn(),
+      }),
+      clearCommands,
+    } as never);
+    await runtime.start();
+
+    await runtime.stopPersona(persona());
+
+    expect(clearCommands).toHaveBeenCalledTimes(1);
+    expect(runtime.hostedCount()).toBe(0);
+  });
+});

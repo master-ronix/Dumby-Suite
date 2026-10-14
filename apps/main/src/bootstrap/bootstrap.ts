@@ -1470,6 +1470,18 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
             collectModuleIcons(),
           );
         },
+        // UR-20261012-083 — clearing a persona's commands: the SAME split and the SAME put the deploy
+        // uses, with EMPTY payloads, because `deployPersonaCommands` clears both scopes before it
+        // writes — so an empty set is exactly a deregister.
+        clearCommands: async (persona, botToken) => {
+          const rest = new REST({ version: '10' }).setToken(botToken);
+          return deployPersonaCommands(
+            persona.discordApplicationId,
+            persona.boundGuildId,
+            { global: [], guild: [] },
+            async (route, body) => rest.put(route as `/${string}`, { body }),
+          );
+        },
         createInteractionHandler: (persona, registry) =>
           buildPersonaInteractionHandler({
             registry: interactionRegistry,
@@ -1789,6 +1801,10 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
           // than waiting for the next restart.
           applyPersonaPresence: (personaId, presence) =>
             personaRuntimeRef?.applyPresence(personaId, presence) ?? false,
+          // UR-20261012-083 — a revoke stops the running persona, so the delete takes effect NOW
+          // rather than at the next restart.
+          stopPersona: async (persona) =>
+            (await personaRuntimeRef?.stopPersona(persona as never)) ?? false,
           logger,
           costSignals: { dedicatedInfrastructureRequired: false, perPersonaCostMeasurable: false },
         }

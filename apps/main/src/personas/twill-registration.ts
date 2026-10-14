@@ -178,6 +178,18 @@ export interface TwillPersonaRouteDeps {
     personaId: string,
     presence: { status: string; note?: string },
   ) => boolean;
+  /**
+   * UR-20261012-083 — stop a persona's RUNNING client and clear its commands on revoke. Optional:
+   * without it a revoked persona keeps serving until the next restart.
+   */
+  stopPersona?: (persona: {
+    id: string;
+    name: string;
+    discordApplicationId: string;
+    boundGuildId: string;
+    botTokenSealed: unknown;
+    status: string;
+  }) => Promise<boolean>;
 }
 
 /** HTTP status for a registration rejection, by error name. */
@@ -453,7 +465,29 @@ export function registerTwillPersonaRoutes(
     '/twill/personas/:personaId',
     async (request, reply) => {
       try {
+        // Read her BEFORE the revoke: the row is retired by the revoke, and a lookup afterwards
+        // would not find her — while her running client and her registered commands still need
+        // clearing.
+        const persona = await identities.findById(request.params.personaId);
         await service.revokePersona(request.params.personaId);
+        // UR-20261012-083 — the revoke is only half of it. Without this she stays ONLINE with every
+        // command loaded until the next restart, which reads as the delete having done nothing.
+        if (persona !== undefined && deps.stopPersona !== undefined) {
+          const stopped = await deps.stopPersona({
+            id: persona.id,
+            name: persona.name,
+            discordApplicationId: persona.discordApplicationId,
+            boundGuildId: persona.boundGuildId,
+            botTokenSealed: persona.botTokenSealed,
+            status: persona.status,
+          });
+          if (!stopped) {
+            logger.info(
+              `persona-revoked-not-hosted id=${persona.id} — no running client to stop; ` +
+                `her commands were still cleared`,
+            );
+          }
+        }
         return reply.code(204).send();
       } catch (err) {
         logger.warn(`twill-revoke-failed: ${reasonOf(err)}`);

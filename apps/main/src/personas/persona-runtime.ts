@@ -77,6 +77,11 @@ export interface PersonaRuntimeDeps {
    * main bot's ids and every icon rendered as the literal `:dumby_browse:`.
    */
   ensureEmojis?: (persona: RuntimePersona, client: PersonaClient) => Promise<void>;
+  /**
+   * UR-20261012-083 — deregister a persona's commands from Discord, so a stopped persona stops being
+   * offered. Optional: without it a stopped persona goes offline but its commands linger.
+   */
+  clearCommands?: (persona: RuntimePersona, botToken: string) => Promise<number>;
   /** Registers the registry's commands in the persona's bound guild, with the persona's own token. */
   deployCommands: (
     persona: RuntimePersona,
@@ -292,6 +297,55 @@ export class PersonaRuntime {
       }
     }
     return results;
+  }
+
+  /**
+   * UR-20261012-083 — stop ONE persona, now.
+   *
+   * Revoking soft-deletes the row, but the runtime still holds her client and Discord still holds
+   * her commands: she keeps answering until the process restarts. A revoke that leaves the persona
+   * working is not a revoke — the operator sees her online, with every command loaded, and concludes
+   * the delete did nothing.
+   *
+   * Two halves, because they live in two places:
+   * - the CLIENT is destroyed, which takes her offline;
+   * - her COMMANDS are cleared. They are registered against her APPLICATION, not her session, so they
+   *   outlive the client; left in place the picker offers commands that nothing will answer.
+   *
+   * Takes the persona's identity rather than looking it up, because by the time this runs the row is
+   * already retired and a read filtered to active personas would not find her.
+   *
+   * Returns `true` when a running client was destroyed.
+   */
+  async stopPersona(persona: RuntimePersona): Promise<boolean> {
+    const client = this.clients.get(persona.id);
+    let stopped = false;
+    if (client !== undefined) {
+      try {
+        await client.destroy();
+        stopped = true;
+      } catch (err) {
+        this.deps.logger.warn(`persona-stop-failed id=${persona.id} reason=${String(err)}`);
+      }
+      this.clients.delete(persona.id);
+    }
+    if (this.deps.clearCommands !== undefined) {
+      try {
+        const token = this.deps.openBotToken(persona.botTokenSealed);
+        const cleared = await this.deps.clearCommands(persona, token);
+        this.deps.logger.info(`persona-commands-cleared id=${persona.id} removed=${cleared}`);
+      } catch (err) {
+        // Non-fatal: a persona that is offline but still listed is a smaller problem than a stop
+        // that throws and leaves her running.
+        this.deps.logger.warn(
+          `persona-commands-clear-failed id=${persona.id} reason=${String(err)}`,
+        );
+      }
+    }
+    this.deps.logger.info(
+      `persona-stopped id=${persona.id} client=${stopped ? 'destroyed' : 'not-hosted'}`,
+    );
+    return stopped;
   }
 
   /** Logs every hosted persona out. Idempotent, and one failure never blocks the others. */

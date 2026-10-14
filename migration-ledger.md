@@ -841,3 +841,16 @@ Acceptance ids: `ACC-UR-081-1…9`.
 
 **Verification.** 122 files / 1259 tests / 0 failures; `typecheck`, `lint`, `format` green locally.
 Acceptance ids: `ACC-UR-082-1…4`.
+
+## A Revoked Persona Stayed Online With Every Command Loaded (UR-20261012-083) — 2026-10-14
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-186 | The finding: the revoke reached Postgres only, leaving the client and the commands | DONE |
+| DP-187 | `PersonaRuntime.stopPersona` destroys the client and clears the commands, non-fatally | DONE |
+| DP-188 | It takes the persona's identity — a lookup after the revoke would not find her | DONE |
+| DP-189 | `clearCommands` reuses the deploy path with empty payloads | DONE |
+| DP-190 | The DELETE route reads her, revokes her, then stops her | DONE |
+
+**Verification.** 122 files / 1262 tests / 0 failures; `typecheck`, `lint`, `format` green locally.
+Acceptance ids: `ACC-UR-083-1…4`.

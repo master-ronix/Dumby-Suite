@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.87
+version: 5.5.88
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,40 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.88 — a revoked persona stayed online with every command loaded (UR-20261012-083) — 2026-10-14
+
+- 2026-10-14 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- THE FINDING: the operator revoked ELSA. The API returned `204`, the row was retired and soft-deleted,
+  and the list came back empty -- and SHE KEPT ANSWERING EVERY COMMAND. The delete had "worked" in every
+  way the API could observe and in no way the operator could.
+- THE MECHANISM: three stores held a piece of the persona and the revoke reached ONE. Postgres (the row
+  -- soft-deleted, correct); the runtime's client map (her live gateway connection, populated at boot --
+  untouched); Discord (her commands, registered against her APPLICATION by `deployPersonaCommands` --
+  untouched, and commands belong to an application rather than a session, so they outlive the client:
+  destroying the client alone would leave the picker offering commands nothing answers). The runtime had
+  `stop()` -- every persona, for shutdown -- and no way to stop one.
+- WHAT CHANGED: `PersonaRuntime.stopPersona(persona)` destroys her client (offline) and clears her
+  commands (out of the picker), non-fatal on both halves -- a destroy that throws must not stop the
+  clear, and a failed clear must not leave her running. It takes the persona's IDENTITY, not an id: by
+  then the row is retired and a lookup would not find her, and her client and commands are exactly the
+  two things left behind. `clearCommands` REUSES the deploy path with empty payloads, because
+  `deployPersonaCommands` clears both scopes before it writes, so an empty set is precisely a
+  deregister -- the same code, not a second implementation of the same Discord call. The DELETE route
+  reads her, revokes her, then stops her.
+- RECORDED: this is UR-082's lesson, ONE HOUR OLD, unapplied to the very next operation. UR-082 recorded
+  "a write that reaches the database is not a write that reaches the world". The revoke was written
+  before UR-082 existed, and UR-082 did not go back and ask which OTHER operations have the same shape.
+- RECORDED (the general form, checkable mechanically): for every operation, ask which stores hold a
+  piece of the entity, and confirm the operation reaches all of them. A persona lives in Postgres, in
+  the runtime's client map, and in Discord; an operation that touches fewer than all three is
+  incomplete, and the API will still report success.
+- RECORDED: "it returns 204" is not evidence the operator's problem is solved. Only the operator,
+  looking at Discord, could tell that nothing had happened -- which is why their report is the finding
+  and the logs are not.
+- **Verification:** 122 files / 1262 tests / 0 failures; typecheck, lint, format clean.
 
 ---
 
