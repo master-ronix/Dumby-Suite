@@ -14,6 +14,17 @@ export interface PersonaIdentityStore {
    * serves the main bot, which is not a persona).
    */
   markOauthVerified(discordApplicationId: string): Promise<void>;
+  /**
+   * UR-20261012-081 — apply a partial update. Only the keys present are written, so an update that
+   * omits a field leaves it untouched; a key explicitly set to `null` clears it.
+   */
+  update(id: string, patch: Readonly<Record<string, unknown>>): Promise<void>;
+  /** UR-20261012-081 — revoke: retire the persona and soft-delete it in one write. */
+  revoke(id: string): Promise<void>;
+  /** UR-20261012-081 — replace the sealed bot token and its digest. */
+  rotateBotToken(id: string, digest: string, sealed: unknown): Promise<void>;
+  /** UR-20261012-081 — replace the sealed OAuth client secret, or clear it with `undefined`. */
+  rotateOauthSecret(id: string, sealed: unknown | undefined): Promise<void>;
 }
 
 export interface PersonaBindingStore {
@@ -38,6 +49,9 @@ interface PersonaIdentityRow {
   botTokenSealed: SealedEnvelope;
   oauthClientSecretSealed?: SealedEnvelope | null;
   oauthVerifiedAt?: Date | string | null;
+  presenceStatus?: string | null;
+  note?: string | null;
+  accent?: string | null;
 }
 
 interface PersonaBindingRow {
@@ -63,6 +77,11 @@ function toIdentity(row: PersonaIdentityRow): PersonaIdentity {
     ...(row.oauthClientSecretSealed !== undefined && row.oauthClientSecretSealed !== null
       ? { oauthClientSecretSealed: row.oauthClientSecretSealed }
       : {}),
+    ...(row.presenceStatus !== undefined && row.presenceStatus !== null
+      ? { presenceStatus: row.presenceStatus as never }
+      : {}),
+    ...(row.note !== undefined && row.note !== null ? { note: row.note } : {}),
+    ...(row.accent !== undefined && row.accent !== null ? { accent: row.accent } : {}),
   };
 }
 
@@ -105,6 +124,51 @@ export class PostgresPersonaIdentityStore implements PersonaIdentityStore {
       .update({ oauthVerifiedAt: this.knex.fn.now(), updatedAt: this.knex.fn.now() });
   }
 
+  /** UR-20261012-081 — a partial update; absent keys are untouched, explicit nulls clear. */
+  async update(id: string, patch: Readonly<Record<string, unknown>>): Promise<void> {
+    await this.knex('persona_identities')
+      .where({ id })
+      .whereNull('deletedAt')
+      .update({ ...patch, updatedAt: this.knex.fn.now() });
+  }
+
+  /** UR-20261012-081 — revoke: retired AND soft-deleted, so no read returns it again. */
+  async revoke(id: string): Promise<void> {
+    await this.knex('persona_identities')
+      .where({ id })
+      .whereNull('deletedAt')
+      .update({
+        status: 'retired',
+        deletedAt: this.knex.fn.now(),
+        updatedAt: this.knex.fn.now(),
+      });
+  }
+
+  /** UR-20261012-081 — a new bot token, sealed and digested together. */
+  async rotateBotToken(id: string, digest: string, sealed: unknown): Promise<void> {
+    await this.knex('persona_identities')
+      .where({ id })
+      .whereNull('deletedAt')
+      .update({
+        botTokenDigest: digest,
+        botTokenSealed: JSON.stringify(sealed),
+        updatedAt: this.knex.fn.now(),
+      });
+  }
+
+  /** UR-20261012-081 — a new OAuth client secret, or `undefined` to clear it (Route B then applies). */
+  async rotateOauthSecret(id: string, sealed: unknown | undefined): Promise<void> {
+    await this.knex('persona_identities')
+      .where({ id })
+      .whereNull('deletedAt')
+      .update({
+        oauthClientSecretSealed: sealed === undefined ? null : JSON.stringify(sealed),
+        // A new secret invalidates the old authorization; the verification is re-earned.
+        oauthVerifiedAt: null,
+        updatedAt: this.knex.fn.now(),
+      });
+  }
+
   async list(): Promise<PersonaIdentity[]> {
     const rows = await this.knex<PersonaIdentityRow>('persona_identities')
       .whereNull('deletedAt')
@@ -127,6 +191,11 @@ function toRow(persona: PersonaIdentity): PersonaIdentityRow {
     botTokenDigest: persona.botTokenDigest,
     botTokenSealed: persona.botTokenSealed,
     oauthClientSecretSealed: persona.oauthClientSecretSealed ?? null,
+    // UR-20261012-081 — presentation. Absent stays absent rather than becoming an empty string, so
+    // "not configured" is distinguishable from "configured as blank".
+    presenceStatus: persona.presenceStatus ?? null,
+    note: persona.note ?? null,
+    accent: persona.accent ?? null,
   };
 }
 
@@ -204,6 +273,43 @@ export class InMemoryPersonaStores implements PersonaIdentityStore, PersonaBindi
 
   list(): Promise<PersonaIdentity[]> {
     return Promise.resolve([...this.identities.values()]);
+  }
+
+  /** UR-20261012-081 — the in-memory mirrors of the persisted operations. */
+  update(id: string, patch: Readonly<Record<string, unknown>>): Promise<void> {
+    const persona = this.identities.get(id);
+    if (persona !== undefined) {
+      this.identities.set(id, { ...persona, ...patch } as never);
+    }
+    return Promise.resolve();
+  }
+
+  revoke(id: string): Promise<void> {
+    const persona = this.identities.get(id);
+    if (persona !== undefined) {
+      this.identities.set(id, { ...persona, status: 'retired' } as never);
+    }
+    return Promise.resolve();
+  }
+
+  rotateBotToken(id: string, digest: string, sealed: unknown): Promise<void> {
+    const persona = this.identities.get(id);
+    if (persona !== undefined) {
+      this.identities.set(id, {
+        ...persona,
+        botTokenDigest: digest,
+        botTokenSealed: sealed,
+      } as never);
+    }
+    return Promise.resolve();
+  }
+
+  rotateOauthSecret(id: string, sealed: unknown | undefined): Promise<void> {
+    const persona = this.identities.get(id);
+    if (persona !== undefined) {
+      this.identities.set(id, { ...persona, oauthClientSecretSealed: sealed } as never);
+    }
+    return Promise.resolve();
   }
 
   /** UR-20261012-073 — the in-memory mirror of the persisted mark. */

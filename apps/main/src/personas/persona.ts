@@ -7,6 +7,30 @@ export type PersonaDmBehavior = (typeof DM_BEHAVIORS)[number];
 export const PERSONA_STATUSES = ['active', 'retired'] as const;
 export type PersonaStatus = (typeof PERSONA_STATUSES)[number];
 
+/**
+ * UR-20261012-081 — the bot's Discord PRESENCE. Distinct from `PERSONA_STATUSES`, which is the
+ * persona's lifecycle (active/retired). Setting one must never mean the other.
+ */
+export const PERSONA_PRESENCE_STATUSES = ['online', 'dnd', 'idle', 'invisible'] as const;
+export type PersonaPresenceStatus = (typeof PERSONA_PRESENCE_STATUSES)[number];
+
+/** A hex accent: `#RGB` or `#RRGGBB`. */
+export const ACCENT_PATTERN = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+
+export class InvalidPersonaFieldError extends Error {
+  constructor(readonly field: string, reason: string) {
+    super(`Invalid ${field}: ${reason}`);
+    this.name = 'InvalidPersonaFieldError';
+  }
+}
+
+/** The Discord presence int for an accent, for surfaces that take a colour number. */
+export function accentToInt(accent: string): number {
+  const hex = accent.slice(1);
+  const full = hex.length === 3 ? hex.replace(/./g, (c) => c + c) : hex;
+  return Number.parseInt(full, 16);
+}
+
 export const PERSONA_CHARTERS = ['free'] as const;
 export type PersonaCharterKind = (typeof PERSONA_CHARTERS)[number];
 
@@ -46,6 +70,96 @@ export interface PersonaIdentity {
    * authorize leg sent a registered one. Absent means "never completed".
    */
   readonly oauthVerifiedAt?: string;
+  /** UR-20261012-081 — the bot's Discord presence; absent means "not configured". */
+  readonly presenceStatus?: PersonaPresenceStatus;
+  /** UR-20261012-081 — the status quote shown beside the bot's name. */
+  readonly note?: string;
+  /** UR-20261012-081 — the hex accent for the persona's rendered surfaces. */
+  readonly accent?: string;
+}
+
+/**
+ * UR-20261012-081 — what an update may change. Everything optional: a PATCH carries only what it
+ * changes, and an absent field is left alone rather than cleared.
+ *
+ * Credentials are deliberately NOT here. A credential change is its own operation with its own audit
+ * trail, because it is the one change that can strand a running persona.
+ */
+/**
+ * UR-20261012-081 — validate an update and turn it into the COLUMNS to write. Only the keys present
+ * become columns, so an omitted field is left alone; an explicit `null` clears the column.
+ *
+ * Validation lives here rather than at the route so every caller — route, CLI, a future dashboard —
+ * gets the same rules. An invalid value is refused by NAME, because a 400 that says "bad request" is
+ * a support ticket.
+ */
+export function toPersonaUpdateColumns(
+  patch: PersonaUpdateInput,
+): Readonly<Record<string, unknown>> {
+  const columns: Record<string, unknown> = {};
+  if (patch.name !== undefined) {
+    if (patch.name.trim() === '') throw new InvalidPersonaFieldError('name', 'must not be empty');
+    columns['name'] = patch.name;
+  }
+  if (patch.dmBehavior !== undefined) {
+    if (!DM_BEHAVIORS.includes(patch.dmBehavior)) {
+      throw new InvalidPersonaFieldError('dmBehavior', `must be one of ${DM_BEHAVIORS.join(', ')}`);
+    }
+    columns['dmBehavior'] = patch.dmBehavior;
+  }
+  if (patch.shardAllocation !== undefined) {
+    if (!Number.isInteger(patch.shardAllocation) || patch.shardAllocation < 1) {
+      throw new InvalidPersonaFieldError('shardAllocation', 'must be a positive integer');
+    }
+    columns['shardAllocation'] = patch.shardAllocation;
+  }
+  if (patch.presenceStatus !== undefined) {
+    if (patch.presenceStatus === null) {
+      columns['presenceStatus'] = null;
+    } else if (!PERSONA_PRESENCE_STATUSES.includes(patch.presenceStatus)) {
+      throw new InvalidPersonaFieldError(
+        'presenceStatus',
+        `must be one of ${PERSONA_PRESENCE_STATUSES.join(', ')}`,
+      );
+    } else {
+      columns['presenceStatus'] = patch.presenceStatus;
+    }
+  }
+  if (patch.note !== undefined) {
+    if (patch.note === null) {
+      columns['note'] = null;
+    } else if (patch.note.length > 128) {
+      throw new InvalidPersonaFieldError('note', 'must be 128 characters or fewer');
+    } else {
+      columns['note'] = patch.note;
+    }
+  }
+  if (patch.accent !== undefined) {
+    if (patch.accent === null) {
+      columns['accent'] = null;
+    } else if (!ACCENT_PATTERN.test(patch.accent)) {
+      throw new InvalidPersonaFieldError('accent', 'must be a hex colour like #7A5AF8 or #7AF');
+    } else {
+      columns['accent'] = patch.accent;
+    }
+  }
+  if (patch.status !== undefined) {
+    if (!PERSONA_STATUSES.includes(patch.status)) {
+      throw new InvalidPersonaFieldError('status', `must be one of ${PERSONA_STATUSES.join(', ')}`);
+    }
+    columns['status'] = patch.status;
+  }
+  return columns;
+}
+
+export interface PersonaUpdateInput {
+  readonly name?: string;
+  readonly dmBehavior?: PersonaDmBehavior;
+  readonly shardAllocation?: number;
+  readonly presenceStatus?: PersonaPresenceStatus | null;
+  readonly note?: string | null;
+  readonly accent?: string | null;
+  readonly status?: PersonaStatus;
 }
 
 export interface PersonaRegistrationInput {
@@ -60,6 +174,10 @@ export interface PersonaRegistrationInput {
   readonly dmBehavior?: PersonaDmBehavior;
   readonly shardAllocation?: number;
   readonly grandfathered?: boolean;
+  /** UR-20261012-081 — optional presentation, settable at registration and afterwards. */
+  readonly presenceStatus?: PersonaPresenceStatus;
+  readonly note?: string;
+  readonly accent?: string;
 }
 
 export interface PersonaBinding {

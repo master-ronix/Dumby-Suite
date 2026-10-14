@@ -1,4 +1,6 @@
 import {
+  toPersonaUpdateColumns,
+  type PersonaUpdateInput,
   assertApplicationNotRegistered,
   assertBindingAllowed,
   assertFreeCharterRegistration,
@@ -132,6 +134,79 @@ export class PersonaCommandBindingService {
       });
       return undefined;
     }
+  }
+
+  /**
+   * UR-20261012-081 — update a persona's mutable facts. Only the keys present are written, and the
+   * validation is `toPersonaUpdateColumns` so every caller shares it.
+   */
+  async updatePersona(id: string, patch: PersonaUpdateInput): Promise<PersonaIdentity> {
+    const persona = await this.identities.findById(id);
+    if (persona === undefined) throw new UnknownPersonaError(id);
+    const columns = toPersonaUpdateColumns(patch);
+    if (Object.keys(columns).length > 0) {
+      await this.identities.update(id, columns);
+      this.logger.info(
+        `persona-updated id=${id} guild=${persona.boundGuildId} fields=${Object.keys(columns).join(',')}`,
+      );
+    }
+    return (await this.identities.findById(id)) ?? persona;
+  }
+
+  /**
+   * UR-20261012-081 — revoke a persona: retired AND soft-deleted, so no read returns it and its
+   * application id is free to be registered again.
+   *
+   * Its bindings are released first. A revoked persona that still held a module would leave the module
+   * uninstallable by anyone — occupied by a profile that no longer exists.
+   */
+  async revokePersona(id: string): Promise<void> {
+    const persona = await this.identities.findById(id);
+    if (persona === undefined) throw new UnknownPersonaError(id);
+    const held = await this.bindings.listForPersona(id);
+    for (const binding of held) {
+      await this.bindings.unbind(binding.guildId, binding.moduleSlug);
+    }
+    await this.identities.revoke(id);
+    this.logger.info(
+      `persona-revoked id=${id} guild=${persona.boundGuildId} bindings-released=${held.length}`,
+    );
+  }
+
+  /**
+   * UR-20261012-081 — replace a credential. The sealing happens at the surface, which holds the root
+   * key; this takes the sealed envelope so the service never sees a plaintext credential.
+   *
+   * `botToken` and `oauthClientSecret` are independent: supplying one leaves the other alone, and
+   * supplying `oauthClientSecret: null` clears it (Route B then applies). Rotating the bot token also
+   * invalidates the OAuth verification, because the application may no longer be the same one.
+   */
+  async rotatePersonaCredentials(
+    id: string,
+    input: {
+      readonly botTokenDigest?: string;
+      readonly botTokenSealed?: unknown;
+      readonly oauthClientSecretSealed?: unknown | null;
+    },
+  ): Promise<PersonaIdentity> {
+    const persona = await this.identities.findById(id);
+    if (persona === undefined) throw new UnknownPersonaError(id);
+    if (input.botTokenDigest !== undefined && input.botTokenSealed !== undefined) {
+      await this.identities.rotateBotToken(id, input.botTokenDigest, input.botTokenSealed);
+    }
+    if (input.oauthClientSecretSealed !== undefined) {
+      await this.identities.rotateOauthSecret(
+        id,
+        input.oauthClientSecretSealed === null ? undefined : input.oauthClientSecretSealed,
+      );
+    }
+    // Never log the credential or its value — only that the rotation happened, and which.
+    const rotated = [
+      ...(input.botTokenSealed !== undefined ? ['botToken'] : []),
+      ...(input.oauthClientSecretSealed !== undefined ? ['oauthClientSecret'] : []),
+    ];
+    this.logger.info(`persona-credentials-rotated id=${id} rotated=${rotated.join(',')}`);
+    return (await this.identities.findById(id)) ?? persona;
   }
 
   async commandsForGuild(guildId: string): Promise<readonly PersonaBinding[]> {

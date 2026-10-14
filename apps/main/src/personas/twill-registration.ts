@@ -22,6 +22,9 @@ import {
   sealPersonaOAuthClientSecret,
   type CharterStatus,
   type FreeCharterCostSignals,
+  ACCENT_PATTERN,
+  PERSONA_PRESENCE_STATUSES,
+  type PersonaPresenceStatus,
   type PersonaIdentity,
   type PersonaRegistrationInput,
 } from './persona.js';
@@ -42,6 +45,18 @@ export interface PersonaRegistrationBody {
   dmBehavior?: unknown;
   shardAllocation?: unknown;
   grandfathered?: unknown;
+  /** UR-20261012-081 — optional presentation: online/dnd/idle/invisible. */
+  presenceStatus?: unknown;
+  /** UR-20261012-081 — the status quote shown beside the bot's name. */
+  note?: unknown;
+  /** UR-20261012-081 — a hex accent, e.g. `#7A5AF8`. */
+  accent?: unknown;
+}
+
+/** UR-20261012-081 — the body of a credential rotation. At least one of the two is required. */
+export interface PersonaCredentialBody {
+  botToken?: unknown;
+  oauthClientSecret?: unknown;
 }
 
 export type PersonaRegistrationParse =
@@ -70,6 +85,26 @@ export function parsePersonaRegistration(
   if (registrarAuthority === undefined) {
     return { ok: false, reason: 'registrarAuthority is required' };
   }
+  // UR-20261012-081 — the optional presentation, validated by NAME so a bad value is actionable.
+  let presenceStatus: PersonaPresenceStatus | undefined;
+  if (body.presenceStatus !== undefined) {
+    if (!PERSONA_PRESENCE_STATUSES.includes(body.presenceStatus as PersonaPresenceStatus)) {
+      return {
+        ok: false,
+        reason: `presenceStatus must be one of ${PERSONA_PRESENCE_STATUSES.join(', ')}`,
+      };
+    }
+    presenceStatus = body.presenceStatus as PersonaPresenceStatus;
+  }
+  const note = str(body.note);
+  if (note !== undefined && note.length > 128) {
+    return { ok: false, reason: 'note must be 128 characters or fewer' };
+  }
+  const accent = str(body.accent);
+  if (accent !== undefined && !ACCENT_PATTERN.test(accent)) {
+    return { ok: false, reason: 'accent must be a hex colour like #7A5AF8 or #7AF' };
+  }
+
   const secret = str(body.oauthClientSecret);
   let oauthClientSecretSealed: SealedEnvelope | undefined;
   if (secret !== undefined) oauthClientSecretSealed = sealPersonaOAuthClientSecret(secret, rootKey);
@@ -89,6 +124,9 @@ export function parsePersonaRegistration(
         ? { shardAllocation: body.shardAllocation }
         : {}),
       grandfathered: body.grandfathered === true,
+      ...(presenceStatus !== undefined ? { presenceStatus } : {}),
+      ...(note !== undefined ? { note } : {}),
+      ...(accent !== undefined ? { accent } : {}),
     },
   };
 }
@@ -105,6 +143,11 @@ export function publicPersonaView(persona: PersonaIdentity): Record<string, unkn
     charter: persona.charter,
     grandfathered: persona.grandfathered,
     status: persona.status,
+    // UR-20261012-081 — presentation, as configured. Absent rather than null, so "not configured"
+    // reads as absent on the wire.
+    ...(persona.presenceStatus !== undefined ? { presenceStatus: persona.presenceStatus } : {}),
+    ...(persona.note !== undefined ? { note: persona.note } : {}),
+    ...(persona.accent !== undefined ? { accent: persona.accent } : {}),
     /** UR-20261012-030 — whether Route A is available for this persona. */
     oauthConfigured: persona.oauthClientSecretSealed !== undefined,
   };
@@ -328,6 +371,118 @@ export function registerTwillPersonaRoutes(
       return reply.code(statusFor(err)).send({ error: 'Binding failed', reason: reasonOf(err) });
     }
   });
+
+  // ─────────────────────────────────────────────────────────────────────────────────────────────
+  // UR-20261012-081 — the persona MANAGEMENT surface. Registration created a persona; these are the
+  // operations that make one liveable: read it, list them, change it, rotate its credentials, revoke
+  // it. All behind the same internal API key as the rest of Twill.
+  // ─────────────────────────────────────────────────────────────────────────────────────────────
+
+  /** Every persona, identity only. A revoked one is gone from here, because it is soft-deleted. */
+  app.get('/twill/personas', async (_request, reply) => {
+    const all = await identities.list();
+    return reply.code(200).send({ personas: all.map(publicPersonaView), count: all.length });
+  });
+
+  /**
+   * Update a persona. A PATCH carries only what it changes; an absent field is left alone, and an
+   * explicit `null` clears a presentation field.
+   */
+  app.patch<{ Params: { personaId: string }; Body: Record<string, unknown> }>(
+    '/twill/personas/:personaId',
+    async (request, reply) => {
+      const body = request.body ?? {};
+      try {
+        const persona = await service.updatePersona(request.params.personaId, {
+          ...(str(body['name']) !== undefined ? { name: str(body['name']) as string } : {}),
+          ...(str(body['dmBehavior']) !== undefined
+            ? { dmBehavior: str(body['dmBehavior']) as never }
+            : {}),
+          ...(typeof body['shardAllocation'] === 'number'
+            ? { shardAllocation: body['shardAllocation'] }
+            : {}),
+          ...('presenceStatus' in body
+            ? { presenceStatus: (body['presenceStatus'] ?? null) as never }
+            : {}),
+          ...('note' in body ? { note: (body['note'] ?? null) as never } : {}),
+          ...('accent' in body ? { accent: (body['accent'] ?? null) as never } : {}),
+          ...(str(body['status']) !== undefined ? { status: str(body['status']) as never } : {}),
+        });
+        return reply.code(200).send(publicPersonaView(persona));
+      } catch (err) {
+        logger.warn(`twill-update-failed: ${reasonOf(err)}`);
+        return reply
+          .code(statusFor(err))
+          .send({ error: 'Update failed', reason: reasonOf(err) });
+      }
+    },
+  );
+
+  /**
+   * Revoke a persona: retired and soft-deleted, its bindings released. Its application id becomes
+   * free to register again, which is the difference between "revoked" and "temporarily switched off".
+   */
+  app.delete<{ Params: { personaId: string } }>(
+    '/twill/personas/:personaId',
+    async (request, reply) => {
+      try {
+        await service.revokePersona(request.params.personaId);
+        return reply.code(204).send();
+      } catch (err) {
+        logger.warn(`twill-revoke-failed: ${reasonOf(err)}`);
+        return reply
+          .code(statusFor(err))
+          .send({ error: 'Revoke failed', reason: reasonOf(err) });
+      }
+    },
+  );
+
+  /**
+   * Rotate a persona's credentials. At least one of `botToken` / `oauthClientSecret` is required.
+   *
+   * Sending `"oauthClientSecret": null` CLEARS it, which drops the persona to the bot-token fallback
+   * (Route B). Sending a new one replaces it and invalidates the previous authorization, so the
+   * verification is re-earned on the next successful OAuth leg.
+   */
+  app.post<{ Params: { personaId: string }; Body: PersonaCredentialBody }>(
+    '/twill/personas/:personaId/credentials',
+    async (request, reply) => {
+      const body = request.body ?? {};
+      const botToken = str(body.botToken);
+      const hasSecretKey = 'oauthClientSecret' in body;
+      const secret = str(body.oauthClientSecret);
+      if (botToken === undefined && !hasSecretKey) {
+        return reply.code(400).send({
+          error: 'Bad Request',
+          reason: 'at least one of botToken or oauthClientSecret is required',
+        });
+      }
+      try {
+        const persona = await service.rotatePersonaCredentials(request.params.personaId, {
+          ...(botToken !== undefined
+            ? {
+                botTokenDigest: derivePersonaBotTokenDigest(botToken),
+                botTokenSealed: sealPersonaBotToken(botToken, rootKey),
+              }
+            : {}),
+          ...(hasSecretKey
+            ? {
+                oauthClientSecretSealed:
+                  secret === undefined
+                    ? null
+                    : sealPersonaOAuthClientSecret(secret, rootKey),
+              }
+            : {}),
+        });
+        return reply.code(200).send(publicPersonaView(persona));
+      } catch (err) {
+        logger.warn(`twill-credentials-failed: ${reasonOf(err)}`);
+        return reply
+          .code(statusFor(err))
+          .send({ error: 'Credential rotation failed', reason: reasonOf(err) });
+      }
+    },
+  );
 
   app.delete<{ Params: { personaId: string; moduleSlug: string } }>(
     '/twill/personas/:personaId/bindings/:moduleSlug',

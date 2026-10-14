@@ -27,6 +27,10 @@ export interface RuntimePersona {
   readonly boundGuildId: string;
   readonly botTokenSealed: SealedEnvelope;
   readonly status: string;
+  /** UR-20261012-081 — the presence to apply once logged in; absent means "leave it alone". */
+  readonly presenceStatus?: string;
+  /** UR-20261012-081 — the status quote shown beside the bot's name. */
+  readonly note?: string;
 }
 
 /** The slice of a Discord client the runtime drives. */
@@ -39,6 +43,11 @@ export interface PersonaClient {
    * persona answers its own controls. Optional so a test double need not implement it.
    */
   on?(event: 'interactionCreate', handler: (interaction: unknown) => void): unknown;
+  /**
+   * UR-20261012-081 — apply the bot's Discord presence. Optional so a test double need not implement
+   * it; absent, a persona simply keeps Discord's default presence.
+   */
+  setPresence?(presence: { status: string; note?: string }): unknown;
 }
 
 /** The outcome for one persona, so a partial failure is reported rather than swallowed. */
@@ -241,6 +250,22 @@ export class PersonaRuntime {
             await this.deps.ensureEmojis(persona, client);
           } catch (err) {
             logger.warn(`persona-emoji-upload-failed id=${persona.id} reason=${String(err)}`);
+          }
+        }
+        // UR-20261012-081 — apply the configured presence AFTER login, so `client.user` exists.
+        // Non-fatal like the emoji upload: a presence that fails must not stop the persona.
+        if (persona.presenceStatus !== undefined && client.setPresence !== undefined) {
+          try {
+            client.setPresence({
+              status: persona.presenceStatus,
+              ...(persona.note !== undefined ? { note: persona.note } : {}),
+            });
+            logger.info(
+              `persona-presence-applied id=${persona.id} status=${persona.presenceStatus}` +
+                (persona.note !== undefined ? ` note=${persona.note}` : ''),
+            );
+          } catch (err) {
+            logger.warn(`persona-presence-failed id=${persona.id} reason=${String(err)}`);
           }
         }
         this.clients.set(persona.id, client);

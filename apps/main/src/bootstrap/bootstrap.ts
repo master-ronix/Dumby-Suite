@@ -1419,10 +1419,24 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
         // are derived again here from the same source of truth: the module manifests.
         createClient: () => {
           const hosted = moduleRegistry.all();
-          return buildDiscordClient({
+          const client = buildDiscordClient({
             intents: computeIntentsBitfield(hosted.map((m) => m.manifest.intents)),
             partials: computePartials(hosted.map((m) => m.manifest.partials)),
             logger,
+          });
+          // UR-20261012-081 — the presence port. Applied after login (see persona-runtime), because
+          // `client.user` does not exist until the gateway is ready. Activity type 4 is CUSTOM, which
+          // is the "status quote" — it renders beside the bot's name rather than as a playing/watching
+          // line.
+          return Object.assign(client, {
+            setPresence: (presence: { status: string; note?: string }) => {
+              client.user?.setPresence({
+                status: presence.status as never,
+                ...(presence.note !== undefined && presence.note !== ''
+                  ? { activities: [{ name: presence.note, type: 4 }] }
+                  : {}),
+              });
+            },
           });
         },
         deployCommands: async (persona, botToken, registry) => {

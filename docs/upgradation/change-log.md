@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.85
+version: 5.5.86
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,46 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.86 — the persona management surface (UR-20261012-081) — 2026-10-14
+
+- 2026-10-14 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- THE FINDING: registration existed; everything that makes a registered persona LIVEABLE did not. The
+  Twill persona surface carried register, the registrar registry, three detail reads and the binding
+  pair -- no way to CHANGE a persona, no way to REVOKE one, no way to replace a CREDENTIAL. A bot token
+  sealed at registration was immutable for the life of the row, so a token Discord had invalidated
+  could not be replaced and a leaked secret could not be recovered, only abandoned. A credential that
+  cannot be rotated is a credential that cannot be secured.
+- THE MECHANISM: three gaps. No mutation surface (nothing wrote to `persona_identities` after
+  creation); no presentation (no presence, status quote or accent -- the operator names all three);
+  and registration already credential-gated, which is the RIGHT shape and was left alone.
+- WHAT CHANGED: migration `20260101000051_add_persona_presentation` adds three nullable columns --
+  `presenceStatus`, `note`, `accent`. `presenceStatus` is DELIBERATELY SEPARATE FROM `status`: status is
+  the persona's LIFECYCLE (active/retired), presenceStatus is the bot's Discord presence
+  (online/dnd/idle/invisible), and conflating them makes "retire this persona" and "set it idle" the
+  same write. The presence is APPLIED at login via `client.setPresence`, non-fatally, with activity
+  type 4 (CUSTOM) rendering as the status quote -- a configured presence nothing reads is a lie in a
+  column. New operations: `updatePersona` (only the keys present; explicit null clears; invalid values
+  refused BY NAME), `revokePersona` (retires, soft-deletes, and RELEASES ITS BINDINGS FIRST -- a
+  revoked persona still holding a module leaves it occupied by a profile that no longer exists),
+  `rotatePersonaCredentials` (takes the SEALED envelope -- the surface holds the root key, so the
+  service never sees plaintext; the two credentials are independent; `oauthClientSecret: null` CLEARS
+  it and drops to Route B; a new secret resets `oauthVerifiedAt`).
+- WHAT CHANGED (surface): `GET /twill/personas`, `PATCH /twill/personas/:personaId`,
+  `DELETE /twill/personas/:personaId` (204), `POST /twill/personas/:personaId/credentials`. Registration
+  accepts `presenceStatus`, `note` and `accent` as optional configs.
+- RECORDED: the credential is NEVER logged -- the rotation records which credential changed and nothing
+  about its value, asserted in a test, because a log line is forever.
+- RECORDED: the validation lives in `toPersonaUpdateColumns`, exported and patch-taking, so the route is
+  not the only place the rules live. A rule enforced at the surface is a rule the next surface
+  re-implements, usually differently.
+- RECORDED: one operation was ALREADY CORRECT and was left alone. Registration's ownership proof already
+  satisfied the operator's "sensitive credentials only" requirement. Recording it rather than
+  re-implementing it is the point -- the risk was never that the check was missing, it is that a later
+  change removes it.
+- **Verification:** 121 files / 1240 tests / 0 failures; typecheck, lint, format clean.
 
 ---
 

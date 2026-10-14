@@ -812,3 +812,19 @@ Acceptance ids: `ACC-UR-079-1…5`.
 
 **Verification.** 121 files / 1240 tests / 0 failures; `typecheck`, `lint`, `format` green locally.
 Acceptance ids: `ACC-UR-080-1…4`.
+
+## The Persona Management Surface (UR-20261012-081) — 2026-10-14
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-173 | Migration `20260101000051_add_persona_presentation`: `presenceStatus`, `note`, `accent` | DONE |
+| DP-174 | `presenceStatus` is separate from the lifecycle `status` | DONE |
+| DP-175 | The presence is applied at login, non-fatally (activity type 4 = CUSTOM) | DONE |
+| DP-176 | `updatePersona` — only the keys present; explicit null clears; invalid refused by name | DONE |
+| DP-177 | `revokePersona` — retires, soft-deletes, and releases the bindings first | DONE |
+| DP-178 | `rotatePersonaCredentials` — sealed at the surface; null clears the OAuth secret | DONE |
+| DP-179 | The credential value never reaches a log line | DONE |
+| DP-180 | The four new routes + the three registration configs | DONE |
+
+**Verification.** 121 files / 1240 tests / 0 failures; `typecheck`, `lint`, `format` green locally.
+Acceptance ids: `ACC-UR-081-1…9`.
