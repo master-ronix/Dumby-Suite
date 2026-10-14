@@ -25,6 +25,7 @@ import { ModuleRegistry } from '../module-system/registry.js';
 import { loadPolicyLockfile } from '../module-system/policy-lockfile.js';
 import { ModuleLoader } from '../module-system/loader.js';
 import { defaultEnabledForTier, resolveModuleEnabled } from '../module-system/tier-rules.js';
+import { makeModuleEnablement } from '../module-system/enablement.js';
 import { PermissionResolver } from '../permissions/resolver.js';
 import { AdminEvalGate } from '../permissions/admin-eval-gate.js';
 import { evaluateRank } from '../permissions/rank.js';
@@ -216,10 +217,15 @@ export async function bootstrapWorker(): Promise<void> {
 
   progress.advanceTo('QUEUE_INIT');
   const queueRedis = new Redis(config.get('QUEUE_REDIS_URL'));
+  // UR-20261012-069 — the worker loads modules too, so its module queues carry the same gate. The
+  // registry is built below, hence late-bound.
+  let workerQueueGate: ((moduleId: string, guildId: string) => Promise<boolean>) | undefined;
   const queue = new QueueManager({
     connection: queueRedis,
     logger,
     defaultConcurrency: config.get('QUEUE_CONCURRENCY_DEFAULT'),
+    isModuleEnabled: (moduleId, guildId) =>
+      workerQueueGate ? workerQueueGate(moduleId, guildId) : Promise.resolve(true),
   });
   container.registerValue(CORE_TOKENS.Queue, queue);
 
@@ -237,6 +243,14 @@ export async function bootstrapWorker(): Promise<void> {
 
   progress.advanceTo('MODULE_DISCOVER');
   const moduleRegistry = new ModuleRegistry();
+  // UR-20261012-069 — arm the worker's module gate now that the registry exists.
+  const workerEnablement = makeModuleEnablement({
+    knex: db.knex as never,
+    moduleRegistry,
+    logger,
+  });
+  workerQueueGate = (moduleId, guildId) =>
+    workerEnablement.isModuleEnabledForGuild(guildId, moduleId);
   const buildStore = new PostgresBuildStore(db.knex);
   const verifier = new BuildSignatureVerifier();
   const buildSigningKeyId = config.get('BUILD_SIGNING_KEY_ID');
@@ -395,7 +409,15 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   const redis = overrides.redis ?? new Redis(config.get('REDIS_URL'));
   const lockStore = new RedisLockStore(redis);
   // §29.6 — the cron scheduler: module-declared tasks, lock-guarded so one shard runs each tick.
-  const scheduler = new Scheduler({ logger, lockStore });
+  // UR-20261012-069 — a disabled module's cron must not fire. Late-bound, because the enablement read
+  // is defined further below.
+  let schedulerModuleGate: ((moduleId: string) => Promise<boolean>) | undefined;
+  const scheduler = new Scheduler({
+    logger,
+    lockStore,
+    isModuleEnabledAnywhere: (moduleId) =>
+      schedulerModuleGate ? schedulerModuleGate(moduleId) : Promise.resolve(true),
+  });
   // §24.2.1 — the monthly audit-partition lifecycle (create next month's, drop expired by drop-only).
   scheduler.register({
     name: 'audit-partition-maintenance',
@@ -418,10 +440,14 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
 
   progress.advanceTo('QUEUE_INIT');
   const queueRedis = overrides.queueRedis ?? new Redis(config.get('QUEUE_REDIS_URL'));
+  // UR-20261012-069 — a disabled module's queued work must not run. Late-bound, like the event gate.
+  let queueModuleGate: ((moduleId: string, guildId: string) => Promise<boolean>) | undefined;
   const queue = new QueueManager({
     connection: queueRedis,
     logger,
     defaultConcurrency: config.get('QUEUE_CONCURRENCY_DEFAULT'),
+    isModuleEnabled: (moduleId, guildId) =>
+      queueModuleGate ? queueModuleGate(moduleId, guildId) : Promise.resolve(true),
   });
   container.registerValue(CORE_TOKENS.Queue, queue);
 
@@ -752,33 +778,17 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   // navigation dropdown. Registered after the router exists, since each re-enters it.
   // UR-20261011-009 — whether a module is enabled for a guild (a marketplace module the admin
   // installed, or a standard module they have not disabled). Absent state reads as not-enabled.
-  const isModuleEnabledForGuild = async (
-    guildId: string | null,
-    moduleId: string,
-  ): Promise<boolean> => {
-    if (guildId === null) return false;
-    // UR-20261011-013 R12 — a per-guild row is an OVERRIDE; its ABSENCE means the tier default
-    // (a standard module is enabled by default, §13). Returning `false` for a missing row made the
-    // Info card report an enabled standard module as "Disabled" while the listing — which uses the
-    // tier default — still showed it: the exact contradiction the operator reported, and the event
-    // gate (below) silently dropped that module's events. Match `isModuleEnabledInGuild` and
-    // `page-data`'s `enabledStates` exactly: default by tier, override by row.
-    const tier = moduleRegistry.get(moduleId)?.manifest.tier ?? 'marketplace';
-    try {
-      const row = await db
-        .knex('guild_module_states')
-        .where({ guildId, moduleSlug: moduleId })
-        .whereNull('deletedAt')
-        .first<{ enabled?: unknown; state?: unknown }>();
-      if (row === undefined || row === null) return defaultEnabledForTier(tier);
-      return row.enabled === true && row.state === 'active';
-    } catch (err) {
-      logger.warn('module-enabled-check-failed', { moduleId, guildId, error: String(err) });
-      return defaultEnabledForTier(tier);
-    }
-  };
-  // The event router's gate uses the (moduleId, guildId) order.
+  // UR-20261012-069 — the one enablement read, shared with the worker path. It was inline here and
+  // duplicated there; a divergence between the two would be a gate that denies what another allows.
+  const { isModuleEnabledForGuild, isModuleEnabledAnywhere } = makeModuleEnablement({
+    knex: db.knex as never,
+    moduleRegistry,
+    logger,
+  });
+  // The event router's gate uses the (moduleId, guildId) order; so does the queue's.
   moduleEnabledGate = (moduleId, guildId) => isModuleEnabledForGuild(guildId, moduleId);
+  queueModuleGate = moduleEnabledGate;
+  schedulerModuleGate = isModuleEnabledAnywhere;
   const TIER_LABEL: Readonly<Record<string, string>> = {
     admin: 'Admin',
     core: 'Core',

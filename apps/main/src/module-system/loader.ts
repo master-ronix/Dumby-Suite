@@ -155,6 +155,8 @@ export class ModuleLoader {
             for (const job of mod.jobs) {
               queueManager.registerQueue({
                 name: job.queueName,
+                // UR-20261012-069 — the owner travels with the queue, so a per-guild disable stops it.
+                moduleId: mod.manifest.name,
                 processor: (jb) => Promise.resolve(job.process({ data: jb.data })),
               });
             }
@@ -184,13 +186,17 @@ export class ModuleLoader {
           const scheduler = this.container.tryResolve<Scheduler>(CORE_TOKENS.Scheduler);
           if (scheduler !== undefined) {
             for (const task of mod.tasks) {
-              scheduler.register({
-                name: task.name,
-                cron: task.cron,
-                execute: async () => {
-                  await task.execute();
+              scheduler.register(
+                {
+                  name: task.name,
+                  cron: task.cron,
+                  execute: async () => {
+                    await task.execute();
+                  },
                 },
-              });
+                // UR-20261012-069 — the owner travels with the task, so a disabled module's cron stops.
+                mod.manifest.name,
+              );
             }
           }
         }

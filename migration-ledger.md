@@ -618,3 +618,20 @@ Acceptance ids: `ACC-UR-028-1…5`.
 | DP-107 | BCCM sends full command objects (`description` required by Discord) | DONE |
 
 **Verification.** `typecheck`, `lint`, `format` green locally. Acceptance ids: `ACC-UR-033-1…4`.
+
+---
+
+## A Disabled Module's Queued Work and Schedule (UR-20261012-069) — 2026-10-12
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-108 | A job whose payload names a guild that disabled the module is skipped | DONE |
+| DP-109 | A job for a guild that still wants the module runs; gated on the job's own guild | DONE |
+| DP-110 | A fleet-wide job, and a queue with no owner, are not gated | DONE |
+| DP-111 | A cron task whose module no guild wants does not execute | DONE |
+| DP-112 | Every gate fails open on a read error; command dispatch still fails closed | DONE |
+| DP-113 | One enablement read (`module-system/enablement.ts`) shared by both bootstrap paths | DONE |
+| DP-114 | Core/Admin short-circuit closed in the EVENT gate, not only in the router | DONE |
+
+**Verification.** `typecheck`, `lint`, `format` green locally; 117 files / 1197 tests / 0 failures;
+coverage 68.98% branch, no threshold error. Acceptance ids: `ACC-UR-069-1…7`.

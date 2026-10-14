@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.72
+version: 5.5.73
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,39 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.73 — the rest of a disabled module's processing (UR-20261012-069) — 2026-10-12
+
+- 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- THE FINDING: §13.2 says a disabled module's commands disappear and "its event handlers stop firing".
+  Three of four paths honoured it -- commands fail closed at dispatch, gateway events are gated
+  (UR-20261011-011), and the two-phase suspension (instant @everyone deny + batched BCCM
+  deregistration) exists. TWO DID NOT: `QueueManager.registerQueue` took a processor and nothing else,
+  and `Scheduler.register` took a task and nothing else. A job enqueued for a guild that had disabled
+  the module still ran; a module's cron kept firing regardless. LATENT -- no module declares jobs or
+  tasks today -- but the framework promised termination it could not deliver the moment one did.
+- WHAT DECIDED THE SHAPE: §13.7 -- "Toggling a module off or on is a state-table write on the order of
+  milliseconds -- it NEVER touches the module's loaded state, DI registrations, or event subscriptions."
+  A per-guild disable is NOT an unload: the module stays loaded (it can be enabled in guild A and
+  disabled in guild B at once) and the enforcement is a GATE AT EXECUTION, not a teardown.
+- THE GATE: every unit of module processing that names a guild is gated per guild -- commands, gateway
+  events, and now JOBS (the payload's guild). A CRON TASK takes no guild, so its honest gate is "does
+  any guild still want this module". A job with no guild, and a task with no owner, run as before.
+- FAIL-OPEN, WITH ONE DELIBERATE EXCEPTION: every gate fails open on a read error, because an
+  unreadable state must not silently drop live work. Command dispatch fails CLOSED -- refusing a command
+  is recoverable, running one for a disabled guild is not.
+- ONE ENABLEMENT READ: the per-guild standing was computed inline in bootstrap() and again in the
+  worker path. Two implementations of one rule is a gate that denies what another allows. It is now
+  `module-system/enablement.ts` -- `isModuleEnabledForGuild` and `isModuleEnabledAnywhere` -- used by
+  both paths and by every gate.
+- A DIVERGENCE FOUND AND CLOSED: `isModuleEnabledInGuild` (the router) short-circuits CORE per §13.2,
+  added by UR-20261012-046; `isModuleEnabledForGuild` (the EVENT gate) did NOT. A stale disabled row
+  could drop a Core module's events while dispatch allowed its commands -- the same two-paths-two-answers
+  defect, still live in the event gate. The shared read short-circuits Core and Admin once, for everyone.
+- **Verification:** 117 files / 1197 tests / 0 failures; coverage 68.98% branch, NO threshold error;
+  typecheck, lint, format clean.
 
 ---
 

@@ -7,6 +7,13 @@ export interface QueueManagerOptions {
   connection: Redis;
   logger: Logger;
   defaultConcurrency: number;
+  /**
+   * UR-20261012-069 — the guild module-enablement gate, in the (moduleId, guildId) order the event
+   * router uses. A job whose module is disabled for the job's guild is skipped, so a disabled module's
+   * queued work stops firing (§13.2, "its handlers stop firing"). Late-bound: the enablement check is
+   * defined after the queue manager is constructed. Absent, or a job with no guild, runs as before.
+   */
+  isModuleEnabled?: (moduleId: string, guildId: string) => Promise<boolean>;
 }
 
 export interface RegisterQueueOptions<T = unknown> {
@@ -15,6 +22,20 @@ export interface RegisterQueueOptions<T = unknown> {
   concurrency?: number;
   minConcurrency?: number;
   maxConcurrency?: number;
+  /**
+   * UR-20261012-069 — the module that owns this queue. Supplied by the loader; without it the queue
+   * has no owner to gate on and runs unconditionally (the previous behaviour).
+   */
+  moduleId?: string;
+}
+
+/** The guild a job belongs to, when it names one. A job with no guild is fleet-wide and not gated. */
+function guildIdFromJobData(data: unknown): string | undefined {
+  if (typeof data !== 'object' || data === null) return undefined;
+  const candidate = data as { guildId?: unknown; guild?: { id?: unknown } };
+  if (typeof candidate.guildId === 'string') return candidate.guildId;
+  if (typeof candidate.guild?.id === 'string') return candidate.guild.id;
+  return undefined;
 }
 
 const REMOVE_ON_COMPLETE = { age: 3600, count: 1000 };
@@ -50,7 +71,25 @@ export class QueueManager {
     });
 
     const concurrency = opts.concurrency ?? this.options.defaultConcurrency;
-    const worker = new Worker<T>(opts.name, opts.processor, { connection, concurrency });
+    // UR-20261012-069 — gate the processor on the owning module's standing in the job's guild. A
+    // per-guild disable is a state-table write, not an unload (§13.7), so the queue stays registered
+    // and the ENFORCEMENT happens here, at execution, exactly as the event router does it.
+    const gated: Processor<T> = async (job, token) => {
+      const moduleId = opts.moduleId;
+      const guildId = guildIdFromJobData(job.data);
+      if (moduleId !== undefined && guildId !== undefined) {
+        if (!(await this.moduleEnabled(moduleId, guildId))) {
+          this.options.logger.debug('job-skipped-module-disabled', {
+            queue: opts.name,
+            moduleId,
+            guildId,
+          });
+          return;
+        }
+      }
+      return opts.processor(job, token);
+    };
+    const worker = new Worker<T>(opts.name, gated, { connection, concurrency });
     worker.on('failed', (job, err) => {
       this.options.logger.error('job-failed', {
         queue: opts.name,
@@ -163,6 +202,18 @@ export class QueueManager {
           failedCountLastHour: result.failedCountLastHour,
         });
       }
+    }
+  }
+
+  /** UR-20261012-069 — fails open, like the event gate: an unavailable gate must not drop live work. */
+  private async moduleEnabled(moduleId: string, guildId: string): Promise<boolean> {
+    const check = this.options.isModuleEnabled;
+    if (check === undefined) return true;
+    try {
+      return await check(moduleId, guildId);
+    } catch (err) {
+      this.options.logger.warn('job-module-gate-failed', { moduleId, guildId, error: String(err) });
+      return true;
     }
   }
 
