@@ -741,3 +741,17 @@ Acceptance ids: `ACC-UR-074-1…5`.
 
 **Verification.** `typecheck`, `lint`, `format` green locally; the router suite 42 tests green.
 Acceptance ids: `ACC-UR-075-1…5`.
+
+---
+
+## Unblocking the Deploy (UR-20261012-076) — 2026-10-14
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-151 | The deploy blocker found: the Gates job failed, so Railway skipped every recent commit | DONE |
+| DP-152 | The failing flow test identified (a scope denial reported as FORBIDDEN) | DONE |
+| DP-153 | The harness registers `flow-std`'s tier, so the RBAC rank check is reached | DONE |
+| DP-154 | A stale build is not "corrupted modules" — check the pipeline before the code | DONE |
+
+**Verification.** `typecheck`, `lint`, `format` green locally; the flow suite runs against live Postgres
+in CI. Acceptance ids: `ACC-UR-076-1…4`.

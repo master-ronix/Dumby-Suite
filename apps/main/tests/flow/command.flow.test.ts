@@ -15,6 +15,39 @@ beforeAll(async () => {
   });
   // A non-core tier command: the RBAC rank check (layer 6) applies to these.
   ctx.handle.commandRegistry.registerModule('flow-std', 'standard');
+  // UR-20261012-076 — the MODULE registry must know this module's TIER too. The guild-scope check
+  // resolves the tier from the module registry, and an unknown module falls through to `marketplace`,
+  // which defaults to DISABLED — so the scope check denied the command before the RBAC rank check
+  // this test exists to exercise was ever reached.
+  //
+  // It passed before only because a scope denial happened to render `FORBIDDEN`, which is what the
+  // assertion looked for. Making the notice honest (UR-074) turned a passing-for-the-wrong-reason
+  // test into a failing one — and the failure is correct: the command really was being refused for
+  // the wrong reason.
+  ctx.handle.moduleRegistry.register({
+    manifest: {
+      name: 'flow-std',
+      tier: 'standard',
+      version: '1.0.0',
+      description: 'flow standard-tier module',
+      required: false,
+      commands: [],
+      provides: [],
+      depends: [],
+      events: [],
+      services: [],
+      repositories: [],
+      jobs: [],
+      tasks: [],
+      routes: [],
+      middleware: [],
+      migrations: [],
+      locales: [],
+      config: {},
+      intents: [],
+      partials: [],
+    },
+  } as never);
   ctx.handle.commandRegistry.register({
     data: { name: 'stdcmd', description: 'rank-gated command' },
     execute: async () => 'std-ok',

@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.80
+version: 5.5.81
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,36 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.81 — unblocking the deploy (UR-20261012-076) — 2026-10-14
+
+- 2026-10-14 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- THE FINDING, AND IT IS THE IMPORTANT ONE: the operator reported the core modules were "outdated and
+  not compatible with new changes -- totally corrupted". Investigating turned up the cause, and it is
+  NOT the modules. EVERY RECENT COMMIT WAS FAILING CI, SO RAILWAY SKIPPED EVERY DEPLOY. The
+  `Gates (D-8.4 strict sequence)` check concluded `failure`, and a skipped deploy means the running bot
+  is an OLD BUILD -- the operator has been looking at code from before this week's work, which is
+  exactly what "outdated and not compatible" describes.
+- THE FAILING TEST: `tests/flow/command.flow.test.ts > denies a non-owner and renders a FORBIDDEN
+  notice` -- expected 'FORBIDDEN', received "This module is switched off ... reason: MODULE_DISABLED".
+- WHY IT FAILED, AND WHY THE FAILURE IS CORRECT: the test registers `stdcmd` in the COMMAND registry
+  and asserts a non-owner gets FORBIDDEN from the RBAC rank check. But the GUILD-SCOPE check runs
+  FIRST, and it resolves a module's tier from the MODULE registry -- where `flow-std` was never
+  registered. An unknown module falls through to `marketplace`, which defaults to DISABLED. So the
+  scope check refused the command before the rank check the test exists to exercise was ever reached.
+  IT PASSED BEFORE ONLY BECAUSE A SCOPE DENIAL HAPPENED TO RENDER `FORBIDDEN` -- the very wording
+  UR-074 corrected. Making the notice honest turned a passing-for-the-wrong-reason test into a failing
+  one, and the failure is right.
+- WHAT CHANGED: the flow harness now registers `flow-std` in the MODULE registry with its `standard`
+  tier, so the scope check resolves correctly, the module is enabled by the tier default, and the
+  command reaches the RBAC rank check.
+- RECORDED: a failing gate is a SILENT OUTAGE. Every fix of the past days -- the execution context, the
+  lifecycle hooks, the disable flow, the honest notices -- was committed, green locally, and NEVER
+  REACHED PRODUCTION, because one test failed and Railway skips on a red check. RECORDED: a test that
+  passes for the wrong reason is a trap that springs later -- assert the CAUSE, not the wording.
+- **Verification:** typecheck, lint, format clean; the flow suite runs against live Postgres in CI.
 
 ---
 
