@@ -307,6 +307,34 @@ export class PersonaRuntime {
   }
 
   /** How many personas are currently hosted. */
+  /**
+   * UR-20261012-082 — re-apply a persona's presence to a RUNNING client.
+   *
+   * The boot path applies the presence once, at login. Without this, a presence set through Twill
+   * would not reach Discord until the next restart — which reads to an operator as "the field does
+   * nothing", the exact failure the presence work was meant to avoid. A stored value that is only
+   * read at boot is indistinguishable from a value that is never read, until you restart.
+   *
+   * Returns `false` when the persona is not currently hosted (or its client cannot set a presence),
+   * so a caller can tell "applied" from "nothing to apply it to" rather than assuming success.
+   */
+  applyPresence(personaId: string, presence: { status: string; note?: string }): boolean {
+    const client = this.clients.get(personaId);
+    if (client === undefined || client.setPresence === undefined) return false;
+    try {
+      client.setPresence(presence);
+      this.deps.logger.info(
+        `persona-presence-applied id=${personaId} status=${presence.status}` +
+          (presence.note !== undefined ? ` note=${presence.note}` : ''),
+      );
+      return true;
+    } catch (err) {
+      // Non-fatal, exactly as at boot: a presence that fails must not stop the persona.
+      this.deps.logger.warn(`persona-presence-failed id=${personaId} reason=${String(err)}`);
+      return false;
+    }
+  }
+
   hostedCount(): number {
     return this.clients.size;
   }

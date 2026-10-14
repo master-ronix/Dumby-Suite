@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.86
+version: 5.5.87
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,39 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.87 — a presence set through Twill did not reach the running persona (UR-20261012-082) — 2026-10-14
+
+- 2026-10-14 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- THE FINDING: UR-081 added a persona's presence (`presenceStatus`, `note`) and applied it AT LOGIN --
+  only at login. `persona-runtime` calls `client.setPresence` once, in the start loop, at boot; nothing
+  re-applied it. So a `PATCH /twill/personas/:id` changed the column correctly and changed NOTHING in
+  Discord until the next restart. The operator sets the status, looks at Discord, sees no change, and
+  concludes the feature is broken. The column was honest; the behaviour was not.
+- THE MECHANISM: `start()` applies the presence after `login()` -- the only call site. `updatePersona`
+  writes the column and has no reach into a running client; the runtime's `clients` map is private. The
+  ROUTE is the composition point: it holds both the service and, now, a hook to the runtime.
+- WHAT CHANGED: `PersonaRuntime.applyPresence(personaId, presence)` -- public, finds the running client
+  and applies the presence non-fatally, exactly as at boot. It returns TRUE when applied and FALSE when
+  the persona is not hosted (or its client has no presence port), so a caller can tell "applied" from
+  "there was nothing to apply it to". The PATCH route calls it when an update touches `presenceStatus`
+  or `note`, and logs the two non-applied cases distinctly -- no presence configured (left as-is), and
+  not currently hosted (lands at the next restart) -- rather than silently. Bootstrap wires the hook
+  LATE-BOUND: the runtime is built inside a conditional block while the Twill surface is built later in
+  the same function, so a function-scope reference is assigned when the runtime is constructed.
+- RECORDED: a write that reaches the database is not a write that reaches the world. The test that would
+  have caught this is not "does the column hold the value" but "does the running thing behave
+  differently" -- and only the second is what was asked for.
+- RECORDED: the SECOND instance in two URs of the same shape. UR-081 wrote the presence and applied it
+  at ONE moment; this found the moment was the wrong one. The general form: for every value that is
+  APPLIED rather than merely STORED, ask which moments read it, and check the moment the operator
+  changes it is among them.
+- RECORDED: returning a boolean rather than nothing is the point. `applyPresence` cannot succeed when
+  the persona is not hosted -- not an error, but not success either, and a `void` return would have let
+  the route log a confident line about a change that did not happen.
+- **Verification:** 122 files / 1259 tests / 0 failures; typecheck, lint, format clean.
 
 ---
 

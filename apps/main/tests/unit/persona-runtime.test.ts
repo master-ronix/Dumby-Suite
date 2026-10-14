@@ -302,3 +302,33 @@ describe('a persona registers the same SPLIT the main bot does (UR-20261012-058)
     ]);
   });
 });
+
+describe('PersonaRuntime.applyPresence (UR-20261012-082)', () => {
+  test('applies the configured presence at login, and re-applies it live', async () => {
+    const setPresence = vi.fn();
+    const { runtime } = makeRuntime([persona({ presenceStatus: 'idle', note: 'brb' })], {
+      createClient: () => ({ login: vi.fn(), destroy: vi.fn(), on: vi.fn(), setPresence }),
+    } as never);
+
+    await runtime.start();
+    // Applied once at login, from the stored value.
+    expect(setPresence).toHaveBeenCalledWith({ status: 'idle', note: 'brb' });
+
+    // A Twill update reaches the RUNNING client — not only the next restart.
+    expect(runtime.applyPresence('persona-1', { status: 'dnd', note: 'busy' })).toBe(true);
+    expect(setPresence).toHaveBeenLastCalledWith({ status: 'dnd', note: 'busy' });
+  });
+
+  test('returns false when the persona is not hosted, rather than claiming success', () => {
+    const { runtime } = makeRuntime([]);
+    expect(runtime.applyPresence('nope', { status: 'idle' })).toBe(false);
+  });
+
+  test('a client without a presence port is reported as not applied', async () => {
+    const { runtime } = makeRuntime([persona()], {
+      createClient: () => ({ login: vi.fn(), destroy: vi.fn(), on: vi.fn() }),
+    } as never);
+    await runtime.start();
+    expect(runtime.applyPresence('persona-1', { status: 'idle' })).toBe(false);
+  });
+});

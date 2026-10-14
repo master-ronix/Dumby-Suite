@@ -828,3 +828,16 @@ Acceptance ids: `ACC-UR-080-1…4`.
 
 **Verification.** 121 files / 1240 tests / 0 failures; `typecheck`, `lint`, `format` green locally.
 Acceptance ids: `ACC-UR-081-1…9`.
+
+## A Presence Set Through Twill Did Not Reach the Running Persona (UR-20261012-082) — 2026-10-14
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-181 | The finding: the presence was applied only at login, so a PATCH changed nothing live | DONE |
+| DP-182 | `PersonaRuntime.applyPresence` re-applies to the running client, non-fatally | DONE |
+| DP-183 | It returns a boolean — `false` when the persona is not hosted, rather than claiming success | DONE |
+| DP-184 | The PATCH route applies it, and logs the two non-applied cases distinctly | DONE |
+| DP-185 | Bootstrap wires the hook late-bound across the runtime's conditional block | DONE |
+
+**Verification.** 122 files / 1259 tests / 0 failures; `typecheck`, `lint`, `format` green locally.
+Acceptance ids: `ACC-UR-082-1…4`.

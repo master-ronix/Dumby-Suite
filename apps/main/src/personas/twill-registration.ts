@@ -170,6 +170,14 @@ export interface TwillPersonaRouteDeps {
    * OFF is refused at the surface. Optional: without it the check is skipped.
    */
   isModuleEnabledInGuild?: (moduleId: string, guildId: string) => Promise<boolean>;
+  /**
+   * UR-20261012-082 — re-apply a persona's presence to its RUNNING client. Optional: without it an
+   * update still writes the column, but the change lands at the next restart.
+   */
+  applyPersonaPresence?: (
+    personaId: string,
+    presence: { status: string; note?: string },
+  ) => boolean;
 }
 
 /** HTTP status for a registration rejection, by error name. */
@@ -408,6 +416,27 @@ export function registerTwillPersonaRoutes(
           ...('accent' in body ? { accent: (body['accent'] ?? null) as never } : {}),
           ...(str(body['status']) !== undefined ? { status: str(body['status']) as never } : {}),
         });
+        // UR-20261012-082 — a presence that only lands at the next restart is a field that looks
+        // broken. Apply it to the running client now, and say so when there is nothing to apply it
+        // to — a persona that is not hosted has not been ignored, it simply is not running.
+        const touchesPresence = 'presenceStatus' in body || 'note' in body;
+        if (touchesPresence && deps.applyPersonaPresence !== undefined) {
+          if (persona.presenceStatus === undefined) {
+            logger.info(
+              `persona-presence-not-applied id=${persona.id} — no presence configured; left as-is`,
+            );
+          } else {
+            const applied = deps.applyPersonaPresence(persona.id, {
+              status: persona.presenceStatus,
+              ...(persona.note !== undefined ? { note: persona.note } : {}),
+            });
+            if (!applied) {
+              logger.info(
+                `persona-presence-not-applied id=${persona.id} — persona is not currently hosted`,
+              );
+            }
+          }
+        }
         return reply.code(200).send(publicPersonaView(persona));
       } catch (err) {
         logger.warn(`twill-update-failed: ${reasonOf(err)}`);

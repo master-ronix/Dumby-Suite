@@ -1378,6 +1378,11 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   }
 
   progress.advanceTo('CLIENT_READY');
+  // UR-20261012-082 — late-bound: the persona runtime is created inside a nested block, while the
+  // Twill surface is built later in this same function. The presence hook needs to reach the RUNNING
+  // runtime, so it is held here at function scope and assigned when the runtime is constructed.
+  let personaRuntimeRef: PersonaRuntime | undefined;
+
   if (discordClient) {
     const applicationId = discordClient.application?.id ?? '';
     // item 9 - upload the framework's default white module icon as an application emoji (once).
@@ -1478,6 +1483,7 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
           }),
         logger,
       });
+      personaRuntimeRef = personaRuntime;
       const results = await personaRuntime.start();
       logger.info(
         `persona-runtime-start-complete hosted=${results.filter((r) => r.started).length} of ${results.length}`,
@@ -1779,6 +1785,10 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
           // UR-20261012-052 — so a binding for a module this guild has DISABLED is refused at the
           // surface, instead of producing a registered-but-refused command.
           isModuleEnabledInGuild,
+          // UR-20261012-082 — so a presence set through Twill reaches the RUNNING persona, rather
+          // than waiting for the next restart.
+          applyPersonaPresence: (personaId, presence) =>
+            personaRuntimeRef?.applyPresence(personaId, presence) ?? false,
           logger,
           costSignals: { dedicatedInfrastructureRequired: false, perPersonaCostMeasurable: false },
         }
