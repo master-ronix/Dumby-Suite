@@ -186,7 +186,14 @@ export class PersonaRuntime {
 
   constructor(private readonly deps: PersonaRuntimeDeps) {}
 
-  async start(): Promise<readonly PersonaStartResult[]> {
+  /**
+   * UR-20261012-085 — hosts personas, optionally only those matching `only`.
+   *
+   * The filter exists so ONE persona can be (re)started without disturbing the rest: `reloadPersona`
+   * passes a single-id predicate. Without it, bringing a newly registered persona online meant a
+   * process restart, because the runtime only ever read the table at boot.
+   */
+  async start(only?: (persona: RuntimePersona) => boolean): Promise<readonly PersonaStartResult[]> {
     const { listPersonas, logger } = this.deps;
     // UR-20261012-040 — this runs at boot, so a read failure is reported and yields an empty run
     // rather than propagating out of the start path.
@@ -200,6 +207,7 @@ export class PersonaRuntime {
     const results: PersonaStartResult[] = [];
 
     for (const persona of personas) {
+      if (only !== undefined && !only(persona)) continue;
       if (persona.status !== 'active') {
         results.push({
           personaId: persona.id,
@@ -346,6 +354,38 @@ export class PersonaRuntime {
       `persona-stopped id=${persona.id} client=${stopped ? 'destroyed' : 'not-hosted'}`,
     );
     return stopped;
+  }
+
+  /**
+   * UR-20261012-085 — reload ONE persona: stop her, then start her again from the CURRENT row.
+   *
+   * Registering a persona, binding a module to her, or rotating her credentials all change something
+   * the runtime reads exactly once, at boot. So each of them used to need a process restart, and the
+   * operator's experience was: do the thing, see nothing, restart. That is the same shape as the
+   * revoke bug (UR-20261012-083) — a write that reaches the database and not the world.
+   *
+   * `stop` first, so her client is not doubled and her stale command set is cleared; then `start`
+   * re-reads her row, so her bindings, status and token are whatever they are NOW rather than what
+   * they were at the last boot. Her commands are re-deployed by the start path, so the clear is
+   * transient.
+   *
+   * Returns the start result, or `undefined` when the row no longer matches (for example she was
+   * revoked between the write and the reload) — an absent answer rather than a fabricated one.
+   */
+  async reloadPersona(persona: RuntimePersona): Promise<PersonaStartResult | undefined> {
+    await this.stopPersona(persona);
+    const results = await this.start((candidate) => candidate.id === persona.id);
+    const result = results[0];
+    if (result === undefined) {
+      this.deps.logger.info(
+        `persona-reload-skipped id=${persona.id} — no longer present or no longer active`,
+      );
+    } else {
+      this.deps.logger.info(
+        `persona-reloaded id=${persona.id} started=${result.started} commands=${result.commands}`,
+      );
+    }
+    return result;
   }
 
   /** Logs every hosted persona out. Idempotent, and one failure never blocks the others. */

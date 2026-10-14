@@ -182,6 +182,18 @@ export interface TwillPersonaRouteDeps {
    * UR-20261012-083 — stop a persona's RUNNING client and clear its commands on revoke. Optional:
    * without it a revoked persona keeps serving until the next restart.
    */
+  /**
+   * UR-20261012-085 — bring a persona online from her CURRENT row, without a process restart. Called
+   * after a registration, a binding change and a credential rotation, each of which used to need one.
+   */
+  reloadPersona?: (persona: {
+    id: string;
+    name: string;
+    discordApplicationId: string;
+    boundGuildId: string;
+    botTokenSealed: unknown;
+    status: string;
+  }) => Promise<unknown>;
   stopPersona?: (persona: {
     id: string;
     name: string;
@@ -218,6 +230,28 @@ export function registerTwillPersonaRoutes(
 ): void {
   const { service, identities, bindings, registrars, rootKey, logger, costSignals } = deps;
 
+  /**
+   * UR-20261012-085 — reload a persona so a write takes effect without a restart. Non-fatal: the write
+   * already succeeded, and a reload that fails must not turn a successful registration into a 500.
+   */
+  const reload = async (personaId: string): Promise<void> => {
+    if (deps.reloadPersona === undefined) return;
+    try {
+      const persona = await identities.findById(personaId);
+      if (persona === undefined) return;
+      await deps.reloadPersona({
+        id: persona.id,
+        name: persona.name,
+        discordApplicationId: persona.discordApplicationId,
+        boundGuildId: persona.boundGuildId,
+        botTokenSealed: persona.botTokenSealed,
+        status: persona.status,
+      });
+    } catch (err) {
+      logger.warn(`twill-reload-failed id=${personaId} reason=${reasonOf(err)}`);
+    }
+  };
+
   app.post<{ Body: PersonaRegistrationBody }>(
     '/twill/personas/register',
     async (request, reply) => {
@@ -248,6 +282,9 @@ export function registerTwillPersonaRoutes(
           `persona-registered id=${persona.id} guild=${persona.boundGuildId} ` +
             `authority=${parsed.input.registrarAuthority}`,
         );
+        // UR-20261012-085 — bring her online NOW. The runtime reads the persona table at boot, so a
+        // registration used to need a process restart before she existed to it.
+        await reload(persona.id);
         return reply.code(201).send(publicPersonaView(persona));
       } catch (err) {
         logger.warn(`twill-register-failed: ${reasonOf(err)}`);
@@ -385,6 +422,9 @@ export function registerTwillPersonaRoutes(
         personaId: request.params.personaId,
       });
       logger.info(`persona-module-bound guild=${guildId} module=${moduleSlug}`);
+      // UR-20261012-085 — her command set is built FROM her bindings, so a new binding is inert until
+      // she rebuilds it. Reload her rather than making the operator restart the service.
+      await reload(request.params.personaId);
       return reply.code(201).send(binding);
     } catch (err) {
       logger.warn(`twill-bind-failed: ${reasonOf(err)}`);
@@ -531,6 +571,8 @@ export function registerTwillPersonaRoutes(
               }
             : {}),
         });
+        // UR-20261012-085 — a new token means a new gateway login; reload so it is used now.
+        await reload(persona.id);
         return reply.code(200).send(publicPersonaView(persona));
       } catch (err) {
         logger.warn(`twill-credentials-failed: ${reasonOf(err)}`);

@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.89
+version: 5.5.90
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,42 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.90 — registering, binding or re-credentialing a persona needed a restart (UR-20261012-085) — 2026-10-14
+
+- 2026-10-14 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- THE FINDING: the operator registered a persona. `POST /twill/personas/register` returned 201, the log
+  recorded `persona-registered`, the list contained her -- and SHE WAS NOT ONLINE. The runtime's last
+  line still read `hosted=0 of 0` and no `command-deployer` activity followed. The same was true one step
+  later: binding a module changed nothing until a restart, and so did rotating credentials. Each is a
+  write that succeeds completely and changes nothing the operator can see.
+- THE MECHANISM: the runtime reads the persona table ONCE, at boot, inside `start()` -- who is active,
+  which modules are bound, which token to use, what presence to apply. Any write to any of those facts is
+  invisible until the process restarts: registration adds a row the runtime has read past; binding
+  changes the module list her command set is built from; a credential rotation changes the token she logs
+  in with. `start()` could not host a single persona, and could not be re-run for one.
+- WHAT CHANGED: `start(only?)` takes an optional predicate, so one persona can be (re)started without
+  disturbing the rest (`start()` with no argument behaves exactly as before). `PersonaRuntime
+  .reloadPersona(persona)` stops her, then starts her again FROM HER CURRENT ROW -- stopping first
+  prevents a doubled client and clears the stale command set, and starting re-reads the row so her
+  bindings, status and token are whatever they are NOW. It returns the start result or `undefined` when
+  the row no longer matches (she was revoked between the write and the reload): an absent answer, not a
+  fabricated one. The route calls it after a registration, a binding and a credential rotation, through
+  ONE shared helper, which is NON-FATAL -- the write already succeeded, and a reload that fails must not
+  turn a successful registration into a 500.
+- RECORDED: the THIRD UR in a row with the same shape, and the first where the fix was written
+  proactively rather than after a report. The pattern is now explicit enough to be a rule: for every
+  operation, name the STORES that hold a piece of the entity and the MOMENTS at which each is read --
+  then check the operation reaches all of them. UR-083 recorded the store half; this is the moment half.
+- RECORDED: "documented behaviour" is not a defence when the documentation describes a defect.
+  Restarting to pick up a registration was written down, repeated to the operator, and still cost them a
+  cycle every time. The doc made it predictable, not correct.
+- RECORDED: `stopPersona` made this cheap to add. The revoke fix gave the runtime a per-entity stop; the
+  reload is a stop followed by a filtered start. Had the revoke been patched as a one-off -- a bare
+  `client.destroy()` in the route -- there would have been nothing to build on.
+- **Verification:** 122 files / 1266 tests / 0 failures; typecheck, lint, format clean.
 
 ---
 

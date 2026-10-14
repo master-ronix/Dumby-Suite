@@ -383,3 +383,59 @@ describe('PersonaRuntime.stopPersona (UR-20261012-083)', () => {
     expect(runtime.hostedCount()).toBe(0);
   });
 });
+
+describe('PersonaRuntime reload + start filter (UR-20261012-085)', () => {
+  test('start(only) hosts just the matching persona', async () => {
+    const login = vi.fn();
+    const { runtime } = makeRuntime([persona({ id: 'p-1' }), persona({ id: 'p-2' })], {
+      createClient: () => ({ login, destroy: vi.fn(), on: vi.fn() }),
+    } as never);
+
+    const results = await runtime.start((p) => p.id === 'p-2');
+
+    expect(results.map((r) => r.personaId)).toEqual(['p-2']);
+    expect(runtime.hostedCount()).toBe(1);
+  });
+
+  test('reloadPersona stops her and starts her again from the CURRENT row', async () => {
+    const login = vi.fn();
+    const destroy = vi.fn();
+    const clearCommands = vi.fn(async () => 0);
+    const { runtime } = makeRuntime([persona({ id: 'p-1' })], {
+      createClient: () => ({ login, destroy, on: vi.fn() }),
+      clearCommands,
+    } as never);
+    await runtime.start();
+    expect(runtime.hostedCount()).toBe(1);
+
+    const result = await runtime.reloadPersona(persona({ id: 'p-1' }));
+
+    expect(result?.started).toBe(true);
+    expect(destroy).toHaveBeenCalledTimes(1); // the old client was closed
+    expect(login).toHaveBeenCalledTimes(2); // once at boot, once on the reload
+    expect(runtime.hostedCount()).toBe(1);
+  });
+
+  test('reloadPersona on a row that is gone returns undefined rather than a fabricated result', async () => {
+    const { runtime } = makeRuntime([persona({ id: 'p-1' })], {
+      createClient: () => ({ login: vi.fn(), destroy: vi.fn(), on: vi.fn() }),
+    } as never);
+    await runtime.start();
+
+    const result = await runtime.reloadPersona(persona({ id: 'gone' }));
+
+    expect(result).toBeUndefined();
+  });
+
+  test('a retired persona reloads as not-active, and is not hosted', async () => {
+    const { runtime } = makeRuntime([persona({ id: 'p-1', status: 'retired' })], {
+      createClient: () => ({ login: vi.fn(), destroy: vi.fn(), on: vi.fn() }),
+    } as never);
+
+    const result = await runtime.reloadPersona(persona({ id: 'p-1', status: 'retired' }));
+
+    expect(result?.started).toBe(false);
+    expect(result?.reason).toBe('not-active');
+    expect(runtime.hostedCount()).toBe(0);
+  });
+});

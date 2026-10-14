@@ -868,3 +868,16 @@ Acceptance ids: `ACC-UR-083-1…4`.
 **Verification.** 122 files / 1262 tests / 0 failures; `typecheck`, `lint`, `format` green locally.
 Migration applied through `knex.migrate.latest()` against embedded PostgreSQL and asserted directly.
 Acceptance ids: `ACC-UR-084-1…4`.
+
+## Registering, Binding or Re-credentialing Needed a Restart (UR-20261012-085) — 2026-10-14
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-196 | The finding: the runtime reads the persona table once, at boot | DONE |
+| DP-197 | `start(only?)` — one persona can be (re)started without disturbing the rest | DONE |
+| DP-198 | `reloadPersona` — stop, then start from the CURRENT row | DONE |
+| DP-199 | It returns `undefined` for a row that is gone, not a fabricated result | DONE |
+| DP-200 | Register, bind and rotate each reload through one non-fatal helper | DONE |
+
+**Verification.** 122 files / 1266 tests / 0 failures; `typecheck`, `lint`, `format` green locally.
+Acceptance ids: `ACC-UR-085-1…6`.

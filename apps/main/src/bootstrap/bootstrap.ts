@@ -1805,6 +1805,9 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
           // rather than at the next restart.
           stopPersona: async (persona) =>
             (await personaRuntimeRef?.stopPersona(persona as never)) ?? false,
+          // UR-20261012-085 — a registration, a binding or a credential change takes effect NOW.
+          reloadPersona: async (persona) =>
+            (await personaRuntimeRef?.reloadPersona(persona as never)) ?? undefined,
           logger,
           costSignals: { dedicatedInfrastructureRequired: false, perPersonaCostMeasurable: false },
         }
