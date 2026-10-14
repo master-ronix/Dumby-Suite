@@ -906,3 +906,16 @@ Acceptance ids: `ACC-UR-086-1…4`.
 
 **Verification.** 122 files / 1268 tests / 0 failures; `typecheck`, `lint`, `format` green locally.
 Acceptance ids: `ACC-UR-087-1…4`.
+
+## A Persona's Bound Guild Could Not Be Changed (UR-20261012-088) — 2026-10-14
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-210 | The finding: `boundGuildId` is not settable, and it is not a plain field | DONE |
+| DP-211 | `rebindPersona` releases the old-guild bindings, then moves the row | DONE |
+| DP-212 | `POST /twill/personas/:id/rebind` — stop against the OLD guild, move, reload | DONE |
+| DP-213 | Idempotent, and reported as `changed: false` rather than assumed | DONE |
+| DP-214 | A foreign-key refusal is translated into a readable reason | DONE |
+
+**Verification.** 122 files / 1271 tests / 0 failures; `typecheck`, `lint`, `format` green locally.
+Acceptance ids: `ACC-UR-088-1…5`.

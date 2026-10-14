@@ -73,6 +73,52 @@ export class PersonaCommandBindingService {
     return persona;
   }
 
+  /**
+   * UR-20261012-088 — move a persona to a different guild.
+   *
+   * The persona is single-server-bound, and `boundGuildId` is what that rule is enforced against. It is
+   * NOT a presentation field: three things follow from it.
+   *
+   * - **Her bindings belong to the OLD guild.** `guild_persona_bindings` is keyed by `(guildId,
+   *   moduleSlug)`, so rows left behind would keep marking modules occupied in a guild she no longer
+   *   serves, and the module could not be installed there by anyone. They are released here.
+   * - **Her commands are registered against the OLD guild.** That is the route's half — it stops her
+   *   before this runs, which clears them — and the reload afterwards re-deploys to the new guild.
+   * - **The target guild must exist.** `persona_identities.boundGuildId` is a foreign key to `guilds`,
+   *   so a guild the framework has never seen is refused by the database. That refusal is caught and
+   *   reported by name, because "violates foreign key constraint" is not an answer an operator can act
+   *   on.
+   *
+   * Idempotent: moving her to the guild she is already bound to is a no-op, not an error.
+   */
+  async rebindPersona(id: string, guildId: string): Promise<PersonaIdentity> {
+    const persona = await this.identities.findById(id);
+    if (persona === undefined) throw new UnknownPersonaError(id);
+    if (persona.boundGuildId === guildId) return persona;
+
+    const held = await this.bindings.listForPersona(id);
+    for (const binding of held) {
+      await this.bindings.unbind(binding.guildId, binding.moduleSlug);
+    }
+
+    try {
+      await this.identities.update(id, { boundGuildId: guildId });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (/foreign key|boundguildid_foreign/i.test(message)) {
+        throw new Error(
+          `Guild "${guildId}" is not known to the framework — the main bot must have seen it before a persona can be bound to it`,
+        );
+      }
+      throw err;
+    }
+
+    this.logger.info(
+      `persona-rebound id=${id} from=${persona.boundGuildId} to=${guildId} bindings-released=${held.length}`,
+    );
+    return (await this.identities.findById(id)) ?? persona;
+  }
+
   async bindModuleToPersona(request: {
     readonly guildId: string;
     readonly moduleSlug: string;

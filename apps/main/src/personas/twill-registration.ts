@@ -502,6 +502,67 @@ export function registerTwillPersonaRoutes(
    * free to register again, which is the difference between "revoked" and "temporarily switched off".
    */
   /**
+   * UR-20261012-088 — move a persona to a different guild.
+   *
+   * The persona is single-server-bound, so this is the operation that changes WHICH server. It is not
+   * a PATCH field because three things follow from it: her bindings belong to the old guild and are
+   * released, her commands are registered against the old guild and are cleared, and the new guild
+   * must already be known to the framework.
+   *
+   * Order matters. She is STOPPED first, while her identity still names the OLD guild, because that is
+   * the guild whose commands need clearing — stopping after the move would clear the new guild's, which
+   * have not been written yet, and leave the old ones live. Then the row moves, then she is reloaded,
+   * which registers her commands in the new guild.
+   */
+  app.post<{ Params: { personaId: string }; Body: { guildId?: unknown } }>(
+    '/twill/personas/:personaId/rebind',
+    async (request, reply) => {
+      const guildId = str(request.body?.guildId);
+      if (guildId === undefined) {
+        return reply.code(400).send({ error: 'Bad Request', reason: 'guildId is required' });
+      }
+      const persona = await identities.findById(request.params.personaId);
+      if (persona === undefined) {
+        return reply.code(404).send({
+          error: 'Unknown persona',
+          reason: `No persona "${request.params.personaId}" exists`,
+        });
+      }
+      if (persona.boundGuildId === guildId) {
+        // Idempotent, and said so — an operator re-running this should not have to guess.
+        return reply.code(200).send({
+          ...publicPersonaView(persona),
+          rebind: { from: guildId, to: guildId, changed: false },
+        });
+      }
+      const from = persona.boundGuildId;
+      try {
+        // Stop her against the OLD guild: this clears the commands registered there and closes her
+        // client. Non-fatal by construction inside stopPersona.
+        if (deps.stopPersona !== undefined) {
+          await deps.stopPersona({
+            id: persona.id,
+            name: persona.name,
+            discordApplicationId: persona.discordApplicationId,
+            boundGuildId: from,
+            botTokenSealed: persona.botTokenSealed,
+            status: persona.status,
+          });
+        }
+        const moved = await service.rebindPersona(persona.id, guildId);
+        logger.info(`twill-rebind id=${persona.id} from=${from} to=${guildId}`);
+        await reload(persona.id);
+        return reply
+          .code(200)
+          .send({ ...publicPersonaView(moved), rebind: { from, to: guildId, changed: true } });
+      } catch (err) {
+        logger.warn(`twill-rebind-failed id=${persona.id} reason=${reasonOf(err)}`);
+        return reply.code(statusFor(err)).send({ error: 'Rebind failed', reason: reasonOf(err) });
+      }
+    },
+  );
+
+  /**
    * UR-20261012-087 — restart ONE persona, without restarting the service.
    *
    * Reloads her from her CURRENT row: a fresh gateway login, her commands re-deployed from her current

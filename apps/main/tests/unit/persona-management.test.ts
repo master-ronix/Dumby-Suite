@@ -199,3 +199,37 @@ describe('rotatePersonaCredentials (UR-20261012-081)', () => {
     ).rejects.toThrow(/No persona/);
   });
 });
+
+describe('rebindPersona (UR-20261012-088)', () => {
+  test('moves her to the new guild and RELEASES the bindings that belonged to the old one', async () => {
+    const stores = makeStores();
+    seed(stores);
+    stores.bindings.set('g-1:hello-world', {
+      guildId: 'g-1',
+      moduleSlug: 'hello-world',
+      personaId: 'p-1',
+    } as never);
+    const service = makeService(stores);
+
+    const moved = await service.rebindPersona('p-1', 'g-2');
+
+    expect(moved.boundGuildId).toBe('g-2');
+    // Rows left behind would keep marking the module occupied in a guild she no longer serves.
+    expect(await stores.listForPersona('p-1')).toEqual([]);
+  });
+
+  test('moving her to the guild she is already bound to is a no-op, not an error', async () => {
+    const stores = makeStores();
+    seed(stores);
+    const service = makeService(stores);
+
+    const same = await service.rebindPersona('p-1', 'g-1');
+
+    expect(same.boundGuildId).toBe('g-1');
+  });
+
+  test('an unknown persona is refused', async () => {
+    const service = makeService(makeStores());
+    await expect(service.rebindPersona('nope', 'g-2')).rejects.toThrow(/No persona/);
+  });
+});

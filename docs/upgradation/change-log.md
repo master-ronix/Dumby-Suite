@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.92
+version: 5.5.93
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,43 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.93 — a persona's bound guild could not be changed (UR-20261012-088) — 2026-10-14
+
+- 2026-10-14 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- THE FINDING: the operator asked to move a persona from one guild to another. There was no way to do it.
+  The PATCH accepted name, dmBehaviour, shard allocation, status and the presentation fields -- but NOT
+  `boundGuildId`, which is the field that IS the persona's single-server binding. Registering a second
+  persona was the only route, leaving the first behind and burning an application id.
+- THE MECHANISM -- WHY THIS IS NOT A PATCH FIELD: `boundGuildId` looks like one more column, and three
+  things follow from it, each in a separate store. (1) Her BINDINGS belong to the OLD guild:
+  `guild_persona_bindings` is keyed by (guildId, moduleSlug), so rows left behind keep marking modules
+  occupied in a guild she no longer serves and nobody else can install them there -- the same trap UR-083
+  found on revoke. (2) Her COMMANDS are registered against the OLD guild; a move that does not clear them
+  leaves her answering in a server she has left. (3) The target guild must EXIST -- `boundGuildId` is a
+  foreign key to `guilds`, so a guild the framework has never seen is refused by the database. A PATCH
+  that wrote the column would satisfy the API and leave all three untouched.
+- WHAT CHANGED: `rebindPersona(id, guildId)` releases her bindings then moves the row; idempotent (moving
+  her to the guild she already has is a no-op, not an error); a foreign-key refusal is caught and
+  reported BY NAME, because "violates foreign key constraint" is not something an operator can act on.
+  `POST /twill/personas/:personaId/rebind` with `{ guildId }` -- and THE ORDER IS THE SUBSTANCE: (1) stop
+  her against the OLD guild, which clears the commands registered there and closes her client -- stopping
+  AFTER the move would clear the new guild's commands, not yet written, and leave the old ones live;
+  (2) move the row; (3) reload her, which registers her commands in the new guild. The response names the
+  move -- `rebind: { from, to, changed }` -- so an idempotent re-run is distinguishable from a real
+  change without reading the logs.
+- RECORDED: a field that other rows are keyed by is not a field. `boundGuildId` is one column and three
+  consequences, and the consequences live in three places the column does not. The fourth UR in this area
+  to say it: before treating a value as settable, ask what else is keyed by it and what else is written
+  from it.
+- RECORDED: the ORDER of the operations is the operation. Stop-before-move is not stylistic; the reverse
+  produces "the move worked but she still answers in the old server" -- the exact symptom UR-083 was
+  reported for.
+- RECORDED: idempotence is reported, not assumed -- a re-run returns 200 with `changed: false`, so an
+  operator re-issuing after a timeout need not diff two responses to know whether it took.
+- **Verification:** 122 files / 1271 tests / 0 failures; typecheck, lint, format clean.
 
 ---
 
