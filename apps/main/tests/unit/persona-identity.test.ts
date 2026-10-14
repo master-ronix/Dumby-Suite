@@ -54,3 +54,36 @@ describe('buildPersonaIdentity — the id must satisfy the schema (UR-20261012-0
     expect(() => buildPersonaIdentity(input({ name: '  ' }))).toThrow(/name is required/);
   });
 });
+
+describe('buildPersonaIdentity carries the presentation (UR-20261012-086)', () => {
+  const base = {
+    name: 'Magma',
+    discordApplicationId: 'app-1',
+    boundGuildId: 'g-1',
+    botTokenDigest: 'digest',
+    botTokenSealed: { ciphertext: 'c', iv: 'i', tag: 't' },
+    registrarAuthority: 'master_ronix',
+  };
+
+  test('presenceStatus, note and accent reach the row being built', () => {
+    const persona = buildPersonaIdentity({
+      ...base,
+      presenceStatus: 'dnd',
+      note: 'Magma',
+      accent: '#E964A7',
+    } as never);
+
+    // These were parsed at the surface, declared on the input, and dropped here — so the row was
+    // written with nulls and the runtime had no presence to apply.
+    expect(persona.presenceStatus).toBe('dnd');
+    expect(persona.note).toBe('Magma');
+    expect(persona.accent).toBe('#E964A7');
+  });
+
+  test('absent presentation stays absent, not an empty string', () => {
+    const persona = buildPersonaIdentity(base as never);
+    expect(persona.presenceStatus).toBeUndefined();
+    expect(persona.note).toBeUndefined();
+    expect(persona.accent).toBeUndefined();
+  });
+});

@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.90
+version: 5.5.91
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,42 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.91 — a registered persona's presence was dropped before it reached the row (UR-20261012-086) — 2026-10-14
+
+- 2026-10-14 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- THE FINDING: a persona registered with `presenceStatus: "dnd"`, `note: "Magma"`, `accent: "#E964A7"`
+  came up ONLINE with no status note on its profile -- the default green indicator, no custom status.
+  Nothing errored: the registration returned 201, the runtime started her, and the presence was simply
+  never there to apply.
+- THE MECHANISM -- TWO INDEPENDENT FAULTS, one behind the other, which is why it took a screenshot to
+  find. (1) `buildPersonaIdentity(input)` constructs the row that gets inserted; UR-081 added the three
+  fields to `PersonaRegistrationInput` and the surface parsed and validated them, but the builder NEVER
+  COPIED THEM into the object it returns. The insert wrote NULLS, `persona.presenceStatus` was
+  undefined, and the apply branch (guarded by `presenceStatus !== undefined`) never ran and never
+  logged. The value was accepted at the boundary, typed all the way through, and discarded in the
+  middle. (2) The presence was sent as `{ name: note, type: 4 }`; activity type 4 is CUSTOM and Discord
+  renders the custom-status text from the STATE field -- `name` is ignored for that type (it must be
+  "Custom Status"). So even with the status applying, the note would not have appeared. (3) A THIRD,
+  LATENT fault: the wiring used `client.user?.setPresence(...)`, so an unavailable `client.user` would
+  swallow the call entirely while the runtime still logged `persona-presence-applied` -- the log sits
+  after a call that cannot throw. A false confirmation.
+- WHAT CHANGED: `buildPersonaIdentity` carries the presentation, so the fields reach the row (absent
+  stays absent rather than becoming an empty string); the CUSTOM activity carries the quote in `state`
+  with `name: 'Custom Status'` as Discord requires; and the no-op is gone -- an unavailable `client.user`
+  now logs `persona-presence-no-user ... the presence was NOT applied` and returns.
+- RECORDED: a field can be declared, parsed, validated and typed -- and still never arrive. Every layer
+  UR-081 touched was correct; the one function that actually builds the persisted object was not, and it
+  is the only one that mattered. After adding a field, follow it from the wire to the ROW, and confirm a
+  test asserts it on the object being WRITTEN, not on the input being parsed.
+- RECORDED: two faults in series hid each other. Had only the builder been broken the note bug would
+  have gone unnoticed; had only the activity shape been broken the builder bug would have looked like
+  "the note doesn't render". The screenshot separated them; neither was findable from the logs.
+- RECORDED: a silent no-op reported success -- the third time in five URs that the defect was a claim of
+  success the code was not in a position to make.
+- **Verification:** 122 files / 1268 tests / 0 failures; typecheck, lint, format clean.
 
 ---
 

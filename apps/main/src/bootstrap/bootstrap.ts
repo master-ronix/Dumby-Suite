@@ -1435,10 +1435,22 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
           // line.
           return Object.assign(client, {
             setPresence: (presence: { status: string; note?: string }) => {
-              client.user?.setPresence({
+              // UR-20261012-086 — never a silent no-op. `client.user` exists only once the gateway is
+              // ready; the optional chain this replaces would have swallowed that, leaving the caller
+              // to log a confident "applied" for a presence that never went anywhere.
+              const user = client.user;
+              if (user === null || user === undefined) {
+                logger.warn(
+                  'persona-presence-no-user — the client is not ready; the presence was NOT applied',
+                );
+                return;
+              }
+              user.setPresence({
                 status: presence.status as never,
+                // UR-20261012-086 — a CUSTOM activity (type 4) renders its `state`, not its `name`.
+                // Sending the quote as `name` is why the status applied but the note never appeared.
                 ...(presence.note !== undefined && presence.note !== ''
-                  ? { activities: [{ name: presence.note, type: 4 }] }
+                  ? { activities: [{ name: 'Custom Status', type: 4, state: presence.note }] }
                   : {}),
               });
             },

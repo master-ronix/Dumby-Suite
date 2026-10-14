@@ -881,3 +881,16 @@ Acceptance ids: `ACC-UR-084-1…4`.
 
 **Verification.** 122 files / 1266 tests / 0 failures; `typecheck`, `lint`, `format` green locally.
 Acceptance ids: `ACC-UR-085-1…6`.
+
+## A Registered Persona's Presence Was Dropped Before It Reached the Row (UR-20261012-086) — 2026-10-14
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-201 | The finding: `buildPersonaIdentity` dropped the three presentation fields | DONE |
+| DP-202 | It now carries them; absent stays absent rather than becoming an empty string | DONE |
+| DP-203 | The CUSTOM activity carries the quote in `state`, not `name` | DONE |
+| DP-204 | An unavailable `client.user` is logged, not silently swallowed | DONE |
+| DP-205 | Tests assert the BUILT persona, not the parsed input | DONE |
+
+**Verification.** 122 files / 1268 tests / 0 failures; `typecheck`, `lint`, `format` green locally.
+Acceptance ids: `ACC-UR-086-1…4`.

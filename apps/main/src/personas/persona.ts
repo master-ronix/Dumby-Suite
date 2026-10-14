@@ -348,6 +348,12 @@ export function buildPersonaIdentity(input: PersonaRegistrationInput): PersonaId
     ...(input.oauthClientSecretSealed !== undefined
       ? { oauthClientSecretSealed: input.oauthClientSecretSealed }
       : {}),
+    // UR-20261012-086 — the presentation, carried through. These were parsed at the surface, declared
+    // on the input, and then DROPPED here: the row was written with nulls, so the runtime had no
+    // presence to apply and the operator saw a bot sitting at the default "online".
+    ...(input.presenceStatus !== undefined ? { presenceStatus: input.presenceStatus } : {}),
+    ...(input.note !== undefined ? { note: input.note } : {}),
+    ...(input.accent !== undefined ? { accent: input.accent } : {}),
   };
 }
 
