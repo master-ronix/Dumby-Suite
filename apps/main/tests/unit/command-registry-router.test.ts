@@ -772,3 +772,106 @@ describe('a module can tell WHO it is running as (UR-20261012-067)', () => {
     expect(seen.ctx).toBeUndefined();
   });
 });
+describe('a failing lookup refuses HONESTLY, it does not break the dispatch (UR-20261012-069)', () => {
+  test('a throwing ownership lookup yields the unreadable-state notice, not a fake permission error', async () => {
+    // This path runs on EVERY command. A failing read must not propagate as an unhandled error, and it
+    // must not be reported as "not available in guild" — that tells a member they lack permission when
+    // the truth is that the guild's state could not be read.
+    const reg = new CommandRegistry();
+    reg.registerModule('hello-world', 'standard');
+    const seen: { ctx?: unknown } = {};
+    reg.register({
+      data: { name: 'whoami', description: 'Who am I' },
+      execute: async (_i: unknown, context: unknown) => {
+        seen.ctx = context;
+        return { page: 'whoami', data: {} };
+      },
+      moduleId: 'hello-world',
+    } as never);
+    const router = new CommandRouter(reg, logger2, {
+      resolveCommandOwner: async () => {
+        throw new Error('database unavailable');
+      },
+      isModuleEnabledInGuild: async () => true,
+    } as never);
+    const interaction = { ...makeInteraction('whoami'), applicationId: 'app-main' };
+
+    await expect(router.dispatch(interaction)).resolves.toBeUndefined();
+    expect(seen.ctx).toBeUndefined();
+    const notice = JSON.stringify(interaction.editReply.mock.calls.at(-1)?.[0]);
+    expect(notice).toContain('Could not check this server');
+    expect(notice).not.toContain('is not available in guild');
+  });
+});
+
+describe('the standing is advisory — it can never break a dispatch (UR-20261012-068)', () => {
+  test('a failing owner read yields the CONSERVATIVE owner, not a throw', async () => {
+    const reg = new CommandRegistry();
+    reg.registerModule('hello-world', 'standard');
+    const router = new CommandRouter(reg, logger2, {
+      resolveCommandOwner: async () => {
+        throw new Error('database unavailable');
+      },
+      isModuleEnabledInGuild: async () => true,
+    } as never);
+    // Reached directly: on the live path the assertions run first, so a throw here would be the
+    // SECOND read failing — a transient fault. Either way the standing must not throw.
+    const standing = await (
+      router as unknown as {
+        moduleStanding: (
+          def: unknown,
+          interaction: unknown,
+        ) => Promise<{ owner: string; enabled: boolean }>;
+      }
+    ).moduleStanding({ moduleId: 'hello-world' }, { guildId: 'g1' });
+
+    expect(standing.owner).toBe('main');
+    expect(standing.enabled).toBe(true);
+  });
+
+  test('a failing enablement read yields enabled:false — claim nothing, never a false yes', async () => {
+    const reg = new CommandRegistry();
+    reg.registerModule('hello-world', 'standard');
+    const router = new CommandRouter(reg, logger2, {
+      resolveCommandOwner: async () => 'main',
+      isModuleEnabledInGuild: async () => {
+        throw new Error('database unavailable');
+      },
+    } as never);
+    const standing = await (
+      router as unknown as {
+        moduleStanding: (
+          def: unknown,
+          interaction: unknown,
+        ) => Promise<{ owner: string; enabled: boolean }>;
+      }
+    ).moduleStanding({ moduleId: 'hello-world' }, { guildId: 'g1' });
+
+    expect(standing.enabled).toBe(false);
+    expect(standing.owner).toBe('main');
+  });
+
+  test('a Core module is shared and always enabled, without reading either dep', async () => {
+    const reg = new CommandRegistry();
+    reg.registerModule('dashboard', 'core');
+    const ownerRead = vi.fn(async () => 'someone');
+    const enabledRead = vi.fn(async () => false);
+    const router = new CommandRouter(reg, logger2, {
+      resolveCommandOwner: ownerRead,
+      isModuleEnabledInGuild: enabledRead,
+    } as never);
+    const standing = await (
+      router as unknown as {
+        moduleStanding: (
+          def: unknown,
+          interaction: unknown,
+        ) => Promise<{ owner: string; enabled: boolean }>;
+      }
+    ).moduleStanding({ moduleId: 'dashboard' }, { guildId: 'g1' });
+
+    expect(standing.owner).toBe('shared');
+    expect(standing.enabled).toBe(true);
+    expect(ownerRead).not.toHaveBeenCalled();
+    expect(enabledRead).not.toHaveBeenCalled();
+  });
+});

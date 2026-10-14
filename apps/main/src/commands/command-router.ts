@@ -96,15 +96,27 @@ export class PersonaBoundGuildError extends Error {
   }
 }
 
+/**
+ * UR-20261012-068 — the reason the command was refused, stated rather than implied.
+ *
+ * This class carried ONE message for two unrelated failures, so a member told "not available in guild"
+ * could actually be facing an unreadable guild state. The cause is now part of the error, and the
+ * message says which it was.
+ */
+export type CommandScopeCause = 'module-disabled' | 'state-unreadable' | 'permission-denied';
+
 export class CommandScopeDeniedError extends Error {
   constructor(
     readonly commandName: string,
     readonly moduleId: string,
     readonly tier: ModuleTier | 'unresolved',
     readonly guildId: string | null,
+    readonly scopeCause: CommandScopeCause = 'module-disabled',
   ) {
     super(
-      `Command "${commandName}" from ${tier} module "${moduleId}" is not available in guild "${guildId ?? 'DM'}"`,
+      scopeCause === 'state-unreadable'
+        ? `Command "${commandName}" could not be authorised: this guild's module state could not be read`
+        : `Command "${commandName}" from ${tier} module "${moduleId}" is not available in guild "${guildId ?? 'DM'}"`,
     );
     this.name = 'CommandScopeDeniedError';
   }
@@ -599,7 +611,24 @@ export class CommandRouter {
 
     if (!this.options.isModuleEnabledInGuild) return;
 
-    const enabled = await this.options.isModuleEnabledInGuild(command.moduleId, guildId);
+    // UR-20261012-068 — a FAILING read is not a refusal. Unguarded, a database fault propagated and the
+    // member was told the command was unavailable — a permission error for an outage. Fail closed, but
+    // say which it was, and log the fault.
+    let enabled: boolean;
+    try {
+      enabled = await this.options.isModuleEnabledInGuild(command.moduleId, guildId);
+    } catch (err) {
+      this.logger.warn(
+        `command-scope-state-unreadable command=${command.data.name} module=${command.moduleId} guild=${guildId} reason=${String(err)}`,
+      );
+      throw new CommandScopeDeniedError(
+        command.data.name,
+        command.moduleId,
+        tier,
+        guildId,
+        'state-unreadable',
+      );
+    }
     if (!enabled) {
       throw new CommandScopeDeniedError(command.data.name, command.moduleId, tier, guildId);
     }
@@ -663,17 +692,44 @@ export class CommandRouter {
     const tier = this.registry.getModuleTier(def.moduleId) ?? 'standard';
     const identity = this.executionIdentity(interaction);
     const shared = tier === 'core' || tier === 'admin';
-    const owner = shared
-      ? 'shared'
-      : ((interaction.guildId === null
-          ? undefined
-          : await this.options.resolveCommandOwner?.(interaction.guildId, def.moduleId)) ?? 'main');
-    const enabled = shared
-      ? true
-      : interaction.guildId === null
-        ? false
-        : await (this.options.isModuleEnabledInGuild?.(def.moduleId, interaction.guildId) ??
-            Promise.resolve(false));
+    // UR-20261012-068 — the standing is INFORMATIONAL: a module reads it to decide how to present
+    // itself. It is NOT a gate (the assertions are), so it must never be able to break a dispatch.
+    // Both reads below are DB-backed, and an unguarded one made a database fault throw out of the
+    // context build and fail the command — a module's page lost to an outage in a lookup that was
+    // only ever advisory. Each is now guarded, logged, and falls back to the CONSERVATIVE value:
+    // claim nothing. `enabled: false` and `owner: 'main'` are the safe answers, never a false "yes".
+    let owner: string;
+    if (shared) {
+      owner = 'shared';
+    } else if (interaction.guildId === null) {
+      owner = 'main';
+    } else {
+      try {
+        owner =
+          (await this.options.resolveCommandOwner?.(interaction.guildId, def.moduleId)) ?? 'main';
+      } catch (err) {
+        this.logger.warn(
+          `module-standing-owner-unreadable module=${def.moduleId} guild=${interaction.guildId} reason=${String(err)}`,
+        );
+        owner = 'main';
+      }
+    }
+    let enabled: boolean;
+    if (shared) {
+      enabled = true;
+    } else if (interaction.guildId === null) {
+      enabled = false;
+    } else {
+      try {
+        enabled =
+          (await this.options.isModuleEnabledInGuild?.(def.moduleId, interaction.guildId)) ?? false;
+      } catch (err) {
+        this.logger.warn(
+          `module-standing-enabled-unreadable module=${def.moduleId} guild=${interaction.guildId} reason=${String(err)}`,
+        );
+        enabled = false;
+      }
+    }
     return {
       moduleId: def.moduleId,
       tier,
@@ -689,7 +745,22 @@ export class CommandRouter {
   ): Promise<void> {
     if (guildId === null) return;
     if (this.options.resolveCommandOwner === undefined) return;
-    const owner = await this.options.resolveCommandOwner(guildId, command.moduleId);
+    // UR-20261012-068 — same rule: an unreadable binding is not a refusal.
+    let owner: string | undefined;
+    try {
+      owner = await this.options.resolveCommandOwner(guildId, command.moduleId);
+    } catch (err) {
+      this.logger.warn(
+        `command-scope-owner-unreadable command=${command.data.name} module=${command.moduleId} guild=${guildId} reason=${String(err)}`,
+      );
+      throw new CommandScopeDeniedError(
+        command.data.name,
+        command.moduleId,
+        this.registry.getModuleTier(command.moduleId) ?? 'unresolved',
+        guildId,
+        'state-unreadable',
+      );
+    }
     if (owner === undefined) return;
     if (owner === this.options.residentPersonaId) return;
     throw new PersonaOccupiedError(guildId, command.moduleId, owner);

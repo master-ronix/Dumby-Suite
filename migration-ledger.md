@@ -635,3 +635,18 @@ Acceptance ids: `ACC-UR-028-1…5`.
 
 **Verification.** `typecheck`, `lint`, `format` green locally; 117 files / 1197 tests / 0 failures;
 coverage 68.98% branch, no threshold error. Acceptance ids: `ACC-UR-069-1…7`.
+
+---
+
+## The Dispatch Path Must Not Fail, and Must Not Lie (UR-20261012-068) — 2026-10-12
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-115 | The scope assertions fail closed on a fault, and log the cause | DONE |
+| DP-116 | `CommandScopeDeniedError` carries `scopeCause`; one message no longer serves two failures | DONE |
+| DP-117 | `NoticeReasonCode.STATE_UNAVAILABLE` — the member is told the state was unreadable | DONE |
+| DP-118 | `moduleStanding` is advisory: both reads guarded, logged, conservative fallbacks | DONE |
+| DP-119 | A Core module is `shared` and `enabled` without reading either dependency | DONE |
+
+**Verification.** `typecheck`, `lint`, `format` green locally; router suite 39 tests green.
+Acceptance ids: `ACC-UR-068-1…5`.

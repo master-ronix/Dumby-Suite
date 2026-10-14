@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.73
+version: 5.5.74
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -498,6 +498,37 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 
 ---
 
+### v5.5.74 — the dispatch path must not fail, and must not lie (UR-20261012-068) — 2026-10-12
+
+- 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- THE FINDING: three faults on the path every command takes, all the same shape -- the framework told
+  the member something UNTRUE, or lost their command, because a lookup failed. (1) `assertCommandInScope`
+  and `assertPersonaOwnsCommand` called the database UNGUARDED: a fault propagated, the dispatch was
+  refused, and the member was told "not available in guild" -- a permission error for an outage.
+  (2) `CommandScopeDeniedError` carried ONE message for two unrelated failures. (3) `moduleStanding` --
+  which builds the ADVISORY `module` field of `CommandContext` (UR-067) -- called both
+  `resolveCommandOwner` and `isModuleEnabledInGuild` unguarded, so a fault in a read that was only ever
+  informational threw out of the context build and FAILED the command.
+- THE ASSERTIONS FAIL CLOSED, BUT SAY WHICH IT WAS: both wrapped, both logged
+  (`command-scope-state-unreadable`, `command-scope-owner-unreadable`), and `CommandScopeDeniedError`
+  gained `scopeCause: 'state-unreadable'`. Failing closed is deliberate -- refusing is recoverable,
+  running for a disabled guild is not.
+- THE NOTICE STATES THE CAUSE: `NoticeReasonCode` gained `STATE_UNAVAILABLE`; the member now sees
+  "Could not check this server" -- "a fault on our side, not a permission decision" -- instead of a
+  permission error they would waste time arguing with.
+- THE STANDING FAILS OPEN, TO THE CONSERVATIVE VALUE: both reads wrapped and logged
+  (`module-standing-owner-unreadable`, `module-standing-enabled-unreadable`), falling back to
+  `owner: 'main'` and `enabled: false`. The ASYMMETRY with the assertions is the point: a GATE fails
+  closed because a wrong "yes" is dangerous; an ADVISORY read fails open to "claim nothing" because the
+  command is not the lookup's to lose.
+- RECORDED: two failure modes on one path, and they want OPPOSITE defaults. What decides it is not which
+  call it is, but whether the caller's decision depends on it.
+- RECORDED: the standing's two reads and the assertions' two reads are all `(moduleId, guildId)` -- two
+  strings, so a swap TYPECHECKS. Same hazard as UR-067; hit again here.
+- **Verification:** typecheck, lint, format clean; the router suite 39 tests green.
+
+---
+
 ### v5.5.73 — the rest of a disabled module's processing (UR-20261012-069) — 2026-10-12
 
 - 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
@@ -526,7 +557,7 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   added by UR-20261012-046; `isModuleEnabledForGuild` (the EVENT gate) did NOT. A stale disabled row
   could drop a Core module's events while dispatch allowed its commands -- the same two-paths-two-answers
   defect, still live in the event gate. The shared read short-circuits Core and Admin once, for everyone.
-- **Verification:** 117 files / 1197 tests / 0 failures; coverage 68.98% branch, NO threshold error;
+- **Verification:** 117 files / 1200 tests / 0 failures; coverage 68.98% branch, NO threshold error;
   typecheck, lint, format clean.
 
 ---

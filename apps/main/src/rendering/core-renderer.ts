@@ -22,6 +22,7 @@ export const FOLLOWUP_ALARM_MS = 13 * 60 * 1000;
 export type RenderMode = 'D' | 'M' | 'C';
 
 export type NoticeReasonCode =
+  | 'STATE_UNAVAILABLE'
   | 'OUT_OF_BOUND_GUILD'
   | 'UNKNOWN_COMMAND'
   | 'MAINTENANCE'
@@ -484,7 +485,13 @@ export class CoreRenderer {
     if (err instanceof InvalidRenderDescriptorError) return 'MODULE_ERROR';
     const name = err instanceof Error ? err.name : '';
     if (name === 'CommandNotFoundError') return 'UNKNOWN_COMMAND';
-    if (name === 'CommandScopeDeniedError') return 'FORBIDDEN';
+    if (name === 'CommandScopeDeniedError') {
+      // UR-20261012-068 — a scope refusal has TWO causes, and they are not the same to a member:
+      // "your permissions do not allow this" versus "we could not read the state".
+      return (err as { scopeCause?: string }).scopeCause === 'state-unreadable'
+        ? 'STATE_UNAVAILABLE'
+        : 'FORBIDDEN';
+    }
     if (name === 'PersonaOccupiedError') return 'FORBIDDEN';
     // UR-20261012-060 — a persona is bound to ONE guild; anywhere else it refuses everything.
     if (name === 'PersonaBoundGuildError') return 'OUT_OF_BOUND_GUILD';
@@ -547,6 +554,8 @@ export class CoreRenderer {
 
   private defaultNoticeHeading(reason: NoticeReasonCode): string {
     switch (reason) {
+      case 'STATE_UNAVAILABLE':
+        return 'Could not check this server';
       case 'OUT_OF_BOUND_GUILD':
         return 'This is not my server';
       case 'UNKNOWN_COMMAND':
@@ -574,6 +583,8 @@ export class CoreRenderer {
 
   private defaultNoticeExplanation(reason: NoticeReasonCode): string {
     switch (reason) {
+      case 'STATE_UNAVAILABLE':
+        return 'This server\u2019s module state could not be read, so the command was refused rather than allowed on a guess. This is a fault on our side, not a permission decision \u2014 try again shortly.';
       case 'OUT_OF_BOUND_GUILD':
         return 'This persona is bound to one server and refuses every command and action everywhere else. Invite the main bot, or use the persona in its own server.';
       case 'UNKNOWN_COMMAND':
