@@ -1720,6 +1720,8 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     progress,
     metrics,
     config,
+    // UR-20261012-073 — a completed OAuth leg is the only honest proof a persona's redirect URI is
+    // registered; record it so the persona page can report the state instead of guessing.
     oauthDeps: oauth2Client.isConfigured()
       ? {
           client: oauth2Client,
@@ -1730,6 +1732,8 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
           tokens: commandPermissionTokens,
           // UR-20261012-030 — a persona authorizes through its own application.
           personaClients: (appId) => personaOAuth.clientForApplication(appId),
+          // UR-20261012-073 — a completed exchange proves the redirect URI is registered.
+          markOauthVerified: (appId) => personaIdentities.markOauthVerified(appId),
         }
       : undefined,
     // UR-20261012-034 — optionally serve the Twill persona registration API here, so it is usable

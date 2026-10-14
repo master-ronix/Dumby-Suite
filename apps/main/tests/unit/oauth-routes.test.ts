@@ -261,3 +261,52 @@ test('GET /auth/callback exchanges with the persona client and stores against it
     expect.any(Object),
   );
 });
+
+test('UR-20261012-073 — a successful callback records the OAuth verification', async () => {
+  // A completed code exchange is PROOF Discord accepted the redirect URI: the exchange cannot
+  // succeed unless the authorize leg sent a registered one. Discord exposes no API to read an
+  // application's registered redirect URIs, so this is the only honest signal there is.
+  const markOauthVerified = vi.fn(async () => {});
+  const app = Fastify();
+  registerOAuthRoutes(app, {
+    client: makeClient() as never,
+    logger,
+    defaultGuildId: 'g1',
+    applicationId: 'app1',
+    tokens: makeTokens() as never,
+    markOauthVerified,
+  });
+
+  const res = await app.inject({
+    method: 'GET',
+    url: '/auth/callback?code=code123&state=S',
+    headers: { cookie: OK_COOKIE },
+  });
+
+  expect(res.statusCode).toBe(200);
+  expect(markOauthVerified).toHaveBeenCalledWith('app1');
+});
+
+test('UR-20261012-073 — a failing verification write does not fail the callback', async () => {
+  // The authorization itself succeeded; a bookkeeping write must not turn that into an error page.
+  const app = Fastify();
+  registerOAuthRoutes(app, {
+    client: makeClient() as never,
+    logger,
+    defaultGuildId: 'g1',
+    applicationId: 'app1',
+    tokens: makeTokens() as never,
+    markOauthVerified: async () => {
+      throw new Error('database unavailable');
+    },
+  });
+
+  const res = await app.inject({
+    method: 'GET',
+    url: '/auth/callback?code=code123&state=S',
+    headers: { cookie: OK_COOKIE },
+  });
+
+  expect(res.statusCode).toBe(200);
+  expect(res.body).toContain('Connected');
+});

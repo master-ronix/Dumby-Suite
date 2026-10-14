@@ -40,6 +40,12 @@ export interface PersonaIdentity {
    * bot-token fallback (Route B) applies.
    */
   readonly oauthClientSecretSealed?: SealedEnvelope;
+  /**
+   * UR-20261012-073 — when this persona's OAuth leg last completed. A successful code exchange is
+   * proof Discord accepted the persona's redirect URI, because the exchange cannot succeed unless the
+   * authorize leg sent a registered one. Absent means "never completed".
+   */
+  readonly oauthVerifiedAt?: string;
 }
 
 export interface PersonaRegistrationInput {

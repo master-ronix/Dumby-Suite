@@ -354,6 +354,11 @@ export function createPageDataProvider(
             hasOAuth:
               row['oauthClientSecretSealed'] !== null &&
               row['oauthClientSecretSealed'] !== undefined,
+            // UR-20261012-073 — whether this persona's OAuth leg has EVER completed. Discord exposes
+            // no API to read an application's registered redirect URIs, so a successful exchange is
+            // the only honest proof the redirect URL is configured. The page reports the FACT; the
+            // persona module decides how to present it.
+            oauthVerified: row['oauthVerifiedAt'] !== null && row['oauthVerifiedAt'] !== undefined,
           }));
       } catch (err) {
         logger.warn('page-data-persona-unavailable', { guildId, reason: String(err) });

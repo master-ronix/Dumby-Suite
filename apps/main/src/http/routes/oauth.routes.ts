@@ -14,6 +14,11 @@ export const OAUTH_GUILD_COOKIE = 'dumby_oauth_guild';
 export const OAUTH_APP_COOKIE = 'dumby_oauth_app';
 
 export interface OAuthRoutesDeps {
+  /**
+   * UR-20261012-073 — called when a persona's OAuth leg completes, so the framework records the one
+   * thing that proves its redirect URI is registered. Optional: absent, the callback behaves as before.
+   */
+  markOauthVerified?: (applicationId: string) => Promise<void>;
   client: DiscordOAuth2Client;
   logger: Logger;
   /** The guild the dashboard's default button authorizes for. */
@@ -217,6 +222,17 @@ export function registerOAuthRoutes(app: FastifyInstance, deps: OAuthRoutesDeps)
         guildId,
         userId: user.id,
       });
+      // UR-20261012-073 — this exchange could not have succeeded unless Discord accepted the
+      // redirect URI, so the persona is now VERIFIED. Recorded, because it is the only honest answer
+      // to "is the redirect URL configured?" — Discord exposes no API to read the registered list.
+      try {
+        await deps.markOauthVerified?.(tokenApplicationId);
+      } catch (err) {
+        logger.warn('oauth2-verified-record-failed', {
+          applicationId: tokenApplicationId,
+          error: String(err),
+        });
+      }
       return reply
         .type('text/html')
         .send(

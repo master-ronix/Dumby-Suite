@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.77
+version: 5.5.78
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,40 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.78 — is the redirect URL configured? (UR-20261012-073) — 2026-10-14
+
+- 2026-10-14 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- THE REQUIREMENT: a persona is a separate Discord application, so its OAuth2 REDIRECT URL must be
+  registered on that application before its combined install+authorize invite works. The operator asked
+  that the Invite control become available at Info once it is -- and that the framework CHECK the state
+  rather than assume it.
+- A PROPOSED METHOD THAT DOES NOT WORK, recorded so it is not re-proposed: a server-side probe against
+  Discord's authorize endpoint, on the theory that Discord validates the redirect BEFORE the consent
+  screen. It does not hold. The docs document no pre-consent redirect validation and there is no API to
+  read an application's registered redirect URIs. A MALFORMED URI returns a JSON error
+  (`{"redirect_uri": ["Not a well formed URL."]}`) -- a SYNTAX check, not a registration check. An
+  unregistered-but-well-formed URI surfaces as an error page AFTER the user reaches consent, so it needs
+  a logged-in browser session: a server-side request receives the login page, not a verdict. The token
+  endpoint DOES validate redirect_uri -- but needs a real code first, which needs a user. The probe
+  cannot answer the question without the one thing it was meant to avoid.
+- THE HONEST SIGNAL, WHICH ALREADY EXISTED: a successful code exchange is PROOF, because it cannot
+  succeed unless the authorize leg sent a registered redirect URI. The callback already performed that
+  exchange and logged `oauth2-connected` -- and then THREW THE PROOF AWAY. The framework now RECORDS it
+  (`persona_identities.oauthVerifiedAt`), written on the success path, keyed by application id. Absent
+  means "never completed" -- the honest default, and the state every existing persona is in.
+- WHAT CHANGED: a migration adds the nullable column; `markOauthVerified` writes it (store, identity
+  type, row type and the in-memory mirror); the callback calls it on success, GUARDED, because the
+  authorization itself succeeded and a bookkeeping failure must not turn a working connect into an error
+  page; `page-data` exposes `oauthVerified` as a boolean. The page reports the FACT; the persona module
+  decides how to present it.
+- RECORDED: a capability I described confidently and had not verified. Checking the assumption showed it
+  was wrong; the honest move was to record that rather than build the thing and let it fail in
+  production. RECORDED: the system was ALREADY producing the answer -- where a question feels
+  unanswerable, first ask what the system already knows.
+- **Verification:** typecheck, lint, format clean; the OAuth route suite 14 tests green.
 
 ---
 

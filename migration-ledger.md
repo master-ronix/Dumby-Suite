@@ -697,3 +697,18 @@ green. Acceptance ids: `ACC-UR-071-1…7`.
 
 **Verification.** `typecheck`, `lint`, `format` green locally; SDK builds; the hooks suite 9 tests
 green. Acceptance ids: `ACC-UR-072-1…8`.
+
+---
+
+## Is the Redirect URL Configured? (UR-20261012-073) — 2026-10-14
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-137 | `persona_identities.oauthVerifiedAt` added (nullable) | DONE |
+| DP-138 | `markOauthVerified` on the store, identity, row type and in-memory mirror | DONE |
+| DP-139 | The OAuth callback records it on success, guarded | DONE |
+| DP-140 | A failing verification write does not fail the callback | DONE |
+| DP-141 | `page-data` exposes `oauthVerified` for the persona page to render | DONE |
+
+**Verification.** `typecheck`, `lint`, `format` green locally; the OAuth route suite 14 tests green.
+Acceptance ids: `ACC-UR-073-1…5`.

@@ -8,6 +8,12 @@ export interface PersonaIdentityStore {
   findByApplicationId(discordApplicationId: string): Promise<PersonaIdentity | undefined>;
   findByBoundGuildId(guildId: string): Promise<PersonaIdentity | undefined>;
   list(): Promise<PersonaIdentity[]>;
+  /**
+   * UR-20261012-073 — record that this persona's OAuth leg completed. Keyed by application id,
+   * because that is what the callback holds. A no-op for an unknown application (the callback also
+   * serves the main bot, which is not a persona).
+   */
+  markOauthVerified(discordApplicationId: string): Promise<void>;
 }
 
 export interface PersonaBindingStore {
@@ -31,6 +37,7 @@ interface PersonaIdentityRow {
   botTokenDigest: string;
   botTokenSealed: SealedEnvelope;
   oauthClientSecretSealed?: SealedEnvelope | null;
+  oauthVerifiedAt?: Date | string | null;
 }
 
 interface PersonaBindingRow {
@@ -88,6 +95,14 @@ export class PostgresPersonaIdentityStore implements PersonaIdentityStore {
       .whereNull('deletedAt')
       .limit(1);
     return rows[0] === undefined ? undefined : toIdentity(rows[0]);
+  }
+
+  /** UR-20261012-073 — a completed OAuth leg proves the redirect URI is registered. */
+  async markOauthVerified(discordApplicationId: string): Promise<void> {
+    await this.knex('persona_identities')
+      .where({ discordApplicationId })
+      .whereNull('deletedAt')
+      .update({ oauthVerifiedAt: this.knex.fn.now(), updatedAt: this.knex.fn.now() });
   }
 
   async list(): Promise<PersonaIdentity[]> {
@@ -189,6 +204,17 @@ export class InMemoryPersonaStores implements PersonaIdentityStore, PersonaBindi
 
   list(): Promise<PersonaIdentity[]> {
     return Promise.resolve([...this.identities.values()]);
+  }
+
+  /** UR-20261012-073 — the in-memory mirror of the persisted mark. */
+  markOauthVerified(discordApplicationId: string): Promise<void> {
+    const persona = [...this.identities.values()].find(
+      (p) => p.discordApplicationId === discordApplicationId,
+    );
+    if (persona !== undefined) {
+      this.identities.set(persona.id, { ...persona, oauthVerifiedAt: new Date().toISOString() });
+    }
+    return Promise.resolve();
   }
 
   bind(binding: PersonaBinding): Promise<void> {
