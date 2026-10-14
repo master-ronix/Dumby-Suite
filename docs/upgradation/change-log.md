@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.88
+version: 5.5.89
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,43 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.89 — a revoked persona kept its application id forever (UR-20261012-084) — 2026-10-14
+
+- 2026-10-14 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- THE FINDING: re-registering the persona's OWN application after a revoke failed with `duplicate key
+  value violates unique constraint "persona_identities_discordapplicationid_unique"`. The persona had
+  been revoked -- retired, soft-deleted, absent from every read -- and its application id was still
+  taken. `20260101000034_align_persona_model` declared the column with a PLAIN `.unique()`, and a plain
+  unique constraint constrains EVERY row including soft-deleted ones. So revoking a persona made its
+  application permanently unregistrable: gone from the operator's view, its key still held.
+- THE MECHANISM: soft delete is the corpus's removal mechanism, so uniqueness on a soft-deletable table
+  must be PARTIAL -- unique among live rows only. The corpus already has exactly that primitive,
+  `createPartialUniqueNotDeleted` (a unique index `where "deletedAt" is null`), used by `guild_members`,
+  `guild_roles`, `guild_module_states` and others. `persona_identities` never got it.
+- WHAT CHANGED: migration `20260101000052_persona_application_id_partial_unique` -- creates the partial
+  unique index FIRST, then drops the plain constraint, so there is never a window in which an
+  application id is unconstrained. `down()` restores the plain constraint. NO application code changed;
+  the read and write paths were already correct and the schema was not.
+- CORRECTION TO UR-081: it states a revoked persona's "application id becomes free to register again,
+  which is the difference between revoked and temporarily switched off". That sentence was written from
+  INTENT, not from the schema, and it was FALSE. UR-081 now carries an explicit correction note rather
+  than a silent rewrite.
+- VERIFIED AGAINST A REAL POSTGRESQL, not by inspection: the migration was applied through
+  `knex.migrate.latest()` and the schema and behaviour asserted directly -- the index is
+  `... WHERE ("deletedAt" IS NULL)`; zero unique CONSTRAINTS remain; a soft-deleted persona's id CAN be
+  registered again; and a second LIVE persona with the same id is STILL refused. Both directions matter:
+  the first is the fix, the second is the property the plain constraint existed to provide.
+- RECORDED: a claim about behaviour that is not checked against the schema is a guess with a confident
+  tone. No test could have caught it -- the API returned 204, the list came back empty, and the only way
+  to discover the falsehood was to register the application again, which is what the operator did.
+- RECORDED: soft delete and uniqueness have to be designed together. Any unique key on a soft-deletable
+  table is a decision about what happens after deletion, and "unique" defaults to a decision nobody
+  made. A sweep for `.unique()` on soft-deletable tables is the mechanical follow-up.
+- **Verification:** 122 files / 1262 tests / 0 failures; typecheck, lint, format clean; the migration
+  proved against embedded PostgreSQL in both directions.
 
 ---
 

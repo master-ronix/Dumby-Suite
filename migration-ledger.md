@@ -854,3 +854,17 @@ Acceptance ids: `ACC-UR-082-1…4`.
 
 **Verification.** 122 files / 1262 tests / 0 failures; `typecheck`, `lint`, `format` green locally.
 Acceptance ids: `ACC-UR-083-1…4`.
+
+## A Revoked Persona Kept Its Application Id Forever (UR-20261012-084) — 2026-10-14
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-191 | The finding: a plain unique constraint constrains soft-deleted rows too | DONE |
+| DP-192 | Migration `20260101000052`: partial unique index replaces the plain constraint | DONE |
+| DP-193 | The index is created BEFORE the constraint is dropped — no unconstrained window | DONE |
+| DP-194 | UR-081's false claim carries an explicit correction note | DONE |
+| DP-195 | Proved against a real PostgreSQL, both directions of the constraint | DONE |
+
+**Verification.** 122 files / 1262 tests / 0 failures; `typecheck`, `lint`, `format` green locally.
+Migration applied through `knex.migrate.latest()` against embedded PostgreSQL and asserted directly.
+Acceptance ids: `ACC-UR-084-1…4`.
