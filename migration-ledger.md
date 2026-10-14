@@ -650,3 +650,19 @@ coverage 68.98% branch, no threshold error. Acceptance ids: `ACC-UR-069-1…7`.
 
 **Verification.** `typecheck`, `lint`, `format` green locally; router suite 39 tests green.
 Acceptance ids: `ACC-UR-068-1…5`.
+
+---
+
+## The Context Reaches Events, Jobs and Tasks (UR-20261012-070) — 2026-10-12
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-120 | The SDK declares a `ModuleContextStore`; the host installs the carrier | DONE |
+| DP-121 | `currentModuleContext` / `requireModuleContext` / `runWithModuleContext` exported | DONE |
+| DP-122 | The app installs an `AsyncLocalStorage`-backed store at boot | DONE |
+| DP-123 | One resolver: fixed process identity + per-invocation guild + standing | DONE |
+| DP-124 | The resolver never throws; a fault yields the conservative standing | DONE |
+| DP-125 | The loader wraps events, jobs and tasks in one place | DONE |
+
+**Verification.** `typecheck`, `lint`, `format` green locally; SDK builds; the context suite 10 tests
+green. Acceptance ids: `ACC-UR-070-1…7`.

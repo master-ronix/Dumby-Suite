@@ -12,6 +12,28 @@ import type { CoreRenderer } from '../rendering/core-renderer.js';
 import type { QueueManager } from '../queue/queue-manager.js';
 import type { EventRouter } from '../events/event-router.js';
 import type { Scheduler } from '../queue/scheduler.js';
+import { runWithModuleContext } from '@workspace/swastik';
+import type { ModuleContextResolver } from './execution-context.js';
+
+/** The first guild id among an event's arguments (a Message, GuildMember, …). */
+function guildIdFromArgs(args: readonly unknown[]): string | null {
+  for (const arg of args) {
+    if (typeof arg !== 'object' || arg === null) continue;
+    const candidate = arg as { guildId?: unknown; guild?: { id?: unknown } };
+    if (typeof candidate.guildId === 'string') return candidate.guildId;
+    if (typeof candidate.guild?.id === 'string') return candidate.guild.id;
+  }
+  return null;
+}
+
+/** The guild a job belongs to, when its payload names one. */
+function guildIdFromJobData(data: unknown): string | null {
+  if (typeof data !== 'object' || data === null) return null;
+  const candidate = data as { guildId?: unknown; guild?: { id?: unknown } };
+  if (typeof candidate.guildId === 'string') return candidate.guildId;
+  if (typeof candidate.guild?.id === 'string') return candidate.guild.id;
+  return null;
+}
 
 export interface ModuleLoadReport {
   order: readonly string[];
@@ -58,6 +80,34 @@ export class ModuleLoader {
     private readonly logger: Logger,
     private readonly policy?: SecurityPolicy,
   ) {}
+
+  /**
+   * UR-20261012-070 — the module execution-context resolver, for the three entry points that are not
+   * a command. Set after construction because the application id it needs comes from the Discord
+   * client, which is not ready when Stage 12 registers a module's handlers. Absent, the handlers run
+   * exactly as before — no context, no change in behaviour.
+   */
+  private moduleContext: ModuleContextResolver | undefined;
+
+  setModuleContextResolver(resolver: ModuleContextResolver): void {
+    this.moduleContext = resolver;
+  }
+
+  /**
+   * Run a piece of module work with its context attached. The resolver never throws (UR-20261012-068:
+   * a context is advisory), so neither does this.
+   */
+  private async withModuleContext<T>(
+    moduleId: string,
+    guildId: string | null,
+    source: 'event' | 'job' | 'task',
+    fn: () => Promise<T> | T,
+  ): Promise<T> {
+    const resolver = this.moduleContext;
+    if (resolver === undefined) return await fn();
+    const context = await resolver(moduleId, guildId, source);
+    return await runWithModuleContext(context, fn);
+  }
 
   validateAll(): void {
     for (const mod of this.registry.all()) {
@@ -157,7 +207,14 @@ export class ModuleLoader {
                 name: job.queueName,
                 // UR-20261012-069 — the owner travels with the queue, so a per-guild disable stops it.
                 moduleId: mod.manifest.name,
-                processor: (jb) => Promise.resolve(job.process({ data: jb.data })),
+                // UR-20261012-070 — the job runs inside the module's execution context.
+                processor: (jb) =>
+                  this.withModuleContext(
+                    mod.manifest.name,
+                    guildIdFromJobData(jb.data),
+                    'job',
+                    () => Promise.resolve(job.process({ data: jb.data })),
+                  ),
               });
             }
           }
@@ -172,9 +229,12 @@ export class ModuleLoader {
                   event: handler.event as never,
                   ...(handler.once !== undefined ? { once: handler.once } : {}),
                   ...(handler.sheddable !== undefined ? { sheddable: handler.sheddable } : {}),
-                  handle: async (...args: unknown[]) => {
-                    await handler.handle(...args);
-                  },
+                  // UR-20261012-070 — the handler runs inside the module's execution context, so a
+                  // module can ask which profile is answering and where, exactly as a command can.
+                  handle: async (...args: unknown[]) =>
+                    this.withModuleContext(mod.manifest.name, guildIdFromArgs(args), 'event', () =>
+                      Promise.resolve(handler.handle(...args)),
+                    ),
                 },
                 mod.manifest.name,
               );
@@ -190,9 +250,11 @@ export class ModuleLoader {
                 {
                   name: task.name,
                   cron: task.cron,
-                  execute: async () => {
-                    await task.execute();
-                  },
+                  // UR-20261012-070 — a task has no guild, so its context carries guildId null.
+                  execute: async () =>
+                    this.withModuleContext(mod.manifest.name, null, 'task', () =>
+                      Promise.resolve(task.execute()),
+                    ),
                 },
                 // UR-20261012-069 — the owner travels with the task, so a disabled module's cron stops.
                 mod.manifest.name,

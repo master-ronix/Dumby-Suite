@@ -26,6 +26,11 @@ import { loadPolicyLockfile } from '../module-system/policy-lockfile.js';
 import { ModuleLoader } from '../module-system/loader.js';
 import { defaultEnabledForTier, resolveModuleEnabled } from '../module-system/tier-rules.js';
 import { makeModuleEnablement } from '../module-system/enablement.js';
+import {
+  createModuleContextStore,
+  makeModuleContextResolver,
+} from '../module-system/execution-context.js';
+import { installModuleContextStore } from '@workspace/swastik';
 import { PermissionResolver } from '../permissions/resolver.js';
 import { AdminEvalGate } from '../permissions/admin-eval-gate.js';
 import { evaluateRank } from '../permissions/rank.js';
@@ -789,6 +794,47 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   moduleEnabledGate = (moduleId, guildId) => isModuleEnabledForGuild(guildId, moduleId);
   queueModuleGate = moduleEnabledGate;
   schedulerModuleGate = isModuleEnabledAnywhere;
+
+  // UR-20261012-070 — the module execution context, for the entry points that are not a command.
+  // The SDK stays environment-neutral, so the CARRIER is installed here: AsyncLocalStorage, the same
+  // mechanism the framework's own event bus uses. `identity()` is late-bound and async because the
+  // application id comes from the Discord client (not ready at Stage 12) and a persona's bound guild
+  // is a database read.
+  installModuleContextStore(createModuleContextStore());
+  const processIdentity = async (): Promise<{
+    profileId: string;
+    kind: 'main' | 'persona';
+    applicationId: string;
+    profileName: string;
+    boundGuildId?: string;
+  }> => {
+    const personaId = config.get('PERSONA_ID');
+    const isPersona = personaId !== '';
+    let boundGuildId: string | undefined;
+    if (isPersona) {
+      try {
+        boundGuildId = (await personaIdentities.findById(personaId))?.boundGuildId;
+      } catch (err) {
+        logger.warn(`module-context-persona-lookup-failed id=${personaId} reason=${String(err)}`);
+      }
+    }
+    return {
+      profileId: isPersona ? personaId : 'main',
+      kind: isPersona ? 'persona' : 'main',
+      applicationId: discordClient?.application?.id ?? '',
+      profileName: discordClient?.user?.username ?? 'Dumby',
+      ...(boundGuildId !== undefined && boundGuildId !== '' ? { boundGuildId } : {}),
+    };
+  };
+  const moduleContextResolver = makeModuleContextResolver({
+    identity: processIdentity,
+    registry: moduleRegistry,
+    isModuleEnabledForGuild,
+    resolveOwner: (guildId, moduleSlug) =>
+      personaBindingService.resolveCommandOwner(guildId, moduleSlug),
+    logger,
+  });
+
   const TIER_LABEL: Readonly<Record<string, string>> = {
     admin: 'Admin',
     core: 'Core',
@@ -1118,6 +1164,7 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   const policyPath = config.get('SECURITY_POLICY_LOCKFILE');
   const securityPolicy = existsSync(policyPath) ? loadPolicyLockfile(policyPath) : undefined;
   const moduleLoader = new ModuleLoader(moduleRegistry, moduleContainer, logger, securityPolicy);
+  moduleLoader.setModuleContextResolver(moduleContextResolver);
   moduleLoader.validateAll();
 
   progress.advanceTo('MODULE_LOAD');

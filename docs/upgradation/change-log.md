@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.74
+version: 5.5.75
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,36 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.75 — the context reaches the other three entry points (UR-20261012-070) — 2026-10-12
+
+- 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- THE FINDING: UR-067 gave a COMMAND an `identity` and a `module` standing, because a command carries
+  an interaction. A module has FOUR entry points and the other three carry none: a gateway event
+  handler receives Discord's own argument list, a job processor its payload, and a cron task NOTHING AT
+  ALL. So "which profile is running this, and where" had no answer on three of four paths -- exactly
+  what a module needs when the main bot and a persona both run it in different guilds.
+- WHY NOT A PARAMETER: a handler is `handle: (...args: unknown[])`. An APPENDED context lands inside a
+  rest parameter and is invisible; a PREPENDED one silently breaks every handler ever written. The
+  context travels out of band with AsyncLocalStorage -- the mechanism the framework's own event bus
+  already uses -- so NO handler signature changes.
+- WHERE THE CARRIER LIVES: AsyncLocalStorage is a Node builtin and the SDK is deliberately
+  environment-neutral ("types": [], "lib": ["ES2023"], and until now not one Node import). The first
+  attempt put it in the SDK and the build failed on `node:async_hooks`. Inverted: the SDK declares a
+  `ModuleContextStore` interface, the APP installs the AsyncLocalStorage-backed implementation, and a
+  module imports only `currentModuleContext()`. The SDK gains no dependency.
+- THE RESOLVER: the process identity (profileId = PERSONA_ID or 'main', kind, applicationId,
+  profileName) is a FIXED tuple -- the router is built per identity (UR-049) -- so only the guild
+  varies. Late-bound and async, because the application id comes from the Discord client (not ready at
+  Stage 12) and a persona's bound guild is a database read. It NEVER throws: a context is ADVISORY
+  (UR-068), so a fault falls back to `enabled: false`, `owner: 'main'`.
+- ONE WRAP: the loader is the single place events, jobs and tasks register, so one wrap covers all
+  three and the module's handler does not know it was wrapped.
+- RECORDED: a package's constraints are part of its contract. RECORDED: the three entry points are not
+  symmetric -- a task's context honestly reports `guildId: null` rather than inventing one.
+- **Verification:** typecheck, lint, format clean; SDK builds; the new suite 10 tests green.
 
 ---
 

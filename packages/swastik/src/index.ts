@@ -24,3 +24,14 @@ export {
   EventCatalogError,
   type EventCatalogEntry,
 } from "./events.js";
+export type {
+  ModuleEntryPoint,
+  ModuleExecutionContext,
+  ModuleContextStore,
+} from "./context.js";
+export {
+  currentModuleContext,
+  installModuleContextStore,
+  requireModuleContext,
+  runWithModuleContext,
+} from "./context.js";
