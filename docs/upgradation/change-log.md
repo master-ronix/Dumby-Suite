@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.82
+version: 5.5.83
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,37 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.83 — the main bot owns what the main bot enabled (UR-20261012-078) — 2026-10-14
+
+- 2026-10-14 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- THE FINDING: the install path's claim branch is PERSONA-ONLY -- `if (owner === undefined && acting
+  !== undefined)`. So the MAIN BOT NEVER RECORDS A CLAIM: it enables a module, leaves no binding, and
+  `owner` stays undefined -- which means ANY PERSONA MAY LATER CLAIM A MODULE THE MAIN BOT ENABLED. The
+  operator's rule is the opposite: "if the hello module is enabled by the main bot then it is the
+  property of the main bot only". That rule was not enforced, because the main bot's ownership was
+  never written down.
+- THE MODEL WAS ASSUMED IN THREE PLACES AND STATED IN NONE: the router's standing build
+  (`?? 'main'`), the page-data holder check (`?? MAIN_PROFILE_ID`) and the module context's standing
+  all already behaved as if the main bot owned an unbound module -- each papering over the same
+  `undefined`. The ownership READ now answers it once and those fallbacks become redundant rather than
+  load-bearing.
+- WHAT CHANGED: `resolveCommandOwner` -- the ONE ownership read -- answers (1) a live persona binding's
+  personaId, (2) 'main' when the guild has the module ENABLED and no persona holds it, (3) undefined
+  otherwise. The enablement read is an OPTIONAL, LATE-BOUND dependency, so a read-only caller can still
+  construct the service; absent, ownership is UNANSWERED RATHER THAN GUESSED. A failing read is logged
+  and leaves it unanswered. 'main' cannot collide with a persona id, which is a UUID.
+- TWO SITES HAD TO LEARN THE MAIN BOT'S OWN ID, because inferring 'main' would otherwise have made the
+  main bot REFUSE ITS OWN MODULE: the dispatch assertion compared `owner === residentPersonaId` (which
+  is `undefined` for the main bot) and now compares `residentPersonaId ?? 'main'`; the install path's
+  actor comparison used `acting?.id` (also undefined for the main bot) and is now `acting?.id ?? 'main'`.
+- RECORDED: a rule that lives only in the operator's head is not a rule the system has -- three callers
+  independently assumed it, none could enforce it, and the claim path contradicted it. RECORDED:
+  inferring an owner creates a NEW failure mode, the owner refusing itself; a change to a shared read is
+  only half done when the read is fixed -- the comparisons have to agree.
+- **Verification:** 121 files / 1237 tests / 0 failures; typecheck, lint, format clean.
 
 ---
 

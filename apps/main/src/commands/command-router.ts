@@ -790,7 +790,9 @@ export class CommandRouter {
       );
     }
     if (owner === undefined) return;
-    if (owner === this.options.residentPersonaId) return;
+    // UR-20261012-078 — the actor's own id is 'main' for the main bot, whose residentPersonaId is
+    // undefined. Comparing against `undefined` would make the main bot refuse its OWN module.
+    if (owner === (this.options.residentPersonaId ?? 'main')) return;
     // UR-20261012-077 — name the actor (this router's own identity).
     throw new PersonaOccupiedError(
       guildId,

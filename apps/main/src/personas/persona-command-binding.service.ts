@@ -25,6 +25,13 @@ export class PersonaCommandBindingService {
      * REFUSED rather than waved through.
      */
     private readonly registrars?: PersonaRegistrarStore,
+    /**
+     * UR-20261012-078 — whether the guild has the module ENABLED. Needed to answer the ownership
+     * question for a module no persona holds: only the main bot enables a module nobody claimed, so
+     * an enabled module with no binding IS the main bot's. Optional so a read-only caller can still
+     * construct the service; absent, ownership is unanswered rather than guessed.
+     */
+    private readonly isModuleEnabled?: (guildId: string, moduleSlug: string) => Promise<boolean>,
   ) {}
 
   async registerPersona(
@@ -89,9 +96,31 @@ export class PersonaCommandBindingService {
     this.logger.info('persona-module-unbound', { guildId, moduleSlug });
   }
 
+  /**
+   * UR-20261012-061 / UR-20261012-078 — the ONE ownership read.
+   *
+   * A persona binding answers first. Otherwise, a module the guild has ENABLED belongs to the MAIN
+   * BOT: the claim branch is persona-only, so only the main bot ever enables a module nobody claimed,
+   * and the operator's rule is that such a module "is the property of the main bot only".
+   *
+   * Before this, an enabled-but-unbound module answered `undefined`, which several callers already
+   * papered over with `?? 'main'` — the model was assumed in three places and stated in none. It is
+   * stated here once. `'main'` cannot collide with a persona id, which is a UUID.
+   */
   async resolveCommandOwner(guildId: string, moduleSlug: string): Promise<string | undefined> {
     const binding = await this.bindings.findLive(guildId, moduleSlug);
-    return binding?.personaId;
+    if (binding !== undefined) return binding.personaId;
+    if (this.isModuleEnabled === undefined) return undefined;
+    try {
+      return (await this.isModuleEnabled(guildId, moduleSlug)) ? 'main' : undefined;
+    } catch (err) {
+      this.logger.warn('resolve-command-owner-enabled-read-failed', {
+        guildId,
+        moduleSlug,
+        error: String(err),
+      });
+      return undefined;
+    }
   }
 
   async commandsForGuild(guildId: string): Promise<readonly PersonaBinding[]> {

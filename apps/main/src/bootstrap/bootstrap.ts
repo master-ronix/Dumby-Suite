@@ -549,11 +549,20 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     parseRegistrarSeed(config.get('PERSONA_REGISTRAR_AUTHORITIES')),
     (message) => logger.warn(message),
   );
+  // UR-20261012-078 — the ownership read needs to know whether a module is ENABLED, and the
+  // enablement read is defined further below, so this is late-bound. Until it is armed the answer is
+  // `false`, which leaves ownership UNANSWERED rather than guessed — the previous behaviour.
+  let moduleEnabledForOwnership:
+    ((guildId: string, moduleSlug: string) => Promise<boolean>) | undefined;
   const personaBindingService = new PersonaCommandBindingService(
     personaIdentities,
     personaBindings,
     logger,
     personaRegistrars,
+    (guildId, moduleSlug) =>
+      moduleEnabledForOwnership === undefined
+        ? Promise.resolve(false)
+        : moduleEnabledForOwnership(guildId, moduleSlug),
   );
 
   const guildConfigService = new GuildConfigService(
@@ -794,6 +803,8 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   moduleEnabledGate = (moduleId, guildId) => isModuleEnabledForGuild(guildId, moduleId);
   queueModuleGate = moduleEnabledGate;
   schedulerModuleGate = isModuleEnabledAnywhere;
+  // UR-20261012-078 — now that the enablement read exists, arm the ownership read's gate.
+  moduleEnabledForOwnership = isModuleEnabledForGuild;
 
   // UR-20261012-070 — the module execution context, for the entry points that are not a command.
   // The SDK stays environment-neutral, so the CARRIER is installed here: AsyncLocalStorage, the same
@@ -982,7 +993,9 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
       applicationId === undefined
         ? undefined
         : await personaIdentities.findByApplicationId(applicationId);
-    if (owner !== undefined && acting?.id !== owner) {
+    // UR-20261012-078 — the actor is 'main' when no application identified it (the main bot's own
+    // install), matching the ownership read's answer for an enabled-but-unbound module.
+    if (owner !== undefined && (acting?.id ?? 'main') !== owner) {
       logger.warn(
         `marketplace-module-occupied module=${moduleId} guild=${guildId} owner=${owner} actor=${acting?.id ?? 'main'}`,
       );

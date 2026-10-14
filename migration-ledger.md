@@ -769,3 +769,18 @@ in CI. Acceptance ids: `ACC-UR-076-1…4`.
 | DP-159 | UR-076's "every commit was skipped" claim corrected (only UR-074/075) | DONE |
 
 **Verification.** `typecheck`, `lint`, `format` green locally. Acceptance ids: `ACC-UR-077-1…4`.
+
+---
+
+## The Main Bot Owns What the Main Bot Enabled (UR-20261012-078) — 2026-10-14
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-160 | `resolveCommandOwner` answers `'main'` for an enabled-but-unbound module | DONE |
+| DP-161 | The enablement read is an optional, late-bound dependency | DONE |
+| DP-162 | A missing or failing read leaves ownership unanswered, never guessed | DONE |
+| DP-163 | The dispatch assertion accepts the main bot's own id (`residentPersonaId ?? 'main'`) | DONE |
+| DP-164 | The install path's actor defaults to `'main'` | DONE |
+
+**Verification.** 121 files / 1237 tests / 0 failures; `typecheck`, `lint`, `format` green locally.
+Acceptance ids: `ACC-UR-078-1…6`.
