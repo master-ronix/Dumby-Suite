@@ -613,4 +613,33 @@ describe('module ownership is PER PROFILE (UR-20261012-061)', () => {
     expect(hello?.occupied).toBe(true);
     expect(String(hello?.note)).toContain('Occupied by a persona');
   });
+
+  test('UR-20261012-079 - a module the MAIN BOT enabled reads as the main bot\u2019s, not a persona\u2019s', async () => {
+    // UR-078 made the ownership read answer `'main'` for an enabled-but-unbound module. The occupancy
+    // note keyed on `holder === undefined` as a proxy for "the main bot", so the answer inverted: a
+    // module the main bot enabled started reading as "Occupied by a persona - the main bot cannot take
+    // it". This pins both spellings of "the main bot".
+    const provider = createPageDataProvider(
+      makeDeps({
+        resolveOwner: async (_guildId: string, slug: string) =>
+          slug === 'hello-world' ? 'main' : undefined,
+      }),
+    );
+    // Seen from a PERSONA, a module the main bot holds is occupied - and says who holds it.
+    const asPersona = await provider('browse', 'guild-1', 0, undefined, 'app-1', 'persona-1');
+    const entries = asPersona['modules'] as Array<{
+      id: string;
+      occupied?: boolean;
+      note?: string;
+    }>;
+    const hello = entries.find((m) => m.id === 'hello-world');
+    expect(hello?.occupied).toBe(true);
+    expect(String(hello?.note)).toContain('Occupied by the main bot');
+    expect(String(hello?.note)).not.toContain('Occupied by a persona');
+
+    // Seen from the MAIN BOT, its own module is NOT occupied.
+    const asMain = await provider('browse', 'guild-1', 0, undefined, 'app-1', 'main');
+    const mainEntries = asMain['modules'] as Array<{ id: string; occupied?: boolean }>;
+    expect(mainEntries.find((m) => m.id === 'hello-world')?.occupied).toBeUndefined();
+  });
 });

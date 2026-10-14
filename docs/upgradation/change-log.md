@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.83
+version: 5.5.84
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,35 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.84 — the occupancy note inverted (UR-20261012-079) — 2026-10-14
+
+- 2026-10-14 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- HOW IT WAS FOUND: UR-078 changed a read every page consults, so the Railway session asked for a look
+  in Discord -- specifically that a persona's `/browse` should show anything the main bot enabled as
+  OCCUPIED. Good instinct, and the check could be done in code too: the occupancy path is a pure
+  function of the ownership read. Tracing it found a defect, and one of my own making.
+- THE DEFECT: the occupancy note was built as `occupiedBy: holder === undefined ? 'the main bot' : 'a
+  persona'` with a matching note. `holder === undefined` was a PROXY for "the main bot", because an
+  enabled-but-unbound module used to answer `undefined`. UR-078 made that read answer `'main'`
+  EXPLICITLY -- so the proxy INVERTED. A module the main bot enabled began rendering as "Occupied by a
+  persona in this server -- THE MAIN BOT CANNOT TAKE IT": the main bot told it cannot take its own
+  module, with the holder misdescribed as a persona. The ownership change was correct; a consumer that
+  had encoded the OLD spelling of "unbound" was not.
+- WHAT CHANGED: both spellings are recognised -- `const heldByMain = holder === undefined || holder ===
+  MAIN_PROFILE_ID` -- and the note is built from that. A regression test pins both directions: seen from
+  a PERSONA, a main-bot module is occupied and says "Occupied by the main bot"; seen from the MAIN BOT,
+  its own module is not occupied at all.
+- RECORDED: changing a shared read means auditing its CONSUMERS, not just fixing the read. UR-078's own
+  record says a shared-read change is "only half done when the read is fixed -- the comparisons have to
+  agree". This is the same lesson one level out: the comparisons agreed, and a PRESENTATION consumer
+  that keyed on the old sentinel did not. The audit has to reach the strings, not just the logic.
+- RECORDED: a proxy for "absent" breaks the moment absence becomes explicit. `holder === undefined`
+  meant "the main bot" only while the main bot was never named. Where a sentinel is doing double duty as
+  a value, naming the value is the fix.
+- **Verification:** 121 files / 1238 tests / 0 failures; typecheck, lint, format clean.
 
 ---
 

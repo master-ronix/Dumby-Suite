@@ -698,6 +698,12 @@ export function createPageDataProvider(deps: PageDataDeps): (
         const tier = entry.manifest.tier;
         const enabled = enabledBySlug.get(slug) ?? defaultEnabledForTier(tier);
         const holder = await holderOf(guildId, slug);
+        // UR-20261012-079 — `holder === undefined` used to be the proxy for "the main bot", because
+        // an enabled-but-unbound module answered undefined. UR-078 made that read answer `'main'`
+        // explicitly, so the proxy inverted: a module the MAIN BOT enabled started reading as
+        // "Occupied by a persona — the main bot cannot take it", which is nonsense. Both spellings
+        // mean the main bot.
+        const heldByMain = holder === undefined || holder === MAIN_PROFILE_ID;
         // Occupied: enabled, and held by the OTHER profile. Stated plainly and NOT offered.
         const occupied = enabled && !(await ownedBy(guildId, slug, tier, actingProfileId));
         return {
@@ -708,11 +714,10 @@ export function createPageDataProvider(deps: PageDataDeps): (
           ...(occupied
             ? {
                 occupied: true,
-                occupiedBy: holder === undefined ? 'the main bot' : 'a persona',
-                note:
-                  holder === undefined
-                    ? 'Occupied by the main bot in this server — a persona cannot take it'
-                    : 'Occupied by a persona in this server — the main bot cannot take it',
+                occupiedBy: heldByMain ? 'the main bot' : 'a persona',
+                note: heldByMain
+                  ? 'Occupied by the main bot in this server — a persona cannot take it'
+                  : 'Occupied by a persona in this server — the main bot cannot take it',
               }
             : {}),
           // A disabled STANDARD module is "Previously Installed": selecting it re-enables it.

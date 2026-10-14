@@ -784,3 +784,17 @@ in CI. Acceptance ids: `ACC-UR-076-1…4`.
 
 **Verification.** 121 files / 1237 tests / 0 failures; `typecheck`, `lint`, `format` green locally.
 Acceptance ids: `ACC-UR-078-1…6`.
+
+---
+
+## The Occupancy Note Inverted (UR-20261012-079) — 2026-10-14
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-165 | The regression found: `holder === undefined` no longer means "the main bot" | DONE |
+| DP-166 | `heldByMain` recognises both spellings | DONE |
+| DP-167 | The note no longer mislabels a main-bot module as a persona's | DONE |
+| DP-168 | A regression test pins both directions (persona view, main-bot view) | DONE |
+
+**Verification.** 121 files / 1238 tests / 0 failures; `typecheck`, `lint`, `format` green locally.
+Acceptance ids: `ACC-UR-079-1…5`.
