@@ -48,6 +48,13 @@ export interface LoadedModule {
   onEnable?: (container: Container) => Promise<void> | void;
   /** UR-20261012-071 — §11.7's ENABLED → DISABLED hook: stop them. Always before `onUnload`. */
   onDisable?: () => Promise<void> | void;
+  /** UR-20261012-072 — §11.7: cleanup on an unrecoverable error (a load/ready failure). */
+  onError?: (error: Error) => Promise<void> | void;
+  /** UR-20261012-072 — §11.7: react to this module's per-guild config change, without a reload. */
+  onConfigChange?: (
+    guildId: string,
+    config: Readonly<Record<string, unknown>>,
+  ) => Promise<void> | void;
   onUnload?: () => Promise<void> | void;
 }
 

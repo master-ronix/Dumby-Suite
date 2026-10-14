@@ -4,7 +4,7 @@ import { topologicalLoadOrder, classifyLoadFailures, type ModuleNode } from './t
 import { resolveRegisteredDeveloper } from './developer-registry.js';
 import { validateTierRules } from './tier-rules.js';
 import { checkModuleAgainstPolicy, type SecurityPolicy } from './policy-lockfile.js';
-import type { ModuleRegistry } from './registry.js';
+import type { LoadedModule, ModuleRegistry } from './registry.js';
 import { CORE_TOKENS } from '../di/tokens.js';
 import type { CommandRegistry } from '../commands/command-registry.js';
 import { toCommandDefinition } from '../commands/module-command.js';
@@ -265,6 +265,10 @@ export class ModuleLoader {
         await mod.onLoad?.(this.container);
       } catch (err) {
         this.logger.error('module-load-failed', { module: name, error: String(err) });
+        // UR-20261012-072 — §11.7: cleanup on an unrecoverable error. The framework is giving up on
+        // this module, so it is told. Guarded like every other hook: a throw must not mask the
+        // original failure or stop the load loop.
+        await this.notifyModuleError(mod, err);
         failed.push(name);
       }
     }
@@ -274,6 +278,41 @@ export class ModuleLoader {
       throw new FatalModuleLoadError(fatal);
     }
     return { order, fatal, degraded };
+  }
+
+  /** UR-20261012-072 — the onError boundary. Never throws: cleanup must not mask the failure. */
+  private async notifyModuleError(mod: LoadedModule, err: unknown): Promise<void> {
+    if (mod.onError === undefined) return;
+    try {
+      await mod.onError(err instanceof Error ? err : new Error(String(err)));
+    } catch (hookErr) {
+      this.logger.error('module-error-hook-failed', {
+        module: mod.manifest.name,
+        error: String(hookErr),
+      });
+    }
+  }
+
+  /**
+   * UR-20261012-072 — tell a module its per-guild config changed, so it can refresh cached values
+   * instead of recomputing them on every read (§11.7, §12.14). Never throws.
+   */
+  async notifyConfigChange(
+    moduleSlug: string,
+    guildId: string,
+    config: Readonly<Record<string, unknown>>,
+  ): Promise<void> {
+    const mod = this.registry.get(moduleSlug);
+    if (mod?.onConfigChange === undefined) return;
+    try {
+      await mod.onConfigChange(guildId, config);
+    } catch (err) {
+      this.logger.error('module-config-change-hook-failed', {
+        module: moduleSlug,
+        guildId,
+        error: String(err),
+      });
+    }
   }
 
   async readyAll(order: readonly string[]): Promise<ModuleReadyReport> {
@@ -291,6 +330,8 @@ export class ModuleLoader {
         // §11.7 — a throw here (from onReady OR onEnable) leaves the module DISABLED; the bot stays
         // live and every other module continues.
         this.logger.error('module-ready-failed-non-fatal', { module: name, error: String(err) });
+        // UR-20261012-072 — the module is now DISABLED against its will: its cleanup hook fires.
+        await this.notifyModuleError(mod, err);
         readyFailures.push(name);
       }
     }

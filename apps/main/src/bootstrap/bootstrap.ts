@@ -1165,6 +1165,11 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   const securityPolicy = existsSync(policyPath) ? loadPolicyLockfile(policyPath) : undefined;
   const moduleLoader = new ModuleLoader(moduleRegistry, moduleContainer, logger, securityPolicy);
   moduleLoader.setModuleContextResolver(moduleContextResolver);
+  // UR-20261012-072 — the config service is built before the loader, so the notifier is attached
+  // here. A per-guild module config write now reaches the module's `onConfigChange` (§11.7).
+  guildConfigService.setModuleConfigChangeNotifier((moduleSlug, guildId, config) => {
+    void moduleLoader.notifyConfigChange(moduleSlug, guildId, config);
+  });
   moduleLoader.validateAll();
 
   progress.advanceTo('MODULE_LOAD');

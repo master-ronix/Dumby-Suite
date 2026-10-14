@@ -681,3 +681,19 @@ green. Acceptance ids: `ACC-UR-070-1…7`.
 
 **Verification.** `typecheck`, `lint`, `format` green locally; SDK builds; the lifecycle suite 6 tests
 green. Acceptance ids: `ACC-UR-071-1…7`.
+
+---
+
+## The Last Two Hooks (UR-20261012-072) — 2026-10-12
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-131 | `ModuleLifecycle` (SDK) declares `onError` and `onConfigChange` | DONE |
+| DP-132 | `LoadedModule` (app) declares both hooks | DONE |
+| DP-133 | `onError` fires at the load and ready failure boundaries, guarded | DONE |
+| DP-134 | A throwing `onError` never masks the original failure | DONE |
+| DP-135 | `notifyConfigChange` no-ops for an unknown/hookless module and catches throws | DONE |
+| DP-136 | `GuildConfigService.setModuleConfig` notifies, via a bootstrap-injected callback | DONE |
+
+**Verification.** `typecheck`, `lint`, `format` green locally; SDK builds; the hooks suite 9 tests
+green. Acceptance ids: `ACC-UR-072-1…8`.

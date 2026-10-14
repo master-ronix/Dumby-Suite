@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.76
+version: 5.5.77
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,36 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.77 — the last two hooks (UR-20261012-072) — 2026-10-12
+
+- 2026-10-12 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- THE FINDING: §11.7 declares six lifecycle hooks. UR-071 added `onEnable` and `onDisable`. TWO
+  remained and the SDK declared neither -- `onError` ("cleanup on an unrecoverable error") and
+  `onConfigChange` ("react to a per-guild config change without a reload"). Both are ONE LINE in the
+  spec, so the work was not the declaration -- it was finding an HONEST TRIGGER for each. A hook that
+  is declared and never fires is worse than one that is absent: it looks like a capability and behaves
+  like a no-op.
+- `onConfigChange` HAS a real trigger, and a narrow one: `setModuleConfig(guildId, moduleSlug, config)`
+  is the one place a MODULE's per-guild config is written -- exactly the event §11.7 describes. The
+  service must not know the module registry, so the notifier is INJECTED BY BOOTSTRAP.
+- `onError` DOES NOT have the trigger the doctrine implies. The unified modular doctrine specifies
+  auto-disable at 10 errors in 60 seconds (globally for Standard, per guild for Marketplace) -- and that
+  mechanism DOES NOT EXIST in the code. Rather than build an error-threshold tracker as a side effect of
+  adding a hook, the hook fires at the boundary the framework DOES have: the point where it gives up on
+  a module and marks it failed (a failing `onLoad`, or `onReady`/`onEnable`). When the auto-disable
+  threshold is built it is the natural second caller -- RECORDED, not guessed at.
+- WHAT CHANGED: both hooks declared in `ModuleLifecycle` (SDK) and `LoadedModule` (app). The loader
+  calls `onError` at both failure boundaries through one guarded helper; a throw from `onError` is
+  logged SEPARATELY and does NOT mask the original failure. `notifyConfigChange` is a no-op for an
+  unknown module or one without the hook, and catches a throwing hook so a config write never fails
+  because of it.
+- RECORDED: a declared-but-uncalled hook is a lie the type system cannot catch. RECORDED: the spec's
+  one-line hooks are load-bearing and under-specified -- pick the narrowest defensible reading, wire it,
+  and record the wider one as future work rather than inventing a mechanism the system does not have.
+- **Verification:** typecheck, lint, format clean; SDK builds; the new suite 9 tests green.
 
 ---
 

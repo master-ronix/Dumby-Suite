@@ -44,6 +44,21 @@ export interface ModuleLifecycle<Container = unknown> {
    * `onUnload`.
    */
   onDisable?: () => Promise<void> | void;
+  /**
+   * UR-20261012-072 — §11.7: "cleanup on an unrecoverable error". Called when the framework gives up
+   * on the module — a load or ready failure it cannot recover from. Idempotent; a throw here is
+   * logged and does not change the outcome.
+   */
+  onError?: (error: Error) => Promise<void> | void;
+  /**
+   * UR-20261012-072 — §11.7: "react to a per-guild config change without a reload". Called when THIS
+   * module's per-guild config is written, so a module can refresh cached values rather than recompute
+   * them on every read. Idempotent.
+   */
+  onConfigChange?: (
+    guildId: string,
+    config: Readonly<Record<string, unknown>>,
+  ) => Promise<void> | void;
   onUnload?: () => Promise<void> | void;
 }
 
