@@ -712,3 +712,18 @@ green. Acceptance ids: `ACC-UR-072-1…8`.
 
 **Verification.** `typecheck`, `lint`, `format` green locally; the OAuth route suite 14 tests green.
 Acceptance ids: `ACC-UR-073-1…5`.
+
+---
+
+## A Disabled Module Is Not a Permission Problem (UR-20261012-074) — 2026-10-14
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-142 | `CommandScopeCause` gained `'out-of-scope'` and made it the default | DONE |
+| DP-143 | Only the `!enabled` site passes `'module-disabled'` | DONE |
+| DP-144 | The permission resolver passes `'permission-denied'` | DONE |
+| DP-145 | `NoticeReasonCode.MODULE_DISABLED` with a heading and a remedy-naming explanation | DONE |
+| DP-146 | The test pinning FORBIDDEN for a disabled module corrected | DONE |
+
+**Verification.** `typecheck`, `lint`, `format` green locally; the router suite 40 tests green.
+Acceptance ids: `ACC-UR-074-1…5`.

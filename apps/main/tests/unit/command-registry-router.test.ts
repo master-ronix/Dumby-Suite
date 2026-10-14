@@ -512,7 +512,9 @@ describe('CommandRouter', () => {
     const disabled = makeInteraction('utility');
     await router.dispatch(disabled);
     expect(handler).not.toHaveBeenCalled();
-    expect(lastEditText(disabled)).toContain('reason: FORBIDDEN');
+    // UR-20261012-074 — a DISABLED module reports as such, not as a permission failure. This
+    // assertion previously pinned FORBIDDEN, which is the confusion the operator reported live.
+    expect(lastEditText(disabled)).toContain('reason: MODULE_DISABLED');
 
     const enabled = { ...makeInteraction('utility'), guildId: 'enabled-guild' };
     await router.dispatch(enabled);
@@ -873,5 +875,29 @@ describe('the standing is advisory — it can never break a dispatch (UR-2026101
     expect(standing.enabled).toBe(true);
     expect(ownerRead).not.toHaveBeenCalled();
     expect(enabledRead).not.toHaveBeenCalled();
+  });
+});
+
+describe('a DISABLED module is not a permission problem (UR-20261012-074)', () => {
+  test('a module-disabled refusal says so, instead of "your permissions do not allow this"', async () => {
+    // Reported from a live server: `/dashboard` was refused with reason FORBIDDEN, so the member was
+    // told they lacked permission when the truth was that the module was switched off in that guild.
+    const reg = new CommandRegistry();
+    reg.registerModule('hello-world', 'standard');
+    reg.register({
+      data: { name: 'hello', description: 'Says hello' },
+      moduleId: 'hello-world',
+      execute: async () => ({ page: 'hello', data: {} }),
+    } as never);
+    const router = new CommandRouter(reg, logger2, {
+      isModuleEnabledInGuild: async () => false,
+    } as never);
+    const interaction = { ...makeInteraction('hello'), applicationId: 'app-main' };
+
+    await expect(router.dispatch(interaction)).resolves.toBeUndefined();
+    const notice = JSON.stringify(interaction.editReply.mock.calls.at(-1)?.[0]);
+    expect(notice).toContain('This module is switched off');
+    expect(notice).toContain('not a permissions problem');
+    expect(notice).not.toContain('Your permissions do not allow this action');
   });
 });

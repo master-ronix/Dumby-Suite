@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.78
+version: 5.5.79
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,34 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.79 — a disabled module is not a permission problem (UR-20261012-074) — 2026-10-14
+
+- 2026-10-14 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- THE FINDING: live screenshots showed `/dashboard` refused with "Not permitted -- Your permissions do
+  not allow this action. reason: FORBIDDEN". UR-068 had already split the notice by cause so an
+  UNREADABLE state stopped being reported as a refusal -- but the case where the module is genuinely
+  DISABLED in that guild still reported as FORBIDDEN, telling a member they lack permission when the
+  truth is an admin turned the module off. The exact confusion the operator described, still live.
+- WHY THE OBVIOUS FIX WOULD HAVE BEEN WRONG: the first attempt mapped `scopeCause === 'module-disabled'`
+  to a new reason code and FOUR existing tests failed -- correctly. `CommandScopeDeniedError` is thrown
+  from EIGHT sites and only ONE means "the module is disabled": the rest are the permission resolver
+  denying, a DM where the command is guild-only, an admin command in the wrong guild, an unresolved
+  tier, and the two state-unreadable guards. ALL the others used the DEFAULT cause, which was
+  `'module-disabled'` -- so mapping on that value would have relabelled every DM refusal and every
+  admin-guild refusal as "this module is switched off": a NEW lie in place of the old one.
+- WHAT CHANGED: `CommandScopeCause` gained `'out-of-scope'` and it is now the DEFAULT -- a neutral
+  cause, so an unspecified refusal is never silently reported as something it is not. Only the
+  `!enabled` site passes `'module-disabled'`; the permission resolver passes `'permission-denied'` so it
+  keeps saying what it is. `NoticeReasonCode` gained `MODULE_DISABLED` with its own heading ("This
+  module is switched off") and an explanation that names the REMEDY: "so this is not a permissions
+  problem. A server admin can turn it back on from /browse."
+- RECORDED: a test that pins the wrong behaviour is a bug with a guard on it. One of the four failing
+  tests asserted `reason: FORBIDDEN` for a disabled module -- it had encoded the defect as the contract.
+  Three were right; one was the bug. RECORDED: the default value of a cause IS a claim.
+- **Verification:** typecheck, lint, format clean; the router suite 40 tests green.
 
 ---
 

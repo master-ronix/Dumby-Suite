@@ -103,7 +103,16 @@ export class PersonaBoundGuildError extends Error {
  * could actually be facing an unreadable guild state. The cause is now part of the error, and the
  * message says which it was.
  */
-export type CommandScopeCause = 'module-disabled' | 'state-unreadable' | 'permission-denied';
+export type CommandScopeCause =
+  | 'module-disabled'
+  | 'state-unreadable'
+  | 'permission-denied'
+  /**
+   * UR-20261012-074 — the NEUTRAL cause, and the default. A refusal for a reason that is none of the
+   * three above (a DM, the wrong guild for an admin command, an unresolved tier) must not be reported
+   * as "the module is switched off" — that would be a new lie in place of the old one.
+   */
+  | 'out-of-scope';
 
 export class CommandScopeDeniedError extends Error {
   constructor(
@@ -111,7 +120,7 @@ export class CommandScopeDeniedError extends Error {
     readonly moduleId: string,
     readonly tier: ModuleTier | 'unresolved',
     readonly guildId: string | null,
-    readonly scopeCause: CommandScopeCause = 'module-disabled',
+    readonly scopeCause: CommandScopeCause = 'out-of-scope',
   ) {
     super(
       scopeCause === 'state-unreadable'
@@ -523,11 +532,13 @@ export class CommandRouter {
     });
 
     if (result && !result.allowed) {
+      // UR-20261012-074 — this one IS a permission decision, and must keep saying so.
       throw new CommandScopeDeniedError(
         command.data.name,
         command.moduleId,
         this.requireModuleTier(command, interaction.guildId),
         interaction.guildId,
+        'permission-denied',
       );
     }
   }
@@ -630,7 +641,14 @@ export class CommandRouter {
       );
     }
     if (!enabled) {
-      throw new CommandScopeDeniedError(command.data.name, command.moduleId, tier, guildId);
+      // UR-20261012-074 — the ONE refusal that really is "the module is switched off here".
+      throw new CommandScopeDeniedError(
+        command.data.name,
+        command.moduleId,
+        tier,
+        guildId,
+        'module-disabled',
+      );
     }
   }
 
