@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.79
+version: 5.5.80
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,38 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.80 — the primary render carries the acting profile (UR-20261012-075) — 2026-10-14
+
+- 2026-10-14 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- A REPORTED DEFECT THAT WAS ALREADY FIXED, recorded before it was "fixed" again: a screenshot showed
+  `/modules` rendering every module icon as literal text (`:dumby_browse:`) while `/dashboard` rendered
+  the same icons correctly, and it was logged as live. CHECKING IT SHOWED IT WAS ALMOST CERTAINLY
+  STALE. `moduleIcon` cannot produce that output -- when a declared emoji name does not resolve it
+  falls back to a glyph rather than printing the name, precisely so a page never shows literal text.
+  And the screenshot showing the failure is OLDER than the one showing the same emoji fix working on
+  `/dashboard`. The raw-text form is what Discord renders when a message carries ANOTHER APPLICATION'S
+  emoji id -- the failure UR-057 and UR-062 already fixed, which the screenshot predates. NO icon
+  change was made: changing working code on the strength of a stale screenshot is a guess dressed as a
+  fix.
+- WHAT CHECKING IT DID FIND: the page-data provider's signature is declared TWICE -- on the router's
+  dependency and as the factory's return type -- and they had drifted. Chasing that drift surfaced a
+  LIVE defect: the router calls the provider from three places, TWO passed `actingProfileId` and the
+  PRIMARY RENDER AT DISPATCH did not. The dispatcher defaulted it to 'main'. So a persona's FIRST page
+  reported the MAIN BOT's modules, while the SAME PAGE AFTER AN EFFECT -- which did pass it -- reported
+  correctly. Two renders of one page disagreeing about whose page it is: the defect class UR-061 was
+  written to close, still open one level up.
+- WHAT CHANGED: `applicationId` and `actingProfileId` are now REQUIRED on BOTH declarations of the
+  provider signature, with no defaults -- UR-060 removed the default from the emoji READERS for exactly
+  this reason and the dispatcher had kept its own. `page` and `query` become required-but-nullable
+  (a required parameter may not follow an optional one). The primary render now passes the acting
+  profile, and the factory's return type is brought back into line.
+- RECORDED: a screenshot is evidence with a timestamp, and the timestamp matters. RECORDED: a type
+  declared twice will drift, and the drift hides a defect -- it is why one call site could omit an
+  argument the other passed and still compile.
+- **Verification:** typecheck, lint, format clean; the router suite 42 tests green.
 
 ---
 

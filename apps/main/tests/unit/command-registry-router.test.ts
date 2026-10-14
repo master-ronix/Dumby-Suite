@@ -901,3 +901,72 @@ describe('a DISABLED module is not a permission problem (UR-20261012-074)', () =
     expect(notice).not.toContain('Your permissions do not allow this action');
   });
 });
+
+describe('the primary render carries the acting profile (UR-20261012-075)', () => {
+  test('a persona dispatch renders the page for the PERSONA, not the main bot', async () => {
+    // The dispatcher defaulted actingProfileId to 'main', so a persona's FIRST page reported the main
+    // bot's modules — while the same page after an effect (which did pass it) reported its own. Two
+    // renders of one page disagreed.
+    const reg = new CommandRegistry();
+    reg.registerModule('hello-world', 'standard');
+    reg.register({
+      data: { name: 'hello', description: 'Says hello' },
+      moduleId: 'hello-world',
+      execute: async () => ({ page: 'hello', data: {} }),
+    } as never);
+    const seen: Array<{ applicationId?: string; actingProfileId?: string }> = [];
+    const router = new CommandRouter(reg, logger2, {
+      isModuleEnabledInGuild: async () => true,
+      residentPersonaId: 'persona-1',
+      pageDataProvider: async (
+        _moduleId: string,
+        _guildId: string | null,
+        _page: number,
+        _query: string | undefined,
+        applicationId: string,
+        actingProfileId: string,
+      ) => {
+        seen.push({ applicationId, actingProfileId });
+        return {};
+      },
+    } as never);
+    const interaction = { ...makeInteraction('hello'), applicationId: 'app-persona' };
+
+    await router.dispatch(interaction);
+
+    expect(seen.length).toBeGreaterThan(0);
+    for (const call of seen) {
+      expect(call.actingProfileId).toBe('persona-1');
+      expect(call.applicationId).toBe('app-persona');
+    }
+  });
+
+  test('the main bot renders for main', async () => {
+    const reg = new CommandRegistry();
+    reg.registerModule('hello-world', 'standard');
+    reg.register({
+      data: { name: 'hello', description: 'Says hello' },
+      moduleId: 'hello-world',
+      execute: async () => ({ page: 'hello', data: {} }),
+    } as never);
+    const seen: Array<string | undefined> = [];
+    const router = new CommandRouter(reg, logger2, {
+      isModuleEnabledInGuild: async () => true,
+      pageDataProvider: async (
+        _m: string,
+        _g: string | null,
+        _p: number,
+        _q: string | undefined,
+        _a: string,
+        actingProfileId: string,
+      ) => {
+        seen.push(actingProfileId);
+        return {};
+      },
+    } as never);
+
+    await router.dispatch({ ...makeInteraction('hello'), applicationId: 'app-main' });
+
+    expect(seen.every((id) => id === 'main')).toBe(true);
+  });
+});

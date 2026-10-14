@@ -170,19 +170,25 @@ export interface CommandRouterOptions {
     moduleId: string,
     guildId: string | null,
     /** UR-004 — the dashboard page index (0 = main; 1..n = the standard module pages). */
-    page?: number,
+    page: number,
     /** item 5b — the /browse search query, when one was submitted. */
-    query?: string,
+    query: string | undefined,
     /**
      * UR-20261012-057 — the application rendering the page. Emoji ids belong to ONE application, so
      * the page data must resolve its icons against the right one.
+     *
+     * UR-20261012-075 — REQUIRED. A default let a caller that forgot it borrow the main bot's scope
+     * silently, which is the failure UR-060 removed from the readers; the dispatcher kept it.
      */
-    applicationId?: string,
+    applicationId: string,
     /**
      * UR-20261012-061 — WHICH profile the page reports for: 'main' for the main bot, a persona id for
      * a persona. Every page scopes its modules by it.
+     *
+     * UR-20261012-075 — REQUIRED. Omitting it at the primary render made a persona's first page
+     * report the main bot's modules.
      */
-    actingProfileId?: string,
+    actingProfileId: string,
   ) => Promise<Readonly<Record<string, unknown>>>;
   /**
    * §6.7 — performs the side effects a handler declares. Keyed by effect kind; an undeclared kind
@@ -297,10 +303,14 @@ export class CommandRouter {
                 (await this.options.pageDataProvider?.(
                   def.moduleId,
                   interaction.guildId,
-                  options.page,
+                  options.page ?? 0,
                   options.query,
                   // UR-20261012-064 — the interaction's application, and nothing else.
                   this.emojiScope(interaction),
+                  // UR-20261012-075 — and WHICH profile this page is for. Omitting it defaulted to
+                  // 'main', so a persona's first render showed the main bot's modules while the
+                  // post-effect render showed its own.
+                  this.options.residentPersonaId ?? 'main',
                 )) ?? {},
             },
           );
@@ -442,7 +452,7 @@ export class CommandRouter {
             (await this.options.pageDataProvider?.(
               def.moduleId,
               interaction.guildId,
-              options.page,
+              options.page ?? 0,
               undefined,
               this.emojiScope(interaction),
               this.options.residentPersonaId ?? 'main',

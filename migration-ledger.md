@@ -727,3 +727,17 @@ Acceptance ids: `ACC-UR-073-1…5`.
 
 **Verification.** `typecheck`, `lint`, `format` green locally; the router suite 40 tests green.
 Acceptance ids: `ACC-UR-074-1…5`.
+
+---
+
+## The Primary Render Carries the Acting Profile (UR-20261012-075) — 2026-10-14
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-147 | The reported `/modules` icon defect checked; found stale, not changed | DONE |
+| DP-148 | `applicationId` and `actingProfileId` required on both provider declarations | DONE |
+| DP-149 | The primary render at dispatch passes the acting profile | DONE |
+| DP-150 | The factory's return type reconciled with the dependency's | DONE |
+
+**Verification.** `typecheck`, `lint`, `format` green locally; the router suite 42 tests green.
+Acceptance ids: `ACC-UR-075-1…5`.

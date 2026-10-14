@@ -6,7 +6,7 @@ import type { Logger } from '../logging/logger.js';
 import type { ModuleRegistry } from '../module-system/registry.js';
 import { MARKETPLACE_MODULE_CAP, MODULES_PAGE_SIZE } from '../shared/constants/index.js';
 import { defaultEnabledForTier } from '../module-system/tier-rules.js';
-import { DEFAULT_EMOJI_SCOPE, commandDecorationIcon, moduleIcon } from './module-icons.js';
+import { commandDecorationIcon, moduleIcon } from './module-icons.js';
 import {
   effectiveCommandName,
   resolveCommandStatuses,
@@ -72,9 +72,17 @@ const titleCaseId = (id: string): string =>
  * filled with a placeholder, because an invented number on a health page is worse than a missing
  * one.
  */
-export function createPageDataProvider(
-  deps: PageDataDeps,
-): (moduleId: string, guildId: string | null, page?: number, query?: string) => Promise<PageData> {
+export function createPageDataProvider(deps: PageDataDeps): (
+  moduleId: string,
+  guildId: string | null,
+  page: number,
+  query: string | undefined,
+  // UR-20261012-075 — this signature is declared TWICE: here and on the router's dependency. They
+  // drifted, and the drift is what let the primary render omit the acting profile while the
+  // post-effect render passed it. Both are required now, in both places.
+  applicationId: string,
+  actingProfileId: string,
+) => Promise<PageData> {
   const {
     getClient,
     moduleRegistry,
@@ -773,14 +781,25 @@ export function createPageDataProvider(
   return async (
     moduleId: string,
     guildId: string | null,
-    page = 0,
-    query?: string,
+    // UR-20261012-075 — required-but-nullable rather than optional: a required parameter may not
+    // follow an optional one, and these two must come before the two that are now required.
+    page: number,
+    query: string | undefined,
     // UR-20261012-057 — the application rendering the page. Its emoji ids are the only ones a message
     // from that application may reference.
-    applicationId: string = DEFAULT_EMOJI_SCOPE,
+    //
+    // UR-20261012-075 — REQUIRED, with no default. UR-060 removed the default from the emoji READERS
+    // for exactly this reason: a default meant a call site that forgot it silently borrowed the main
+    // bot's scope, and the failure was visible only on a persona's page. The dispatcher kept its
+    // default, so the same omission was still possible one level up.
+    applicationId: string,
     // UR-20261012-061 — WHICH profile this page reports for. 'main' for the main bot, a persona id
     // for a persona. Every page scopes its modules by it.
-    actingProfileId: string = MAIN_PROFILE_ID,
+    //
+    // UR-20261012-075 — REQUIRED too, and this one was LIVE: the primary render at dispatch omitted
+    // it, so a persona's FIRST page reported the main bot's modules, while the same page after an
+    // effect (which did pass it) reported correctly. Two renders of one page disagreed.
+    actingProfileId: string,
   ): Promise<PageData> => {
     switch (moduleId) {
       case 'health':

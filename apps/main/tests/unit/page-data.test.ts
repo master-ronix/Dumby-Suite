@@ -87,7 +87,7 @@ function makeDeps(over: Dict = {}): PageDataDeps {
 describe('page-data provider', () => {
   test('health reports system groups and connects to db and cache', async () => {
     const provider = createPageDataProvider(makeDeps());
-    const data = await provider('health', null);
+    const data = await provider('health', null, 0, undefined, 'app-1', 'main');
 
     expect(data['title']).toBe('System Health');
     expect(typeof data['statusLabel']).toBe('string');
@@ -105,7 +105,7 @@ describe('page-data provider', () => {
 
   test('health adds the guild/user group when a client is present', async () => {
     const provider = createPageDataProvider(makeDeps({ getClient: () => fakeClient }));
-    const data = await provider('health', null);
+    const data = await provider('health', null, 0, undefined, 'app-1', 'main');
     const groups = data['groups'] as Array<{ name: string }>;
     expect(groups.map((group) => group.name)).toContain('Guilds & Users');
   });
@@ -127,7 +127,7 @@ describe('page-data provider', () => {
         logger,
       }),
     );
-    const data = await provider('health', null);
+    const data = await provider('health', null, 0, undefined, 'app-1', 'main');
     expect(data['status']).toBe('down');
     const groups = data['groups'] as Array<{ name: string; rows: Array<[string, string]> }>;
     const db = groups.find((group) => group.name === 'Database');
@@ -148,7 +148,7 @@ describe('page-data provider', () => {
         },
       }),
     );
-    const data = await provider('health', null);
+    const data = await provider('health', null, 0, undefined, 'app-1', 'main');
     expect(data['status']).toBe('degraded');
     expect(data['statusLabel']).toBe('Degraded');
     const groups = data['groups'] as Array<{ name: string; status?: string }>;
@@ -158,7 +158,7 @@ describe('page-data provider', () => {
 
   test('persona opens on the main bot when the guild has no personas', async () => {
     const provider = createPageDataProvider(makeDeps({ getClient: () => fakeClient }));
-    const data = await provider('persona', null);
+    const data = await provider('persona', null, 0, undefined, 'app-1', 'main');
     expect(data['title']).toBe('Active Personas');
     expect(data['status']).toBe('online');
     expect(data['currentProfileId']).toBe('main');
@@ -195,7 +195,7 @@ describe('page-data provider', () => {
       makeDeps({ getClient: () => fakeClient, moduleRegistry: personaRegistry, db: { knex } }),
     );
 
-    const data = await provider('persona', 'guild-1');
+    const data = await provider('persona', 'guild-1', 0, undefined, 'app-1', 'main');
     const profiles = data['profiles'] as Array<{
       id: string;
       isMain: boolean;
@@ -226,7 +226,7 @@ describe('page-data provider', () => {
     // switching to the main bot shows the modules it still owns
     // the provider's signature is (moduleId, guildId, page, query) — the selected persona id
     // travels on the query channel (as the router passes options.query fourth).
-    const switched = await provider('persona', 'guild-1', 0, 'main');
+    const switched = await provider('persona', 'guild-1', 0, 'main', 'app-1', 'main');
     expect(switched['selectedProfileId']).toBe('main');
     const mainTiers = switched['tiers'] as Array<{ modules: Array<{ name: string }> }>;
     // UR-20261012-054 — same rule on the switched view: claimed non-core modules only.
@@ -264,7 +264,7 @@ describe('page-data provider', () => {
         personaInvite,
       }),
     );
-    const data = await provider('persona', 'guild-1');
+    const data = await provider('persona', 'guild-1', 0, undefined, 'app-1', 'main');
     // UR-20261012-051 — a guild registration is NOT the opening profile. The identity running the
     // command is, and that is the main bot here.
     expect(data['currentProfileId']).toBe('main');
@@ -316,7 +316,7 @@ describe('page-data provider', () => {
     const provider = createPageDataProvider(
       makeDeps({ getClient: () => fakeClient, db: { knex }, logger }),
     );
-    const data = await provider('persona', 'guild-1');
+    const data = await provider('persona', 'guild-1', 0, undefined, 'app-1', 'main');
     const profiles = data['profiles'] as Array<{ id: string }>;
     expect(profiles.map((p) => p.id)).toEqual(['main']);
     expect(logger.warn).toHaveBeenCalledWith('page-data-persona-unavailable', expect.any(Object));
@@ -324,7 +324,7 @@ describe('page-data provider', () => {
 
   test('queue without a guild performs no query and reports none pending', async () => {
     const provider = createPageDataProvider(makeDeps());
-    const data = await provider('queue', null);
+    const data = await provider('queue', null, 0, undefined, 'app-1', 'main');
     expect(data['title']).toBe('Pending Command Queue Actions');
     expect(data['lines']).toEqual(['No pending queue actions.']);
   });
@@ -341,7 +341,7 @@ describe('page-data provider', () => {
     })) as unknown as Dict;
     knex['raw'] = async () => [{}];
     const provider = createPageDataProvider(makeDeps({ db: { knex } }));
-    const data = await provider('queue', 'guild-1');
+    const data = await provider('queue', 'guild-1', 0, undefined, 'app-1', 'main');
     const lines = data['lines'] as string[];
     expect(lines).toHaveLength(2);
     expect(lines[0]).toContain('Command: ban');
@@ -363,14 +363,14 @@ describe('page-data provider', () => {
     })) as unknown as Dict;
     knex['raw'] = async () => [{}];
     const provider = createPageDataProvider(makeDeps({ db: { knex }, logger }));
-    const data = await provider('queue', 'guild-1');
+    const data = await provider('queue', 'guild-1', 0, undefined, 'app-1', 'main');
     expect(data['lines']).toEqual(['No pending queue actions.']);
     expect(logger.warn).toHaveBeenCalledWith('page-data-queue-unavailable', expect.any(Object));
   });
 
   test('permit lists a selectable command per module command', async () => {
     const provider = createPageDataProvider(makeDeps());
-    const data = await provider('permit', null);
+    const data = await provider('permit', null, 0, undefined, 'app-1', 'main');
     const lines = data['lines'] as string[];
     expect(lines.some((line) => line.includes('/health'))).toBe(true);
     // ADR-013 — no version string leaks onto the surface
@@ -379,7 +379,7 @@ describe('page-data provider', () => {
 
   test('dashboard page 0 renders the core command list with icons', async () => {
     const provider = createPageDataProvider(makeDeps());
-    const data = await provider('dashboard', null, 0);
+    const data = await provider('dashboard', null, 0, undefined, 'app-1', 'main');
     const lines = data['lines'] as string[];
     // UR-20261011-009 — a module with no declared logo shows the framework FALLBACK logo (📦),
     // not the white-square decoration (which is only for a module page's own command list).
@@ -389,7 +389,7 @@ describe('page-data provider', () => {
 
   test('dashboard page 1 renders the standard module page with its commands, icon and identity', async () => {
     const provider = createPageDataProvider(makeDeps());
-    const data = await provider('dashboard', null, 1);
+    const data = await provider('dashboard', null, 1, undefined, 'app-1', 'main');
     // item 4 — the module icon sits beside every module command list, module pages included.
     expect(data['lines']).toEqual(['⬜ `/hello`']);
     // item 7 — the page names its owning module, so the frame resolves THAT module's identity
@@ -400,13 +400,13 @@ describe('page-data provider', () => {
 
   test('dashboard page out of range falls back to the main page', async () => {
     const provider = createPageDataProvider(makeDeps());
-    const data = await provider('dashboard', null, 99);
+    const data = await provider('dashboard', null, 99, undefined, 'app-1', 'main');
     expect(data['page']).toBe(0);
   });
 
   test('marketplace lists available modules without an in-content title', async () => {
     const provider = createPageDataProvider(makeDeps());
-    const data = await provider('browse', null);
+    const data = await provider('browse', null, 0, undefined, 'app-1', 'main');
     // item 1 — no in-content "Marketplace" heading (the frame title already names the surface).
     expect(data['title']).toBeUndefined();
     expect(JSON.stringify(data)).toContain('browse');
@@ -415,9 +415,9 @@ describe('page-data provider', () => {
 
   test('marketplace search filters the available modules by name', async () => {
     const provider = createPageDataProvider(makeDeps());
-    const hit = await provider('browse', null, 0, 'brow');
+    const hit = await provider('browse', null, 0, 'brow', 'app-1', 'main');
     expect((hit['modules'] as unknown[]).length).toBe(1);
-    const miss = await provider('browse', null, 0, 'zzz');
+    const miss = await provider('browse', null, 0, 'zzz', 'app-1', 'main');
     expect((miss['modules'] as unknown[]).length).toBe(0);
   });
 
@@ -434,7 +434,7 @@ describe('page-data provider', () => {
     })) as unknown as Dict;
     statesKnex['raw'] = async (): Promise<unknown[]> => [{}];
     const provider = createPageDataProvider(makeDeps({ db: { knex: statesKnex } }));
-    const data = await provider('browse', 'guild-1');
+    const data = await provider('browse', 'guild-1', 0, undefined, 'app-1', 'main');
     const mods = data['modules'] as Array<{ id: string; note?: string }>;
     expect(mods.map((m) => m.id)).toContain('hello-world');
     expect(mods.find((m) => m.id === 'hello-world')?.note).toBeDefined();
@@ -448,7 +448,7 @@ describe('page-data provider', () => {
       all: () => [mod('health', 'core', ['health']), ...many],
     } as unknown as PageDataDeps['moduleRegistry'];
     const provider = createPageDataProvider(makeDeps({ moduleRegistry: bigRegistry }));
-    const data = await provider('browse', null);
+    const data = await provider('browse', null, 0, undefined, 'app-1', 'main');
     // UR-20261011-006 — the install dropdown's permanent Home option takes one of the 25 slots,
     // so the per-page module listing caps at 24; `total` still reports every match.
     expect((data['modules'] as unknown[]).length).toBe(24);
@@ -460,7 +460,7 @@ describe('page-data provider', () => {
       all: () => [mod('health', 'core', ['health'])],
     } as unknown as PageDataDeps['moduleRegistry'];
     const provider = createPageDataProvider(makeDeps({ moduleRegistry: emptyRegistry }));
-    const data = await provider('browse', null);
+    const data = await provider('browse', null, 0, undefined, 'app-1', 'main');
     expect(
       (data['lines'] as string[]).some((line) => line.includes('No marketplace modules')),
     ).toBe(true);
@@ -468,7 +468,7 @@ describe('page-data provider', () => {
 
   test('installedModules lists enabled modules (UR-20261011-011)', async () => {
     const provider = createPageDataProvider(makeDeps());
-    const data = await provider('modules', null);
+    const data = await provider('modules', null, 0, undefined, 'app-1', 'main');
     expect(data['title']).toBe('Installed Modules');
     // core (health, dashboard) + the default-enabled standard (hello-world); the marketplace
     // module (browse) is not installed, so it is not listed.
@@ -491,7 +491,7 @@ describe('page-data provider', () => {
     })) as unknown as Dict;
     statesKnex['raw'] = async (): Promise<unknown[]> => [{}];
     const provider = createPageDataProvider(makeDeps({ db: { knex: statesKnex } }));
-    const data = await provider('modules', 'guild-1');
+    const data = await provider('modules', 'guild-1', 0, undefined, 'app-1', 'main');
     const ids = (data['modules'] as Array<{ id: string }>).map((m) => m.id);
     expect(ids).not.toContain('hello-world');
     // The enabled ones are still there: core is always enabled.
@@ -510,10 +510,21 @@ describe('page-data provider', () => {
       }),
     })) as unknown as Dict;
     statesKnex['raw'] = async (): Promise<unknown[]> => [{}];
-    const enabled = await createPageDataProvider(makeDeps())('modules', 'guild-1');
+    const enabled = await createPageDataProvider(makeDeps())(
+      'modules',
+      'guild-1',
+      0,
+      undefined,
+      'app-1',
+      'main',
+    );
     const disabled = await createPageDataProvider(makeDeps({ db: { knex: statesKnex } }))(
       'modules',
       'guild-1',
+      0,
+      undefined,
+      'app-1',
+      'main',
     );
     expect(disabled['total']).toBe((enabled['total'] as number) - 1);
   });
@@ -547,21 +558,21 @@ describe('page-data provider', () => {
       all: () => many,
     } as unknown as PageDataDeps['moduleRegistry'];
     const provider = createPageDataProvider(makeDeps({ moduleRegistry: bigRegistry }));
-    const first = await provider('modules', null, 0);
+    const first = await provider('modules', null, 0, undefined, 'app-1', 'main');
     expect(first['pageTotal']).toBe(3);
     expect((first['modules'] as unknown[]).length).toBe(6);
-    const second = await provider('modules', null, 1);
+    const second = await provider('modules', null, 1, undefined, 'app-1', 'main');
     expect(second['page']).toBe(1);
     expect((second['modules'] as unknown[]).length).toBe(6);
     // an out-of-range page clamps to the last page rather than rendering empty
-    const clamped = await provider('modules', null, 9);
+    const clamped = await provider('modules', null, 9, undefined, 'app-1', 'main');
     expect(clamped['page']).toBe(2);
     expect((clamped['modules'] as unknown[]).length).toBe(3);
   });
 
   test('an unknown module id yields empty page data', async () => {
     const provider = createPageDataProvider(makeDeps());
-    expect(await provider('nope', null)).toEqual({});
+    expect(await provider('nope', null, 0, undefined, 'app-1', 'main')).toEqual({});
   });
 });
 
