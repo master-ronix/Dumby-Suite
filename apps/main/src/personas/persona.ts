@@ -18,7 +18,10 @@ export type PersonaPresenceStatus = (typeof PERSONA_PRESENCE_STATUSES)[number];
 export const ACCENT_PATTERN = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 
 export class InvalidPersonaFieldError extends Error {
-  constructor(readonly field: string, reason: string) {
+  constructor(
+    readonly field: string,
+    reason: string,
+  ) {
     super(`Invalid ${field}: ${reason}`);
     this.name = 'InvalidPersonaFieldError';
   }

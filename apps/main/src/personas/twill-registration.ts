@@ -411,9 +411,7 @@ export function registerTwillPersonaRoutes(
         return reply.code(200).send(publicPersonaView(persona));
       } catch (err) {
         logger.warn(`twill-update-failed: ${reasonOf(err)}`);
-        return reply
-          .code(statusFor(err))
-          .send({ error: 'Update failed', reason: reasonOf(err) });
+        return reply.code(statusFor(err)).send({ error: 'Update failed', reason: reasonOf(err) });
       }
     },
   );
@@ -430,9 +428,7 @@ export function registerTwillPersonaRoutes(
         return reply.code(204).send();
       } catch (err) {
         logger.warn(`twill-revoke-failed: ${reasonOf(err)}`);
-        return reply
-          .code(statusFor(err))
-          .send({ error: 'Revoke failed', reason: reasonOf(err) });
+        return reply.code(statusFor(err)).send({ error: 'Revoke failed', reason: reasonOf(err) });
       }
     },
   );
@@ -468,9 +464,7 @@ export function registerTwillPersonaRoutes(
           ...(hasSecretKey
             ? {
                 oauthClientSecretSealed:
-                  secret === undefined
-                    ? null
-                    : sealPersonaOAuthClientSecret(secret, rootKey),
+                  secret === undefined ? null : sealPersonaOAuthClientSecret(secret, rootKey),
               }
             : {}),
         });

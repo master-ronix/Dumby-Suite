@@ -134,14 +134,11 @@ export class PostgresPersonaIdentityStore implements PersonaIdentityStore {
 
   /** UR-20261012-081 — revoke: retired AND soft-deleted, so no read returns it again. */
   async revoke(id: string): Promise<void> {
-    await this.knex('persona_identities')
-      .where({ id })
-      .whereNull('deletedAt')
-      .update({
-        status: 'retired',
-        deletedAt: this.knex.fn.now(),
-        updatedAt: this.knex.fn.now(),
-      });
+    await this.knex('persona_identities').where({ id }).whereNull('deletedAt').update({
+      status: 'retired',
+      deletedAt: this.knex.fn.now(),
+      updatedAt: this.knex.fn.now(),
+    });
   }
 
   /** UR-20261012-081 — a new bot token, sealed and digested together. */
