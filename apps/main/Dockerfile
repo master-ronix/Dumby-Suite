@@ -10,7 +10,7 @@
 
 FROM node:22-slim AS base
 WORKDIR /app
-RUN corepack enable && corepack prepare pnpm@9 --activate
+RUN corepack enable && corepack prepare pnpm@10 --activate
 
 # ── Stage: deps ────────────────────────────────────────────────────────────────
 FROM base AS deps
