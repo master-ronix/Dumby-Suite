@@ -508,6 +508,15 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 
 ---
 
+### v5.5.97 — Branch Model Recorded (OI-7 resolved) — 2026-10-15
+
+- 2026-10-15 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (docs)
+- **OI-7 resolved by operator decision.** The repository uses a **dual-branch model**: `feature/dev` is the **development** branch and `main` is the **deployment** branch; both are live on their hosts. Every change lands on `feature/dev` first and is promoted to `main`. This supersedes the corpus's earlier open question about which single branch is canonical — the two branches are canonical *in their roles*.
+- **Promotion.** The residual-closure work (`UR-20261015-090`, `v5.5.95`/`v5.5.96`) is promoted from `feature/dev` to `main` in the same pass.
+- **Verification:** corpus gate suite 27/27 green.
+
+---
+
 ### v5.5.96 — Production Verification & Residual Discharge — 2026-10-15
 
 - 2026-10-15 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (app+docs)
@@ -2590,7 +2599,7 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 | OI-4 | Default banner + default white icon assets | operator | **resolved** — present: `apps/main/assets/*.png` (banner + icons) and per-module `packages/modules/<slug>/assets/icon.png` |
 | OI-5 | Migration slices M10 / M14 / M16 | engineering | **resolved** — M10 / M14 / M16 / M18 DONE (toolchain-verified 2026-10-15) |
 | OI-6 | 24 logged deviations (appendix-c) | framework-maintainers | **resolved** — `appendix-c` carries the ownership note (UR-20261010-001 R10); each item is owned or deferred |
-| OI-7 | Branch-divergence decision (`main` vs `feature/dev`) | operator | open — an operator decision |
+| OI-7 | Branch-divergence decision (`main` vs `feature/dev`) | operator | **resolved** — dual-branch model: `feature/dev` = development, `main` = deployment; work flows `feature/dev` → `main` (operator, 2026-10-15) |
 
 ### 5.1 Request dispositions (UR-20261010-001 R9)
 
@@ -2614,6 +2623,6 @@ Every carried residual now states its owner, status, and blocker — none is a s
 | OI-4 | Default banner + white icon assets | operator | **resolved** | Present in `apps/main/assets/` and per-module `assets/icon.png`. |
 | OI-5 | Migration slices M10 / M14 / M16 | engineering | **resolved** | M10 / M14 / M16 / M18 DONE, toolchain-verified. |
 | OI-6 | 24 logged deviations (appendix-c) | framework-maintainers | **resolved** | `appendix-c` carries the ownership note; each item owned or deferred. |
-| OI-7 | Branch-divergence decision (`main` vs `feature/dev`) | operator | open | An operator decision; no branch merge is authorised by the corpus. |
+| OI-7 | Branch-divergence decision (`main` vs `feature/dev`) | operator | **resolved** | Dual-branch model recorded: `feature/dev` is the development branch, `main` the deployment branch; every change lands on `feature/dev` first and is promoted to `main`. |
 | — | M18 `/modules` corrections & disable enforcement | engineering | **resolved (DONE)** | Disable enforcement present; `disable-behaviour.spec.ts` passes. |
 | — | M74 / M82 (proposed) | engineering | open (proposed) | M74 awaits operator confirmation; M82 is blocked on deploy packaging. |
