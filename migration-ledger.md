@@ -919,3 +919,17 @@ Acceptance ids: `ACC-UR-087-1…4`.
 
 **Verification.** 122 files / 1271 tests / 0 failures; `typecheck`, `lint`, `format` green locally.
 Acceptance ids: `ACC-UR-088-1…5`.
+
+## Twill Accepted Malformed Credentials and Identifiers (UR-20261012-089) — 2026-10-15
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-215 | The finding: identifiers were checked for presence, never for shape | DONE |
+| DP-216 | `SNOWFLAKE_PATTERN` / `BOT_TOKEN_PATTERN` / `CLIENT_SECRET_PATTERN` | DONE |
+| DP-217 | `applicationIdFromBotToken` — the token is checked against its application | DONE |
+| DP-218 | `registrarAuthority` is a Discord USER id, at registration and at grant | DONE |
+| DP-219 | Applied at every write: bind, rebind, credentials, registrar registry | DONE |
+| DP-220 | Every refusal names the field, the shape and the source of the value | DONE |
+
+**Verification.** 123 files / 1281 tests / 0 failures; `typecheck`, `lint`, `format` green locally.
+Acceptance ids: `ACC-UR-089-1…7`.

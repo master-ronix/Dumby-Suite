@@ -15,6 +15,61 @@ export const PERSONA_PRESENCE_STATUSES = ['online', 'dnd', 'idle', 'invisible'] 
 export type PersonaPresenceStatus = (typeof PERSONA_PRESENCE_STATUSES)[number];
 
 /** A hex accent: `#RGB` or `#RRGGBB`. */
+/**
+ * UR-20261012-089 — Discord identifier shapes.
+ *
+ * Every one of these is a format Discord fixes, so Twill can refuse a malformed value at the boundary
+ * instead of discovering it later as an opaque failure: a bot token that cannot log in, an application
+ * id that is not an id, a guild the framework has never seen.
+ *
+ * A SNOWFLAKE is Discord's id format: a 64-bit integer as decimal digits. 17 to 20 digits covers the
+ * range in use — ids minted in 2015 are 17 digits, current ones are 19, and the format has headroom.
+ * Anchored, so a longer run of digits is not silently accepted.
+ */
+export const SNOWFLAKE_PATTERN = /^\d{17,20}$/;
+
+/**
+ * A bot token is THREE dot-separated base64url segments: the application id, a timestamp, and an HMAC.
+ * The lengths are generous because Discord does not publish them; the STRUCTURE is what is checked, and
+ * the first segment is additionally decoded and compared against the claimed application (see
+ * `applicationIdFromBotToken`).
+ */
+export const BOT_TOKEN_PATTERN = /^[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{20,}$/;
+
+/** A client secret is a single base64url run. */
+export const CLIENT_SECRET_PATTERN = /^[A-Za-z0-9_-]{20,}$/;
+
+export function isDiscordSnowflake(value: string): boolean {
+  return SNOWFLAKE_PATTERN.test(value);
+}
+
+export function isBotToken(value: string): boolean {
+  return BOT_TOKEN_PATTERN.test(value);
+}
+
+export function isClientSecret(value: string): boolean {
+  return CLIENT_SECRET_PATTERN.test(value);
+}
+
+/**
+ * The application id a bot token was minted for, or `undefined` when the token is malformed.
+ *
+ * Discord's token format embeds the application id as base64url in the first segment, which is what
+ * makes "the token belongs to the application you named" checkable WITHOUT calling Discord. The
+ * ownership proof at the surface still asks Discord; this refuses an obviously mismatched pair before
+ * a network round trip, and names which of the two is wrong.
+ */
+export function applicationIdFromBotToken(token: string): string | undefined {
+  const first = token.split('.')[0];
+  if (first === undefined || first === '') return undefined;
+  try {
+    const decoded = Buffer.from(first, 'base64').toString('utf8');
+    return /^\d{17,20}$/.test(decoded) ? decoded : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export const ACCENT_PATTERN = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 
 export class InvalidPersonaFieldError extends Error {

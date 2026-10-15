@@ -24,6 +24,10 @@ import {
   type FreeCharterCostSignals,
   ACCENT_PATTERN,
   PERSONA_PRESENCE_STATUSES,
+  isDiscordSnowflake,
+  isBotToken,
+  isClientSecret,
+  applicationIdFromBotToken,
   type PersonaPresenceStatus,
   type PersonaIdentity,
   type PersonaRegistrationInput,
@@ -77,13 +81,55 @@ export function parsePersonaRegistration(
   if (discordApplicationId === undefined) {
     return { ok: false, reason: 'discordApplicationId is required' };
   }
+  // UR-20261012-089 — a Discord application id IS a snowflake. A username, a name or a truncated id
+  // would otherwise be stored and only fail much later, at the OAuth leg or the command deploy.
+  if (!isDiscordSnowflake(discordApplicationId)) {
+    return {
+      ok: false,
+      reason:
+        'discordApplicationId must be a Discord application id (17-20 digits) — from the Developer Portal, not the application name',
+    };
+  }
   const boundGuildId = str(body.boundGuildId);
   if (boundGuildId === undefined) return { ok: false, reason: 'boundGuildId is required' };
+  if (!isDiscordSnowflake(boundGuildId)) {
+    return {
+      ok: false,
+      reason:
+        'boundGuildId must be a Discord server id (17-20 digits) — enable Developer Mode and Copy Server ID',
+    };
+  }
   const botToken = str(body.botToken);
   if (botToken === undefined) return { ok: false, reason: 'botToken is required' };
+  if (!isBotToken(botToken)) {
+    return {
+      ok: false,
+      reason:
+        'botToken is not a Discord bot token — expected three dot-separated segments (from Bot → Reset Token)',
+    };
+  }
+  // UR-20261012-089 — the ASSOCIATED application. A token is minted FOR one application, and its first
+  // segment carries that application's id, so a token paired with the wrong application is caught here
+  // rather than at login.
+  const tokenApplicationId = applicationIdFromBotToken(botToken);
+  if (tokenApplicationId !== undefined && tokenApplicationId !== discordApplicationId) {
+    return {
+      ok: false,
+      reason: `botToken belongs to application ${tokenApplicationId}, not the discordApplicationId given (${discordApplicationId}) — they must be the same application`,
+    };
+  }
   const registrarAuthority = str(body.registrarAuthority);
   if (registrarAuthority === undefined) {
     return { ok: false, reason: 'registrarAuthority is required' };
+  }
+  // UR-20261012-089 — the registrar is identified by their Discord USER id, not a username. A username
+  // is mutable and not unique across time; an id is neither.
+  if (!isDiscordSnowflake(registrarAuthority)) {
+    return {
+      ok: false,
+      reason:
+        'registrarAuthority must be the registrar’s Discord USER id (17-20 digits) — enable Developer Mode and Copy User ID, not a username',
+    };
   }
   // UR-20261012-081 — the optional presentation, validated by NAME so a bad value is actionable.
   let presenceStatus: PersonaPresenceStatus | undefined;
@@ -106,6 +152,12 @@ export function parsePersonaRegistration(
   }
 
   const secret = str(body.oauthClientSecret);
+  if (secret !== undefined && !isClientSecret(secret)) {
+    return {
+      ok: false,
+      reason: 'oauthClientSecret is not a Discord client secret — from OAuth2 → Reset Secret',
+    };
+  }
   let oauthClientSecretSealed: SealedEnvelope | undefined;
   if (secret !== undefined) oauthClientSecretSealed = sealPersonaOAuthClientSecret(secret, rootKey);
 
@@ -314,7 +366,23 @@ export function registerTwillPersonaRoutes(
       if (authority === undefined) {
         return reply.code(400).send({ error: 'Bad Request', reason: 'authority is required' });
       }
+      // UR-20261012-089 — the registrar is identified by their Discord USER id, not a username.
+      if (!isDiscordSnowflake(authority)) {
+        return reply.code(400).send({
+          error: 'Bad Request',
+          reason:
+            'authority must be the registrar’s Discord USER id (17-20 digits) — enable Developer Mode and Copy User ID, not a username',
+        });
+      }
       const discordApplicationId = str(request.body?.discordApplicationId) ?? '';
+      // '' is the documented "any application" bootstrap registrar; anything else must be a real id.
+      if (discordApplicationId !== '' && !isDiscordSnowflake(discordApplicationId)) {
+        return reply.code(400).send({
+          error: 'Bad Request',
+          reason:
+            'discordApplicationId must be a Discord application id (17-20 digits), or empty for any application',
+        });
+      }
       const grantedBy = str(request.body?.grantedBy) ?? 'internal-api';
       await registrars.grant({ authority, discordApplicationId, grantedBy });
       logger.info(
@@ -395,6 +463,15 @@ export function registerTwillPersonaRoutes(
       return reply
         .code(400)
         .send({ error: 'Bad Request', reason: 'guildId and moduleSlug are required' });
+    }
+    // UR-20261012-089 — a guild id is a snowflake. A name or a truncated id would bind against a guild
+    // that does not exist and only surface as a module that never answers.
+    if (!isDiscordSnowflake(guildId)) {
+      return reply.code(400).send({
+        error: 'Bad Request',
+        reason:
+          'guildId must be a Discord server id (17-20 digits) — enable Developer Mode and Copy Server ID',
+      });
     }
     // UR-20261012-052 — refuse a binding for a module the guild has DISABLED.
     //
@@ -520,6 +597,13 @@ export function registerTwillPersonaRoutes(
       const guildId = str(request.body?.guildId);
       if (guildId === undefined) {
         return reply.code(400).send({ error: 'Bad Request', reason: 'guildId is required' });
+      }
+      if (!isDiscordSnowflake(guildId)) {
+        return reply.code(400).send({
+          error: 'Bad Request',
+          reason:
+            'guildId must be a Discord server id (17-20 digits) — enable Developer Mode and Copy Server ID',
+        });
       }
       const persona = await identities.findById(request.params.personaId);
       if (persona === undefined) {
@@ -664,6 +748,35 @@ export function registerTwillPersonaRoutes(
           error: 'Bad Request',
           reason: 'at least one of botToken or oauthClientSecret is required',
         });
+      }
+      if (botToken !== undefined && !isBotToken(botToken)) {
+        return reply.code(400).send({
+          error: 'Bad Request',
+          reason:
+            'botToken is not a Discord bot token — expected three dot-separated segments (from Bot → Reset Token)',
+        });
+      }
+      if (secret !== undefined && !isClientSecret(secret)) {
+        return reply.code(400).send({
+          error: 'Bad Request',
+          reason: 'oauthClientSecret is not a Discord client secret — from OAuth2 → Reset Secret',
+        });
+      }
+      // UR-20261012-089 — the rotated token must belong to THIS persona's application, or the next
+      // login fails with a mismatch that names neither the token nor the persona.
+      if (botToken !== undefined) {
+        const held = await identities.findById(request.params.personaId);
+        const tokenApplicationId = applicationIdFromBotToken(botToken);
+        if (
+          held !== undefined &&
+          tokenApplicationId !== undefined &&
+          tokenApplicationId !== held.discordApplicationId
+        ) {
+          return reply.code(400).send({
+            error: 'Bad Request',
+            reason: `botToken belongs to application ${tokenApplicationId}, not this persona's application (${held.discordApplicationId})`,
+          });
+        }
       }
       try {
         const persona = await service.rotatePersonaCredentials(request.params.personaId, {

@@ -14,12 +14,23 @@ import {
 
 const rootKey = randomRootKey('local');
 
+// UR-20261012-089 — these fixtures must be well-formed Discord identifiers now, so they are built
+// rather than typed: the token's first segment is base64 of the application id, exactly as Discord
+// mints it. A synthetic token, never a real one.
+const APP_ID = '1387991780934553600';
+const GUILD_ID = '1062427177326497863';
+const REGISTRAR_ID = '463269847023288331';
+const BOT_TOKEN = `${Buffer.from(APP_ID, 'utf8')
+  .toString('base64')
+  .replace(/=+$/, '')}.GpIvHE.${'a'.repeat(38)}`;
+const CLIENT_SECRET = 'PI1-1rawNAseEKe0W5M3lI-Avg9b4QT2';
+
 const body = {
   name: 'Nova',
-  discordApplicationId: 'app-9',
-  boundGuildId: 'g1',
-  botToken: 'bot-secret',
-  registrarAuthority: 'owner-of-app-9',
+  discordApplicationId: APP_ID,
+  boundGuildId: GUILD_ID,
+  botToken: BOT_TOKEN,
+  registrarAuthority: REGISTRAR_ID,
 };
 
 describe('parsePersonaRegistration', () => {
@@ -29,20 +40,17 @@ describe('parsePersonaRegistration', () => {
     if (!parsed.ok) return;
     expect(parsed.input.name).toBe('Nova');
     expect(parsed.input.botTokenDigest).toMatch(/^[0-9a-f]{64}$/);
-    expect(openSealedText(parsed.input.botTokenSealed, rootKey)).toBe('bot-secret');
+    expect(openSealedText(parsed.input.botTokenSealed, rootKey)).toBe(BOT_TOKEN);
     // no client secret supplied => no Route A credential
     expect(parsed.input.oauthClientSecretSealed).toBeUndefined();
   });
 
   test('seals the OAuth client secret when one is supplied', () => {
-    const parsed = parsePersonaRegistration(
-      { ...body, oauthClientSecret: 'oauth-secret' },
-      rootKey,
-    );
+    const parsed = parsePersonaRegistration({ ...body, oauthClientSecret: CLIENT_SECRET }, rootKey);
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
     expect(parsed.input.oauthClientSecretSealed).toBeDefined();
-    expect(openSealedText(parsed.input.oauthClientSecretSealed!, rootKey)).toBe('oauth-secret');
+    expect(openSealedText(parsed.input.oauthClientSecretSealed!, rootKey)).toBe(CLIENT_SECRET);
   });
 
   test('rejects a body missing a required field, naming it', () => {
@@ -74,10 +82,7 @@ describe('parsePersonaRegistration', () => {
 
 describe('publicPersonaView', () => {
   test('never discloses a sealed credential or its digest', () => {
-    const parsed = parsePersonaRegistration(
-      { ...body, oauthClientSecret: 'oauth-secret' },
-      rootKey,
-    );
+    const parsed = parsePersonaRegistration({ ...body, oauthClientSecret: CLIENT_SECRET }, rootKey);
     if (!parsed.ok) throw new Error('fixture');
     const persona: PersonaIdentity = {
       id: 'persona-1',
@@ -97,8 +102,8 @@ describe('publicPersonaView', () => {
     };
     const view = publicPersonaView(persona);
     const flat = JSON.stringify(view);
-    expect(flat).not.toContain('bot-secret');
-    expect(flat).not.toContain('oauth-secret');
+    expect(flat).not.toContain(BOT_TOKEN);
+    expect(flat).not.toContain(CLIENT_SECRET);
     expect(flat).not.toContain(parsed.input.botTokenDigest);
     expect(view['oauthConfigured']).toBe(true);
   });
@@ -110,7 +115,7 @@ function buildRoutes(overrides: Record<string, unknown> = {}) {
     registerPersona: vi.fn(async (input: { name: string; boundGuildId: string }) => ({
       id: 'persona-1',
       name: input.name,
-      discordApplicationId: 'app-9',
+      discordApplicationId: APP_ID,
       boundGuildId: input.boundGuildId,
       dmBehavior: 'prohibited',
       shardAllocation: 1,
@@ -138,7 +143,7 @@ function buildRoutes(overrides: Record<string, unknown> = {}) {
     ownershipFetch: vi.fn(async () => ({
       ok: true,
       status: 200,
-      json: async () => ({ id: 'app-9' }),
+      json: async () => ({ id: APP_ID }),
     })),
     ...overrides,
   } as never);
@@ -155,10 +160,10 @@ describe('twill persona routes', () => {
     });
     expect(res.statusCode).toBe(201);
     expect(res.json().name).toBe('Nova');
-    expect(res.body).not.toContain('bot-secret');
+    expect(res.body).not.toContain(BOT_TOKEN);
     expect(service.registerPersona).toHaveBeenCalledTimes(1);
     // The registrar attestation is RECORDED in the message (the viewer drops structured fields).
-    expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('authority=owner-of-app-9'));
+    expect(logger.info).toHaveBeenCalledWith(expect.stringContaining(`authority=${REGISTRAR_ID}`));
   });
 
   test('POST rejects an incomplete body with 400 and a named reason', async () => {
@@ -175,7 +180,7 @@ describe('twill persona routes', () => {
 
   test('POST maps a duplicate application to 409', async () => {
     const { app, service } = buildRoutes();
-    service.registerPersona.mockRejectedValueOnce(new ApplicationAlreadyRegisteredError('app-9'));
+    service.registerPersona.mockRejectedValueOnce(new ApplicationAlreadyRegisteredError(APP_ID));
     const res = await app.inject({
       method: 'POST',
       url: '/twill/personas/register',
@@ -192,8 +197,8 @@ describe('twill persona routes', () => {
     identities.findById.mockResolvedValueOnce({
       id: 'persona-1',
       name: 'Nova',
-      discordApplicationId: 'app-9',
-      boundGuildId: 'g1',
+      discordApplicationId: APP_ID,
+      boundGuildId: GUILD_ID,
       dmBehavior: 'prohibited',
       shardAllocation: 1,
       charter: 'free',
@@ -215,7 +220,7 @@ describe('twill persona routes', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/twill/personas/persona-1/bindings',
-      payload: { guildId: 'g1', moduleSlug: 'hello-world' },
+      payload: { guildId: GUILD_ID, moduleSlug: 'hello-world' },
     });
     expect(res.statusCode).toBe(409);
     expect(res.json().reason).toContain('hello-world');
@@ -228,7 +233,7 @@ describe('twill persona routes', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/twill/personas/persona-1/bindings',
-      payload: { guildId: 'g1', moduleSlug: 'hello-world' },
+      payload: { guildId: GUILD_ID, moduleSlug: 'hello-world' },
     });
     expect(res.statusCode).toBe(201);
     expect(service.bindModuleToPersona).toHaveBeenCalledTimes(1);
@@ -239,18 +244,18 @@ describe('twill persona routes', () => {
     const bad = await app.inject({
       method: 'POST',
       url: '/twill/personas/persona-1/bindings',
-      payload: { guildId: 'g1' },
+      payload: { guildId: GUILD_ID },
     });
     expect(bad.statusCode).toBe(400);
 
     const ok = await app.inject({
       method: 'POST',
       url: '/twill/personas/persona-1/bindings',
-      payload: { guildId: 'g1', moduleSlug: 'hello-world' },
+      payload: { guildId: GUILD_ID, moduleSlug: 'hello-world' },
     });
     expect(ok.statusCode).toBe(201);
     expect(service.bindModuleToPersona).toHaveBeenCalledWith({
-      guildId: 'g1',
+      guildId: GUILD_ID,
       moduleSlug: 'hello-world',
       personaId: 'persona-1',
     });
@@ -261,8 +266,8 @@ describe('twill persona routes', () => {
     const persona = {
       id: 'persona-1',
       name: 'Nova',
-      discordApplicationId: 'app-9',
-      boundGuildId: 'g1',
+      discordApplicationId: APP_ID,
+      boundGuildId: GUILD_ID,
       dmBehavior: 'prohibited',
       shardAllocation: 1,
       charter: 'free',
@@ -279,7 +284,7 @@ describe('twill persona routes', () => {
     expect(missing.statusCode).toBe(404);
 
     bindings.findLive.mockResolvedValueOnce({
-      guildId: 'g1',
+      guildId: GUILD_ID,
       moduleSlug: 'hello-world',
       personaId: 'persona-1',
     });
@@ -288,6 +293,6 @@ describe('twill persona routes', () => {
       url: '/twill/personas/persona-1/bindings/hello-world',
     });
     expect(removed.statusCode).toBe(204);
-    expect(service.unbindModule).toHaveBeenCalledWith('g1', 'hello-world');
+    expect(service.unbindModule).toHaveBeenCalledWith(GUILD_ID, 'hello-world');
   });
 });

@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.93
+version: 5.5.94
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -495,6 +495,49 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.94 — Twill accepted malformed credentials and identifiers (UR-20261012-089) — 2026-10-15
+
+- 2026-10-15 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (tree)
+- THE FINDING: Twill checked that its identifiers were PRESENT and not that they were WELL-FORMED. A
+  registration body could name an application "Dumby Suite", a guild "Bangwing IN", a registrar
+  "master_ronix" and a bot token "bot-secret" -- and every one was stored. The cost was paid later and
+  elsewhere: a malformed token failed at gateway login naming neither the token nor the persona; a
+  malformed application id failed at the OAuth leg or the deploy; a malformed guild id bound a persona
+  to a guild that does not exist and surfaced as a module that never answers; a USERNAME as registrar was
+  recorded and never matched anything, because nothing looks registrars up by name.
+- THE MECHANISM: `parsePersonaRegistration` read each field with `str(...)`, which accepts any non-empty
+  string, and validated only the PRESENTATION fields (presenceStatus, note, accent) -- checked because
+  they were added later, in UR-081. The identifiers, present from the start, were never checked at all.
+  The surface validated what it had most recently been asked to, not what it most needed to.
+- WHAT CHANGED: three shape validators in the model -- `SNOWFLAKE_PATTERN` (17-20 decimal digits,
+  anchored: covers 2015's 17-digit ids through current 19, refuses a longer run), `BOT_TOKEN_PATTERN`
+  (three dot-separated base64url segments; lengths generous because Discord does not publish them, the
+  STRUCTURE is the claim), `CLIENT_SECRET_PATTERN` (a single base64url run). THE SUBSTANTIVE ONE:
+  `applicationIdFromBotToken(token)` decodes the token's first segment -- Discord mints a bot token with
+  its application id base64-encoded there -- and registration compares it against the claimed
+  `discordApplicationId`, refusing a mismatched pair NAMING BOTH IDS. That makes "the token belongs to
+  the application you named" checkable WITHOUT a network round trip. The registrar is a USER ID: a
+  snowflake, at registration and at the grant route. APPLIED AT EVERY WRITE, not only registration --
+  binding and rebind validate their guild id; the credential route validates the shapes AND that a
+  rotated token belongs to that persona's application; the registrar registry validates its authority
+  and its optional application id (empty remaining the documented "any application" bootstrap value).
+  Every refusal NAMES THE FIELD AND SAYS WHERE THE VALUE COMES FROM ("enable Developer Mode and Copy
+  Server ID", "from Bot -> Reset Token"), because a 400 that says "invalid" is a support ticket.
+- RECORDED: "present" is not "valid", and the two were treated as one. `str()` answered "is there a
+  value"; every caller read it as "is this a good value".
+- RECORDED: a value with an internal structure can be checked against its sibling. The bot token carries
+  its application id, which makes the pair (botToken, discordApplicationId) verifiable without trusting
+  either -- cheap, local, and it names both sides when it fails.
+- RECORDED: a username is not an identity. The registrar field was a free string, and free strings
+  record what was typed rather than who did it. The fix is not a stricter string but a different KIND of
+  value.
+- RECORDED: the existing tests were the ones that broke, and that is the point. Ten route tests used
+  `app-9`/`g1`/`bot-secret` placeholders and had to be rebuilt with real-shaped values; those fixtures
+  were the evidence that nothing had ever checked the shapes.
+- **Verification:** 123 files / 1281 tests / 0 failures; typecheck, lint, format clean.
 
 ---
 
