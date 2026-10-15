@@ -68,5 +68,10 @@ audit whose findings (DA-1 … DA-12) are formalised as `upgradation/UR-20261015
 under it. The audit's date and commit are recorded here so audit staleness is visible the same way
 provenance staleness is.
 
+**Branch model.** `feature/dev` is the **development** branch and `main` is the **deployment**
+branch; both are live on their hosts. Every change lands on `feature/dev` first and is promoted to
+`main`. The provenance strings in this corpus name `feature/dev` as the branch a claim was verified
+against — the branch on which development lands.
+
 Where the specification and the running code diverge, the divergence is recorded in
 `status/code-reconciliation.json` — never smoothed over.
