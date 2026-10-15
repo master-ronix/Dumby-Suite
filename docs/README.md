@@ -49,7 +49,8 @@ every gate on any change under `docs/` (a `.github/` nested under `docs/` would 
 Gates (27): manifest · coverage · **ledger-content** · frontmatter · contracts · **compliance** · counts · no-restatement · archive-guard · **asset-adaptation** · status-evidence · anchors · anchor-paths · **edges** · acceptance · reconciliation · code-reconciliation · **entities** · **terminology** · **authority** · **facts** · **normative-markers** · **chain** · **chain-states** · **corpus-boundary** · **side-docs** · **ur**.
 
 **Verification status (policy).** These gates are structural: they prove the corpus is internally
-consistent and single-sourced, not that a human has reviewed every section. Per-file
+consistent and single-sourced, not that a human has reviewed every section, and they do **not** run
+the application `tsc` / `vitest` (the app typecheck is a separate gate). Per-file
 `review_state` and `last_verified_commit` are **reserved for human attestation** and read
 `pending-evidence` / `null` throughout by policy — the corpus is **machine-verified only**; a
 `null` verifying commit is the honest default, never evidence of a review that did not happen.
@@ -61,6 +62,11 @@ consistent and single-sourced, not that a human has reviewed every section. Per-
 `blueprint/`, `contracts/`) · the **change-log** version (the highest released track in
 `upgradation/change-log.md`). A bare `5.x.y` in prose names the change-log track unless a
 document says otherwise.
+
+**Last independent audit.** 2026-10-15, against `feature/dev` @ `6fd4df9d` — a full-scope corpus
+audit whose findings (DA-1 … DA-12) are formalised as `upgradation/UR-20261015-090.md` and closed
+under it. The audit's date and commit are recorded here so audit staleness is visible the same way
+provenance staleness is.
 
 Where the specification and the running code diverge, the divergence is recorded in
 `status/code-reconciliation.json` — never smoothed over.

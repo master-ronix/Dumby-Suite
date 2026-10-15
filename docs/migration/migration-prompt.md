@@ -29,7 +29,7 @@ Bring an existing codebase — or an existing corpus — up to the current speci
 
 **Project:** Dumby — Discord Unified Modular Bot System
 
-**Protocol revision:** <version> — <one-line description of this revision>.
+**Protocol revision:** 5.2.0 — the tri-state chain's migration protocol; it lands the re-baseline work-order deltas one item at a time.
 
 **Derived from:** the change-log record sink, the frozen request record, and `spec/` (sole architectural authority).
 
@@ -37,8 +37,10 @@ Bring an existing codebase — or an existing corpus — up to the current speci
 
 **CURRENT STATE — read before anything else.**
 
-<!-- State of record as of the last session. Populate with the current item, the in-flight
-     slice, and the reconciliation status before any item executes. -->
+- **State of record:** State B — Migration. Work order **ACTIVE** (97 `upgradation/UR-*.md` records; `migration-ledger.md` carries items not `DONE`).
+- **Current item:** the open slices M10 / M14 / M16 (`PARTIAL`) and M18 (`REOPENED`); the proposed items M74 / M82 await operator confirmation.
+- **Reconciliation:** last re-triage against the tree at `feature/dev` @ `6fd4df9d` (2026-10-15).
+- **Blocker:** the application toolchain (`tsc` / `vitest`) and a live Discord run are required to verify any landed slice; resume from the live `migration-ledger.md`, never from this snapshot.
 
 **Relationship to the Master Build Prompt:** this prompt is a scoped *predecessor* to it. When every item in the Migration Work Order (§3) is marked DONE in the ledger, the master prompt's audit protocol and enforcement pass become the governing protocol again — not before.
 
@@ -89,30 +91,17 @@ The master prompt is an audit-to-full-compliance protocol: it classifies every s
 
 This prompt fixes that by giving you a FINITE, ORDERED work list derived from the change-log delta, a hard scope fence around each item, a ledger so progress accumulates across sessions, and a change-log protocol so every landed row is traceable to its source request.
 
-#### 1.1 Corrections made in <version>
+#### 1.1 Corrections made in 5.2.0
 
-<!-- Dated corrections to this prompt's earlier versions. Recorded because a protocol that
-     drifts from reality is the exact failure mode this program exists to eliminate. -->
+No separate corrections log is maintained here. The protocol's revision history is the **single history** in `upgradation/change-log.md` (the record sink), so a correction is recorded there, never restated here.
 
-| # | Earlier version said | Why it was wrong | The correction |
-|---|---|---|---|
-| — | — | — | — |
+#### 1.2 Corrections made in 5.2.0
 
-#### 1.2 Corrections made in <version>
+As §1.1 — absorbed corrections are recorded in `upgradation/change-log.md`, the single history, not duplicated in this protocol.
 
-<!-- Dated corrections absorbed from the frozen request record. -->
+#### 1.3 What the 5.2.0 extraction added (finding-by-finding)
 
-| # | Earlier version said | Evidence | The correction |
-|---|---|---|---|
-| — | — | — | — |
-
-#### 1.3 What the <version> extraction added (finding-by-finding)
-
-<!-- Dated additions landed from the evidence set. -->
-
-| # | What the evidence set says (with source) | Where it now lives in this prompt |
-|---|---|---|
-| — | — | — |
+The finding-by-finding additions landed from the evidence set are recorded in `upgradation/change-log.md` and in the live `migration-ledger.md`, which is the source of truth for what landed. This protocol cites them rather than restating them.
 
 ---
 
