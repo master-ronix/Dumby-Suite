@@ -86,6 +86,20 @@ jobs:
       - name: Gate 3b — ConfigMap ↔ ENV_KEYS drift guard
         run: node apps/main/scripts/check-configmap-keys.mjs
 
+      - name: Fetch libicu60 (embedded-postgres initdb needs it; ubuntu-24.04 ships ICU 74)
+        # The bundled @embedded-postgres linux-x64 initdb is linked against ICU 60, which the
+        # ubuntu-24.04 archives do not carry. Fetch the focal library files (checksum-pinned) and
+        # expose them via LD_LIBRARY_PATH for the flow suite — no system-wide install.
+        run: |
+          set -euo pipefail
+          dir="$RUNNER_TEMP/icu60"
+          mkdir -p "$dir"
+          curl -fsSL -o "$dir/libicu60.deb" \
+            "http://archive.ubuntu.com/ubuntu/pool/main/i/icu/libicu60_60.2-3ubuntu3.2_amd64.deb"
+          echo "f01f61f57e63dc905e02e6441d10370fe0c79e43e70e6f5fe24b342fd2633209  $dir/libicu60.deb" | sha256sum -c -
+          dpkg-deb -x "$dir/libicu60.deb" "$dir/root"
+          echo "LD_LIBRARY_PATH=$dir/root/usr/lib/x86_64-linux-gnu${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" >> "$GITHUB_ENV"
+
       - name: Flow suite — bootstrap → wiring → shutdown (embedded PostgreSQL)
         run: pnpm --filter @workspace/dumby test:flow
 
