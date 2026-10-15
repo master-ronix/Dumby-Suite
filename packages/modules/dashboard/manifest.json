@@ -1,6 +1,10 @@
 {
   "name": "dashboard",
   "version": "1.0.0",
+  "ui": {
+    "icon": "dumby_dashboard",
+    "iconAsset": "assets/icon.png"
+  },
   "description": "Opens the Dumby dashboard \u2014 the central navigation hub for all core commands and module pages.",
   "tier": "core",
   "hardcoded": false,

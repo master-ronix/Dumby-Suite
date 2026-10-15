@@ -1,7 +1,7 @@
 import { test, expect, vi, describe } from 'vitest';
 import type { Logger } from '../../src/logging/logger.js';
 import { CommandRegistry, CommandCollisionError } from '../../src/commands/command-registry.js';
-import { CommandRouter, CommandScopeDeniedError } from '../../src/commands/command-router.js';
+import { CommandRouter } from '../../src/commands/command-router.js';
 import { MiddlewarePipeline } from '../../src/middleware/middleware-pipeline.js';
 import { MiddlewareRejectError, type Middleware } from '../../src/middleware/base-middleware.js';
 import { PermissionResolver } from '../../src/permissions/resolver.js';
@@ -295,10 +295,15 @@ describe('CommandRouter', () => {
     const reg = new CommandRegistry();
     const handler = vi.fn().mockResolvedValue(undefined);
     reg.registerModule('utility', 'standard');
+    // UR-20261012-047 — this used to rely on the removed "no explicit permission declaration" deny,
+    // which was not a layer and denied every core command in production. The denial is now forced the
+    // legitimate way: the command declares a Discord permission the member does not hold, so Layer 5
+    // refuses it and the FORBIDDEN notice still renders.
     reg.register({
       data: { name: 'utility', description: 'Utility' },
       execute: handler,
       moduleId: 'utility',
+      permissions: { discord: ['BAN_MEMBERS'] },
     });
     const logger = makeLogger() as unknown as Logger;
     const router = new CommandRouter(reg, logger, {
@@ -389,7 +394,9 @@ describe('CommandRouter', () => {
     expect(lastEditText(interaction)).toContain('Healthy');
   });
 
-  test('rejects guild-only commands in direct messages by default', async () => {
+  test('ANSWERS a direct-message invocation with a refusal (UR-20261012-058)', async () => {
+    // It used to THROW before replying, so Discord showed "The application did not respond" — which
+    // tells the member nothing. DM use is prohibited by design; the refusal says so.
     const reg = new CommandRegistry();
     reg.registerModule('health', 'core');
     reg.register({
@@ -399,10 +406,13 @@ describe('CommandRouter', () => {
     });
     const logger = makeLogger() as unknown as Logger;
     const router = new CommandRouter(reg, logger);
+    const interaction = { ...makeInteraction('health'), guildId: null };
 
-    await expect(
-      router.dispatch({ ...makeInteraction('health'), guildId: null }),
-    ).rejects.toBeInstanceOf(CommandScopeDeniedError);
+    await expect(router.dispatch(interaction)).resolves.toBeUndefined();
+    expect(interaction.reply).toHaveBeenCalledTimes(1);
+    const sent = JSON.stringify(interaction.reply.mock.calls[0]?.[0]);
+    expect(sent).toContain('Direct messages are not supported');
+    expect(sent).toContain('prohibited');
   });
 
   test('renders an UNKNOWN_COMMAND notice for an unregistered command', async () => {
@@ -502,7 +512,9 @@ describe('CommandRouter', () => {
     const disabled = makeInteraction('utility');
     await router.dispatch(disabled);
     expect(handler).not.toHaveBeenCalled();
-    expect(lastEditText(disabled)).toContain('reason: FORBIDDEN');
+    // UR-20261012-074 — a DISABLED module reports as such, not as a permission failure. This
+    // assertion previously pinned FORBIDDEN, which is the confusion the operator reported live.
+    expect(lastEditText(disabled)).toContain('reason: MODULE_DISABLED');
 
     const enabled = { ...makeInteraction('utility'), guildId: 'enabled-guild' };
     await router.dispatch(enabled);
@@ -583,5 +595,428 @@ describe('CommandRouter', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe('a persona is bound to ONE guild (UR-20261012-060)', () => {
+  test('refuses every command in a guild it is not bound to', async () => {
+    // A persona registers core commands GLOBALLY, so her commands are visible in servers she does not
+    // serve. Every one of them must be refused there.
+    const reg = new CommandRegistry();
+    reg.registerModule('health', 'core');
+    reg.register({
+      data: { name: 'health', description: 'Health' },
+      execute: async () => {},
+      moduleId: 'health',
+    });
+    const logger = makeLogger() as unknown as Logger;
+    const router = new CommandRouter(reg, logger, {
+      residentPersonaId: 'p-1',
+      residentBoundGuildId: 'g-bound',
+    });
+    const elsewhere = makeInteraction('health'); // guildId 'g1', which is NOT 'g-bound'
+
+    await expect(router.dispatch(elsewhere)).resolves.toBeUndefined();
+    const sent = JSON.stringify(elsewhere.editReply.mock.calls.at(-1)?.[0]);
+    expect(sent).toContain('not my server');
+  });
+
+  test('acts normally in its own bound guild', async () => {
+    const reg = new CommandRegistry();
+    reg.registerModule('health', 'core');
+    const handler = vi.fn().mockResolvedValue(undefined);
+    reg.register({
+      data: { name: 'health', description: 'Health' },
+      execute: handler,
+      moduleId: 'health',
+    });
+    const logger = makeLogger() as unknown as Logger;
+    const router = new CommandRouter(reg, logger, {
+      residentPersonaId: 'p-1',
+      residentBoundGuildId: 'g1',
+    });
+
+    await router.dispatch(makeInteraction('health'));
+    expect(handler).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('/browse states module occupancy (UR-20261012-061)', () => {
+  test('an occupied module is labelled and described as occupied, and a free one is not', async () => {
+    const reg = new CommandRegistry();
+    const logger = makeLogger() as unknown as Logger;
+    const router = new CommandRouter(reg, logger, {
+      residentPersonaId: 'p-1',
+      residentApplicationId: 'app-2',
+      pageDataProvider: async () => ({
+        query: '',
+        modules: [
+          {
+            id: 'hello-world',
+            name: 'hello-world',
+            description: 'A hello module',
+            icon: '🧊',
+            occupied: true,
+            occupiedBy: 'the main bot',
+            note: 'Occupied by the main bot in this server — a persona cannot take it',
+          },
+          { id: 'free-mod', name: 'free-mod', description: 'Free', icon: '🆓' },
+        ],
+      }),
+    });
+
+    const rendered = JSON.stringify(await router.buildBrowseRender('u1', 'g1', ''));
+
+    // The occupied option carries the fact in its LABEL (a Discord select cannot disable one option).
+    expect(rendered).toContain('hello-world — occupied');
+    expect(rendered).toContain('Occupied by the main bot');
+    // The free module is offered normally.
+    expect(rendered).toContain('free-mod');
+  });
+
+  test('a browse render survives a provider that returns nothing', async () => {
+    const reg = new CommandRegistry();
+    const logger = makeLogger() as unknown as Logger;
+    const router = new CommandRouter(reg, logger, { pageDataProvider: async () => ({}) });
+    // The empty path must still render a frame rather than throw.
+    await expect(router.buildBrowseRender('u1', 'g1', 'nothing')).resolves.toBeDefined();
+  });
+});
+
+const logger2 = makeLogger() as unknown as Logger;
+
+describe('a module can tell WHO it is running as (UR-20261012-067)', () => {
+  /** The context a handler actually receives. */
+  const captureContext = (reg: CommandRegistry, seen: { ctx?: unknown }) => {
+    reg.register({
+      data: { name: 'whoami', description: 'Who am I' },
+      execute: async (_i: unknown, context: unknown) => {
+        seen.ctx = context;
+        return { page: 'whoami', data: {} };
+      },
+      moduleId: 'hello-world',
+    } as never);
+  };
+
+  test('a persona dispatch carries its identity, application, binding and ownership', async () => {
+    const reg = new CommandRegistry();
+    reg.registerModule('hello-world', 'standard');
+    const seen: { ctx?: unknown } = {};
+    captureContext(reg, seen);
+    const router = new CommandRouter(reg, logger2, {
+      residentPersonaId: 'p-1',
+      residentBoundGuildId: 'g-bound',
+      residentProfileName: 'ELSA',
+      resolveCommandOwner: async () => 'p-1',
+      isModuleEnabledInGuild: async () => true,
+    } as never);
+    // A persona acts only in its bound guild, so the dispatch must come from there.
+    const interaction = {
+      ...makeInteraction('whoami'),
+      applicationId: 'app-elsa',
+      guildId: 'g-bound',
+    };
+
+    await router.dispatch(interaction);
+
+    const ctx = seen.ctx as {
+      identity: Record<string, unknown>;
+      module: Record<string, unknown>;
+    };
+    expect(ctx.identity['kind']).toBe('persona');
+    expect(ctx.identity['profileId']).toBe('p-1');
+    expect(ctx.identity['profileName']).toBe('ELSA');
+    // The application is the one Discord states on the interaction — never a second source.
+    expect(ctx.identity['applicationId']).toBe('app-elsa');
+    expect(ctx.identity['boundGuildId']).toBe('g-bound');
+    expect(ctx.module['moduleId']).toBe('hello-world');
+    expect(ctx.module['owner']).toBe('p-1');
+    expect(ctx.module['ownedByCaller']).toBe(true);
+  });
+
+  test('the main bot carries no bound guild, and sees a module it holds as its own', async () => {
+    const reg = new CommandRegistry();
+    reg.registerModule('hello-world', 'standard');
+    const seen: { ctx?: unknown } = {};
+    captureContext(reg, seen);
+    const router = new CommandRouter(reg, logger2, {
+      resolveCommandOwner: async () => undefined, // unbound: the main bot holds it
+      isModuleEnabledInGuild: async () => true,
+    } as never);
+
+    await router.dispatch({ ...makeInteraction('whoami'), applicationId: 'app-main' });
+
+    const ctx = seen.ctx as { identity: Record<string, unknown>; module: Record<string, unknown> };
+    expect(ctx).toBeDefined();
+    expect(ctx.identity['kind']).toBe('main');
+    expect(ctx.identity['profileId']).toBe('main');
+    // The main bot serves every guild it is installed in, so it declares no bound guild.
+    expect(ctx.identity['boundGuildId']).toBeUndefined();
+    expect(ctx.module['owner']).toBe('main');
+    expect(ctx.module['ownedByCaller']).toBe(true);
+  });
+
+  test('the main bot is REFUSED a module a persona holds — and that is the standing it sees', async () => {
+    // The ownership rule, reached through the new context: a standard module belongs to ONE profile,
+    // so the other one is refused rather than silently allowed.
+    const reg = new CommandRegistry();
+    reg.registerModule('hello-world', 'standard');
+    const seen: { ctx?: unknown } = {};
+    captureContext(reg, seen);
+    const router = new CommandRouter(reg, logger2, {
+      resolveCommandOwner: async () => 'p-1',
+      isModuleEnabledInGuild: async () => true,
+    } as never);
+
+    await router.dispatch({ ...makeInteraction('whoami'), applicationId: 'app-main' });
+
+    // Refused before the handler, so no context was handed over.
+    expect(seen.ctx).toBeUndefined();
+  });
+});
+describe('a failing lookup refuses HONESTLY, it does not break the dispatch (UR-20261012-069)', () => {
+  test('a throwing ownership lookup yields the unreadable-state notice, not a fake permission error', async () => {
+    // This path runs on EVERY command. A failing read must not propagate as an unhandled error, and it
+    // must not be reported as "not available in guild" — that tells a member they lack permission when
+    // the truth is that the guild's state could not be read.
+    const reg = new CommandRegistry();
+    reg.registerModule('hello-world', 'standard');
+    const seen: { ctx?: unknown } = {};
+    reg.register({
+      data: { name: 'whoami', description: 'Who am I' },
+      execute: async (_i: unknown, context: unknown) => {
+        seen.ctx = context;
+        return { page: 'whoami', data: {} };
+      },
+      moduleId: 'hello-world',
+    } as never);
+    const router = new CommandRouter(reg, logger2, {
+      resolveCommandOwner: async () => {
+        throw new Error('database unavailable');
+      },
+      isModuleEnabledInGuild: async () => true,
+    } as never);
+    const interaction = { ...makeInteraction('whoami'), applicationId: 'app-main' };
+
+    await expect(router.dispatch(interaction)).resolves.toBeUndefined();
+    expect(seen.ctx).toBeUndefined();
+    const notice = JSON.stringify(interaction.editReply.mock.calls.at(-1)?.[0]);
+    expect(notice).toContain('Could not check this server');
+    expect(notice).not.toContain('is not available in guild');
+  });
+});
+
+describe('the standing is advisory — it can never break a dispatch (UR-20261012-068)', () => {
+  test('a failing owner read yields the CONSERVATIVE owner, not a throw', async () => {
+    const reg = new CommandRegistry();
+    reg.registerModule('hello-world', 'standard');
+    const router = new CommandRouter(reg, logger2, {
+      resolveCommandOwner: async () => {
+        throw new Error('database unavailable');
+      },
+      isModuleEnabledInGuild: async () => true,
+    } as never);
+    // Reached directly: on the live path the assertions run first, so a throw here would be the
+    // SECOND read failing — a transient fault. Either way the standing must not throw.
+    const standing = await (
+      router as unknown as {
+        moduleStanding: (
+          def: unknown,
+          interaction: unknown,
+        ) => Promise<{ owner: string; enabled: boolean }>;
+      }
+    ).moduleStanding({ moduleId: 'hello-world' }, { guildId: 'g1' });
+
+    expect(standing.owner).toBe('main');
+    expect(standing.enabled).toBe(true);
+  });
+
+  test('a failing enablement read yields enabled:false — claim nothing, never a false yes', async () => {
+    const reg = new CommandRegistry();
+    reg.registerModule('hello-world', 'standard');
+    const router = new CommandRouter(reg, logger2, {
+      resolveCommandOwner: async () => 'main',
+      isModuleEnabledInGuild: async () => {
+        throw new Error('database unavailable');
+      },
+    } as never);
+    const standing = await (
+      router as unknown as {
+        moduleStanding: (
+          def: unknown,
+          interaction: unknown,
+        ) => Promise<{ owner: string; enabled: boolean }>;
+      }
+    ).moduleStanding({ moduleId: 'hello-world' }, { guildId: 'g1' });
+
+    expect(standing.enabled).toBe(false);
+    expect(standing.owner).toBe('main');
+  });
+
+  test('a Core module is shared and always enabled, without reading either dep', async () => {
+    const reg = new CommandRegistry();
+    reg.registerModule('dashboard', 'core');
+    const ownerRead = vi.fn(async () => 'someone');
+    const enabledRead = vi.fn(async () => false);
+    const router = new CommandRouter(reg, logger2, {
+      resolveCommandOwner: ownerRead,
+      isModuleEnabledInGuild: enabledRead,
+    } as never);
+    const standing = await (
+      router as unknown as {
+        moduleStanding: (
+          def: unknown,
+          interaction: unknown,
+        ) => Promise<{ owner: string; enabled: boolean }>;
+      }
+    ).moduleStanding({ moduleId: 'dashboard' }, { guildId: 'g1' });
+
+    expect(standing.owner).toBe('shared');
+    expect(standing.enabled).toBe(true);
+    expect(ownerRead).not.toHaveBeenCalled();
+    expect(enabledRead).not.toHaveBeenCalled();
+  });
+});
+
+describe('a DISABLED module is not a permission problem (UR-20261012-074)', () => {
+  test('a module-disabled refusal says so, instead of "your permissions do not allow this"', async () => {
+    // Reported from a live server: `/dashboard` was refused with reason FORBIDDEN, so the member was
+    // told they lacked permission when the truth was that the module was switched off in that guild.
+    const reg = new CommandRegistry();
+    reg.registerModule('hello-world', 'standard');
+    reg.register({
+      data: { name: 'hello', description: 'Says hello' },
+      moduleId: 'hello-world',
+      execute: async () => ({ page: 'hello', data: {} }),
+    } as never);
+    const router = new CommandRouter(reg, logger2, {
+      isModuleEnabledInGuild: async () => false,
+    } as never);
+    const interaction = { ...makeInteraction('hello'), applicationId: 'app-main' };
+
+    await expect(router.dispatch(interaction)).resolves.toBeUndefined();
+    const notice = JSON.stringify(interaction.editReply.mock.calls.at(-1)?.[0]);
+    expect(notice).toContain('This module is switched off');
+    expect(notice).toContain('not a permissions problem');
+    expect(notice).not.toContain('Your permissions do not allow this action');
+  });
+});
+
+describe('the primary render carries the acting profile (UR-20261012-075)', () => {
+  test('a persona dispatch renders the page for the PERSONA, not the main bot', async () => {
+    // The dispatcher defaulted actingProfileId to 'main', so a persona's FIRST page reported the main
+    // bot's modules — while the same page after an effect (which did pass it) reported its own. Two
+    // renders of one page disagreed.
+    const reg = new CommandRegistry();
+    reg.registerModule('hello-world', 'standard');
+    reg.register({
+      data: { name: 'hello', description: 'Says hello' },
+      moduleId: 'hello-world',
+      execute: async () => ({ page: 'hello', data: {} }),
+    } as never);
+    const seen: Array<{ applicationId?: string; actingProfileId?: string }> = [];
+    const router = new CommandRouter(reg, logger2, {
+      isModuleEnabledInGuild: async () => true,
+      residentPersonaId: 'persona-1',
+      pageDataProvider: async (
+        _moduleId: string,
+        _guildId: string | null,
+        _page: number,
+        _query: string | undefined,
+        applicationId: string,
+        actingProfileId: string,
+      ) => {
+        seen.push({ applicationId, actingProfileId });
+        return {};
+      },
+    } as never);
+    const interaction = { ...makeInteraction('hello'), applicationId: 'app-persona' };
+
+    await router.dispatch(interaction);
+
+    expect(seen.length).toBeGreaterThan(0);
+    for (const call of seen) {
+      expect(call.actingProfileId).toBe('persona-1');
+      expect(call.applicationId).toBe('app-persona');
+    }
+  });
+
+  test('the main bot renders for main', async () => {
+    const reg = new CommandRegistry();
+    reg.registerModule('hello-world', 'standard');
+    reg.register({
+      data: { name: 'hello', description: 'Says hello' },
+      moduleId: 'hello-world',
+      execute: async () => ({ page: 'hello', data: {} }),
+    } as never);
+    const seen: Array<string | undefined> = [];
+    const router = new CommandRouter(reg, logger2, {
+      isModuleEnabledInGuild: async () => true,
+      pageDataProvider: async (
+        _m: string,
+        _g: string | null,
+        _p: number,
+        _q: string | undefined,
+        _a: string,
+        actingProfileId: string,
+      ) => {
+        seen.push(actingProfileId);
+        return {};
+      },
+    } as never);
+
+    await router.dispatch({ ...makeInteraction('hello'), applicationId: 'app-main' });
+
+    expect(seen.every((id) => id === 'main')).toBe(true);
+  });
+});
+
+describe('a persona may run SHARED commands (UR-20261012-080)', () => {
+  test('a CORE command is not treated as owned by the main bot', async () => {
+    // UR-078 made the ownership read answer 'main' for any enabled module with no binding. Core
+    // modules have no binding and are ALWAYS enabled, so every core command read as the main bot's
+    // and a persona was refused all of them: /dashboard, /modules, /browse, /persona, /permit,
+    // /queue, /health. §13.2: "Core is `shared`: no profile owns it, every profile runs it."
+    const reg = new CommandRegistry();
+    reg.registerModule('dashboard', 'core');
+    const executed = vi.fn(async () => ({ page: 'dashboard', data: {} }));
+    reg.register({
+      data: { name: 'dashboard', description: 'Dashboard' },
+      moduleId: 'dashboard',
+      execute: executed,
+    } as never);
+    const router = new CommandRouter(reg, logger2, {
+      isModuleEnabledInGuild: async () => true,
+      // What the real read now answers for a shared tier.
+      resolveCommandOwner: async () => 'shared',
+      residentPersonaId: 'persona-1',
+    } as never);
+
+    const interaction = { ...makeInteraction('dashboard'), applicationId: 'app-persona' };
+    await router.dispatch(interaction);
+
+    expect(executed).toHaveBeenCalledTimes(1);
+  });
+
+  test('a STANDARD module the main bot holds is still refused to a persona', async () => {
+    // The refusal itself must not have been weakened by the fix above.
+    const reg = new CommandRegistry();
+    reg.registerModule('hello-world', 'standard');
+    const executed = vi.fn(async () => ({ page: 'hello', data: {} }));
+    reg.register({
+      data: { name: 'hello', description: 'Says hello' },
+      moduleId: 'hello-world',
+      execute: executed,
+    } as never);
+    const router = new CommandRouter(reg, logger2, {
+      isModuleEnabledInGuild: async () => true,
+      resolveCommandOwner: async () => 'main',
+      residentPersonaId: 'persona-1',
+    } as never);
+
+    const interaction = { ...makeInteraction('hello'), applicationId: 'app-persona' };
+    await router.dispatch(interaction);
+
+    expect(executed).not.toHaveBeenCalled();
   });
 });

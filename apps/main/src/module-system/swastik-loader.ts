@@ -252,11 +252,9 @@ export async function loadModulesFromTierVolumes(
   const guardActive = buildStore !== undefined && verifier !== undefined;
   const quarantineDir = options.quarantineDir ?? join(modulesDir, 'quarantine');
   if (!guardActive) {
-    logger.warn('module-provenance-unverified', {
-      modulesDir,
-      reason:
-        'no buildStore/verifier supplied — modules are imported without §15.8/§15.9 load-time provenance verification',
-    });
+    const reason =
+      'no buildStore/verifier supplied — modules are imported without §15.8/§15.9 load-time provenance verification';
+    logger.warn(`module-provenance-unverified: ${reason}`, { modulesDir, reason });
   }
 
   for (const volumeName of MODULE_VOLUME_NAMES) {
@@ -383,7 +381,9 @@ export async function loadModulesFromTierVolumes(
         if (pkg.onLoad) loadedModule.onLoad = pkg.onLoad;
         if (pkg.onReady) loadedModule.onReady = pkg.onReady;
         if (pkg.onUnload) loadedModule.onUnload = pkg.onUnload;
-        registry.register(loadedModule);
+        // UR-20261012-066 — carry the module's directory, so the core can resolve an asset the
+        // module declares in its own manifest instead of holding a copy of the path itself.
+        registry.register({ ...loadedModule, root: moduleDir });
 
         loaded.push(manifest.name);
         logger.info('module-volume-loaded', {

@@ -136,6 +136,89 @@ The Marketplace is a framework-level surface: its title names the surface, and i
 
 ---
 
+### 5.12 Browse Page Update (UR-20261011-003) — the current arrangements
+
+> **Authority.** The operator's final authority (UR-20261011-003, 11/10/2026); supersedes the earlier
+> clauses of this Division where they conflict.
+
+- **No in-content heading.** The frame title (`Dumby Suite | Marketplace`) names the surface; the
+  content carries no repeated "Marketplace" heading.
+- **Discover control (top).** A Section at the top of the content carries the **Discover** control
+  (a generated bold white magnifier icon) in-line after its text. It opens a **modal** text input.
+- **Listing.** The main page lists the available, **not-installed** marketplace modules, each with the
+  framework's default module logo emoji beside its name. (Ranking / trending is deferred.)
+- **Search.** Submitting the Discover modal re-renders the page with the results for the query; the
+  results are capped at 25 and the install dropdown is synced to them.
+- **Inline Info.** Each module carries an **Info** control in-line after its name (a Section
+  accessory). It returns the module's descriptive content **privately (ephemeral)**.
+- **Install dropdown.** A String Select at the bottom of the frame lists the shown modules; selecting
+  one installs it for the guild.
+
+### 5.13 Browse Page Corrections (UR-20261011-004) — the current arrangements
+
+> **Authority.** The operator's final authority (UR-20261011-004, 11/10/2026); supersedes §5.12 where
+> they conflict.
+
+- **Control row.** A row at the top of the content carries **Discover** (the magnifier icon plus the
+  word "Discover") and **Home** (the framework's white home icon, returning to the dashboard home).
+  *(A Discord Section renders its accessory on the right, so the controls sit in a row above the
+  title rather than left of it — a platform constraint.)*
+- **Title.** The content title is bold: `Explore new modules to install`.
+- **Install dropdown.** The install dropdown is **always present**; when no modules are available it
+  is a **disabled** placeholder, so the control never disappears.
+
+### 5.14 Browse Page Corrections (UR-20261011-005) — the current arrangements
+
+> **Authority.** The operator's final authority (UR-20261011-005, 11/10/2026); supersedes §5.13 where
+> they conflict.
+
+- **No extra dividers.** The content blocks (the control row, the title, the listing, the dropdown)
+  carry **no introduced dividers** between them.
+- **Control row.** Discover and Home remain together as one row, placed adjacent to the title.
+- **Home.** The Home control returns to the **/browse** main view — resetting any search back to the
+  available-modules listing — not the dashboard home.
+
+### 5.15 Browse Page — Home in the Install Dropdown (UR-20261011-006) — the current arrangements
+
+> **Authority.** The operator's final authority (UR-20261011-006, 11/10/2026); supersedes §5.14
+> where they conflict.
+
+- **Home is a permanent dropdown option.** The install **String Select** carries a permanent
+  **Home** entry in its **first slot**, above every module option (the framework's white home icon;
+  sentinel value `__home__`). Selecting it returns to the **/browse** main view — resetting any
+  search — and installs nothing.
+- **The Home button is removed.** The control row carries **Discover** only; the dropdown is the
+  Home control's sole surface.
+- **The dropdown is always enabled.** Because the permanent Home option is always present, the
+  control always has a selectable entry; the former empty-state disabled placeholder is retired.
+- **The caps are reconciled.** The install dropdown holds at most **25** options
+  (`INSTALL_DROPDOWN_CAP` — Discord's String Select limit) and the per-page module listing holds at
+  most **24** modules (`MARKETPLACE_MODULE_CAP`), reserving one dropdown slot for Home, so the
+  listing and the dropdown stay in sync (24 modules + Home = 25 options).
+
+### 5.16 Browse Page — Discover In-Line with the Title (UR-20261011-007) — the current arrangements
+
+> **Authority.** The operator's final authority (UR-20261011-007, 11/10/2026); supersedes §5.15
+> where they conflict.
+
+- **Discover sits in-line with the title.** The browse title is a **Section** whose **accessory is
+  the Discover control**; a Section renders its single accessory on the right of the text line, so
+  Discover appears on the **same line as the title**. The standalone control row above the title is
+  removed.
+
+### 5.17 Browse Catalogue — Installable & Re-enableable (UR-20261011-010) — the current arrangements
+
+> **Authority.** The operator's final authority (UR-20261011-010, 11/10/2026); supersedes §5.12–§5.16
+> where they conflict.
+
+- **Catalogue scope.** `/browse` lists what the guild can **install or re-enable**: **marketplace**
+  modules not enabled for the guild, and **standard** modules the guild has **disabled** (relisted as
+  **"Previously installed"**, §13.2). Core and Admin modules are never listed. Selecting an entry in
+  the install dropdown writes `guild_module_states` (`enabled:true, state:'active'`) and enqueues the
+  module's commands for re-registration on the guild command change queue (BCCM).
+- **"Previously installed" marker.** A disabled standard module carries the subtext note
+  `Previously installed — select to re-enable`.
+
 ## Contract
 - `contracts/rbac.enums.json`
 - `contracts/commands.json`

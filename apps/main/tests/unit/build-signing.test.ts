@@ -1,8 +1,11 @@
-import { test, expect } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
+import { createPublicKey, generateKeyPairSync } from 'node:crypto';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
+  armBuildProvenance,
+  armRegistryKeys,
   BuildSigner,
   BuildSignatureVerifier,
   generateBuildSigningKeyPair,
@@ -13,6 +16,9 @@ import {
   tupleFromSidecar,
   BuildSigningKeyError,
   HASH_PREFIX,
+  normalizeSigningKey,
+  resolveSigningPublicKey,
+  armBuildProvenance,
 } from '../../src/module-system/build-signing.js';
 
 const tuple = {
@@ -94,4 +100,196 @@ test('BuildSigner validates key material', () => {
   const signer = BuildSigner.fromSeed('k', Buffer.alloc(32, 1));
   expect(signer.keyId).toBe('k');
   expect(signer.publicKeyPem).toContain('PUBLIC KEY');
+});
+
+// --- UR-20261012-035 — the configured key's escapes ---------------------------------------
+
+describe('normalizeSigningKey', () => {
+  const pem = (body: string): string =>
+    `-----BEGIN PRIVATE KEY-----\n${body}\n-----END PRIVATE KEY-----\n`;
+
+  test('turns the escaped single-line form a hosting variable holds into real line breaks', () => {
+    const singleLine = pem('ABC').replace(/\n/g, '\\n');
+    expect(normalizeSigningKey(singleLine)).toBe(pem('ABC'));
+  });
+
+  test('leaves a value that already carries real newlines untouched', () => {
+    expect(normalizeSigningKey(pem('ABC'))).toBe(pem('ABC'));
+  });
+
+  test('the normalised single-line form is a key Node will actually accept', () => {
+    const { privateKey } = generateKeyPairSync('ed25519');
+    const exported = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
+    // Before the fix this exact value failed with DECODER routines::unsupported.
+    expect(() =>
+      createPublicKey(normalizeSigningKey(exported.replace(/\n/g, '\\n'))),
+    ).not.toThrow();
+  });
+});
+
+describe('resolveSigningPublicKey', () => {
+  const pair = generateKeyPairSync('ed25519');
+  const privatePem = pair.privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
+  const publicPem = pair.publicKey.export({ type: 'spki', format: 'pem' }).toString();
+
+  test('prefers the public key, so the runtime never needs the private half', () => {
+    // A private key that is NOT the pair's — if it were used, this would resolve to the wrong key.
+    const other = generateKeyPairSync('ed25519');
+    const otherPrivate = other.privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
+    const resolved = resolveSigningPublicKey(otherPrivate, publicPem);
+    expect(resolved).toBeDefined();
+    expect(resolved?.export({ type: 'spki', format: 'pem' }).toString()).toBe(publicPem);
+  });
+
+  test('falls back to deriving the public key from the private one', () => {
+    const resolved = resolveSigningPublicKey(privatePem, '');
+    expect(resolved?.export({ type: 'spki', format: 'pem' }).toString()).toBe(publicPem);
+  });
+
+  test('accepts the escaped single-line form for either key', () => {
+    expect(resolveSigningPublicKey('', publicPem.replace(/\n/g, '\\n'))).toBeDefined();
+    expect(resolveSigningPublicKey(privatePem.replace(/\n/g, '\\n'), '')).toBeDefined();
+  });
+
+  test('returns undefined when neither key is configured', () => {
+    expect(resolveSigningPublicKey('', '')).toBeUndefined();
+    expect(resolveSigningPublicKey('   ', '  ')).toBeUndefined();
+  });
+});
+
+describe('armBuildProvenance (boot safety)', () => {
+  const registrar = () => ({ registerKey: vi.fn() });
+
+  test('a MALFORMED key returns unarmed with the reason and DOES NOT THROW', () => {
+    // The regression this guards: a bad PEM thrown from the boot path killed the process with
+    // ERR_OSSL_UNSUPPORTED. It must be a warning, never a crash.
+    const verifier = registrar();
+    let result: { armed: boolean; error?: string } | undefined;
+    expect(() => {
+      result = armBuildProvenance(verifier, 'key-1', 'not-a-pem', '');
+    }).not.toThrow();
+    expect(result?.armed).toBe(false);
+    expect(result?.error).toBeTruthy();
+    expect(verifier.registerKey).not.toHaveBeenCalled();
+  });
+
+  test('an empty key id arms nothing and touches nothing', () => {
+    const verifier = registrar();
+    expect(armBuildProvenance(verifier, '', 'x', 'y')).toEqual({ armed: false });
+    expect(verifier.registerKey).not.toHaveBeenCalled();
+  });
+
+  test('no key material at all arms nothing, without an error', () => {
+    expect(armBuildProvenance(registrar(), 'key-1', '', '')).toEqual({ armed: false });
+  });
+
+  test('a VALID public key arms the guard', () => {
+    const pair = generateKeyPairSync('ed25519');
+    const publicPem = pair.publicKey.export({ type: 'spki', format: 'pem' }).toString();
+    const verifier = registrar();
+    expect(armBuildProvenance(verifier, 'key-1', '', publicPem)).toEqual({ armed: true });
+    expect(verifier.registerKey).toHaveBeenCalledTimes(1);
+  });
+
+  test('a valid PRIVATE key still arms the guard (the builder path)', () => {
+    const pair = generateKeyPairSync('ed25519');
+    const privatePem = pair.privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
+    expect(armBuildProvenance(registrar(), 'key-1', privatePem, '')).toEqual({ armed: true });
+  });
+
+  test('a verifier that rejects the key is caught, not propagated', () => {
+    const verifier = {
+      registerKey: () => {
+        throw new Error('registry refused');
+      },
+    };
+    const pair = generateKeyPairSync('ed25519');
+    const publicPem = pair.publicKey.export({ type: 'spki', format: 'pem' }).toString();
+    const result = armBuildProvenance(verifier, 'key-1', '', publicPem);
+    expect(result.armed).toBe(false);
+    expect(result.error).toBe('registry refused');
+  });
+});
+
+describe('armRegistryKeys — the signing_keys registry (UR-20261012-042)', () => {
+  const keyPair = () => {
+    const { publicKey } = generateKeyPairSync('ed25519');
+    return publicKey.export({ type: 'spki', format: 'pem' }).toString();
+  };
+
+  test('registers every well-formed registry key', () => {
+    const verifier = new BuildSignatureVerifier();
+    const n = armRegistryKeys(verifier, [
+      { keyId: 'k1', publicKey: keyPair() },
+      { keyId: 'k2', publicKey: keyPair() },
+    ]);
+    expect(n).toBe(2);
+    expect(verifier.hasKey('k1')).toBe(true);
+    expect(verifier.hasKey('k2')).toBe(true);
+  });
+
+  test('skips a malformed row without disarming the others', () => {
+    const verifier = new BuildSignatureVerifier();
+    const n = armRegistryKeys(verifier, [
+      { keyId: 'good', publicKey: keyPair() },
+      { keyId: 'bad', publicKey: 'not-a-pem' },
+    ]);
+    expect(n).toBe(1);
+    expect(verifier.hasKey('good')).toBe(true);
+    expect(verifier.hasKey('bad')).toBe(false);
+  });
+
+  test('ignores empty ids and empty keys', () => {
+    const verifier = new BuildSignatureVerifier();
+    expect(
+      armRegistryKeys(verifier, [
+        { keyId: '', publicKey: keyPair() },
+        { keyId: 'k', publicKey: '   ' },
+      ]),
+    ).toBe(0);
+  });
+
+  test('an empty registry registers nothing and never throws', () => {
+    expect(armRegistryKeys(new BuildSignatureVerifier(), [])).toBe(0);
+  });
+});
+
+describe('armBuildProvenance with the registry', () => {
+  const keyPair = () => {
+    const { publicKey } = generateKeyPairSync('ed25519');
+    return publicKey.export({ type: 'spki', format: 'pem' }).toString();
+  };
+
+  test('a registry-only deployment is ARMED (it was not before)', () => {
+    const verifier = new BuildSignatureVerifier();
+    const result = armBuildProvenance(verifier, '', '', '', [
+      { keyId: 'reg', publicKey: keyPair() },
+    ]);
+    expect(result).toEqual({ armed: true });
+    expect(verifier.hasKey('reg')).toBe(true);
+  });
+
+  test('config and registry arm together', () => {
+    const verifier = new BuildSignatureVerifier();
+    const result = armBuildProvenance(verifier, 'cfg', '', keyPair(), [
+      { keyId: 'reg', publicKey: keyPair() },
+    ]);
+    expect(result.armed).toBe(true);
+    expect(verifier.hasKey('cfg')).toBe(true);
+    expect(verifier.hasKey('reg')).toBe(true);
+  });
+
+  test('a bad config key still leaves the registry keys armed and does not throw', () => {
+    const verifier = new BuildSignatureVerifier();
+    const result = armBuildProvenance(verifier, 'cfg', '', 'not-a-pem', [
+      { keyId: 'reg', publicKey: keyPair() },
+    ]);
+    expect(result.armed).toBe(true);
+    expect(result.error).toBeDefined();
+    expect(verifier.hasKey('reg')).toBe(true);
+  });
+
+  test('neither source leaves the guard disarmed', () => {
+    expect(armBuildProvenance(new BuildSignatureVerifier(), '', '', '')).toEqual({ armed: false });
+  });
 });

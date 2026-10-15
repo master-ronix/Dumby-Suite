@@ -1,84 +1,80 @@
 import Fastify from 'fastify';
+import knex from 'knex';
 import { isMainEntry } from './is-main-entry.js';
 import { parseEnv, pickEnvKeys } from '../config/env.schema.js';
 import { createLogger } from '../logging/logger.js';
 import { registerInternalAuth } from '../http/internal-auth.js';
+import { rootKeyFromBase64 } from '../crypto/envelope.js';
+import knexConfig from '../db/knexfile.js';
+import { PersonaCommandBindingService } from '../personas/persona-command-binding.service.js';
+import {
+  PostgresPersonaBindingStore,
+  PostgresPersonaIdentityStore,
+} from '../personas/persona.repository.js';
+import { registerTwillPersonaRoutes } from '../personas/twill-registration.js';
+import {
+  parseRegistrarSeed,
+  PostgresPersonaRegistrarStore,
+  seedRegistrarsSafely,
+} from '../personas/persona-registrar.repository.js';
 
-const env = parseEnv(pickEnvKeys(process.env));
-const logger = createLogger(env.LOG_LEVEL);
+/**
+ * UR-20261012-033 — the Twill control plane.
+ *
+ * ADR-011 makes this the ONLY persona-creation surface, so it is no longer a stub: it wires the
+ * persona service to the database and serves the registration API. Every side effect (config, the
+ * pool, the listener) lives inside the `isMainEntry` guard, so importing this module in a test has
+ * none (TREE 7-D / ACC-ARCH-0007-2).
+ */
+async function start(): Promise<void> {
+  const env = parseEnv(pickEnvKeys(process.env));
+  const logger = createLogger(env.LOG_LEVEL);
+  const app = Fastify({ logger: false });
 
-const app = Fastify({ logger: false });
+  registerInternalAuth(app, { expectedKey: env.INTERNAL_API_KEY });
 
-registerInternalAuth(app, {
-  expectedKey: env.INTERNAL_API_KEY,
-});
+  const nodeEnv: string = env.NODE_ENV;
+  const config = knexConfig[nodeEnv] ?? knexConfig['development'];
+  if (config === undefined) {
+    logger.fatal('twill-no-knex-config', { nodeEnv });
+    process.exit(1);
+  }
+  const db = knex(config);
+  const rootKey = rootKeyFromBase64('local', env.ENCRYPTION_ROOT_KEY);
 
-const NOT_IMPLEMENTED = (surface: string) => ({
-  error: 'Not Implemented',
-  reason:
-    `Twill "${surface}" is stubbed in v5.0: no operational personas are hosted. ` +
-    `Specified at blueprint.md §35.5 / §44 (Twill family); scope and gates at ` +
-    `ADR-008 (free charter / sunset) and ADR-011 (registration API is the only ` +
-    `persona-creation surface). Infrastructure provisioning is reserved to ` +
-    `process owners and is not stubbed in.`,
-});
+  const identities = new PostgresPersonaIdentityStore(db);
+  const bindings = new PostgresPersonaBindingStore(db);
+  const registrars = new PostgresPersonaRegistrarStore(db);
+  await seedRegistrarsSafely(
+    registrars,
+    parseRegistrarSeed(env.PERSONA_REGISTRAR_AUTHORITIES),
+    (message) => logger.warn(message),
+  );
+  const service = new PersonaCommandBindingService(identities, bindings, logger, registrars);
 
-app.post<{
-  Body: {
-    name?: string;
-    discordApplicationId?: string;
-    boundGuildId?: string;
-    registrarAuthority?: string;
-    dmBehavior?: 'prohibited' | 'allowed';
-  };
-}>('/twill/personas/register', async (_request, reply) => {
-  logger.warn('twill-register-stubbed');
-  return reply.code(501).send(NOT_IMPLEMENTED('persona registration'));
-});
+  registerTwillPersonaRoutes(app, {
+    service,
+    identities,
+    bindings,
+    registrars,
+    rootKey,
+    logger,
+    // ADR-008 — the free-charter sunset reads measured cost signals. Neither is measurable while the
+    // fleet runs on the shared deployment, so registration stays open under the free charter.
+    costSignals: { dedicatedInfrastructureRequired: false, perPersonaCostMeasurable: false },
+  });
 
-app.get<{ Params: { personaId: string } }>(
-  '/twill/personas/:personaId',
-  async (_request, reply) => {
-    return reply.code(501).send(NOT_IMPLEMENTED('persona detail'));
-  },
-);
+  app.addHook('onClose', async () => {
+    await db.destroy();
+  });
 
-app.get<{ Params: { personaId: string } }>(
-  '/twill/personas/:personaId/status',
-  async (_request, reply) => {
-    return reply.code(501).send(NOT_IMPLEMENTED('persona status'));
-  },
-);
-
-app.get<{ Params: { personaId: string } }>(
-  '/twill/personas/:personaId/charter',
-  async (_request, reply) => {
-    return reply.code(501).send(NOT_IMPLEMENTED('charter status (ADR-008 sunset readout)'));
-  },
-);
-
-app.post<{
-  Params: { personaId: string };
-  Body: { guildId?: string; moduleSlug?: string };
-}>('/twill/personas/:personaId/bindings', async (_request, reply) => {
-  logger.warn('twill-bind-stubbed');
-  return reply.code(501).send(NOT_IMPLEMENTED('persona binding'));
-});
-
-app.delete<{
-  Params: { personaId: string; moduleSlug: string };
-}>('/twill/personas/:personaId/bindings/:moduleSlug', async (_request, reply) => {
-  return reply.code(501).send(NOT_IMPLEMENTED('persona unbinding'));
-});
+  await app.listen({ port: env.TWILL_PORT, host: env.TWILL_BIND_HOST });
+  logger.info('twill-started', { port: env.TWILL_PORT });
+}
 
 if (isMainEntry(import.meta.url, process.argv[1])) {
-  app
-    .listen({ port: env.TWILL_PORT, host: env.TWILL_BIND_HOST })
-    .then(() => {
-      logger.info('twill-stub-started', { port: env.TWILL_PORT });
-    })
-    .catch((err: unknown) => {
-      logger.fatal('twill-stub-start-failed', { error: String(err) });
-      process.exit(1);
-    });
+  start().catch((err: unknown) => {
+    console.error('Fatal Twill start error:', err);
+    process.exit(1);
+  });
 }

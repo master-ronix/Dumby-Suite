@@ -1,22 +1,51 @@
 import type { Redis } from 'ioredis';
+import { MessageFlags } from 'discord.js';
 
 export interface ComponentInteraction {
   id?: string;
   customId: string;
   user: { id: string };
   guildId: string | null;
+  /**
+   * UR-20261012-060 — the application this interaction is FOR, as Discord states it. This is the
+   * authoritative emoji scope: an application emoji may only be referenced by the application that
+   * owns it, so the render must use the id of the application that received the interaction.
+   */
+  applicationId?: string;
+  /**
+   * UR-20261012-054 — the member's permission context, carried so a control that re-enters the router
+   * (`asPageInteraction`) does not LOSE it.
+   *
+   * Without these, an admin-gated control rendered on a page's first paint and vanished on every
+   * re-render: the component path had no permissions, so `isGuildAdmin` returned false and the control
+   * was not drawn. The operator saw the Info control appear and then disappear on switch or refresh.
+   */
+  memberPermissions?: readonly string[];
+  isGuildOwner?: boolean;
   reply: (options: unknown) => Promise<void>;
-  deferReply: (options?: { ephemeral?: boolean }) => Promise<void>;
+  deferReply: (options?: { flags?: number | bigint }) => Promise<void>;
   deferUpdate?: () => Promise<void>;
   editReply: (options: unknown) => Promise<void>;
+  /** item 5 — a control may open a modal (the Discover search text-input interface). */
+  showModal?: (modal: unknown) => Promise<void>;
   /** §11.3 — the chosen option values, present only on a String Select Menu interaction. */
   values?: readonly string[];
 }
+
+/**
+ * item 5/8/9 — how the registry acknowledges a control:
+ *   'update'    (default) deferUpdate; the handler edits the message in place.
+ *   'ephemeral' deferReply(ephemeral); the handler sends a private (hidden) response.
+ *   'none'      no acknowledgement; the handler opens a modal instead.
+ */
+export type AckMode = 'update' | 'ephemeral' | 'none';
 
 export interface IComponentHandler {
   customIdPrefix: string;
   parse(customId: string): unknown;
   idempotencyKey?: (interaction: ComponentInteraction, context: unknown) => string;
+  /** Defaults to 'update'. */
+  ack?: AckMode;
   execute(interaction: ComponentInteraction, context: unknown): Promise<void>;
 }
 
@@ -120,15 +149,26 @@ export class InteractionRegistry {
       handler.idempotencyKey?.(interaction, context) ?? interaction.id ?? interaction.customId;
     if (await this.idempotency.has(key)) return true;
 
-    if (this.acknowledge !== undefined) {
+    // item 5/8/9 — acknowledge per the handler's mode: edit-in-place (default), a private reply, or
+    // nothing (the handler opens a modal).
+    const ack = handler.ack ?? 'update';
+    if (ack === 'none') {
+      // The handler calls `showModal`; acknowledging here would consume the interaction.
+    } else if (ack === 'ephemeral') {
+      // §1.2/§2.4 — the private (hidden) acknowledgement. `ephemeral: true` is deprecated in
+      // discord.js; the supported form is the `Ephemeral` message flag.
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    } else if (this.acknowledge !== undefined) {
       await this.acknowledge(interaction);
     }
 
     const existing = this.inFlight.get(key);
     if (existing) return existing;
 
+    // A modal-opening control needs the raw interaction (to call `showModal`); every other control
+    // gets the Renderer's read-only guard, so it cannot bypass the Renderer.
     const safeInteraction =
-      this.renderer === undefined
+      ack === 'none' || this.renderer === undefined
         ? interaction
         : this.renderer.createReadOnlyInteraction(interaction);
     const pending = handler

@@ -1,0 +1,181 @@
+import { describe, expect, test, vi } from 'vitest';
+import {
+  CommandPermissionTokenService,
+  COMMAND_PERMISSION_SCOPE,
+  OAuth2RefreshError,
+} from '../../src/commands/command-permission-tokens.js';
+
+type Any = Record<string, unknown>;
+
+/** UR-20261012-028 — the store is keyed by (applicationId, guildId), so the fixture is too. */
+const key = (applicationId: string, guildId: string): string => `${applicationId}:${guildId}`;
+
+function makeService(overrides: Any = {}) {
+  const rows = new Map<string, Any>();
+  const values = new Map<string, string>();
+  let n = 0;
+  const store = {
+    upsert: vi.fn(async (r: Any) => {
+      rows.set(key(r['applicationId'] as string, r['guildId'] as string), r);
+    }),
+    findByApplicationGuild: vi.fn(async (a: string, g: string) => rows.get(key(a, g))),
+    listRefreshable: vi.fn(async () => [...rows.values()].filter((r) => r['status'] === 'active')),
+    setStatus: vi.fn(async (a: string, g: string, s: string) => {
+      const r = rows.get(key(a, g));
+      if (r === undefined) return false;
+      rows.set(key(a, g), { ...r, status: s });
+      return true;
+    }),
+    adoptLegacy: vi.fn(async () => 0),
+    recordRefresh: vi.fn(async (a: string, g: string, next: Any) => {
+      const r = rows.get(key(a, g));
+      if (r === undefined) return false;
+      rows.set(key(a, g), { ...r, ...next, status: 'active' });
+      return true;
+    }),
+  };
+  const sealer = {
+    issue: vi.fn(async (_l: string, _b: string, value: string) => {
+      const credentialId = `cred-${++n}`;
+      values.set(credentialId, value);
+      return { credentialId };
+    }),
+    read: vi.fn(async (id: string) => {
+      const v = values.get(id);
+      if (v === undefined) throw new Error('missing');
+      return v;
+    }),
+    revoke: vi.fn(async () => true),
+  };
+  const refresher = {
+    refreshToken: vi.fn(async () => ({
+      accessToken: 'new-access',
+      refreshToken: 'new-refresh',
+      expiresIn: 604800,
+    })),
+  };
+  const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+  let clock = 1_000_000;
+  const service = new CommandPermissionTokenService({
+    store,
+    sealer,
+    refresher,
+    logger,
+    now: () => clock,
+    // Large enough that the 2-second fixtures count as "near expiry" and the 7-day one does not.
+    refreshLeadMs: 1_000_000,
+    ...overrides,
+  } as never);
+  return {
+    service,
+    store,
+    sealer,
+    refresher,
+    logger,
+    rows,
+    values,
+    setClock: (v: number) => {
+      clock = v;
+    },
+  };
+}
+
+const tokens = (accessToken: string, refreshToken: string, expiresIn: number): Any => ({
+  accessToken,
+  refreshToken,
+  expiresIn,
+  scope: COMMAND_PERMISSION_SCOPE,
+});
+
+describe('CommandPermissionTokenService', () => {
+  test('connect seals the token set and resolveAccessToken returns the live token', async () => {
+    const { service, rows, values } = makeService();
+    await service.connect('app1', 'g1', 'u1', tokens('access-1', 'refresh-1', 604800));
+    expect(rows.get('app1:g1')).toBeDefined();
+    expect([...values.values()]).toEqual(['access-1', 'refresh-1']);
+    expect(await service.resolveAccessToken('app1', 'g1')).toBe('access-1');
+  });
+
+  test('tokens are held per application: another application in the same guild has none', async () => {
+    const { service } = makeService();
+    await service.connect('app1', 'g1', 'u1', tokens('access-1', 'refresh-1', 604800));
+    expect(await service.resolveAccessToken('app1', 'g1')).toBe('access-1');
+    expect(await service.resolveAccessToken('app2', 'g1')).toBeUndefined();
+    expect(await service.status('app2', 'g1')).toBe('none');
+  });
+
+  test('resolveAccessToken returns undefined with no row, a non-active status, or an expired token', async () => {
+    const { service, setClock } = makeService();
+    expect(await service.resolveAccessToken('app1', 'none')).toBeUndefined();
+    await service.connect('app1', 'g2', 'u2', tokens('a', 'r', 10));
+    setClock(1_000_000 + 20_000);
+    expect(await service.resolveAccessToken('app1', 'g2')).toBeUndefined();
+  });
+
+  test('status reports none / active / revoked', async () => {
+    const { service, store } = makeService();
+    expect(await service.status('app1', 'none')).toBe('none');
+    await service.connect('app1', 'g3', 'u3', tokens('a', 'r', 604800));
+    expect(await service.status('app1', 'g3')).toBe('active');
+    await store.setStatus('app1', 'g3', 'revoked');
+    expect(await service.status('app1', 'g3')).toBe('revoked');
+  });
+
+  test('refreshDue refreshes a near-expiry token and stores the rotated refresh token', async () => {
+    const { service, refresher, rows } = makeService();
+    await service.connect('app1', 'g4', 'u4', tokens('old-access', 'old-refresh', 2));
+    const result = await service.refreshDue();
+    expect(result.refreshed).toBe(1);
+    expect(refresher.refreshToken).toHaveBeenCalledWith('old-refresh');
+    expect(await service.resolveAccessToken('app1', 'g4')).toBe('new-access');
+    expect(rows.get('app1:g4')?.['status']).toBe('active');
+  });
+
+  test('refreshDue marks the guild revoked when Discord refuses the refresh', async () => {
+    const { service, refresher } = makeService();
+    await service.connect('app1', 'g5', 'u5', tokens('a', 'r', 2));
+    refresher.refreshToken.mockRejectedValueOnce(new OAuth2RefreshError('nope', 401));
+    const result = await service.refreshDue();
+    expect(result.revoked).toBe(1);
+    expect(await service.status('app1', 'g5')).toBe('revoked');
+  });
+
+  test('refreshDue marks revoked when the stored refresh token is unreadable', async () => {
+    const { service, sealer } = makeService();
+    await service.connect('app1', 'g7', 'u7', tokens('a', 'r', 2));
+    sealer.read.mockImplementationOnce(async () => {
+      throw new Error('gone');
+    });
+    const result = await service.refreshDue();
+    expect(result.revoked).toBe(1);
+    expect(await service.status('app1', 'g7')).toBe('revoked');
+  });
+
+  test('refreshDue skips a token that is not yet near expiry', async () => {
+    const { service, refresher } = makeService();
+    await service.connect('app1', 'g6', 'u6', tokens('a', 'r', 604800));
+    const result = await service.refreshDue();
+    expect(result).toEqual({ refreshed: 0, revoked: 0 });
+    expect(refresher.refreshToken).not.toHaveBeenCalled();
+  });
+
+  test('adoptLegacy re-keys pre-change rows and reports the count', async () => {
+    const { service, store, logger } = makeService();
+    store.adoptLegacy.mockResolvedValueOnce(2);
+    expect(await service.adoptLegacy('app1')).toBe(2);
+    expect(logger.info).toHaveBeenCalledWith('command-permission-token-legacy-adopted', {
+      applicationId: 'app1',
+      count: 2,
+    });
+  });
+
+  test('adoptLegacy is non-fatal: a failure is logged and yields zero', async () => {
+    const { service, store, logger } = makeService();
+    store.adoptLegacy.mockRejectedValueOnce(new Error('db down'));
+    expect(await service.adoptLegacy('app1')).toBe(0);
+    expect(logger.warn).toHaveBeenCalledWith(
+      'command-permission-token-legacy-adopt-failed',
+      expect.any(Object),
+    );
+  });
+});

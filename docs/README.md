@@ -17,6 +17,12 @@ Supporting: `contracts/` (machine-readable interfaces) · `status/` (ledgers) ·
 pre-restructure source records the corpus was derived from) · `orchestration/ migration/
 upgradation/ prompts/` (build & migration assets) · `_generated/` (generated index).
 
+**Boundary.** `apps/main/docs/` (adr · api · architecture · compliance · privacy · runbooks ·
+security) is an application-local, **non-normative** set. It is **outside this corpus and its
+gates**; nothing there is an authority. The single normative ADR series is `adr/` (ADR-001 …
+ADR-015). `check-corpus-boundary` guards this boundary; `apps/main/docs/` carries no corpus
+front-matter and makes no normative claim.
+
 ## Reading paths
 
 - **Human:** `blueprint/system-map.md` (how it fits) → `documentation/` (what it is) → the
@@ -30,22 +36,31 @@ upgradation/ prompts/` (build & migration assets) · `_generated/` (generated in
 ## Verification
 
 Every source heading is mapped to a target file, and a gate verifies each heading is actually
-present in its target (`status/coverage-ledger.json`, 2,246 rows). Run all gates with:
+present in its target (`status/coverage-ledger.json`, 2,246 rows). Run all 27 gates from `docs/`:
 
 ```
+cd docs
 for g in scripts/docs/check-*.mjs; do node "$g"; done
 ```
 
 CI runs the same loop: `.github/workflows/docs-gates.yml` at the **repository root** executes
 every gate on any change under `docs/` (a `.github/` nested under `docs/` would be inert).
 
-Gates: manifest · coverage · **ledger-content** · frontmatter · contracts · **compliance** · counts · no-restatement · archive-guard · status-evidence · anchors · anchor-paths · **edges** · acceptance · reconciliation · code-reconciliation · **entities** · **terminology** · **authority** · **facts** · **normative-markers** · **chain** · **chain-states**.
+Gates (27): manifest · coverage · **ledger-content** · frontmatter · contracts · **compliance** · counts · no-restatement · archive-guard · **asset-adaptation** · status-evidence · anchors · anchor-paths · **edges** · acceptance · reconciliation · code-reconciliation · **entities** · **terminology** · **authority** · **facts** · **normative-markers** · **chain** · **chain-states** · **corpus-boundary** · **side-docs** · **ur**.
 
-**Verification status.** These gates are structural: they prove the corpus is internally
+**Verification status (policy).** These gates are structural: they prove the corpus is internally
 consistent and single-sourced, not that a human has reviewed every section. Per-file
-`review_state` and `last_verified_commit` record human verification and currently read
-`pending-evidence` / `null` throughout — treat the corpus as machine-verified, human-review
-pending.
+`review_state` and `last_verified_commit` are **reserved for human attestation** and read
+`pending-evidence` / `null` throughout by policy — the corpus is **machine-verified only**; a
+`null` verifying commit is the honest default, never evidence of a review that did not happen.
+(Attestation is tracked by `UR-20261008-001` and `UR-20261010-001`.)
+
+**Version model.** One project, several version lines, each with a defined meaning:
+`corpus_version` (the corpus edition, `manifest.json`) · the **engine** version (`5.2.0` —
+`prompts/`, `orchestration/`, `migration/`) · the **spec** version (`5.0.0` — `spec/**`,
+`blueprint/`, `contracts/`) · the **change-log** version (the highest released track in
+`upgradation/change-log.md`). A bare `5.x.y` in prose names the change-log track unless a
+document says otherwise.
 
 Where the specification and the running code diverge, the divergence is recorded in
 `status/code-reconciliation.json` — never smoothed over.

@@ -11,6 +11,30 @@ const csvIds = () =>
         .filter((id) => id.length > 0),
     );
 
+/**
+ * A boolean read from an environment string.
+ *
+ * `z.coerce.boolean()` is unsafe for env parsing: it is `Boolean(value)`, so the *string* `"false"`
+ * coerces to `true` — an explicit `false` in the environment would be read as `true`. That silently
+ * broke `BCCM_BATCH_PUSH_DRY_RUN` (the `.env.example` says "Set false to send", but `false` read as
+ * `true`, so the batch push never actually ran) and would silently force `DATABASE_SSL` /
+ * `REDIS_TLS` on. This accepts true/1/yes/on (case-insensitive) as `true`, any other non-empty
+ * string as `false`, and falls back to `def` when unset or blank.
+ */
+const envBool = (def: boolean) =>
+  z
+    .union([z.boolean(), z.string()])
+    .optional()
+    .transform((value) =>
+      value === undefined
+        ? def
+        : typeof value === 'boolean'
+          ? value
+          : value.trim() === ''
+            ? def
+            : /^(true|1|yes|on)$/i.test(value.trim()),
+    );
+
 const baseEnvSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'staging', 'production']).default('development'),
@@ -44,6 +68,12 @@ const baseEnvSchema = z
     TWILL_PORT: z.coerce.number().int().positive().default(8090),
 
     BOT_TOKEN: z.string().default(''),
+    // §17.6 — a Bearer token (user OAuth2, scope `applications.commands.permissions.update`) used to
+    // edit per-guild command permissions (Server Settings → Integrations). Discord REJECTS a bot
+    // token on that endpoint (403 "Bots cannot use this endpoint"); a bot cannot mint this token
+    // itself, so the operator provisions it. Without it, module disable still writes the state and
+    // enqueues the BCCM deregistration, but the instant hide/restrict does not run.
+    DISCORD_COMMAND_PERMISSIONS_TOKEN: z.string().default(''),
     PERSONA_ID: z.string().default(''),
     BOT_OWNER_IDS: csvIds(),
     DEV_GUILD_ID: z
@@ -57,18 +87,35 @@ const baseEnvSchema = z
     OAUTH_CLIENT_ID: z.string().default(''),
     OAUTH_CLIENT_SECRET: z.string().default(''),
     OAUTH_REDIRECT_URI: z.string().default(''),
+    // UR-20261012-031 — the bot-install permission bitfield. Supplying it is what makes Discord show
+    // its standard "what permissions should this bot have?" step on the install screen. The default
+    // is the minimum a Components-V2 command bot needs: View Channels, Send Messages, Embed Links,
+    // Read Message History.
+    BOT_INSTALL_PERMISSIONS: z.string().default('84992'),
+    // UR-20261012-034 — serve the Twill persona registration API on the ALREADY-DEPLOYED API server
+    // as well as the dedicated Twill process, so it is usable without provisioning a new Railway
+    // service. OFF by default: the endpoint accepts bot tokens and client secrets, so the public
+    // surface must not grow unless the operator asks for it. It stays behind the internal API key.
+    TWILL_ROUTES_ON_API: envBool(false),
+    // UR-20261012-037 — the registrar registry's boot seed: comma-separated, each entry either a
+    // bare authority (granted for ANY application) or `authority=applicationId`. Applied
+    // idempotently at boot, so a fresh install is not chicken-and-egg.
+    PERSONA_REGISTRAR_AUTHORITIES: z.string().default(''),
+    // UR-20261012-038 — host every active persona's gateway, so a registered persona is actually
+    // ONLINE in its bound guild. Off by default: it opens one gateway connection per persona.
+    PERSONA_RUNTIME_ENABLED: envBool(false),
 
     DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
     DATABASE_REPLICA_URLS: csvIds(),
     DATABASE_POOL_MAX: z.coerce.number().int().positive().default(10),
     DATABASE_STATEMENT_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
     DATABASE_REPLICA_MAX_LAG_MS: z.coerce.number().int().nonnegative().default(1000),
-    DATABASE_SSL: z.coerce.boolean().default(false),
+    DATABASE_SSL: envBool(false),
     SLOW_QUERY_THRESHOLD_MS: z.coerce.number().int().positive().default(500),
     CRITICAL_QUERY_THRESHOLD_MS: z.coerce.number().int().positive().default(2000),
 
     REDIS_URL: z.string().min(1, 'REDIS_URL is required'),
-    REDIS_TLS: z.coerce.boolean().default(false),
+    REDIS_TLS: envBool(false),
     CACHE_L1_MAX_ENTRIES: z.coerce.number().int().positive().default(5000),
     CACHE_L1_MAX_BYTES: z.coerce.number().int().positive().default(52_428_800),
 
@@ -88,7 +135,7 @@ const baseEnvSchema = z
     SHARD_LOCK_HEARTBEAT_MS: z.coerce.number().int().positive().default(10_000),
     SHARD_LOCK_RETRY_MS: z.coerce.number().int().positive().default(2000),
 
-    TELEMETRY_ENABLED: z.coerce.boolean().default(false),
+    TELEMETRY_ENABLED: envBool(false),
     TRACE_SAMPLE_RATE: z.coerce.number().min(0).max(1).default(0.1),
     OTEL_EXPORTER_OTLP_ENDPOINT: z.string().default(''),
 
@@ -126,16 +173,19 @@ const baseEnvSchema = z
     // private key is never persisted; `signing_keys` holds only public keys (finding #21).
     BUILD_SIGNING_KEY_ID: z.string().default(''),
     BUILD_SIGNING_PRIVATE_KEY: z.string().default(''),
+    // UR-20261012-036 — the PUBLIC half. The verifier needs only this, so the runtime never has to
+    // hold the platform's signing secret. Preferred over the private key when both are set.
+    BUILD_SIGNING_PUBLIC_KEY: z.string().default(''),
     // §15.9 quarantine root for refused modules. Empty => `<MODULES_DIR>/quarantine`.
     SWASTIK_QUARANTINE_PATH: z.string().default(''),
 
     MTP_BANDWIDTH_TOKEN_THRESHOLD_BYTES: z.coerce.number().int().positive().default(1_048_576),
     MTP_MEMORY_TOKEN_THRESHOLD_BYTES: z.coerce.number().int().positive().default(52_428_800),
 
-    CORE_ADMIN_EVAL_ENABLED: z.coerce.boolean().default(false),
+    CORE_ADMIN_EVAL_ENABLED: envBool(false),
     // §17.7 BCCM — the batch push defaults to dry-run: it logs the batch it would send and
     // changes nothing until an operator turns this off.
-    BCCM_BATCH_PUSH_DRY_RUN: z.coerce.boolean().default(true),
+    BCCM_BATCH_PUSH_DRY_RUN: envBool(true),
   })
   .strict();
 

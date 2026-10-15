@@ -24,7 +24,13 @@ import { QueueManager } from '../queue/queue-manager.js';
 import { ModuleRegistry } from '../module-system/registry.js';
 import { loadPolicyLockfile } from '../module-system/policy-lockfile.js';
 import { ModuleLoader } from '../module-system/loader.js';
-import { defaultEnabledForTier } from '../module-system/tier-rules.js';
+import { defaultEnabledForTier, resolveModuleEnabled } from '../module-system/tier-rules.js';
+import { makeModuleEnablement } from '../module-system/enablement.js';
+import {
+  createModuleContextStore,
+  makeModuleContextResolver,
+} from '../module-system/execution-context.js';
+import { installModuleContextStore } from '@workspace/swastik';
 import { PermissionResolver } from '../permissions/resolver.js';
 import { AdminEvalGate } from '../permissions/admin-eval-gate.js';
 import { evaluateRank } from '../permissions/rank.js';
@@ -40,9 +46,14 @@ import { OperationalService } from '../operational/operational.service.js';
 import { PowerEngineDispatcher } from '../http/power-engine-dispatcher.js';
 import { loadModulesFromTierVolumes } from '../module-system/swastik-loader.js';
 import { PostgresBuildStore } from '../db/repositories/build.repository.js';
+import { PostgresSigningKeyStore } from '../db/repositories/signing-key.repository.js';
+import { rootKeyFromBase64 } from '../crypto/envelope.js';
+import { PostgresSealedCredentialStore } from '../db/repositories/sealed-credential.repository.js';
+import { SealedCredentialService } from '../credentials/sealed-credential.service.js';
+import { PostgresCommandPermissionTokenStore } from '../db/repositories/command-permission-token.repository.js';
+import { CommandPermissionTokenService } from '../commands/command-permission-tokens.js';
 import { PostgresGrantWriter } from '../db/repositories/rbac-grant.repository.js';
-import { BuildSignatureVerifier } from '../module-system/build-signing.js';
-import { createPublicKey } from 'node:crypto';
+import { armBuildProvenance, BuildSignatureVerifier } from '../module-system/build-signing.js';
 import { InFlightTracker } from '../shutdown/in-flight-tracker.js';
 import {
   registerShutdownSignalHandlers,
@@ -58,12 +69,37 @@ import { createPageDataProvider } from '../rendering/page-data.js';
 import { registerKnownGuilds } from '../discord/guild-registry.js';
 import { createBccmEffectHandlers } from '../commands/bccm-effects.js';
 import { effectiveCommandName, resolveEffectiveCommandNames } from '../commands/command-renames.js';
-import type { CommandInteraction } from '../commands/command-router.js';
+import { deleteGuildCommands, setGuildCommandPermissions } from '../commands/command-access.js';
+import { disableConfirmationDescriptor } from '../rendering/confirmations.js';
+import {
+  readDiscoverModalSubmission,
+  toCommandInteraction,
+  toComponentInteraction,
+  type RawInteractionLike,
+} from '../interactions/interaction-adapters.js';
+import { join } from 'node:path';
+import { PersonaOccupiedError } from '../personas/persona.js';
 import { PersonaCommandBindingService } from '../personas/persona-command-binding.service.js';
+import {
+  PersonaRuntime,
+  deployPersonaCommands,
+  splitPersonaPayloads,
+} from '../personas/persona-runtime.js';
+import { personaPresenceFromClient } from '../personas/persona-presence.js';
+import { buildPersonaInteractionHandler } from '../personas/persona-interaction-handler.js';
+import { createPersonaOAuthService } from '../personas/persona-oauth.js';
+import { openBotTokenOrEmpty, openSealedText } from '../personas/persona-credentials.js';
+import { personaSetupCard } from '../rendering/persona-setup.js';
+import { personaInviteUrl, publicBaseFrom } from '../personas/persona-invite.js';
 import {
   PostgresPersonaBindingStore,
   PostgresPersonaIdentityStore,
 } from '../personas/persona.repository.js';
+import {
+  parseRegistrarSeed,
+  PostgresPersonaRegistrarStore,
+  seedRegistrarsSafely,
+} from '../personas/persona-registrar.repository.js';
 import { MiddlewarePipeline } from '../middleware/middleware-pipeline.js';
 import { TraceMiddleware } from '../middleware/built-in/trace.js';
 import { AnalyticsMiddleware } from '../middleware/built-in/analytics.js';
@@ -93,8 +129,14 @@ import { LiveGatewayAdapter } from '../discord/gateway.live-adapter.js';
 import { CommandDeployer } from '../commands/command-deployer.js';
 import { CommandCeilingService } from '../commands/command-ceiling.js';
 import { createKnexBccmStore } from '../commands/bccm-batch-push-store.js';
-import { runBccmBatchPush, type BccmDiscordClient } from '../commands/bccm-batch-push.js';
+import {
+  resolveCommandPayloads,
+  runBccmBatchPush,
+  type BccmDiscordClient,
+} from '../commands/bccm-batch-push.js';
 import { CoreRenderer } from '../rendering/core-renderer.js';
+import { customEmojiParts, moduleIcon, UNINSTALL_ICON_NAME } from '../rendering/module-icons.js';
+import { developerName } from '../rendering/developer-identity.js';
 import { ensureDefaultModuleEmoji } from '../rendering/module-emoji-upload.js';
 import {
   InteractionRegistry,
@@ -180,10 +222,15 @@ export async function bootstrapWorker(): Promise<void> {
 
   progress.advanceTo('QUEUE_INIT');
   const queueRedis = new Redis(config.get('QUEUE_REDIS_URL'));
+  // UR-20261012-069 — the worker loads modules too, so its module queues carry the same gate. The
+  // registry is built below, hence late-bound.
+  let workerQueueGate: ((moduleId: string, guildId: string) => Promise<boolean>) | undefined;
   const queue = new QueueManager({
     connection: queueRedis,
     logger,
     defaultConcurrency: config.get('QUEUE_CONCURRENCY_DEFAULT'),
+    isModuleEnabled: (moduleId, guildId) =>
+      workerQueueGate ? workerQueueGate(moduleId, guildId) : Promise.resolve(true),
   });
   container.registerValue(CORE_TOKENS.Queue, queue);
 
@@ -201,18 +248,37 @@ export async function bootstrapWorker(): Promise<void> {
 
   progress.advanceTo('MODULE_DISCOVER');
   const moduleRegistry = new ModuleRegistry();
+  // UR-20261012-069 — arm the worker's module gate now that the registry exists.
+  const workerEnablement = makeModuleEnablement({
+    knex: db.knex as never,
+    moduleRegistry,
+    logger,
+  });
+  workerQueueGate = (moduleId, guildId) =>
+    workerEnablement.isModuleEnabledForGuild(guildId, moduleId);
   const buildStore = new PostgresBuildStore(db.knex);
   const verifier = new BuildSignatureVerifier();
   const buildSigningKeyId = config.get('BUILD_SIGNING_KEY_ID');
   const buildSigningPrivateKey = config.get('BUILD_SIGNING_PRIVATE_KEY');
-  let provenanceGuardArmed = buildSigningKeyId !== '' && buildSigningPrivateKey !== '';
-  if (provenanceGuardArmed) {
-    try {
-      verifier.registerKey(buildSigningKeyId, createPublicKey(buildSigningPrivateKey));
-    } catch (err) {
-      provenanceGuardArmed = false;
-      logger.warn('build-signing-key-invalid', { error: String(err) });
-    }
+  const buildSigningPublicKey = config.get('BUILD_SIGNING_PUBLIC_KEY');
+  // UR-20261012-036 — the verifier needs only the PUBLIC key. UR-20261012-040 — resolution AND
+  // registration live in one helper that cannot throw, so an unusable key degrades to a warning
+  // instead of killing boot (which it did, as ERR_OSSL_UNSUPPORTED).
+  // UR-20261012-042 (A2.2) — the registry is the documented home for these keys; config is additive.
+  const registrySigningKeys = await new PostgresSigningKeyStore(db.knex).listActive();
+  const provenance = armBuildProvenance(
+    verifier,
+    buildSigningKeyId,
+    buildSigningPrivateKey,
+    buildSigningPublicKey,
+    registrySigningKeys,
+  );
+  const provenanceGuardArmed = provenance.armed;
+  if (provenance.error !== undefined) {
+    logger.warn(
+      `build-signing-key-invalid: ${provenance.error} — BUILD_SIGNING_PUBLIC_KEY (or BUILD_SIGNING_PRIVATE_KEY) must be a single-line PEM with escaped newlines; the provenance guard stays OFF and boot continues`,
+      { error: provenance.error },
+    );
   }
   await loadModulesFromTierVolumes({
     modulesDir: config.get('MODULES_DIR'),
@@ -348,7 +414,15 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   const redis = overrides.redis ?? new Redis(config.get('REDIS_URL'));
   const lockStore = new RedisLockStore(redis);
   // §29.6 — the cron scheduler: module-declared tasks, lock-guarded so one shard runs each tick.
-  const scheduler = new Scheduler({ logger, lockStore });
+  // UR-20261012-069 — a disabled module's cron must not fire. Late-bound, because the enablement read
+  // is defined further below.
+  let schedulerModuleGate: ((moduleId: string) => Promise<boolean>) | undefined;
+  const scheduler = new Scheduler({
+    logger,
+    lockStore,
+    isModuleEnabledAnywhere: (moduleId) =>
+      schedulerModuleGate ? schedulerModuleGate(moduleId) : Promise.resolve(true),
+  });
   // §24.2.1 — the monthly audit-partition lifecycle (create next month's, drop expired by drop-only).
   scheduler.register({
     name: 'audit-partition-maintenance',
@@ -371,10 +445,14 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
 
   progress.advanceTo('QUEUE_INIT');
   const queueRedis = overrides.queueRedis ?? new Redis(config.get('QUEUE_REDIS_URL'));
+  // UR-20261012-069 — a disabled module's queued work must not run. Late-bound, like the event gate.
+  let queueModuleGate: ((moduleId: string, guildId: string) => Promise<boolean>) | undefined;
   const queue = new QueueManager({
     connection: queueRedis,
     logger,
     defaultConcurrency: config.get('QUEUE_CONCURRENCY_DEFAULT'),
+    isModuleEnabled: (moduleId, guildId) =>
+      queueModuleGate ? queueModuleGate(moduleId, guildId) : Promise.resolve(true),
   });
   container.registerValue(CORE_TOKENS.Queue, queue);
 
@@ -394,7 +472,17 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     thresholdMs: config.get('EVENT_LOOP_LAG_SHED_THRESHOLD_MS'),
   });
   eventLoopLagMonitor.start();
-  const eventRouter = new EventRouter({ logger, cache, lagMonitor: eventLoopLagMonitor, metrics });
+  // UR-20261011-011 — a disabled module's event handlers must not fire. The gate is late-bound
+  // because the enablement check (which reads guild_module_states) is defined further below.
+  let moduleEnabledGate: ((moduleId: string, guildId: string) => Promise<boolean>) | undefined;
+  const eventRouter = new EventRouter({
+    logger,
+    cache,
+    lagMonitor: eventLoopLagMonitor,
+    metrics,
+    isModuleEnabled: (moduleId, guildId) =>
+      moduleEnabledGate ? moduleEnabledGate(moduleId, guildId) : Promise.resolve(true),
+  });
   fatalHooks.notify = (correlationId, error) => {
     try {
       void eventBus.emit('dumby.system.fatal', {
@@ -414,9 +502,12 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   const renderer = new CoreRenderer(
     publicDomain !== undefined && publicDomain !== ''
       ? {
-          bannerUrl: `https://${publicDomain}/assets/dumby-banner.png`,
-          // item 6 - the dashboard carries its own banner; every other module uses the default.
-          bannersByModule: { dashboard: `https://${publicDomain}/assets/dashboard-banner.png` },
+          // item 3 — a `?v=` token busts any cached copy: Discord caches media-gallery images and the
+          // asset route is served with a long max-age, so a URL that ever resolved differently would
+          // otherwise stick. A module page (hello-world) uses the grayscale default below; only the
+          // dashboard carries its own banner.
+          bannerUrl: `https://${publicDomain}/assets/dumby-banner.png?v=2`,
+          bannersByModule: { dashboard: `https://${publicDomain}/assets/dashboard-banner.png?v=2` },
         }
       : {},
   );
@@ -431,7 +522,7 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
         return;
       }
       if (typeof component.deferReply === 'function') {
-        await component.deferReply({ ephemeral: false });
+        await component.deferReply();
       }
     },
   });
@@ -445,10 +536,35 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     return def !== undefined && commandRegistry.getModuleTier(def.moduleId) === 'core';
   };
 
+  // UR-20261012-030 — the identity store and the envelope root key are both needed by the persona
+  // OAuth and Route B paths, so they are bound once here rather than rebuilt per call site.
+  const personaIdentities = new PostgresPersonaIdentityStore(db.knex);
+  const personaRootKey = rootKeyFromBase64('local', config.get('ENCRYPTION_ROOT_KEY'));
+  const personaBindings = new PostgresPersonaBindingStore(db.knex);
+  // UR-20261012-037 — the registrar registry, seeded from configuration so a fresh install can
+  // register its first persona without a chicken-and-egg.
+  const personaRegistrars = new PostgresPersonaRegistrarStore(db.knex);
+  await seedRegistrarsSafely(
+    personaRegistrars,
+    parseRegistrarSeed(config.get('PERSONA_REGISTRAR_AUTHORITIES')),
+    (message) => logger.warn(message),
+  );
+  // UR-20261012-078 — the ownership read needs to know whether a module is ENABLED, and the
+  // enablement read is defined further below, so this is late-bound. Until it is armed the answer is
+  // `false`, which leaves ownership UNANSWERED rather than guessed — the previous behaviour.
+  let moduleEnabledForOwnership:
+    ((guildId: string, moduleSlug: string) => Promise<boolean>) | undefined;
   const personaBindingService = new PersonaCommandBindingService(
-    new PostgresPersonaIdentityStore(db.knex),
-    new PostgresPersonaBindingStore(db.knex),
+    personaIdentities,
+    personaBindings,
     logger,
+    personaRegistrars,
+    (guildId, moduleSlug) =>
+      moduleEnabledForOwnership === undefined
+        ? Promise.resolve(false)
+        : moduleEnabledForOwnership(guildId, moduleSlug),
+    // UR-20261012-080 — the tier, so a SHARED one is never reported as a profile's.
+    (moduleSlug) => moduleRegistry.get(moduleSlug)?.manifest.tier,
   );
 
   const guildConfigService = new GuildConfigService(
@@ -556,6 +672,11 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   const isModuleEnabledInGuild = async (moduleId: string, guildId: string): Promise<boolean> => {
     const tier = moduleRegistry.get(moduleId)?.manifest.tier ?? 'marketplace';
     try {
+      // UR-20261012-046 — a CORE module is always enabled (§13.2), so the row is never consulted for
+      // one. Without this the dispatch path denied `/dashboard` whenever a stale disabled row existed,
+      // while the page-data filter said it was enabled: two paths, two answers.
+      if (tier === 'core') return true;
+
       const row = await db
         .knex('guild_module_states')
         .where({ guildId, moduleSlug: moduleId })
@@ -563,18 +684,18 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
         .first<{ enabled: boolean; state: string }>();
 
       if (row === undefined) {
-        const enabled = defaultEnabledForTier(tier);
+        const enabled = resolveModuleEnabled(tier, undefined);
         if (enabled) {
           await db
             .knex('guild_module_states')
             .insert({ guildId, moduleSlug: moduleId, enabled: true, state: 'active' })
-            .onConflict(['guildId', 'moduleSlug'])
+            .onConflict(db.knex.raw('("guildId", "moduleSlug") where "deletedAt" is null'))
             .ignore();
         }
         return enabled;
       }
 
-      return row.enabled === true && row.state === 'active';
+      return resolveModuleEnabled(tier, row);
     } catch (err) {
       // A Standard-tier module is enabled by default (§13), and the per-guild row is an override.
       // A missing table or a transient read failure must not turn `/hello` into a MODULE_ERROR
@@ -595,19 +716,54 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   // getter closes over the client the live branch assigns later.
   let discordClient: Client | undefined;
   const pageDataProvider = createPageDataProvider({
+    // UR-20261012-061 — the ONE ownership read. /persona, /modules, /browse and /dashboard all
+    // consult it, so they cannot disagree about which profile holds a module.
+    resolveOwner: (guildId, moduleSlug) =>
+      personaBindingService.resolveCommandOwner(guildId, moduleSlug),
     getClient: () => discordClient,
     moduleRegistry,
     db,
     redis,
     config,
     logger,
+    // UR-20261012-029 — a persona's active state is whether its bot is present in its bound guild.
+    isMember: personaPresenceFromClient(
+      () => discordClient,
+      (message) => logger.warn(message),
+    ),
+    // UR-20261012-031 — the persona invite URL: the combined install+authorize link when the persona
+    // has an OAuth2 secret, else the plain bot install.
+    personaInvite: (input) =>
+      personaInviteUrl(input, {
+        publicBaseUrl: publicBaseFrom(config.get('OAUTH_REDIRECT_URI')),
+        permissions: config.get('BOT_INSTALL_PERMISSIONS'),
+      }),
+  });
+  // UR-20261012-030 (Route A) — one OAuth2 client per persona application, built from the client
+  // secret the Twill registration sealed. An application without one resolves to undefined, which is
+  // exactly when Route B applies.
+  const personaOAuth = createPersonaOAuthService({
+    identities: personaIdentities,
+    openSecret: (sealed) => openSealedText(sealed, personaRootKey),
+    redirectUri: config.get('OAUTH_REDIRECT_URI'),
+    createClient: (oauthConfig) => new DiscordOAuth2Client({ config: oauthConfig, logger }),
+    warn: (message, meta) => logger.warn(message, meta),
   });
   const bccmEffects = createBccmEffectHandlers({
     knex: db.knex,
     registry: commandRegistry,
     logger,
   });
-  const commandRouter = new CommandRouter(commandRegistry, logger, {
+  // UR-20261012-049 — ONE description of how a router is configured, so a persona's router is
+  // configured exactly as the main bot's is (system-map §11: "the framework running again under a
+  // different identity"). `residentPersonaId` is the only thing that varies: the main bot sets it
+  // only when the process itself is a persona (`PERSONA_ID`), while a hosted persona always sets its
+  // own id so command ownership is enforced for it.
+  const commandRouterOptions = (
+    residentPersonaId?: string,
+    residentBoundGuildId?: string,
+    residentProfileName?: string,
+  ) => ({
     devGuildId: config.get('DEV_GUILD_ID'),
     isModuleEnabledInGuild,
     permissionResolver,
@@ -619,13 +775,295 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     guildSuspensions,
     pageDataProvider,
     effectHandlers: bccmEffects,
-    resolveCommandOwner: (guildId, moduleSlug) =>
+    resolveCommandOwner: (guildId: string, moduleSlug: string) =>
       personaBindingService.resolveCommandOwner(guildId, moduleSlug),
-    ...(config.get('PERSONA_ID') !== '' ? { residentPersonaId: config.get('PERSONA_ID') } : {}),
+    ...(residentPersonaId !== undefined ? { residentPersonaId } : {}),
+    // UR-20261012-057 — the application this router renders for. A persona must reference ITS OWN
+    // emoji ids; the main bot uses the default scope.
+    // UR-20261012-060 — a persona serves ONE guild; the main bot serves every guild it is installed in.
+    ...(residentBoundGuildId !== undefined ? { residentBoundGuildId } : {}),
+    // UR-20261012-067 — the acting identity's display name, so a module can present whose page it is.
+    ...(residentProfileName !== undefined ? { residentProfileName } : {}),
   });
+  const commandRouter = new CommandRouter(
+    commandRegistry,
+    logger,
+    commandRouterOptions(config.get('PERSONA_ID') !== '' ? config.get('PERSONA_ID') : undefined),
+  );
   // §2.4 / §11.3 - the frame's own interactive controls: the D/M/C density control and the
   // navigation dropdown. Registered after the router exists, since each re-enters it.
-  registerCoreFrameHandlers({ registry: interactionRegistry, router: commandRouter });
+  // UR-20261011-009 — whether a module is enabled for a guild (a marketplace module the admin
+  // installed, or a standard module they have not disabled). Absent state reads as not-enabled.
+  // UR-20261012-069 — the one enablement read, shared with the worker path. It was inline here and
+  // duplicated there; a divergence between the two would be a gate that denies what another allows.
+  const { isModuleEnabledForGuild, isModuleEnabledAnywhere } = makeModuleEnablement({
+    knex: db.knex as never,
+    moduleRegistry,
+    logger,
+  });
+  // The event router's gate uses the (moduleId, guildId) order; so does the queue's.
+  moduleEnabledGate = (moduleId, guildId) => isModuleEnabledForGuild(guildId, moduleId);
+  queueModuleGate = moduleEnabledGate;
+  schedulerModuleGate = isModuleEnabledAnywhere;
+  // UR-20261012-078 — now that the enablement read exists, arm the ownership read's gate.
+  moduleEnabledForOwnership = isModuleEnabledForGuild;
+
+  // UR-20261012-070 — the module execution context, for the entry points that are not a command.
+  // The SDK stays environment-neutral, so the CARRIER is installed here: AsyncLocalStorage, the same
+  // mechanism the framework's own event bus uses. `identity()` is late-bound and async because the
+  // application id comes from the Discord client (not ready at Stage 12) and a persona's bound guild
+  // is a database read.
+  installModuleContextStore(createModuleContextStore());
+  const processIdentity = async (): Promise<{
+    profileId: string;
+    kind: 'main' | 'persona';
+    applicationId: string;
+    profileName: string;
+    boundGuildId?: string;
+  }> => {
+    const personaId = config.get('PERSONA_ID');
+    const isPersona = personaId !== '';
+    let boundGuildId: string | undefined;
+    if (isPersona) {
+      try {
+        boundGuildId = (await personaIdentities.findById(personaId))?.boundGuildId;
+      } catch (err) {
+        logger.warn(`module-context-persona-lookup-failed id=${personaId} reason=${String(err)}`);
+      }
+    }
+    return {
+      profileId: isPersona ? personaId : 'main',
+      kind: isPersona ? 'persona' : 'main',
+      applicationId: discordClient?.application?.id ?? '',
+      profileName: discordClient?.user?.username ?? 'Dumby',
+      ...(boundGuildId !== undefined && boundGuildId !== '' ? { boundGuildId } : {}),
+    };
+  };
+  const moduleContextResolver = makeModuleContextResolver({
+    identity: processIdentity,
+    registry: moduleRegistry,
+    isModuleEnabledForGuild,
+    resolveOwner: (guildId, moduleSlug) =>
+      personaBindingService.resolveCommandOwner(guildId, moduleSlug),
+    logger,
+  });
+
+  const TIER_LABEL: Readonly<Record<string, string>> = {
+    admin: 'Admin',
+    core: 'Core',
+    standard: 'Standard',
+    marketplace: 'Marketplace',
+  };
+  // UR-20261011-011 — the instant command-access gate (Discord's per-guild command permissions),
+  // late-bound because it needs the REST client, which is built after login. On a module disable the
+  // framework writes a DENY override for `@everyone` so the command disappears from members'
+  // effective access instantly, while the deregistration is batched on the change queue (§17.6/§17.7).
+  let setModuleCommandAccess:
+    ((moduleId: string, guildId: string, allowed: boolean) => Promise<void>) | undefined;
+  // UR-20261011-010 — the module detail card (item 8): a formal, meaningful, banner-less card.
+  // It renders at MEDIUM density (no banner, no per-field dividers) as a single content block, and
+  // attributes the developer by NAME (not the raw `devId`). A CORE module carries NO uninstall
+  // control at all — it can never be uninstalled (§13.2).
+  const moduleInfoPayload = async (
+    applicationId: string,
+    moduleId: string,
+    guildId: string | null,
+    invokerId: string,
+    surface?: string,
+  ): Promise<unknown> => {
+    const entry = moduleRegistry.get(moduleId);
+    if (entry === undefined) {
+      return renderer.render({ surface: 'Module', sections: [`No module named ${moduleId}.`] });
+    }
+    const m = entry.manifest;
+    const isCore = m.tier === 'core';
+    const isMarketplace = m.tier === 'marketplace';
+    const enabledForGuild = await isModuleEnabledForGuild(guildId, moduleId);
+    const uninstallable = !isCore && (!isMarketplace || enabledForGuild);
+    const displayName = m.ui?.displayName ?? m.name;
+    const status = isCore
+      ? 'Core — always enabled'
+      : enabledForGuild
+        ? 'Enabled'
+        : 'Disabled — re-enable from /browse';
+    const commands =
+      m.commands.length === 0
+        ? 'none'
+        : m.commands.map((command) => `\`/${command.name}\``).join(', ');
+    const block = [
+      `${moduleIcon(m.ui?.icon, applicationId)} **${displayName}** · ${TIER_LABEL[m.tier] ?? m.tier}`,
+      `-# ${m.description}`,
+      '',
+      `**Developer**  ${developerName(m.devId)}`,
+      `**Version**  ${m.version}`,
+      `**Status**  ${status}`,
+      `**Commands**  ${m.commands.length} — ${commands}`,
+    ].join('\n');
+    // UR-20261011-018 — the uninstall/disable control belongs to the /modules detail card ONLY.
+    // The /browse Info view is informational (no disable control there).
+    const showControl = !isCore && surface !== 'browse';
+    return renderer.render({
+      surface: displayName,
+      mode: 'M',
+      sections: [block],
+      ...(showControl
+        ? {
+            actions: [
+              [
+                {
+                  customId: `dumby:act:${invokerId}:uninstall:${m.name}`,
+                  label: '',
+                  emoji: customEmojiParts(UNINSTALL_ICON_NAME, applicationId) ?? { name: '🗑️' },
+                  style: 4,
+                  disabled: !uninstallable,
+                },
+              ],
+            ],
+          }
+        : {}),
+    });
+  };
+  // UR-20261011-018 — the formal Compact (Mode C) confirmation shown after a module is disabled:
+  // a single identity line plus the outcome, per the operator's request for a professional result
+  // at Compact density.
+  const moduleDisableConfirmation = async (moduleId: string): Promise<unknown> => {
+    return renderer.render({
+      ...disableConfirmationDescriptor(moduleId, moduleRegistry.get(moduleId)),
+      mode: 'C',
+    });
+  };
+  // UR-20261011-010 — a module's commands are enqueued on the guild command change queue (BCCM,
+  // §6.4/§17.7) so their Discord deregistration / re-registration is batched, while the state write
+  // makes them non-dispatchable immediately through the router's guild enablement gate (§13.7).
+  const enqueueModuleCommandChanges = async (
+    moduleId: string,
+    guildId: string,
+    userId: string,
+    action: 'disable' | 'enable',
+  ): Promise<void> => {
+    const entry = moduleRegistry.get(moduleId);
+    if (entry === undefined || entry.manifest.commands.length === 0) return;
+    await db.knex('guild_command_queue').insert(
+      entry.manifest.commands.map((command) => ({
+        guildId,
+        commandKey: command.name,
+        payload: { action, submittedBy: userId },
+        status: 'pending',
+      })),
+    );
+    logger.info('bccm-module-command-change-queued', {
+      moduleId,
+      guildId,
+      action,
+      count: entry.manifest.commands.length,
+    });
+  };
+  // item 9 — the install/enable action enables the module for the guild (guild_module_states) and
+  // queues its commands' re-registration (BCCM).
+  /**
+   * UR-20261012-066 — the module logos, collected from the registry.
+   *
+   * Each module declares its own emoji name (`ui.icon`) and its own image (`ui.iconAsset`, relative to
+   * the module's root). The core resolves the pair; it holds no copy of either. A module that declares
+   * no asset — or whose root the loader did not record — is skipped, and the framework fallback icon
+   * applies, which is ADR-012's "absent a declaration, the default applies".
+   */
+  const collectModuleIcons = (): readonly { name: string; path: string }[] => {
+    const icons: { name: string; path: string }[] = [];
+    for (const entry of moduleRegistry.all()) {
+      const name = entry.manifest.ui?.icon;
+      const asset = entry.manifest.ui?.iconAsset;
+      const root = entry.root;
+      if (name === undefined || asset === undefined || root === undefined) continue;
+      icons.push({ name, path: join(root, asset) });
+    }
+    return icons;
+  };
+
+  const installModule = async (
+    moduleId: string,
+    guildId: string | null,
+    userId: string,
+    applicationId?: string,
+  ): Promise<void> => {
+    if (guildId === null || moduleRegistry.get(moduleId) === undefined) return;
+
+    // UR-20261012-061 — OWNERSHIP. A standard/marketplace module belongs to ONE profile in a guild,
+    // whoever claimed it first. Installing it from the other profile is refused, not silently allowed.
+    const owner = await personaBindingService.resolveCommandOwner(guildId, moduleId);
+    const acting =
+      applicationId === undefined
+        ? undefined
+        : await personaIdentities.findByApplicationId(applicationId);
+    // UR-20261012-078 — the actor is 'main' when no application identified it (the main bot's own
+    // install), matching the ownership read's answer for an enabled-but-unbound module.
+    if (owner !== undefined && (acting?.id ?? 'main') !== owner) {
+      logger.warn(
+        `marketplace-module-occupied module=${moduleId} guild=${guildId} owner=${owner} actor=${acting?.id ?? 'main'}`,
+      );
+      // UR-20261012-077 — name the actor. This is the refusal logged as occupied by "another persona", which read as if the persona had been refused her own module.
+      throw new PersonaOccupiedError(guildId, moduleId, owner, acting?.id ?? 'main');
+    }
+    // A PERSONA installing an unclaimed module CLAIMS it: the first profile to install owns it.
+    if (owner === undefined && acting !== undefined) {
+      await personaBindingService.bindModuleToPersona({
+        guildId,
+        moduleSlug: moduleId,
+        personaId: acting.id,
+      });
+      logger.info(
+        `marketplace-module-claimed module=${moduleId} guild=${guildId} persona=${acting.id}`,
+      );
+    }
+
+    await db
+      .knex('guild_module_states')
+      .insert({ guildId, moduleSlug: moduleId, enabled: true, state: 'active' })
+      .onConflict(db.knex.raw('("guildId", "moduleSlug") where "deletedAt" is null'))
+      .merge({ enabled: true, state: 'active', updatedAt: db.knex.fn.now() });
+    await setModuleCommandAccess?.(moduleId, guildId, true);
+    await enqueueModuleCommandChanges(moduleId, guildId, userId, 'enable');
+    logger.info('marketplace-module-installed', { moduleId, guildId, userId });
+  };
+  // UR-20261011-010 — the detail card's uninstall/disable control disables the module for the guild
+  // (state write), queues its commands' deregistration (BCCM), and relists it in /browse. A CORE
+  // module is never uninstallable (§13.2), so it is refused here as well as in the card.
+  const uninstallModule = async (
+    moduleId: string,
+    guildId: string | null,
+    userId: string,
+  ): Promise<void> => {
+    const entry = moduleRegistry.get(moduleId);
+    if (guildId === null || entry === undefined || entry.manifest.tier === 'core') return;
+    await db
+      .knex('guild_module_states')
+      .insert({ guildId, moduleSlug: moduleId, enabled: false, state: 'disabled' })
+      .onConflict(db.knex.raw('("guildId", "moduleSlug") where "deletedAt" is null'))
+      .merge({ enabled: false, state: 'disabled', updatedAt: db.knex.fn.now() });
+    await setModuleCommandAccess?.(moduleId, guildId, false);
+    await enqueueModuleCommandChanges(moduleId, guildId, userId, 'disable');
+    logger.info('module-uninstalled', { moduleId, guildId, userId });
+  };
+
+  registerCoreFrameHandlers({
+    registry: interactionRegistry,
+    router: commandRouter,
+    moduleInfo: (moduleId, guildId, invokerId, surface, applicationId) =>
+      moduleInfoPayload(applicationId ?? '', moduleId, guildId, invokerId, surface),
+    installModule,
+    uninstallModule,
+    disableConfirmation: moduleDisableConfirmation,
+    // UR-20261012-029 / UR-20261012-054 — the private persona Info card: the OAuth redirect callback
+    // guide and nothing else. The install guide and the invite link were rejected — Discord publishes
+    // no API for an application's redirect list, so a link offered here could not be verified.
+    personaSetup: async (applicationId) => {
+      const persona = await personaIdentities.findByApplicationId(applicationId);
+      return personaSetupCard({
+        callbackUrl: config.get('OAUTH_REDIRECT_URI'),
+        ...(persona === undefined ? {} : { personaName: persona.name }),
+      });
+    },
+  });
   container.registerValue(CORE_TOKENS.EventBus, eventBus);
   container.registerValue(CORE_TOKENS.EventRouter, eventRouter);
   container.registerValue(CORE_TOKENS.Scheduler, scheduler);
@@ -656,6 +1094,27 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   });
   container.registerValue(CORE_TOKENS.OAuth2, oauth2Client);
   logger.info('oauth2-client-state', { configured: oauth2Client.isConfigured() });
+  // UR-20261011-020 — the per-guild command-permission token store. Values are sealed at rest with
+  // the same envelope root key the credentials service uses, so a database dump never yields a
+  // usable token. The service is inert until the dashboard's Authorize flow stores one, and the
+  // command-permissions write falls back to the static env token when it holds nothing.
+  const commandPermissionTokens = new CommandPermissionTokenService({
+    store: new PostgresCommandPermissionTokenStore(db.knex),
+    sealer: new SealedCredentialService(
+      new PostgresSealedCredentialStore(db.knex),
+      rootKeyFromBase64('local', config.get('ENCRYPTION_ROOT_KEY')),
+    ),
+    refresher: oauth2Client,
+    logger,
+  });
+  scheduler.register({
+    name: 'command-permission-token-refresh',
+    cron: '0 */6 * * *',
+    execute: async () => {
+      const result = await commandPermissionTokens.refreshDue();
+      logger.info('command-permission-token-refresh-complete', result);
+    },
+  });
   // §28.5 — the MTP artificial-token cost model. Both MTP_*_TOKEN_THRESHOLD_BYTES keys were
   // previously declared and read by no code; they are the memory/bandwidth charge thresholds.
   const mtpTokens = new MtpTokenCalculator({
@@ -680,14 +1139,25 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   const verifier = new BuildSignatureVerifier();
   const buildSigningKeyId = config.get('BUILD_SIGNING_KEY_ID');
   const buildSigningPrivateKey = config.get('BUILD_SIGNING_PRIVATE_KEY');
-  let provenanceGuardArmed = buildSigningKeyId !== '' && buildSigningPrivateKey !== '';
-  if (provenanceGuardArmed) {
-    try {
-      verifier.registerKey(buildSigningKeyId, createPublicKey(buildSigningPrivateKey));
-    } catch (err) {
-      provenanceGuardArmed = false;
-      logger.warn('build-signing-key-invalid', { error: String(err) });
-    }
+  const buildSigningPublicKey = config.get('BUILD_SIGNING_PUBLIC_KEY');
+  // UR-20261012-036 — the verifier needs only the PUBLIC key. UR-20261012-040 — resolution AND
+  // registration live in one helper that cannot throw, so an unusable key degrades to a warning
+  // instead of killing boot (which it did, as ERR_OSSL_UNSUPPORTED).
+  // UR-20261012-042 (A2.2) — the registry is the documented home for these keys; config is additive.
+  const registrySigningKeys = await new PostgresSigningKeyStore(db.knex).listActive();
+  const provenance = armBuildProvenance(
+    verifier,
+    buildSigningKeyId,
+    buildSigningPrivateKey,
+    buildSigningPublicKey,
+    registrySigningKeys,
+  );
+  const provenanceGuardArmed = provenance.armed;
+  if (provenance.error !== undefined) {
+    logger.warn(
+      `build-signing-key-invalid: ${provenance.error} — BUILD_SIGNING_PUBLIC_KEY (or BUILD_SIGNING_PRIVATE_KEY) must be a single-line PEM with escaped newlines; the provenance guard stays OFF and boot continues`,
+      { error: provenance.error },
+    );
   }
   const discoveredModules = await loadModulesFromTierVolumes({
     modulesDir: config.get('MODULES_DIR'),
@@ -710,6 +1180,12 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   const policyPath = config.get('SECURITY_POLICY_LOCKFILE');
   const securityPolicy = existsSync(policyPath) ? loadPolicyLockfile(policyPath) : undefined;
   const moduleLoader = new ModuleLoader(moduleRegistry, moduleContainer, logger, securityPolicy);
+  moduleLoader.setModuleContextResolver(moduleContextResolver);
+  // UR-20261012-072 — the config service is built before the loader, so the notifier is attached
+  // here. A per-guild module config write now reaches the module's `onConfigChange` (§11.7).
+  guildConfigService.setModuleConfigChangeNotifier((moduleSlug, guildId, config) => {
+    void moduleLoader.notifyConfigChange(moduleSlug, guildId, config);
+  });
   moduleLoader.validateAll();
 
   progress.advanceTo('MODULE_LOAD');
@@ -841,61 +1317,12 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
       }
 
       if (interaction.isChatInputCommand()) {
-        const channel = (
-          interaction as unknown as {
-            channel?: { id: string; parentId?: string | null; isNSFW?: () => boolean } | null;
-          }
-        ).channel;
-        const member = (
-          interaction as unknown as {
-            member?: {
-              permissions?: { has: (p: string) => boolean };
-              roles?: { cache?: { keys: () => IterableIterator<string> } };
-            } | null;
-          }
-        ).member;
-        const memberPermissions = member?.permissions
-          ? [
-              'Administrator',
-              'ManageChannels',
-              'ManageGuild',
-              'ModerateMembers',
-              'BanMembers',
-              'KickMembers',
-            ].filter((p) => member.permissions?.has(p) === true)
-          : undefined;
-        // discord.js defines `channel` and `memberPermissions` as getter-only properties, so the
-        // interaction cannot be enriched in place - assigning to `channel` throws
-        // "Cannot set property channel of #<BaseInteraction> which has only a getter", which
-        // rejects the listener and leaves the interaction unacknowledged ("The application did
-        // not respond"). Build a plain adapter carrying the router's CommandInteraction shape
-        // instead - the same pattern the component branch below uses.
-        const commandInteraction: CommandInteraction = {
-          commandName: interaction.commandName,
-          user: { id: interaction.user.id },
-          guildId: interaction.guildId,
-          reply: interaction.reply.bind(interaction) as unknown as CommandInteraction['reply'],
-          deferReply: interaction.deferReply.bind(
-            interaction,
-          ) as unknown as CommandInteraction['deferReply'],
-          editReply: interaction.editReply.bind(
-            interaction,
-          ) as unknown as CommandInteraction['editReply'],
-          replied: interaction.replied,
-          deferred: interaction.deferred,
-          options: interaction.options,
-          ...(channel
-            ? {
-                channel: {
-                  id: channel.id,
-                  categoryId: channel.parentId ?? null,
-                  isNsfw: channel.isNSFW?.() ?? false,
-                },
-              }
-            : {}),
-          ...(memberPermissions !== undefined ? { memberPermissions } : {}),
-          ...(member?.roles?.cache ? { memberRoles: [...member.roles.cache.keys()] } : {}),
-        };
+        // UR-20261012-043 (A2.1) — the adapter is built by the shared, tested module. discord.js
+        // defines `channel` and `memberPermissions` as getter-only, so the interaction cannot be
+        // enriched in place; the adapter carries the router's CommandInteraction shape instead.
+        const commandInteraction = toCommandInteraction(
+          interaction as unknown as RawInteractionLike,
+        );
         void commandRouter.dispatch(commandInteraction).catch(async (err) => {
           logger.error('interaction-dispatch-failed', {
             command: interaction.commandName,
@@ -905,30 +1332,31 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
         return;
       }
 
-      if (interaction.isButton() || interaction.isStringSelectMenu()) {
-        const componentInteraction = {
-          id: interaction.id,
-          customId: interaction.customId,
-          user: { id: interaction.user.id },
-          guildId: interaction.guildId,
-          reply: interaction.reply.bind(interaction) as unknown as (
-            options: unknown,
-          ) => Promise<void>,
-          deferReply: interaction.deferReply.bind(interaction) as unknown as (options?: {
-            ephemeral?: boolean;
-          }) => Promise<void>,
-          editReply: interaction.editReply.bind(interaction) as unknown as (
-            options: unknown,
-          ) => Promise<void>,
-          ...(interaction.deferUpdate !== undefined
-            ? {
-                deferUpdate: interaction.deferUpdate.bind(
-                  interaction,
-                ) as unknown as () => Promise<void>,
-              }
-            : {}),
-          ...(interaction.isStringSelectMenu() ? { values: interaction.values } : {}),
+      if (interaction.isModalSubmit()) {
+        // item 5b — the Discover modal: re-render the /browse page with the submitted search query.
+        const modal = interaction as unknown as RawInteractionLike & {
+          update(options: unknown): Promise<unknown>;
         };
+        const submission = readDiscoverModalSubmission(modal, interaction.user.id);
+        if (submission !== undefined) {
+          try {
+            const payload = await commandRouter.buildBrowseRender(
+              interaction.user.id,
+              interaction.guildId,
+              submission.query,
+            );
+            await modal.update(payload);
+          } catch (err) {
+            logger.warn('discover-modal-submit-failed', { error: String(err) });
+          }
+        }
+        return;
+      }
+
+      if (interaction.isButton() || interaction.isStringSelectMenu()) {
+        const componentInteraction = toComponentInteraction(
+          interaction as unknown as RawInteractionLike,
+        );
         const handled = await interactionRegistry.dispatch(componentInteraction);
 
         if (!handled) {
@@ -950,14 +1378,140 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   }
 
   progress.advanceTo('CLIENT_READY');
+  // UR-20261012-082 — late-bound: the persona runtime is created inside a nested block, while the
+  // Twill surface is built later in this same function. The presence hook needs to reach the RUNNING
+  // runtime, so it is held here at function scope and assigned when the runtime is constructed.
+  let personaRuntimeRef: PersonaRuntime | undefined;
+
   if (discordClient) {
     const applicationId = discordClient.application?.id ?? '';
     // item 9 - upload the framework's default white module icon as an application emoji (once).
     // Non-fatal: on failure the unicode fallback applies until the next boot.
+    //
+    // UR-20261012-062 — the MAIN BOT registers under its OWN application id, exactly as a persona does.
+    //
+    // UR-060 made the render look an emoji up by the application Discord states on the interaction —
+    // for the main bot, its real application id. This upload still used the DEFAULT scope (the empty
+    // string), so registration and lookup used different keys and the main bot missed EVERY icon while
+    // a persona (which passes its own id on both sides) resolved all of them. The render is right; the
+    // registration had to be brought into line with it.
     try {
-      await ensureDefaultModuleEmoji(discordClient, logger);
+      await ensureDefaultModuleEmoji(discordClient, logger, applicationId, collectModuleIcons());
     } catch (err) {
       logger.warn('module-emoji-upload-failed', { error: String(err) });
+    }
+    // UR-20261012-028 — adopt any command-permission token rows written before the store was keyed
+    // by application, now that the running application's id is known. Non-fatal by design.
+    await commandPermissionTokens.adoptLegacy(applicationId);
+
+    // UR-20261012-038 — host every active persona's gateway, so a Twill-registered persona is
+    // actually ONLINE in its bound guild rather than only listed. Off by default: each persona costs
+    // one gateway connection, which is an operator decision.
+    if (config.get('PERSONA_RUNTIME_ENABLED')) {
+      const personaRuntime = new PersonaRuntime({
+        listPersonas: () => personaIdentities.list(),
+        openBotToken: (sealed) => openSealedText(sealed, personaRootKey),
+        modulesBoundTo: async (personaId) =>
+          (await personaBindings.listForPersona(personaId)).map((binding) => binding.moduleSlug),
+        // UR-20261012-054 — the FULL registry, not a filtered one.
+        //
+        // A persona registers the SAME command set as the main bot. What it may ANSWER is decided by
+        // ownership, in the router (`assertPersonaOwnsCommand`), not by what it registers: registering
+        // only the bound modules meant a persona with nothing bound registered NOTHING, so its commands
+        // never existed and stale ones were never cleared. The guild binding is the restriction.
+        buildRegistry: () => commandRegistry,
+        // The gateway intents/partials are computed for the main client in an earlier scope, so they
+        // are derived again here from the same source of truth: the module manifests.
+        createClient: () => {
+          const hosted = moduleRegistry.all();
+          const client = buildDiscordClient({
+            intents: computeIntentsBitfield(hosted.map((m) => m.manifest.intents)),
+            partials: computePartials(hosted.map((m) => m.manifest.partials)),
+            logger,
+          });
+          // UR-20261012-081 — the presence port. Applied after login (see persona-runtime), because
+          // `client.user` does not exist until the gateway is ready. Activity type 4 is CUSTOM, which
+          // is the "status quote" — it renders beside the bot's name rather than as a playing/watching
+          // line.
+          return Object.assign(client, {
+            setPresence: (presence: { status: string; note?: string }) => {
+              // UR-20261012-086 — never a silent no-op. `client.user` exists only once the gateway is
+              // ready; the optional chain this replaces would have swallowed that, leaving the caller
+              // to log a confident "applied" for a presence that never went anywhere.
+              const user = client.user;
+              if (user === null || user === undefined) {
+                logger.warn(
+                  'persona-presence-no-user — the client is not ready; the presence was NOT applied',
+                );
+                return;
+              }
+              user.setPresence({
+                status: presence.status as never,
+                // UR-20261012-086 — a CUSTOM activity (type 4) renders its `state`, not its `name`.
+                // Sending the quote as `name` is why the status applied but the note never appeared.
+                ...(presence.note !== undefined && presence.note !== ''
+                  ? { activities: [{ name: 'Custom Status', type: 4, state: presence.note }] }
+                  : {}),
+              });
+            },
+          });
+        },
+        deployCommands: async (persona, botToken, registry) => {
+          const rest = new REST({ version: '10' }).setToken(botToken);
+          // UR-20261012-058 — the SAME split the main bot uses: core global, standard/marketplace to
+          // the bound guild. See `splitPersonaPayloads` / `deployPersonaCommands`.
+          return deployPersonaCommands(
+            persona.discordApplicationId,
+            persona.boundGuildId,
+            splitPersonaPayloads(registry),
+            async (route, body) => rest.put(route as `/${string}`, { body }),
+          );
+        },
+        // UR-20261012-043 (A2.1) / UR-20261012-049 — a persona answers BOTH its slash commands and
+        // its in-message controls, through the same adapters and the same registry the main bot uses,
+        // with a router built over this persona's own filtered registry. Without the command half a
+        // persona's commands were registered but dispatched by nothing.
+        // UR-20261012-057 — register the framework icon set on the PERSONA'S application. An emoji
+        // belongs to one application; without this her pages embedded the main bot's ids and every
+        // icon rendered as the literal `:dumby_browse:`.
+        ensureEmojis: async (persona, client) => {
+          await ensureDefaultModuleEmoji(
+            client as unknown as Client,
+            logger,
+            persona.discordApplicationId,
+            collectModuleIcons(),
+          );
+        },
+        // UR-20261012-083 — clearing a persona's commands: the SAME split and the SAME put the deploy
+        // uses, with EMPTY payloads, because `deployPersonaCommands` clears both scopes before it
+        // writes — so an empty set is exactly a deregister.
+        clearCommands: async (persona, botToken) => {
+          const rest = new REST({ version: '10' }).setToken(botToken);
+          return deployPersonaCommands(
+            persona.discordApplicationId,
+            persona.boundGuildId,
+            { global: [], guild: [] },
+            async (route, body) => rest.put(route as `/${string}`, { body }),
+          );
+        },
+        createInteractionHandler: (persona, registry) =>
+          buildPersonaInteractionHandler({
+            registry: interactionRegistry,
+            createCommandRouter: () =>
+              new CommandRouter(
+                registry,
+                logger,
+                commandRouterOptions(persona.id, persona.boundGuildId, persona.name),
+              ),
+            logger,
+          }),
+        logger,
+      });
+      personaRuntimeRef = personaRuntime;
+      const results = await personaRuntime.start();
+      logger.info(
+        `persona-runtime-start-complete hosted=${results.filter((r) => r.started).length} of ${results.length}`,
+      );
     }
     const rest = new REST({ version: '10' }).setToken(config.get('BOT_TOKEN'));
     // §17.7 — the BCCM batch push's Discord surface. `getRegistered` is the authority for what
@@ -968,10 +1522,112 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
           name: string;
         }[],
       putCommands: async (guildId, commands) => {
-        await rest.put(Routes.applicationGuildCommands(applicationId, guildId), {
-          body: commands,
-        });
+        // UR-20261011-023 — Discord's bulk overwrite needs a FULL command object (a `name` AND a
+        // `description`); a body of `{ name }` alone is rejected, which is what made the first real
+        // BCCM push fail with `bccm-batch-put-failed` and `sent=0`. Resolve each desired name to its
+        // registered definition, keeping the requested name (a rename target is not a registry key,
+        // so it falls back to a minimal valid object and is logged).
+        const body = resolveCommandPayloads(
+          commands.map((command) => command.name),
+          commandRegistry,
+          // UR-20261012-027 — self-describing (UR-019): the operator's log viewer renders only the
+          // message, so the dropped command's name and reason travel in the string, not only in the
+          // structured fields. A name dropped here is a rename/alias target that is not a valid
+          // Discord command name, so the rename silently did not happen — this is the only record.
+          (name, reason) =>
+            logger.warn(`bccm-batch-command-skipped: ${name} (${reason})`, {
+              guildId,
+              name,
+              reason,
+            }),
+          // UR-20261012-044 — a rename target inherits its source command's definition, so a renamed
+          // command carries a real description rather than one repeating its own name.
+          new Map(
+            commands
+              .filter((command) => command.source !== undefined)
+              .map((command) => [command.name, command.source as string]),
+          ),
+        );
+        await rest.put(Routes.applicationGuildCommands(applicationId, guildId), { body });
       },
+    };
+    // UR-20261011-011 — the instant command-access override: on a module disable, write a DENY
+    // override for `@everyone` on each of the module's registered commands, so they disappear from
+    // members' effective access at once while the deregistration stays batched (§17.6/§17.7).
+    // Enabling clears the override (allow).
+    setModuleCommandAccess = async (moduleId, guildId, allowed) => {
+      const entry = moduleRegistry.get(moduleId);
+      if (entry === undefined) return;
+      const names = new Set(entry.manifest.commands.map((command) => command.name));
+      if (names.size === 0) return;
+
+      // UR-20261012-030 — a module's commands belong to the application that OWNS the module in this
+      // guild: the persona bound to it, else the resident main bot. Both the read endpoint and the
+      // token are per-application, so the owner decides both.
+      const ownerPersonaId = await personaBindingService.resolveCommandOwner(guildId, moduleId);
+      const ownerPersona =
+        ownerPersonaId === undefined ? undefined : await personaIdentities.findById(ownerPersonaId);
+      const ownerApplicationId = ownerPersona?.discordApplicationId ?? applicationId;
+      if (ownerApplicationId === '') return;
+
+      let registered: Array<{ id: string; name: string }>;
+      try {
+        registered = (await rest.get(
+          Routes.applicationGuildCommands(ownerApplicationId, guildId),
+        )) as Array<{ id: string; name: string }>;
+      } catch (err) {
+        logger.warn('command-access-read-failed', { moduleId, guildId, error: String(err) });
+        return;
+      }
+      // §17.6 — the instant override (Server Settings → Integrations) needs a Bearer token; the
+      // token/Bearer mechanics live in `command-access.ts` so they are unit-tested. UR-20261011-020
+      // — prefer the dashboard-authorized token FOR THIS APPLICATION, fall back to the operator's
+      // static env token (the main bot only), and absent both use Route B below.
+      const storedToken = await commandPermissionTokens.resolveAccessToken(
+        ownerApplicationId,
+        guildId,
+      );
+      const bearer =
+        storedToken ??
+        (ownerPersona === undefined ? config.get('DISCORD_COMMAND_PERMISSIONS_TOKEN') : undefined);
+      const applied = await setGuildCommandPermissions({
+        token: bearer ?? '',
+        applicationId: ownerApplicationId,
+        guildId,
+        registered,
+        commandNames: names,
+        allowed,
+        logger,
+      });
+      // UR-20261012-030 (Route B) — with no user token, a DISABLE still hides at once by removing the
+      // guild commands with the OWNER's own bot token, which needs no authorization at all. The BCCM
+      // re-creates them on the next enable, the batched path it already owns.
+      let removed = 0;
+      if (applied === 0 && !allowed) {
+        // Never throws: an unreadable token degrades to '' and deleteGuildCommands reports it, so
+        // the disable still completes through the queued BCCM deregistration.
+        const ownerBotToken =
+          ownerPersona === undefined
+            ? config.get('BOT_TOKEN')
+            : openBotTokenOrEmpty(ownerPersona.botTokenSealed, personaRootKey);
+        removed = await deleteGuildCommands({
+          botToken: ownerBotToken,
+          applicationId: ownerApplicationId,
+          guildId,
+          registered,
+          commandNames: names,
+          logger,
+        });
+      }
+      // The log viewer drops structured fields, so the outcome is in the message too (UR-019 pattern).
+      logger.info(`module-command-access-set applied=${applied} removed=${removed}`, {
+        moduleId,
+        guildId,
+        allowed,
+        applied,
+        removed,
+        applicationId: ownerApplicationId,
+      });
     };
     // §17.7 — run the batch once shortly after boot: it converges any batch left pending by the
     // previous deploy, and in dry-run it makes the output visible without waiting for the 12h
@@ -986,6 +1642,25 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
       });
     }, 30_000).unref();
     const commandDeployer = new CommandDeployer({
+      // UR-20261012-063 — the applied renames, so a boot registers the RENAMED set instead of reverting
+      // every BCCM rename back to the registry's name.
+      commandRenames: async (guildId: string) => {
+        const map = new Map<string, string>();
+        try {
+          const rows = (await db
+            .knex('guild_command_renames')
+            .where({ guildId })
+            .whereNull('deletedAt')
+            .select<{ commandKey: string; newName: string }[]>('commandKey', 'newName')) as Array<{
+            commandKey: string;
+            newName: string;
+          }>;
+          for (const row of rows) map.set(String(row.commandKey), String(row.newName));
+        } catch (err) {
+          logger.warn(`command-renames-read-failed guild=${guildId} reason=${String(err)}`);
+        }
+        return map;
+      },
       registry: commandRegistry,
       logger,
       config: {
@@ -1019,21 +1694,24 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
         return allRows.map((row) => row.id).filter((id) => !disabled.has(id));
       },
     });
-    // A failed command-registration must NOT take the bot offline. The client has already
-    // logged in (Stage 15) and the gateway connection is independent of command deployment;
-    // crashing here would drop a healthy bot every time the Discord REST call hiccups.
-    try {
-      await commandDeployer.deploy();
-    } catch (err) {
+    // Twelve tables foreign-key onto `guilds`, so every guild-scoped write needs the guild row to
+    // exist first — and the deployer's enabled-guild resolver reads that table, so the guilds are
+    // registered BEFORE the deploy. UR-20261011-023 — a guild that joins after boot gets its
+    // commands immediately, rather than waiting for the next deploy.
+    await registerKnownGuilds(discordClient, db, logger, (guildId) =>
+      commandDeployer.deployForGuild(guildId),
+    );
+    // UR-20261011-024 — the command deploy runs in the BACKGROUND. Per-guild registration is
+    // rate-limited (two bulk-overwrite calls per guild) and was blocking readiness for minutes on
+    // every restart. The gateway connection is independent of command deployment, so the bot is
+    // functional while its commands propagate; a failure is logged, never fatal.
+    void commandDeployer.deploy().catch((err: unknown) => {
       logger.error('command-deploy-failed', {
         error: String(err),
         applicationId,
         devGuildId: config.get('DEV_GUILD_ID'),
       });
-    }
-    // Twelve tables foreign-key onto `guilds`, so every guild-scoped write needs the guild row to
-    // exist first. Register the guilds we are already in before anything touches guild state.
-    await registerKnownGuilds(discordClient, db, logger);
+    });
 
     logger.info('discord-client-ready', {
       applicationId,
@@ -1102,7 +1780,50 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     progress,
     metrics,
     config,
-    oauth2Client: oauth2Client.isConfigured() ? oauth2Client : undefined,
+    // UR-20261012-073 — a completed OAuth leg is the only honest proof a persona's redirect URI is
+    // registered; record it so the persona page can report the state instead of guessing.
+    oauthDeps: oauth2Client.isConfigured()
+      ? {
+          client: oauth2Client,
+          logger,
+          defaultGuildId: config.get('DEV_GUILD_ID'),
+          applicationId: discordClient?.application?.id ?? '',
+          installPermissions: config.get('BOT_INSTALL_PERMISSIONS'),
+          tokens: commandPermissionTokens,
+          // UR-20261012-030 — a persona authorizes through its own application.
+          personaClients: (appId) => personaOAuth.clientForApplication(appId),
+          // UR-20261012-073 — a completed exchange proves the redirect URI is registered.
+          markOauthVerified: (appId) => personaIdentities.markOauthVerified(appId),
+        }
+      : undefined,
+    // UR-20261012-034 — optionally serve the Twill persona registration API here, so it is usable
+    // without provisioning a separate Railway service. OFF by default; it stays behind the internal
+    // API key either way.
+    twillPersonaDeps: config.get('TWILL_ROUTES_ON_API')
+      ? {
+          service: personaBindingService,
+          identities: personaIdentities,
+          bindings: personaBindings,
+          registrars: personaRegistrars,
+          rootKey: personaRootKey,
+          // UR-20261012-052 — so a binding for a module this guild has DISABLED is refused at the
+          // surface, instead of producing a registered-but-refused command.
+          isModuleEnabledInGuild,
+          // UR-20261012-082 — so a presence set through Twill reaches the RUNNING persona, rather
+          // than waiting for the next restart.
+          applyPersonaPresence: (personaId, presence) =>
+            personaRuntimeRef?.applyPresence(personaId, presence) ?? false,
+          // UR-20261012-083 — a revoke stops the running persona, so the delete takes effect NOW
+          // rather than at the next restart.
+          stopPersona: async (persona) =>
+            (await personaRuntimeRef?.stopPersona(persona as never)) ?? false,
+          // UR-20261012-085 — a registration, a binding or a credential change takes effect NOW.
+          reloadPersona: async (persona) =>
+            (await personaRuntimeRef?.reloadPersona(persona as never)) ?? undefined,
+          logger,
+          costSignals: { dedicatedInfrastructureRequired: false, perPersonaCostMeasurable: false },
+        }
+      : undefined,
     // Appendix C #18 — the MDIS module-delivery and operational-tooling surfaces.
     mdisDeps: { service: new MdisService(moduleRegistry, new PostgresModuleInstallStore(db.knex)) },
     operationalDeps: {

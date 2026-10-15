@@ -111,6 +111,15 @@ export async function buildFirstPartyModulePackage(
   if (existsSync(localesSrc)) {
     cpSync(localesSrc, join(buildDir, 'locales'), { recursive: true });
   }
+  // UR-20261012-066 — ship the module's OWN assets. `assets/` is documented as "static assets your
+  // module serves" and the module declares its logo there; without this the tree stops at the bundle
+  // and the core has nothing to register. Mirrors the locales copy above deliberately: the built
+  // directory is what `place-first-party-modules` cpSyncs into the image, so anything not copied here
+  // never reaches the runtime.
+  const assetsSrc = join(pkg.packageDir, 'assets');
+  if (existsSync(assetsSrc)) {
+    cpSync(assetsSrc, join(buildDir, 'assets'), { recursive: true });
+  }
   const indexBytes = readFileSync(builtIndexPath).byteLength;
   if (indexBytes === 0) {
     throw new FirstPartyModulePackageError(pkg.slug, 'the bundled index.js is empty');

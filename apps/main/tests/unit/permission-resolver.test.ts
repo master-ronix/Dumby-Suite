@@ -1,5 +1,6 @@
-import { test, expect } from 'vitest';
+import { test, expect, describe } from 'vitest';
 import { resolvePermission, type PermissionContext } from '../../src/permissions/resolver.js';
+import { isGuildAdmin } from '../../src/commands/command-router.js';
 import { checkAdminTierGate } from '../../src/permissions/admin-tier-gate.js';
 
 const MOD_BITS = ['KickMembers', 'BanMembers', 'ModerateMembers', 'ManageMessages'];
@@ -210,16 +211,35 @@ test('layer 7: grants never reach core commands', () => {
       guildGrants: [grant],
     },
   });
-  const denied = resolvePermission({
-    ...ctx,
-    hasExplicitPermissionDeclaration: false,
+  // UR-20261012-047 — the grant must not reach a core command, and a core command is ALLOWED whether
+  // or not it declares a permission posture. DIAGRAM 21-A's default is allow, and §21.3 makes MEMBER
+  // "the default requirement every command carries when it declares nothing". The old expectation
+  // here — denied for want of a declaration — was the production defect that denied every core
+  // command to every member who was not a bot owner.
+  expect(resolvePermission({ ...ctx, hasExplicitPermissionDeclaration: false })).toStrictEqual({
+    allowed: true,
   });
-  expect(denied.allowed).toBe(false);
-  expect(denied.reason).toBe('no explicit permission declaration exists for this action');
-
   expect(resolvePermission({ ...ctx, hasExplicitPermissionDeclaration: true })).toStrictEqual({
     allowed: true,
   });
+});
+
+test('a CORE command that declares nothing is ALLOWED for a non-owner (UR-20261012-047)', () => {
+  // The production case: `/dashboard`, `/modules` and `/health` are host-registered core commands and
+  // declare no permissions at all. Guild 1062427177326497863 denied them with reason FORBIDDEN for
+  // every non-owner. The bot owner bypasses at Layer 1, which is why it read as a per-guild problem.
+  const result = resolvePermission(
+    baseContext({
+      tier: 'core',
+      hasExplicitPermissionDeclaration: false,
+      grants: {
+        commandKey: 'core.dashboard',
+        membership: { roleIds: [], groupIds: [], setIds: [] },
+        guildGrants: [],
+      },
+    }),
+  );
+  expect(result).toStrictEqual({ allowed: true });
 });
 
 test('layer 7: an active whitelist restricts a command to whitelisted targets only', () => {
@@ -371,10 +391,12 @@ test('a fully-permitted standard action with no restrictions is allowed', () => 
   expect(resolvePermission(baseContext())).toStrictEqual({ allowed: true });
 });
 
-test('default deny: a non-owner action without a permission declaration is denied', () => {
-  const result = resolvePermission(baseContext({ hasExplicitPermissionDeclaration: false }));
-  expect(result.allowed).toBe(false);
-  expect(result.reason).toBe('no explicit permission declaration exists for this action');
+test('default allow: an action that declares nothing falls through to ALLOW (§21.3, DIAGRAM 21-A)', () => {
+  // "Only if every layer passes without a definitive answer does the framework fall through to the
+  // final default: allow." A missing declaration is not a layer and must not be a denial.
+  expect(resolvePermission(baseContext({ hasExplicitPermissionDeclaration: false }))).toStrictEqual(
+    { allowed: true },
+  );
 });
 
 test('layers short-circuit in order: a layer-2 failure never reaches layer 7 checks', () => {
@@ -433,4 +455,26 @@ test('AdminTierGate allows only bot owners and always requires an audit record',
   expect(allowed.mustAudit).toBe(true);
   expect(denied.mustAudit).toBe(true);
   expect(denied.silentRejectionMessage).toBe(allowed.silentRejectionMessage);
+});
+
+describe('isGuildAdmin reads NAMES, not bit values (UR-20261012-053)', () => {
+  const interaction = (over: Record<string, unknown>) =>
+    ({ commandName: 'persona', user: { id: 'u1' }, guildId: 'g1', ...over }) as never;
+
+  test('a guild administrator is recognised from the permission NAME', () => {
+    // These were compared against '8' and '32' — the Discord bitfield VALUES — while every producer of
+    // `memberPermissions` emits NAMES, so this was false for every non-owner administrator. Only
+    // `isGuildOwner` kept the owner working, which is what hid it.
+    expect(isGuildAdmin(interaction({ memberPermissions: ['Administrator'] }))).toBe(true);
+    expect(isGuildAdmin(interaction({ memberPermissions: ['ManageGuild'] }))).toBe(true);
+  });
+
+  test('the guild owner is recognised without any permission bit', () => {
+    expect(isGuildAdmin(interaction({ isGuildOwner: true }))).toBe(true);
+  });
+
+  test('an ordinary member is not an administrator', () => {
+    expect(isGuildAdmin(interaction({ memberPermissions: [] }))).toBe(false);
+    expect(isGuildAdmin(interaction({ memberPermissions: ['SendMessages'] }))).toBe(false);
+  });
 });

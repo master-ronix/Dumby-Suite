@@ -1,6 +1,10 @@
 {
   "name": "browse",
   "version": "1.0.0",
+  "ui": {
+    "icon": "dumby_browse",
+    "iconAsset": "assets/icon.png"
+  },
   "description": "Browse the marketplace, discover modules, and install them.",
   "tier": "core",
   "hardcoded": false,

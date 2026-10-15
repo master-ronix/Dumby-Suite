@@ -11,23 +11,54 @@ import {
   CoreRenderer,
   FOLLOWUP_ALARM_MS,
   type ModeControl,
-  type NavigationControl,
   type NavigationOption,
   type NoticeReasonCode,
   type PageActionRow,
   type RenderDescriptor,
   type RenderIdentity,
+  type RenderBlock,
   type RenderMode,
   derivePageSections,
 } from '../rendering/core-renderer.js';
+import { customEmojiParts, DEFAULT_EMOJI_SCOPE } from '../rendering/module-icons.js';
+import { healthBlocks } from '../rendering/health-blocks.js';
+import { modulesBlocks } from '../rendering/modules-blocks.js';
+import { personaBlocks } from '../rendering/persona-blocks.js';
+import {
+  HOME_SELECT_VALUE,
+  INSTALL_DROPDOWN_CAP,
+  MARKETPLACE_MODULE_CAP,
+} from '../shared/constants/index.js';
+import type { ComponentsV2Message } from '../shared/utils/components-v2.js';
+import type { ExecutionIdentity, ModuleStanding } from '@workspace/swastik';
 import { PersonaOccupiedError } from '../personas/persona.js';
+
+/** Manage Guild (0x20) and Administrator (0x8), as the decimal strings Discord sends. */
+// UR-20261012-053 — NAMES, not bit values. These were '8' and '32' (the Discord bitfield values)
+// while every producer of `memberPermissions` emits NAMES, so `includes` never matched and
+// `isGuildAdmin` was false for every guild administrator who was not the owner. The owner was still
+// recognised, via `isGuildOwner`, which is what kept the bug invisible.
+const ADMINISTRATOR_PERMISSION = 'Administrator';
+const MANAGE_GUILD_PERMISSION = 'ManageGuild';
+
+/**
+ * UR-20261012-029 — whether the invoking member may administer the guild: the owner, an
+ * Administrator, or a Manage Server holder. Gates the persona authorization setup control.
+ */
+export function isGuildAdmin(interaction: CommandInteraction): boolean {
+  if (interaction.isGuildOwner === true) return true;
+  const permissions = interaction.memberPermissions ?? [];
+  return (
+    permissions.includes(ADMINISTRATOR_PERMISSION) || permissions.includes(MANAGE_GUILD_PERMISSION)
+  );
+}
 
 export interface CommandInteraction {
   commandName: string;
   user: { id: string };
   guildId: string | null;
   reply: (options: unknown) => Promise<void>;
-  deferReply: (options?: { ephemeral?: boolean }) => Promise<void>;
+  deferReply: (options?: { flags?: number | bigint }) => Promise<void>;
   editReply: (options: unknown) => Promise<void>;
   replied?: boolean;
   deferred?: boolean;
@@ -35,6 +66,11 @@ export interface CommandInteraction {
   memberPermissions?: readonly string[];
   memberRoles?: readonly string[];
   isGuildOwner?: boolean;
+  /**
+   * UR-20261012-060 — the application this interaction is FOR, as Discord states it. The authoritative
+   * emoji scope: an application emoji may only be referenced by the application that owns it.
+   */
+  applicationId?: string;
   /** §6.7 — the interaction's option accessor, so a handler can read its own arguments. */
   options?: unknown;
 }
@@ -46,15 +82,50 @@ export class CommandNotFoundError extends Error {
   }
 }
 
+/**
+ * UR-20261012-060 — a persona is bound to ONE guild. It registers core commands GLOBALLY (so they work
+ * in a DM and in any guild the MAIN bot is in), which means its commands are visible in servers it does
+ * not serve; every one of them must be refused there.
+ */
+export class PersonaBoundGuildError extends Error {
+  constructor(guildId: string, boundGuildId: string) {
+    super(
+      `This persona is bound to guild \"${boundGuildId}\" and refuses to act in \"${guildId}\"`,
+    );
+    this.name = 'PersonaBoundGuildError';
+  }
+}
+
+/**
+ * UR-20261012-068 — the reason the command was refused, stated rather than implied.
+ *
+ * This class carried ONE message for two unrelated failures, so a member told "not available in guild"
+ * could actually be facing an unreadable guild state. The cause is now part of the error, and the
+ * message says which it was.
+ */
+export type CommandScopeCause =
+  | 'module-disabled'
+  | 'state-unreadable'
+  | 'permission-denied'
+  /**
+   * UR-20261012-074 — the NEUTRAL cause, and the default. A refusal for a reason that is none of the
+   * three above (a DM, the wrong guild for an admin command, an unresolved tier) must not be reported
+   * as "the module is switched off" — that would be a new lie in place of the old one.
+   */
+  | 'out-of-scope';
+
 export class CommandScopeDeniedError extends Error {
   constructor(
     readonly commandName: string,
     readonly moduleId: string,
     readonly tier: ModuleTier | 'unresolved',
     readonly guildId: string | null,
+    readonly scopeCause: CommandScopeCause = 'out-of-scope',
   ) {
     super(
-      `Command "${commandName}" from ${tier} module "${moduleId}" is not available in guild "${guildId ?? 'DM'}"`,
+      scopeCause === 'state-unreadable'
+        ? `Command "${commandName}" could not be authorised: this guild's module state could not be read`
+        : `Command "${commandName}" from ${tier} module "${moduleId}" is not available in guild "${guildId ?? 'DM'}"`,
     );
     this.name = 'CommandScopeDeniedError';
   }
@@ -75,6 +146,16 @@ export interface CommandRouterOptions {
   resolveCommandOwner?: (guildId: string, moduleSlug: string) => Promise<string | undefined>;
   residentPersonaId?: string;
   /**
+   * UR-20261012-060 — the ONE guild this identity serves. A persona sets it; the main bot does not,
+   * because the main bot serves every guild it is installed in.
+   */
+  residentBoundGuildId?: string;
+  /**
+   * UR-20261012-067 — the acting identity's display name (the bot's username, or the persona's
+   * registered name). Supplied at construction, because the router is built PER IDENTITY.
+   */
+  residentProfileName?: string;
+  /**
    * blueprint.md §22.2 / Table 22-A — the Power Engine `suspendGuild` state. When present, dispatch
    * consults it before anything else in the guild: a suspension overrides the guild's own
    * configuration rather than editing it.
@@ -89,7 +170,25 @@ export interface CommandRouterOptions {
     moduleId: string,
     guildId: string | null,
     /** UR-004 — the dashboard page index (0 = main; 1..n = the standard module pages). */
-    page?: number,
+    page: number,
+    /** item 5b — the /browse search query, when one was submitted. */
+    query: string | undefined,
+    /**
+     * UR-20261012-057 — the application rendering the page. Emoji ids belong to ONE application, so
+     * the page data must resolve its icons against the right one.
+     *
+     * UR-20261012-075 — REQUIRED. A default let a caller that forgot it borrow the main bot's scope
+     * silently, which is the failure UR-060 removed from the readers; the dispatcher kept it.
+     */
+    applicationId: string,
+    /**
+     * UR-20261012-061 — WHICH profile the page reports for: 'main' for the main bot, a persona id for
+     * a persona. Every page scopes its modules by it.
+     *
+     * UR-20261012-075 — REQUIRED. Omitting it at the primary render made a persona's first page
+     * report the main bot's modules.
+     */
+    actingProfileId: string,
   ) => Promise<Readonly<Record<string, unknown>>>;
   /**
    * §6.7 — performs the side effects a handler declares. Keyed by effect kind; an undeclared kind
@@ -122,17 +221,29 @@ export class CommandRouter {
 
   async dispatch(
     interaction: CommandInteraction,
-    options: { mode?: RenderMode; page?: number } = {},
+    options: { mode?: RenderMode; page?: number; query?: string } = {},
   ): Promise<void> {
     const name = interaction.commandName;
     const identity: RenderIdentity = { surface: this.pageTitle(name) };
 
+    const traceId = this.renderer.createTraceId();
+
     if (interaction.guildId === null) {
       this.logger.warn('dm-interaction-rejected', { command: name, userId: interaction.user.id });
-      throw new CommandScopeDeniedError(name, 'main-bot', 'core', null);
+      // UR-20261012-058 — ANSWER. Throwing here produced no reply at all, so Discord showed
+      // "The application did not respond" — which tells the member nothing. DM use is prohibited by
+      // design; say so plainly instead of failing silently.
+      await this.renderer.replyNotice(interaction, {
+        ...identity,
+        reason: 'FORBIDDEN',
+        traceId,
+        heading: 'Direct messages are not supported',
+        explanation:
+          'This command runs inside a server. Direct messages are prohibited for this bot — use it from a server where it is installed.',
+      });
+      return;
     }
 
-    const traceId = this.renderer.createTraceId();
     await this.renderer.sendBuffer(interaction, identity);
 
     // §22.2 / Table 22-A: a suspended guild blocks dispatch fleet-wide, ahead of the guild's own
@@ -171,6 +282,7 @@ export class CommandRouter {
     const watchdog = this.armFollowupWatchdog(interaction, identity, traceId);
 
     try {
+      this.assertBoundGuild(interaction.guildId);
       await this.assertCommandInScope(def, interaction.guildId);
       await this.assertPermissionAllowed(def, interaction);
       await this.assertPersonaOwnsCommand(def, interaction.guildId);
@@ -183,11 +295,22 @@ export class CommandRouter {
             this.renderer.createReadOnlyInteraction(interaction),
             {
               config: def.moduleConfig ?? {},
+              // UR-20261012-067 — who is running this, and where the module stands. The module can
+              // now answer both questions itself instead of the core deciding on its behalf.
+              identity: this.executionIdentity(interaction),
+              module: await this.moduleStanding(def, interaction),
               data:
                 (await this.options.pageDataProvider?.(
                   def.moduleId,
                   interaction.guildId,
-                  options.page,
+                  options.page ?? 0,
+                  options.query,
+                  // UR-20261012-064 — the interaction's application, and nothing else.
+                  this.emojiScope(interaction),
+                  // UR-20261012-075 — and WHICH profile this page is for. Omitting it defaulted to
+                  // 'main', so a persona's first render showed the main bot's modules while the
+                  // post-effect render showed its own.
+                  this.options.residentPersonaId ?? 'main',
                 )) ?? {},
             },
           );
@@ -238,25 +361,87 @@ export class CommandRouter {
         declaredDensityRaw === 'D' || declaredDensityRaw === 'M' || declaredDensityRaw === 'C'
           ? declaredDensityRaw
           : undefined;
+      // item 7 — a STANDARD-tier module's page under the dashboard carries THAT module's identity
+      // (its banner, footer and title), not the dashboard's. page-data names the owning module; a
+      // page without one is the dashboard's own main page. The hello-world page therefore shows the
+      // default banner, not the dashboard banner.
+      const pageModuleId =
+        typeof declaredPageData?.['pageModuleId'] === 'string'
+          ? (declaredPageData['pageModuleId'] as string)
+          : undefined;
+      const pageModuleName =
+        typeof declaredPageData?.['pageModuleName'] === 'string'
+          ? (declaredPageData['pageModuleName'] as string)
+          : undefined;
       const render = this.renderer.normalizeHandlerResult(declaredResponse, {
         ...identity,
-        moduleId: def.moduleId,
+        ...(pageModuleName !== undefined ? { surface: pageModuleName } : {}),
+        moduleId: pageModuleId ?? def.moduleId,
         ...(def.identity?.developer !== undefined ? { developer: def.identity.developer } : {}),
-        ...(def.identity?.displayName !== undefined
+        ...(pageModuleId === undefined && def.identity?.displayName !== undefined
           ? { displayName: def.identity.displayName }
           : {}),
-        ...(def.identity?.accent !== undefined ? { accent: def.identity.accent } : {}),
-        ...(def.identity?.banner !== undefined ? { banner: def.identity.banner } : {}),
+        ...(pageModuleId === undefined && def.identity?.accent !== undefined
+          ? { accent: def.identity.accent }
+          : {}),
+        ...(pageModuleId === undefined && def.identity?.banner !== undefined
+          ? { banner: def.identity.banner }
+          : {}),
         ...(def.identity?.buildId !== undefined ? { buildId: def.identity.buildId } : {}),
         ...(def.identity?.devUsername !== undefined
           ? { devUsername: def.identity.devUsername }
           : {}),
         ...(options.mode !== undefined ? { mode: options.mode } : {}),
         ...(declaredDensity !== undefined ? { mode: declaredDensity } : {}),
-        // items 10/11/15/17 - page-declared action controls; the dashboard's nav is Home/Next/Prev.
-        ...(name === 'dashboard' || name === 'modules' || name === 'browse'
-          ? { actions: this.pageActions(name, declaredPageData, interaction.user.id, options.page) }
-          : {}),
+        // items 8/9 — /browse, /modules and /persona render richer blocks (inline Info sections, the
+        // install dropdown, the /modules listing, the persona control-plane board); the dashboard's
+        // nav is Home/Next/Prev. Each block set attaches only when the page data carries its shape,
+        // so a command that returns a plain render is left untouched.
+        ...(name === 'browse'
+          ? {
+              blocks: this.browseBlocks(
+                declaredPageData,
+                interaction.user.id,
+                this.emojiScope(interaction),
+              ),
+            }
+          : name === 'health' && Array.isArray(declaredPageData?.['groups'])
+            ? {
+                blocks: healthBlocks(declaredPageData, interaction.user.id, {
+                  applicationId: this.emojiScope(interaction),
+                }),
+              }
+            : name === 'modules' && Array.isArray(declaredPageData?.['modules'])
+              ? {
+                  blocks: modulesBlocks(declaredPageData, interaction.user.id),
+                  actions: this.pageActions(
+                    name,
+                    declaredPageData,
+                    interaction.user.id,
+                    options.page,
+                    this.emojiScope(interaction),
+                  ),
+                }
+              : name === 'persona' && Array.isArray(declaredPageData?.['tiers'])
+                ? {
+                    // UR-20261012-029 — the persona setup control is offered ONLY to a guild admin.
+                    blocks: personaBlocks(declaredPageData, interaction.user.id, {
+                      isAdmin: isGuildAdmin(interaction),
+                      // UR-20261012-064 — a persona's page uses the persona's own emoji ids.
+                      applicationId: this.emojiScope(interaction),
+                    }),
+                  }
+                : name === 'dashboard'
+                  ? {
+                      actions: this.pageActions(
+                        name,
+                        declaredPageData,
+                        interaction.user.id,
+                        options.page,
+                        this.emojiScope(interaction),
+                      ),
+                    }
+                  : {}),
       });
       // A page whose data the effects just changed is re-derived, so the render shows the result
       // of the action rather than the state it was gathered in.
@@ -267,7 +452,10 @@ export class CommandRouter {
             (await this.options.pageDataProvider?.(
               def.moduleId,
               interaction.guildId,
-              options.page,
+              options.page ?? 0,
+              undefined,
+              this.emojiScope(interaction),
+              this.options.residentPersonaId ?? 'main',
             )) ?? {};
           render.sections = derivePageSections(pageName, fresh);
         }
@@ -354,11 +542,13 @@ export class CommandRouter {
     });
 
     if (result && !result.allowed) {
+      // UR-20261012-074 — this one IS a permission decision, and must keep saying so.
       throw new CommandScopeDeniedError(
         command.data.name,
         command.moduleId,
         this.requireModuleTier(command, interaction.guildId),
         interaction.guildId,
+        'permission-denied',
       );
     }
   }
@@ -442,10 +632,139 @@ export class CommandRouter {
 
     if (!this.options.isModuleEnabledInGuild) return;
 
-    const enabled = await this.options.isModuleEnabledInGuild(command.moduleId, guildId);
-    if (!enabled) {
-      throw new CommandScopeDeniedError(command.data.name, command.moduleId, tier, guildId);
+    // UR-20261012-068 — a FAILING read is not a refusal. Unguarded, a database fault propagated and the
+    // member was told the command was unavailable — a permission error for an outage. Fail closed, but
+    // say which it was, and log the fault.
+    let enabled: boolean;
+    try {
+      enabled = await this.options.isModuleEnabledInGuild(command.moduleId, guildId);
+    } catch (err) {
+      this.logger.warn(
+        `command-scope-state-unreadable command=${command.data.name} module=${command.moduleId} guild=${guildId} reason=${String(err)}`,
+      );
+      throw new CommandScopeDeniedError(
+        command.data.name,
+        command.moduleId,
+        tier,
+        guildId,
+        'state-unreadable',
+      );
     }
+    if (!enabled) {
+      // UR-20261012-074 — the ONE refusal that really is "the module is switched off here".
+      throw new CommandScopeDeniedError(
+        command.data.name,
+        command.moduleId,
+        tier,
+        guildId,
+        'module-disabled',
+      );
+    }
+  }
+
+  /**
+   * UR-20261012-060 — a bound identity acts ONLY in its bound guild. Nothing to do for the main bot,
+   * which sets no bound guild.
+   */
+  private assertBoundGuild(guildId: string | null): void {
+    const bound = this.options.residentBoundGuildId;
+    if (bound === undefined || bound === '') return;
+    if (guildId === bound) return;
+    throw new PersonaBoundGuildError(guildId ?? 'a direct message', bound);
+  }
+
+  /**
+   * UR-20261012-064 — THE emoji scope, and the only one.
+   *
+   * An application emoji may be referenced ONLY by the application that owns it, so the scope is the
+   * application Discord states on the interaction — the same value the upload keys by. There is
+   * deliberately NO second source: a per-router option is undefined for the main bot, and a lookup that
+   * used it while the upload used the real id missed every icon. One source, compiler-enforced.
+   */
+  private emojiScope(interaction: CommandInteraction): string {
+    return interaction.applicationId ?? DEFAULT_EMOJI_SCOPE;
+  }
+
+  /**
+   * UR-20261012-067 — WHO this dispatch is running as.
+   *
+   * Built once, at dispatch, from what the interaction states plus what the router already knows about
+   * its own identity. The application comes from the interaction (the same value the emoji scope uses,
+   * and the only thing that can be right for a message); the profile id, kind, bound guild and name
+   * come from the router, which is constructed per identity. Nothing here is re-derived downstream.
+   */
+  private executionIdentity(interaction: CommandInteraction): ExecutionIdentity {
+    const profileId = this.options.residentPersonaId ?? 'main';
+    const boundGuildId = this.options.residentBoundGuildId;
+    return {
+      profileId,
+      kind: this.options.residentPersonaId === undefined ? 'main' : 'persona',
+      applicationId: this.emojiScope(interaction),
+      profileName: this.options.residentProfileName ?? 'Dumby',
+      guildId: interaction.guildId,
+      ...(boundGuildId !== undefined && boundGuildId !== '' ? { boundGuildId } : {}),
+    };
+  }
+
+  /**
+   * UR-20261012-067 — this MODULE's own standing in the guild the dispatch is running in.
+   *
+   * "Where is it installed, where is it running, and whose is it." The tier is the module's own
+   * declaration (the registry holds it); ownership is the binding read, which is the same source the
+   * pages consult. Core is `shared`: no profile owns it, every profile runs it.
+   */
+  private async moduleStanding(
+    def: CommandDefinition,
+    interaction: CommandInteraction,
+  ): Promise<ModuleStanding> {
+    const tier = this.registry.getModuleTier(def.moduleId) ?? 'standard';
+    const identity = this.executionIdentity(interaction);
+    const shared = tier === 'core' || tier === 'admin';
+    // UR-20261012-068 — the standing is INFORMATIONAL: a module reads it to decide how to present
+    // itself. It is NOT a gate (the assertions are), so it must never be able to break a dispatch.
+    // Both reads below are DB-backed, and an unguarded one made a database fault throw out of the
+    // context build and fail the command — a module's page lost to an outage in a lookup that was
+    // only ever advisory. Each is now guarded, logged, and falls back to the CONSERVATIVE value:
+    // claim nothing. `enabled: false` and `owner: 'main'` are the safe answers, never a false "yes".
+    let owner: string;
+    if (shared) {
+      owner = 'shared';
+    } else if (interaction.guildId === null) {
+      owner = 'main';
+    } else {
+      try {
+        owner =
+          (await this.options.resolveCommandOwner?.(interaction.guildId, def.moduleId)) ?? 'main';
+      } catch (err) {
+        this.logger.warn(
+          `module-standing-owner-unreadable module=${def.moduleId} guild=${interaction.guildId} reason=${String(err)}`,
+        );
+        owner = 'main';
+      }
+    }
+    let enabled: boolean;
+    if (shared) {
+      enabled = true;
+    } else if (interaction.guildId === null) {
+      enabled = false;
+    } else {
+      try {
+        enabled =
+          (await this.options.isModuleEnabledInGuild?.(def.moduleId, interaction.guildId)) ?? false;
+      } catch (err) {
+        this.logger.warn(
+          `module-standing-enabled-unreadable module=${def.moduleId} guild=${interaction.guildId} reason=${String(err)}`,
+        );
+        enabled = false;
+      }
+    }
+    return {
+      moduleId: def.moduleId,
+      tier,
+      enabled,
+      owner,
+      ownedByCaller: shared || owner === identity.profileId,
+    };
   }
 
   private async assertPersonaOwnsCommand(
@@ -454,10 +773,40 @@ export class CommandRouter {
   ): Promise<void> {
     if (guildId === null) return;
     if (this.options.resolveCommandOwner === undefined) return;
-    const owner = await this.options.resolveCommandOwner(guildId, command.moduleId);
+    // UR-20261012-080 — CORE and ADMIN are SHARED (§13.2): "Core is `shared`: no profile owns it,
+    // every profile runs it." They have no binding and are always enabled, so the ownership read
+    // answers `'main'` for them — correct for standard and marketplace, WRONG for core. This is the
+    // one consumer that does not short-circuit the tier, so a persona was refused every core command:
+    // /dashboard, /modules, /browse, /persona, /permit, /queue, /health.
+    const tier = this.registry.getModuleTier(command.moduleId);
+    if (tier === 'core' || tier === 'admin') return;
+    // UR-20261012-068 — same rule: an unreadable binding is not a refusal.
+    let owner: string | undefined;
+    try {
+      owner = await this.options.resolveCommandOwner(guildId, command.moduleId);
+    } catch (err) {
+      this.logger.warn(
+        `command-scope-owner-unreadable command=${command.data.name} module=${command.moduleId} guild=${guildId} reason=${String(err)}`,
+      );
+      throw new CommandScopeDeniedError(
+        command.data.name,
+        command.moduleId,
+        this.registry.getModuleTier(command.moduleId) ?? 'unresolved',
+        guildId,
+        'state-unreadable',
+      );
+    }
     if (owner === undefined) return;
-    if (owner === this.options.residentPersonaId) return;
-    throw new PersonaOccupiedError(guildId, command.moduleId, owner);
+    // UR-20261012-078 — the actor's own id is 'main' for the main bot, whose residentPersonaId is
+    // undefined. Comparing against `undefined` would make the main bot refuse its OWN module.
+    if (owner === (this.options.residentPersonaId ?? 'main')) return;
+    // UR-20261012-077 — name the actor (this router's own identity).
+    throw new PersonaOccupiedError(
+      guildId,
+      command.moduleId,
+      owner,
+      this.options.residentPersonaId ?? 'main',
+    );
   }
 
   private armFollowupWatchdog(
@@ -530,50 +879,19 @@ export class CommandRouter {
   }
 
   /**
-   * §11.3 — Dashboard (Home) first, then every registered page. The installed/marketplace prefix
-   * lives in the option description only (§11.4), truncated to Discord's 100-character limit.
-   */
-  private navigationControl(current: string, invokerId: string): NavigationControl {
-    const commands = [...this.registry.all()].sort((a, b) =>
-      a.data.name === 'dashboard' ? -1 : b.data.name === 'dashboard' ? 1 : 0,
-    );
-    const options: NavigationOption[] = commands.map((command) => {
-      const name = command.data.name;
-      const isHome = name === 'dashboard';
-      const installed = this.registry.tierForCommand(command) !== 'marketplace';
-      const description = isHome
-        ? '🏠 Home'
-        : `${installed ? '✅ installed' : '🛒 marketplace'} — ${command.data.description}`;
-      return {
-        label: isHome ? 'Dashboard (Home)' : this.pageTitle(name),
-        value: name,
-        description: description.slice(0, 100),
-        ...(name === current ? { default: true } : {}),
-      };
-    });
-    return { customId: `dumby:nav:${invokerId}:${current}`, options };
-  }
-
-  /**
-   * items 11/15/17 - the page-declared action controls. /modules carries a per-module info +
-   * uninstall pair and a paging row; /browse carries a search control and a per-module info
-   * control. Every customId is minted `dumby:act:<invoker>:<action>:<target>` so the interaction
-   * registry's invoker re-check holds.
+   * items 11/15/17 - the page-declared action controls. /modules and /dashboard carry the same
+   * navigation row (an icon-only Home plus Next / Previous page); /browse's controls live in its
+   * content blocks. Every customId is minted `dumby:act:<invoker>:<action>:<target>[:<page>]` or
+   * `dumby:nav:<invoker>:<role>:<n>` so the interaction registry's invoker re-check holds.
    */
   private pageActions(
     commandName: string,
     data: Readonly<Record<string, unknown>> | undefined,
     invokerId: string,
     page = 0,
+    /** UR-20261012-064 — the emoji scope for the acting application. */
+    scope: string,
   ): readonly PageActionRow[] {
-    const raw = Array.isArray(data?.['modules']) ? (data['modules'] as unknown[]) : [];
-    const ids = raw
-      .map((m) => (typeof m === 'object' && m !== null ? (m as { id?: unknown }).id : undefined))
-      .filter((id): id is string => typeof id === 'string');
-    const rows: PageActionRow[] = [];
-    const mint = (action: string, target: string): string =>
-      `dumby:act:${invokerId}:${action}:${target}`;
-
     // UR-004 items 2/3 - the dashboard's navigation is Home (icon-only) / Next page / Previous
     // page; Next/Previous move between the main page (page 0) and the standard module pages.
     if (commandName === 'dashboard') {
@@ -586,16 +904,22 @@ export class CommandRouter {
       const nav = (role: string, n: number): string => `dumby:nav:${invokerId}:${role}:${n}`;
       return [
         [
-          { customId: nav('home', 0), label: '⌂', style: 2, disabled: page === 0 },
+          {
+            customId: nav('home', 0),
+            label: '',
+            emoji: customEmojiParts('dumby_home', scope) ?? { name: '🏠' },
+            style: 2,
+            disabled: page === 0,
+          },
           {
             customId: nav('next', Math.min(page + 1, last)),
-            label: 'next page',
+            label: 'Next page',
             style: 2,
             disabled: page >= last,
           },
           {
             customId: nav('prev', Math.max(page - 1, 0)),
-            label: 'previous page',
+            label: 'Previous page',
             style: 2,
             disabled: page <= 0,
           },
@@ -603,25 +927,173 @@ export class CommandRouter {
       ];
     }
 
+    // UR-20261011-009/010 — /modules carries the SAME navigation row as the dashboard. Home
+    // returns to THIS page's main view (/modules page 0, resetting paging) — not the dashboard —
+    // exactly as Home on every other surface returns to that surface's own main view.
     if (commandName === 'modules') {
-      for (const id of ids) {
-        rows.push([
-          { customId: mint('info', id), label: 'info', style: 2 },
-          { customId: mint('uninstall', id), label: 'uninstall/disable', style: 4 },
-        ]);
-      }
-      rows.push([
-        { customId: mint('next', 'modules'), label: 'next page', style: 2 },
-        { customId: mint('prev', 'modules'), label: 'previous page', style: 2 },
-        { customId: mint('first', 'modules'), label: 'first page', style: 2 },
-      ]);
-    } else if (commandName === 'browse') {
-      rows.push([{ customId: mint('search', 'browse'), label: '🔍 search', style: 2 }]);
-      for (const id of ids) {
-        rows.push([{ customId: mint('info', id), label: `info: ${id}`, style: 2 }]);
-      }
+      const total = typeof data?.['pageTotal'] === 'number' ? (data['pageTotal'] as number) : 1;
+      const last = Math.max(total - 1, 0);
+      const paged = (action: string, n: number): string =>
+        `dumby:act:${invokerId}:${action}:modules:${n}`;
+      return [
+        [
+          {
+            customId: paged('home', 0),
+            label: '',
+            emoji: customEmojiParts('dumby_home', scope) ?? { name: '🏠' },
+            style: 2,
+          },
+          {
+            customId: paged('next', Math.min(page + 1, last)),
+            label: 'Next page',
+            style: 2,
+            disabled: page >= last,
+          },
+          {
+            customId: paged('prev', Math.max(page - 1, 0)),
+            label: 'Previous page',
+            style: 2,
+            disabled: page <= 0,
+          },
+        ],
+      ];
     }
-    return rows;
+    return [];
+  }
+
+  /**
+   * items 1/2/3/5/6/7/8/9 — the /browse content blocks: the title as a Section whose accessory is
+   * the Discover control (so Discover sits IN-LINE with the title), each available module as a
+   * Section with an inline Info button, and the install dropdown at the bottom (selecting an option
+   * installs that module; the permanent first option, Home, returns to the main view).
+   */
+  private browseBlocks(
+    data: Readonly<Record<string, unknown>> | undefined,
+    invokerId: string,
+    /** UR-20261012-064 — the emoji scope for the acting application. */
+    scope: string,
+  ): readonly RenderBlock[] {
+    const raw = Array.isArray(data?.['modules']) ? (data['modules'] as unknown[]) : [];
+    const modules = raw
+      .map((m) =>
+        typeof m === 'object' && m !== null
+          ? (m as {
+              id?: unknown;
+              name?: unknown;
+              description?: unknown;
+              icon?: unknown;
+              note?: unknown;
+              occupied?: unknown;
+            })
+          : {},
+      )
+      .filter(
+        (
+          m,
+        ): m is {
+          id: string;
+          name?: unknown;
+          description?: unknown;
+          icon?: unknown;
+          note?: unknown;
+          occupied?: unknown;
+        } => typeof m.id === 'string',
+      );
+    const query = typeof data?.['query'] === 'string' ? (data['query'] as string) : '';
+    const defaultIcon = customEmojiParts('dumby_module', scope);
+    const homeIcon = customEmojiParts('dumby_home', scope);
+
+    const blocks: RenderBlock[] = [];
+    // UR-20261011-007 — the title is a Section whose accessory is the Discover control, so Discover
+    // sits IN-LINE with the title (a Section renders its single accessory on the right of the text
+    // line) rather than on a row above it. With only one control left this is expressible.
+    blocks.push({
+      kind: 'section',
+      content:
+        query === ''
+          ? '**Explore new modules to install**'
+          : `**Search results for ${query}** (${modules.length})`,
+      accessory: {
+        customId: `dumby:discover:${invokerId}:browse`,
+        label: 'Discover',
+        emoji: customEmojiParts('dumby_discover', scope) ?? { name: '🔍' },
+        style: 2,
+      },
+    });
+    // item 8 — one Section per module, with the Info control IN-LINE after its name.
+    for (const m of modules) {
+      const name = String(m.name ?? m.id);
+      const description = String(m.description ?? '');
+      const icon = typeof m.icon === 'string' ? m.icon : '';
+      // UR-20261011-010 — a "Previously installed" module (a disabled standard module) carries a
+      // subtext note so the listing reads as a re-enable, not a fresh install.
+      const note = typeof m.note === 'string' && m.note !== '' ? `\n-# ${m.note}` : '';
+      blocks.push({
+        kind: 'section',
+        content: `${icon} **${name}** — ${description}${note}`.trim(),
+        accessory: { customId: `dumby:info:${invokerId}:browse:${m.id}`, label: 'Info', style: 2 },
+      });
+    }
+    // UR-20261011-006 (items 1/3/9) — the install dropdown carries the permanent Home option in its
+    // first slot, above every module option; selecting it returns to the browse main view. Because
+    // Home is always selectable the dropdown is always enabled, so the former empty-state disabled
+    // placeholder is retired. One slot is reserved for Home, so the module options cap at
+    // MARKETPLACE_MODULE_CAP and the whole option list caps at INSTALL_DROPDOWN_CAP.
+    const homeOption: NavigationOption = {
+      label: 'Home',
+      value: HOME_SELECT_VALUE,
+      description: 'Return to the browse main view.',
+      ...(homeIcon !== undefined ? { emoji: homeIcon } : {}),
+    };
+    // UR-20261012-061 — an OCCUPIED module is stated in the option itself. Discord cannot disable a
+    // single option, so the label and description carry the fact and the install refuses it.
+    const moduleOptions: NavigationOption[] = modules.slice(0, MARKETPLACE_MODULE_CAP).map((m) => {
+      const occupied = m.occupied === true;
+      const name = String(m.name ?? m.id);
+      return {
+        label: occupied ? `${name} — occupied`.slice(0, 100) : name,
+        value: m.id,
+        description: (occupied
+          ? String(m.note ?? 'Occupied by another profile in this server.')
+          : String(m.description ?? '')
+        ).slice(0, 100),
+        ...(defaultIcon !== undefined ? { emoji: defaultIcon } : {}),
+      };
+    });
+    blocks.push({
+      kind: 'select',
+      customId: `dumby:act:${invokerId}:install:browse`,
+      placeholder:
+        modules.length === 0 ? 'No modules to install — Home' : 'Select a module to install…',
+      options: [homeOption, ...moduleOptions].slice(0, INSTALL_DROPDOWN_CAP),
+    });
+    return blocks;
+  }
+
+  /**
+   * item 5b — builds the /browse render for a search query, for the modal-submit path (bootstrap).
+   */
+  async buildBrowseRender(
+    invokerId: string,
+    guildId: string | null,
+    query: string,
+    /** UR-20261012-064 — the acting application's emoji scope. */
+    scope: string = DEFAULT_EMOJI_SCOPE,
+  ): Promise<ComponentsV2Message> {
+    const data =
+      (await this.options.pageDataProvider?.(
+        'browse',
+        guildId,
+        0,
+        query,
+        scope,
+        this.options.residentPersonaId ?? 'main',
+      )) ?? {};
+    return this.renderer.render({
+      surface: this.pageTitle('browse'),
+      moduleId: 'browse',
+      blocks: this.browseBlocks(data, invokerId, scope),
+    });
   }
 
   /** §1.2 — one minted customId per density mode, each carrying the page it applies to. */

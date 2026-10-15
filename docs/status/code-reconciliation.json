@@ -1,8 +1,9 @@
 {
   "$id": "docs/status/code-reconciliation.json",
-  "title": "Docs ↔ Code reconciliation",
-  "note": "Every row compares what the NEW documentation asserts against the actual source in master-ronix/Dumby-Suite (apps/main at c510a35f58e73d2633d36a3d1caa22a5322d8ab3, branch feature/dev). Standing rule: the specification is authority; where the code is narrower, the code is the gap to close.",
-  "verified_commit": "c510a35f58e73d2633d36a3d1caa22a5322d8ab3",
+  "title": "Docs \u2194 Code reconciliation",
+  "note": "Every row compares what the NEW documentation asserts against the actual source in master-ronix/Dumby-Suite (apps/main at 8355ba4f824269a714e22edef21797a602ab6800, branch feature/dev). Standing rule: the specification is authority; where the code is narrower, the code is the gap to close.",
+  "verified_commit": "8355ba4f824269a714e22edef21797a602ab6800",
+  "verified_branch": "feature/dev",
   "verdicts": [
     "match",
     "doc-incomplete",
@@ -12,25 +13,25 @@
   "facts": [
     {
       "id": "REC-001",
-      "area": "module manifest — releaseStatus",
+      "area": "module manifest \u2014 releaseStatus",
       "doc_claim": "releaseStatus is required and is 'private' | 'public' (spec/modules/module-anatomy-manifest.md)",
       "code_truth": "releaseStatus is required and is z.enum(['private','public'])",
       "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
       "verdict": "match",
-      "resolution": "Re-verified against HEAD b6ae1a6d860902274cd3c237d68c1c886687ba8b — the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
+      "resolution": "Re-verified against HEAD 8355ba4f824269a714e22edef21797a602ab6800 \u2014 the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
     },
     {
       "id": "REC-002",
-      "area": "module manifest — visibility",
+      "area": "module manifest \u2014 visibility",
       "doc_claim": "the manifest carries a `visibility` enum (contracts/module-manifest.schema.json)",
       "code_truth": "the schema carries a required visibility enum (['public','unlisted','private'])",
       "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
       "verdict": "match",
-      "resolution": "Re-verified against HEAD b6ae1a6d860902274cd3c237d68c1c886687ba8b — the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
+      "resolution": "Re-verified against HEAD 8355ba4f824269a714e22edef21797a602ab6800 \u2014 the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
     },
     {
       "id": "REC-003",
-      "area": "module manifest — crossModuleReads",
+      "area": "module manifest \u2014 crossModuleReads",
       "doc_claim": "contracts/module-manifest.schema.json declares crossModuleReads: array of { targetModule, accessor } (accessor must end 'ForCrossModuleRead')",
       "code_truth": "the schema carries crossModuleReads: array of { targetModule, accessor } where accessor must end 'ForCrossModuleRead'",
       "code_ref": "apps/main/src/module-system/manifest.schema.ts",
@@ -39,7 +40,7 @@
     },
     {
       "id": "REC-004",
-      "area": "module manifest — command rbacRequirement",
+      "area": "module manifest \u2014 command rbacRequirement",
       "doc_claim": "contracts/module-manifest.schema.json declares rbacRequirement on each command entry: enum ['RESTRICTED','MEMBER','HELPER','MOD','ADMIN','OWNER'] | null",
       "code_truth": "each command entry carries rbacRequirement: enum ['RESTRICTED','MEMBER','HELPER','MOD','ADMIN','OWNER'] | null",
       "code_ref": "apps/main/src/module-system/manifest.schema.ts",
@@ -48,12 +49,12 @@
     },
     {
       "id": "REC-005",
-      "area": "module manifest — required fields",
+      "area": "module manifest \u2014 required fields",
       "doc_claim": "required = ['name','version','description','tier','hardcoded','devId','buildId','visibility']",
-      "code_truth": "the schema requires name, version, description, tier, hardcoded, devId, buildId, visibility and releaseStatus — matching the contract's required list",
+      "code_truth": "the schema requires name, version, description, tier, hardcoded, devId, buildId, visibility and releaseStatus \u2014 matching the contract's required list",
       "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
       "verdict": "match",
-      "resolution": "Re-verified against HEAD b6ae1a6d860902274cd3c237d68c1c886687ba8b — the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
+      "resolution": "Re-verified against HEAD 8355ba4f824269a714e22edef21797a602ab6800 \u2014 the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
     },
     {
       "id": "REC-006",
@@ -148,11 +149,11 @@
     {
       "id": "REC-017",
       "area": "DI container",
-      "doc_claim": "typed Symbol tokens, frozen core; all 22 core tokens named in spec/architecture/dependency-injection-service-container.md §10.2",
+      "doc_claim": "typed Symbol tokens, frozen core; all 22 core tokens named in spec/architecture/dependency-injection-service-container.md \u00a710.2",
       "code_truth": "22 CORE_TOKENS declared (Logger, Config, Db, EventBus, Cache, Queue, ModuleRegistry, PermissionResolver, Metrics, I18n, CommandRegistry, CommandRouter, Renderer, InteractionRegistry, CommandCeilingService, CollisionResolutionService, Personas, EventRouter, Scheduler, AdminEvalGate, OAuth2, MtpTokens)",
       "code_ref": "apps/main/src/di/tokens.ts",
       "verdict": "match",
-      "resolution": "Re-verified against HEAD c510a35f58e73d2633d36a3d1caa22a5322d8ab3 — the registry declares 22 core tokens (I18n added since the earlier 21-token count); the docs count and list now match the code."
+      "resolution": "Re-verified against HEAD 8355ba4f824269a714e22edef21797a602ab6800 \u2014 the registry declares 22 core tokens (I18n added since the earlier 21-token count); the docs count and list now match the code."
     },
     {
       "id": "REC-018",
@@ -164,39 +165,39 @@
     },
     {
       "id": "REC-019",
-      "area": "module manifest — marketplaceCategory",
+      "area": "module manifest \u2014 marketplaceCategory",
       "doc_claim": "a closed five-value enum ('audio'|'community'|'security'|'integrations'|'utility')",
       "code_truth": "marketplaceCategory is a closed five-value enum ('audio'|'community'|'security'|'integrations'|'utility')",
       "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
       "verdict": "match",
-      "resolution": "Re-verified against HEAD b6ae1a6d860902274cd3c237d68c1c886687ba8b — the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
+      "resolution": "Re-verified against HEAD 8355ba4f824269a714e22edef21797a602ab6800 \u2014 the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
     },
     {
       "id": "REC-020",
-      "area": "module manifest — depends/provides/services shapes",
+      "area": "module manifest \u2014 depends/provides/services shapes",
       "doc_claim": "arrays of structured objects ({token,version} / {token,contract} / {token,class,lifetime,deps})",
       "code_truth": "depends: array of {token,version}; provides: array of {token,contract}; services: array of {token,class,lifetime,deps}",
       "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
       "verdict": "match",
-      "resolution": "Re-verified against HEAD b6ae1a6d860902274cd3c237d68c1c886687ba8b — the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
+      "resolution": "Re-verified against HEAD 8355ba4f824269a714e22edef21797a602ab6800 \u2014 the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
     },
     {
       "id": "REC-021",
-      "area": "module manifest — devId / buildId",
+      "area": "module manifest \u2014 devId / buildId",
       "doc_claim": "required",
       "code_truth": "devId and buildId are both required",
       "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
       "verdict": "match",
-      "resolution": "Re-verified against HEAD b6ae1a6d860902274cd3c237d68c1c886687ba8b — the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
+      "resolution": "Re-verified against HEAD 8355ba4f824269a714e22edef21797a602ab6800 \u2014 the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
     },
     {
       "id": "REC-022",
-      "area": "module manifest — required flag",
+      "area": "module manifest \u2014 required flag",
       "doc_claim": "default: false (two conflicting entries in one section)",
       "code_truth": "required: z.boolean().default(false)",
       "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
       "verdict": "match",
-      "resolution": "Re-verified against HEAD b6ae1a6d860902274cd3c237d68c1c886687ba8b — the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
+      "resolution": "Re-verified against HEAD 8355ba4f824269a714e22edef21797a602ab6800 \u2014 the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
     }
   ],
   "counts": {

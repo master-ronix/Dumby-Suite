@@ -1,6 +1,10 @@
 {
   "name": "permit",
   "version": "1.0.0",
+  "ui": {
+    "icon": "dumby_permit",
+    "iconAsset": "assets/icon.png"
+  },
   "description": "Manage guild-side grants \u2014 permits, whitelists, blacklists, cooldowns, and rate limits.",
   "tier": "core",
   "hardcoded": false,

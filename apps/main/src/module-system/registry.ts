@@ -26,6 +26,14 @@ export interface ModuleTaskDeclaration {
 
 export interface LoadedModule {
   manifest: ModuleManifest;
+  /**
+   * UR-20261012-066 — the module's own directory inside the image.
+   *
+   * A module's visuals belong to the module (ADR-012's pattern: a declared UI field, with a framework
+   * default). Resolving `ui.iconAsset` needs this root; without it the core can only reach the assets
+   * it happens to carry itself, which is how the module logos ended up hardcoded in the core.
+   */
+  root?: string;
   /** §1.7 (UR-11) — the module's schema-declared commands; the loader registers them. */
   commands?: readonly CommandDeclaration[];
   /** §5.9 — the module's job processors; the loader registers their queues. */
@@ -36,6 +44,17 @@ export interface LoadedModule {
   tasks?: readonly ModuleTaskDeclaration[];
   onLoad?: (container: Container) => Promise<void> | void;
   onReady?: (container: Container) => Promise<void> | void;
+  /** UR-20261012-071 — §11.7's DISABLED → ENABLED hook: start the module's active processes. */
+  onEnable?: (container: Container) => Promise<void> | void;
+  /** UR-20261012-071 — §11.7's ENABLED → DISABLED hook: stop them. Always before `onUnload`. */
+  onDisable?: () => Promise<void> | void;
+  /** UR-20261012-072 — §11.7: cleanup on an unrecoverable error (a load/ready failure). */
+  onError?: (error: Error) => Promise<void> | void;
+  /** UR-20261012-072 — §11.7: react to this module's per-guild config change, without a reload. */
+  onConfigChange?: (
+    guildId: string,
+    config: Readonly<Record<string, unknown>>,
+  ) => Promise<void> | void;
   onUnload?: () => Promise<void> | void;
 }
 

@@ -190,6 +190,71 @@ Dumby | {ModuleName}
 
 ---
 
+### 9.10 Modules Page Rework (UR-20261011-009) — the current arrangements
+
+> **Authority.** The operator's final authority (UR-20261011-009, 11/10/2026); supersedes the earlier
+> clauses of this Division where they conflict.
+
+- **Fallback logo vs decoration.** A module that declares no `ui.icon` shows the framework **fallback
+  logo** (`module-fallback-icon.png`, `dumby_module_fallback`). The white-square asset (`dumby_module`)
+  is NOT a logo fallback: it is the neutral **command decoration** beside each command on the
+  dashboard's **module-specific page**.
+- **Clean listing.** The listing leads with a compact header (`Installed Modules · N`) and renders
+  each module as a **Section** — its logo, bold name and **title-cased tier** on the heading, its
+  description as `-#` subtext. It is paginated (`MODULES_PAGE_SIZE`).
+- **Inline Info.** Each module carries an **Info** control in-line after it (a Section accessory). The
+  former per-module Uninstall/disable button rows and the instruction line are removed.
+- **Detail card.** The Info control returns the module's detail card **privately (ephemeral)**, always.
+  The card carries an **icon-only** uninstall/disable control (a bold white trash icon,
+  `dumby_uninstall`, no label), **disabled** for a core-tier module (never uninstallable) and for an
+  uninstalled/disabled marketplace-tier module. Selecting it disables the module for the guild and
+  refreshes the card in place.
+- **Navigation.** The `/modules` navigation row matches the dashboard's — an **icon-only Home** (to
+  the dashboard home) plus **Next page** / **Previous page** — with a control disabled at its bound.
+
+### 9.11 Modules Info Card & Lifecycle (UR-20261011-010) — the current arrangements
+
+> **Authority.** The operator's final authority (UR-20261011-010, 11/10/2026); supersedes §9.5–§9.7
+> and §9.10 where they conflict.
+
+- **Info card.** The module Info control returns a **formal, banner-less** card rendered at **medium
+  density (Mode M)** as a **single content block** — no per-field dividers. It carries the module
+  logo and display name with its tier, the description, and the meaningful facts: **developer**
+  (resolved by NAME, never the raw `devId`), **version**, **status**, and the **command inventory**.
+- **Developer attribution.** Framework-shipped / first-party modules attribute to **Quixotic
+  Mnemonics**; the raw `devId` is never shown as the developer.
+- **No control on core.** A **core** module's Info renders **no** uninstall/disable control — core is
+  permanently loaded and never uninstallable (§13.2).
+- **Disable / enable.** The card's uninstall control (Standard/Marketplace) is a **state write** to
+  `guild_module_states` (`enabled:false, state:'disabled'`), which short-circuits the module's
+  dispatch immediately (§13.7) and **enqueues its commands on the guild command change queue (BCCM)**
+  for batched Discord deregistration (§6.4/§17.7). The disabled module relists in `/browse` as
+  **"Previously installed"** and is re-enabled through the `/browse` dropdown (the inverse: state
+  `enabled:true` + a BCCM re-registration enqueue). Per §15.3 a toggle is a **state change**, not an
+  unload — it does not tear the module down fleet-wide.
+- **Navigation.** The `/modules` **Home** control returns to **`/modules` page 0** (this surface's own
+  main view), not the dashboard; Next/Previous page the listing.
+
+### 9.12 Module Disable Enforcement (UR-20261011-011) — the current arrangements
+
+> **Authority.** The operator's final authority (UR-20261011-011, 11/10/2026); supersedes §9.11 where
+> they conflict.
+
+- **Instant access denial.** Disabling a module writes an **immediate deny override** to Discord's
+  native per-command permissions (`@everyone` denied) for each of the module's registered commands,
+  so they disappear from members' effective access at once (§17.6). Enabling clears the override.
+- **Batched deregistration.** The module's commands are also enqueued on the guild command change
+  queue (**BCCM**) for the actual Discord deregistration (§17.7).
+- **Event termination.** A disabled module's **event handlers do not fire** — the `EventRouter` skips
+  a handler whose module is disabled for the event's guild (§13.2).
+- **Listing exclusion.** `/modules` lists only modules **enabled** for the guild: core always,
+  standard unless disabled, marketplace only when installed. The **dashboard** registers a page only
+  for an enabled standard module. A disabled module is offered in `/browse` as **"Previously
+  installed"** for re-enablement.
+- **Scope.** A per-guild toggle terminates the module's per-guild processing (commands + events).
+  Fleet-wide cron tasks / jobs are not per-guild and are not stopped by it (§29.6); that is the unload
+  path (§13.7).
+
 ## Contract
 - `contracts/rbac.enums.json`
 - `contracts/commands.json`

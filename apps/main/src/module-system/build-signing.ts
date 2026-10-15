@@ -23,6 +23,109 @@ import { join } from 'node:path';
  * private-key column. This is what §15.8 sanctions while the key-ceremony work is deferred.
  */
 
+/**
+ * UR-20261012-035 — normalises a configured signing key.
+ *
+ * The key arrives from configuration, and a hosting variable is a SINGLE-LINE value: a PEM therefore
+ * arrives with its line breaks written as the two characters `\n`. Node's key parser needs real
+ * line breaks, so the escapes are turned back here. A value that already carries real newlines is
+ * returned untouched, so both forms work. Without this the documented "single-line PEM with escaped
+ * newlines" was exactly the form that failed.
+ */
+export function normalizeSigningKey(value: string): string {
+  return value.includes('\\n') ? value.replace(/\\n/g, '\n') : value;
+}
+
+/**
+ * UR-20261012-036 — the key the VERIFIER needs.
+ *
+ * A verifier only ever checks signatures, so it needs only the PUBLIC half. Historically the runtime
+ * was handed the private key and derived the public one from it, which forced the platform's signing
+ * secret to sit inside the bot for no reason. `BUILD_SIGNING_PUBLIC_KEY` is now preferred; the private
+ * key remains accepted so the builder (and any existing deployment) still works.
+ *
+ * Returns undefined when neither is configured — the caller then leaves the provenance guard disarmed.
+ */
+export function resolveSigningPublicKey(
+  privateKey: string,
+  publicKey: string,
+): KeyObject | undefined {
+  if (publicKey.trim() !== '') return createPublicKey(normalizeSigningKey(publicKey));
+  if (privateKey.trim() !== '') return createPublicKey(normalizeSigningKey(privateKey));
+  return undefined;
+}
+
+/** The slice of the verifier the arming helper drives. */
+export interface KeyRegistrar {
+  registerKey(keyId: string, publicKey: string | KeyObject): unknown;
+}
+
+export interface ProvenanceArmResult {
+  readonly armed: boolean;
+  /** Present when the key could not be used; the caller logs it. Never thrown. */
+  readonly error?: string;
+}
+
+/**
+ * UR-20261012-040 — arms the build-provenance guard, and CANNOT throw.
+ *
+ * This is a boot-time path: an unusable key must degrade to "guard off, one warning", exactly as it
+ * did before UR-20261012-036. That record moved the key resolution outside the surrounding
+ * try/catch, so a malformed PEM threw during boot and the process died with ERR_OSSL_UNSUPPORTED —
+ * a live outage. Keeping resolution AND registration inside this one helper is what makes the
+ * failure non-fatal again, and the test that a bad key does not throw is the guard against repeating it.
+ */
+export interface RegistrySigningKey {
+  readonly keyId: string;
+  readonly publicKey: string;
+}
+
+/**
+ * UR-20261012-042 (A2.2) — registers the `signing_keys` registry's active keys on a verifier.
+ *
+ * A row that cannot be parsed is skipped rather than allowed to fail the others: a bad row is one
+ * revoked-or-rotated key's problem, not a reason to disarm every other key. Never throws, for the
+ * same boot-path reason as `armBuildProvenance`. Returns how many keys were registered.
+ */
+export function armRegistryKeys(
+  verifier: KeyRegistrar,
+  rows: readonly RegistrySigningKey[],
+): number {
+  let registered = 0;
+  for (const row of rows) {
+    if (row.keyId === '' || row.publicKey.trim() === '') continue;
+    try {
+      verifier.registerKey(row.keyId, row.publicKey);
+      registered += 1;
+    } catch {
+      // A malformed row is skipped; the remaining keys still register.
+    }
+  }
+  return registered;
+}
+
+export function armBuildProvenance(
+  verifier: KeyRegistrar,
+  keyId: string,
+  privateKey: string,
+  publicKey: string,
+  registryKeys: readonly RegistrySigningKey[] = [],
+): ProvenanceArmResult {
+  // UR-20261012-042 — the registry is armed FIRST so the configured key can override a same-id row.
+  // A registry-only deployment (no config key) is now armed, which it was not before.
+  let armed = armRegistryKeys(verifier, registryKeys) > 0;
+  if (keyId === '') return { armed };
+  try {
+    const key = resolveSigningPublicKey(privateKey, publicKey);
+    if (key === undefined) return { armed };
+    verifier.registerKey(keyId, key);
+    armed = true;
+    return { armed };
+  } catch (err) {
+    return { armed, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
 export const BUILD_SIGNING_ALGORITHM = 'Ed25519';
 export const HASH_ALGORITHM = 'sha256';
 export const HASH_PREFIX = 'sha256:';

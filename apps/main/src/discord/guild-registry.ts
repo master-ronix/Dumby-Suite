@@ -34,6 +34,8 @@ export async function registerKnownGuilds(
   client: Client,
   db: DbClient,
   logger: Logger,
+  /** UR-20261011-023 — run for each guild the moment it joins (register its commands). */
+  onGuildJoin?: (guildId: string) => Promise<void>,
 ): Promise<void> {
   const attempt = (guild: Guild): Promise<void> =>
     registerGuild(db, guild, logger).catch((err) => {
@@ -43,6 +45,10 @@ export async function registerKnownGuilds(
   await Promise.all([...client.guilds.cache.values()].map((guild) => attempt(guild)));
 
   client.on(Events.GuildCreate, (guild) => {
-    void attempt(guild);
+    void attempt(guild).then(() =>
+      onGuildJoin?.(guild.id).catch((err) => {
+        logger.warn('guild-join-deploy-failed', { guildId: guild.id, error: String(err) });
+      }),
+    );
   });
 }

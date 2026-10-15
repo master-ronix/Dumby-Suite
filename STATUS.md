@@ -2,11 +2,23 @@
 
 ## Current State
 
-<!-- One paragraph: what the repository currently is and ships. -->
+Dumby is a TypeScript (ESM, Node ≥ 22) modular Discord bot framework: one pnpm monorepo
+(`apps/main/` = the bot and all subsystems; `packages/swastik/` = the module-authoring SDK;
+`packages/modules/` = eight first-party modules). It ships a single bootstrap sequence (18
+stages), one DI container, one command router, one seven-layer permission engine, one Renderer
+(Components v2; the classic embed ban is absolute), a Knex/PostgreSQL data layer, an L1+L2 cache,
+a BullMQ job queue, and Pino/prom-client/OpenTelemetry observability. Its documentation corpus
+(`docs/`) is gate-verified (25/25) and code-grounded; where spec and code diverge the divergence
+is recorded in `docs/status/code-reconciliation.json`. Current chain state: **State B — Migration**
+(the change-set work order is active; see `migration-ledger.md`).
 
 ## Module Delivery Boundary
 
-<!-- How modules reach runtime: Swastik upload → validation → staging → promotion → hot-swap. -->
+Feature modules reach runtime only through Swastik, never by being placed in this repository:
+**upload → validation → bounded staging → atomic symlink promotion → reload**, on external
+per-tier Kubernetes volumes rooted at `MODULES_DIR` (default `/mnt/modules`; tiers
+admin | core | standard | marketplace, plus `swastik-staging`). No module code lives under
+`apps/main/src/`.
 
 ## Verification Commands
 

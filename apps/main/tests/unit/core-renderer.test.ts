@@ -57,6 +57,21 @@ describe('CoreRenderer grammar', () => {
     expect(title).toContain('-# Developed by Quixotic Mnemonics');
   });
 
+  test('a registered developer renders verbatim, with no "@" handle (UR-20261011-013 R11)', () => {
+    // The identity band shows the developer's display NAME — "Developed by Quixotic Mnemonics" —
+    // not a handle. The registered value is rendered verbatim (no '@' prefix).
+    const message = renderer.render({
+      surface: 'Modules',
+      devUsername: 'Quixotic Mnemonics',
+      summary: 'ok',
+    });
+    const title = textContents(message).find((content) =>
+      content.startsWith('**Dumby Suite | Modules**'),
+    );
+    expect(title).toContain('-# Developed by Quixotic Mnemonics');
+    expect(title).not.toContain('@');
+  });
+
   test('the module-page footer is `<name> [<id>]` and carries no attribution', () => {
     const message = renderer.render({
       surface: 'Hello World',
@@ -240,6 +255,12 @@ describe('CoreRenderer reason mapping', () => {
         Object.assign(new Error('x'), { name: 'CommandScopeDeniedError' }),
       ),
     ).toBe('FORBIDDEN');
+    // UR-20261012-032 — a rejected submission is an input fault, not a module fault.
+    expect(
+      renderer.noticeReasonFromError(
+        Object.assign(new Error('x'), { name: 'InvalidCommandNameError' }),
+      ),
+    ).toBe('INVALID_INPUT');
     expect(renderer.noticeReasonFromError(new Error('boom'))).toBe('MODULE_ERROR');
   });
 });

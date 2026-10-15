@@ -28,7 +28,7 @@ finding aid and a provenance anchor, not a substitute for the records.
 121 verified requests from the three source programs — 31 program URs, 88
 implementation-flaw corrections, and 2 RBAC requirements — into one cross-documentation
 change directive over the twelve-document corpus, carrying a 12-document impact matrix,
-the 11 ADRs that record the program's cross-cutting tensions, and a phased rollout in
+the ADRs (ADR-001 … ADR-015) that record the program's cross-cutting tensions, and a phased rollout in
 which documentation gates are release gates. Its scope rule is strict: every change must
 be traceable to a source request ID, and anything not traceable — including the 52
 deferred greenfield items — is out of scope. Related records: the three source programs
@@ -85,20 +85,25 @@ sovereignty over a command's Discord-bit gate.
 the RBAC requirements) must not be modified. Changes to the program are new request
 records raised under their own IDs — never edits to frozen ones.
 
+> **Frozen-inbox quarantine.** The retired `docs/ur/` path persists only inside the frozen
+> `_inbox/` records; it must never be quoted forward into the live corpus. The live request
+> directory is `upgradation/`.
+
 ---
 
 ## UR detection (dynamic)
 
 > **Note on `counts.ur_requests`.** `status/counts.json` records 121 UR requests (31 program URs,
 > 88 implementation-flaw corrections, 2 RBAC requirements) and `status/reconciliation.json` anchors
-> three UR rows. Those figures describe the **source program**, not files in this tree: the request
-> records themselves are archived with the program and are represented here only by this register.
-> Consequently `scripts/docs/check-ur.mjs` discovers zero `upgradation/UR-*.md` files by design — the
-> dynamic probe reads a record only when one is present.
+> three UR rows. Those figures describe the **source program**, not files in this tree: the source
+> request records are archived with the program and are represented here only by the frozen records
+> listed above. This register is therefore **provenance-only** — it is not the live list of records;
+> the live records are the `upgradation/UR-*.md` files themselves.
 
 UR records are discovered at run time by `scripts/docs/check-ur.mjs`: any `upgradation/UR-*.md`
 is detected and validated automatically (front-matter complete, `kind: ur`, every cited corpus
 path resolving) — there is no registry to update, so adding or editing a record is a single-file
-operation. URs are provenance and are deliberately **excluded** from `status/coverage-ledger.json`
+operation. **The count is not restated here** — read it from the probe
+(`node scripts/docs/check-ur.mjs`). URs are provenance and are deliberately **excluded** from `status/coverage-ledger.json`
 and `status/entities.json`. To opt a UR's headings into the coverage ledger, run
 `node scripts/docs/sync-ur.mjs` (and `node scripts/docs/sync-ur.mjs --clear` to revert).

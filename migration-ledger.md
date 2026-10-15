@@ -6,11 +6,11 @@
 > continued, never restarted.
 
 - **Created:** 2026-10-08
-- **Last updated:** 2026-10-08 · **Current item:** M10/M12/M14/M16 (partial) · **Next action:** wire the interactive controls (search, install dropdown, info/uninstall buttons) and the autocomplete source
+- **Last updated:** 2026-10-12 · **Current item:** Signing-key format bug fixed (UR-20261012-035, executed) · no open blocker · **Next action:** authorize each guild from /dashboard, then flip BCCM_BATCH_PUSH_DRY_RUN=false and watch for sent>0
 - **Protocol:** `docs/migration/migration-prompt.md` v5.2.0
 - **Coverage map:** the change-set brief (18 items) → one owning item each (M0–M17)
 - **Record shapes:** `docs/migration/ledger-template.md` §3 (item) and §4 (slice)
-- **Reconciliation:** pending — application typecheck/tests not yet run in this environment
+- **Reconciliation:** R12 executed 2026-10-10 against HEAD `039da060` — see "State-of-Record Reconciliation (R12)" below
 
 ---
 
@@ -30,14 +30,82 @@
 | M9 | Marketplace core flow | DONE |
 | M10 | Search bar + 25-option handling | IN-PROGRESS |
 | M11 | Remove separate core-module dashboard pages | DONE |
-| M12 | BCCM rename bug + required argument + reset | IN-PROGRESS |
+| M12 | BCCM rename bug + required argument + reset | DONE |
 | M13 | Module-specific dashboard pages | DONE |
-| M14 | Marketplace main content (info control) | DONE |
+| M14 | Marketplace main content (info control) | PARTIAL |
 | M15 | Queue page rewrite | DONE |
-| M16 | /modules page (info/uninstall + paging) | DONE |
+| M16 | /modules page (info/uninstall + paging) | PARTIAL |
 | M17 | Hello standard-tier page cleanup | DONE |
 | MR-1 | Docs residual — attribution contradiction | DONE |
 | MR-2 | Docs residual — ADR-010 blurple retention | DONE |
+| M18 | /modules corrections & disable enforcement (UR-20261011-013) | REOPENED |
+| M19 | Codebase interception — BCCM dry-run env coercion (UR-20261011-014) | DONE (typecheck+lint) |
+| M20 | Modules enablement read + developer attribution root-cause (UR-20261011-015) | DONE (typecheck+lint) |
+| M21 | Deploy-gate corrections — CI green + ephemeral deprecation (UR-20261011-016) | DONE (typecheck+lint+format) |
+| M22 | Disable-button root cause — guild_module_states partial-index upsert (UR-20261011-017) | DONE (typecheck+lint+format) |
+| M23 | Disable-flow corrections — Mode C confirmation, Bearer command-permissions, /browse control removal, owner rank (UR-20261011-018) | DONE (typecheck+lint+format) |
+| M24 | Self-describing warnings — fold runtime detail into the message string (UR-20261011-019) | DONE (typecheck+lint+format) |
+| M25 | Durable command-permission tokens — dashboard authorization, sealed storage, automatic refresh (UR-20261011-020) | DONE (typecheck+lint+format) |
+| M26 | BCCM put-failure observability + UR-020 test-assertion correction (UR-20261011-021) | DONE (typecheck+lint+format) |
+| M27 | OAuth route coverage + callback alias (UR-20261011-022) | DONE (typecheck+lint+format) |
+| M28 | OAuth state-cookie path widened to `/` so the callback alias receives it (UR-20261011-022 v1.1) | DONE |
+| M29 | New-guild command deploy, per-guild authorization, BCCM full-object payload (UR-20261011-023) | DONE (typecheck+lint+format) |
+| M30 | BCCM name validation (drop an invalid name, which fails the whole bulk overwrite) + `applied=N` in the hide log (UR-20261011-023 v1.1) | DONE |
+| M31 | Boot command deploy moved off the readiness path (UR-20261011-024) | DONE |
+| M32 | /persona interface revision — status headline + Refresh, identity line, tier-grouped inventory (UR-20261011-025) | DONE (typecheck+lint+format) |
+| M33 | Persona page-data test updated to the new shape (UR-20261011-025 v1.1) | DONE |
+| M34 | /persona profile-aware board: custom indicators, no guild line, tidier inventory, profile switcher (UR-20261012-026) | DONE (typecheck+lint+format) |
+| M35 | Persona switcher test passes the selected id as the query arg (UR-20261012-026 v1.1) | DONE |
+| M36 | `bccm-batch-command-skipped` names the dropped command in its message (UR-20261012-027) | DONE |
+| M37 | OAuth install flow: `/auth/authorize?bot=1` install link + returned-guild preference + token keyed by (application, guild) with boot adoption (UR-20261012-028) | DONE (typecheck+lint+format) |
+| M38 | Persona ownership check reads the ownership map (not the persona-id set); dashboard install link actually renders (UR-20261012-028 v1.1) | DONE |
+| M39 | /persona context-aware profiles, presence-based Active/Inactive, and the admin-only authorization setup control (UR-20261012-029) | DONE (typecheck+lint+format) |
+| M40 | Persona authorization: per-application OAuth (Route A) + bot-token delete fallback (Route B), with the access override following the owning application (UR-20261012-030) | DONE (typecheck+lint+format) |
+| M41 | Persona invite links (OAuth-aware), Online status with presence stated separately, install permission bitfield, and a single-purpose /dashboard (UR-20261012-031) | DONE (typecheck+lint+format) |
+| M42 | Residuals: rename/alias name validated at submit with an INVALID_INPUT notice; dead navigation control removed (UR-20261012-032) | DONE (typecheck+lint+format) |
+| M43 | Twill persona registration API served for real (register/detail/status/charter/bind/unbind), sealing both credentials and echoing none (UR-20261012-033) | DONE (typecheck+lint+format) |
+| M44 | Install permission bitfield now always sent (the guild-less dashboard link too); two test fixtures corrected (UR-20261012-031 v1.1) | DONE |
+| M45 | Twill registration surface mountable on the deployed API server (TWILL_ROUTES_ON_API, default off, internal-key gated); registrar attestation recorded (UR-20261012-034) | DONE (typecheck+lint+format) |
+| M46 | Signing key normalised: the documented single-line escaped PEM was the form the code rejected, so the warning was unfixable by config (UR-20261012-035) | DONE (typecheck+lint+format) |
+| M47 | `describe` import missing in the new signing-key test block (UR-20261012-035 v1.1) | DONE |
+| M48 | Signing key custody: the verifier reads `BUILD_SIGNING_PUBLIC_KEY`; the runtime no longer needs the platform's private key (UR-20261012-036) | DONE (typecheck+lint+format) |
+| M49 | Registrar registry + enforcement at registration (fail closed), with a boot seed and an internal grant surface (UR-20261012-037) | DONE (typecheck+lint+format) |
+| M50 | Persona runtime: hosts each active persona's gateway, deploys its bound modules' commands, off by default (UR-20261012-038) | DONE (typecheck+lint+format) |
+| M51 | Residuals: Route B no longer throws on an unreadable token; Refresh keeps the selected profile; presence fetches an uncached guild (UR-20261012-039) | DONE (typecheck+lint+format) |
+| M52 | BOOT OUTAGE FIX: a malformed signing key threw from the boot path (ERR_OSSL_UNSUPPORTED) after UR-036 moved resolution outside its try/catch; armBuildProvenance cannot throw, and the same risk was closed for the registrar seed and the persona listing (UR-20261012-040) | DONE (typecheck+lint+format) |
+| M53 | Persona registration corrected to bring-your-own-identity: ownership proven by the bot token (GET /applications/@me), the registrar allowlist demoted to an OPTIONAL narrowing, and the persona page reduced to one info control carrying the invite (UR-20261012-041) | DONE (typecheck+lint+format) |
+| M54 | A2.2 — the build-provenance verifier arms from the `signing_keys` registry as well as config; a malformed row is skipped and a registry-only deployment is now armed (UR-20261012-042) | DONE (typecheck+lint+format) |
+| M55 | A2.1 — the interaction adapters and the component dispatch extracted out of bootstrap into tested modules; a hosted persona now attaches that dispatch and answers its own in-message controls (UR-20261012-043) | DONE (typecheck+lint+format) |
+| M56 | A2.3 — coverage floors made PER LAYER (TABLE 37-B mapped via §7.2's flat src/), core held at baseline with the documented 85/80 recorded as the ratchet target, repositories floor recorded unenforceable while excluded (UR-20261012-044) | DONE (typecheck+lint+format) |
+| M57 | A2.4 — a rename target inherits its source command's definition instead of `description: name` (UR-20261012-044) | DONE (typecheck+lint+format) |
+| M58 | A2.5 — the disabled-module lifecycle pinned by tests (excluded from the installed list, total drops, relisted in /browse); the reported "queue queue" wording confirmed absent from source (UR-20261012-044) | DONE (typecheck+lint+format) |
+| M59 | Gate 4 was RED on 8ad10b8 (10 failures, all fixtures from UR-041/043), which is why every deploy was skipped: the ownership gate was never stubbed, registrarStore kept its old one-arg signature, and the handler fixture returned a raw function instead of a spy (UR-20261012-045) | DONE (full unit suite: 1041 passed, 0 failed) |
+| M60 | A second deploy-blocker caught pre-push: UR-044's src/commands/** branch floor of 70 fails against the measured 65.42%, so it is held at the measured value with 70 recorded as the target (UR-20261012-045) | DONE (112 files / 1127 tests / 0 failures, all thresholds hold) |
+| M61 | A CORE module could be DENIED by a stale disabled guild_module_states row: the dispatch path read the row alone while page-data special-cased core, so /dashboard returned "not available in guild" (UR-20261012-046) | DONE (112 files / 1132 tests / 0 failures) |
+| M62 | UR-046 did NOT fix /dashboard: core commands return before the enablement check. The real cause was an UNDOCUMENTED eighth layer in the resolver -- a missing "explicit permission declaration" denied EVERY core command to every non-owner, inverting DIAGRAM 21-A's documented default-allow (UR-20261012-047) | DONE (112 files / 1133 tests / 0 failures, coverage green) |
+| M63 | Persona registration could NEVER succeed: nextPersonaId() returned `persona-<uuid>` while persona_identities.id and guild_persona_bindings.personaId are both `uuid`, so Postgres refused every insert with "invalid input syntax for type uuid" (UR-20261012-048) | DONE (113 files / 1139 tests / 0 failures, coverage green) |
+| M64 | A persona's SLASH COMMANDS were dispatched by nothing: buildDiscordClient attaches only error/warn and the runtime attached only the component path, so commands were registered and unhandled ("The application did not respond") (UR-20261012-049) | DONE (113 files / 1147 tests / 0 failures, coverage green) |
+| M65 | "Persona registered no commands" was silent: the audit cleared every candidate defect (schema, store, filter, payload) and the real cause is the documented empty-registry early return, which `commands=0` could not distinguish from an unmatched binding. The runtime now names which case it is (UR-20261012-050) | DONE (113 files / 1151 tests / 0 failures) |
+| M66 | /persona opened on a PERSONA's profile when run from the main bot (the default asked which persona owned the `persona` MODULE, then fell back to the guild's registration); and the invite URL was computed, typed, and NEVER RENDERED, so there was no info control and no invite method (UR-20261012-051) | DONE (113 files / 1151 tests / 0 failures) |
+| M67 | Binding a module the guild had DISABLED succeeded, registered the command, and every invocation was then refused at dispatch -- a visible-but-dead command. The bindings surface now refuses it by name, before anything is created (UR-20261012-052) | DONE (113 files / 1153 tests / 0 failures) |
+| M68 | isGuildAdmin compared bit VALUES ('8'/'32') against permission NAMES, so it was false for every non-owner administrator (the owner was masked by isGuildOwner); and the adapter's hand-written list omitted ManageMessages, making MODERATOR and HELPER unreachable (UR-20261012-053) | DONE (113 files / 1159 tests / 0 failures) |
+| M69 | /persona rebuilt: the Info control vanished on every re-render (asPageInteraction dropped the permission context); core modules removed from profiles (claimed modules only); the command inventory wiped; the switcher moved below the footer via a new trailing placement; the Info card reduced to the OAuth redirect guide; and the status assets redrawn as thick bold white icons (UR-20261012-054) | DONE (113 files / 1157 tests / 0 failures) |
+| M70 | A persona built a FILTERED registry and deployed only guild commands, with an early return on an empty payload -- so a persona with nothing bound registered NOTHING and never cleared stale registrations (a PUT on a command route is a bulk overwrite). It now registers the full set, global and guild, always; ownership, not registration, is the restriction (UR-20261012-055) | DONE (113 files / 1159 tests / 0 failures) |
+| M71 | UR-055 PUT the same payload to the global AND guild command routes, registering every command TWICE (Discord lists each as both a global and a this-server command). The main bot clears both scopes and registers each command in EXACTLY ONE; a persona, bound to one guild, is the development case: clear both, register once to the bound guild (UR-20261012-056) | DONE (113 files / 1159 tests / 0 failures) |
+| M72 | The emoji registry was ONE process-wide map, so a persona's pages embedded the MAIN BOT's emoji ids -- and Discord renders an id belonging to another application as the literal `:dumby_browse:`. The registry is now keyed by application (no cross-app fallback), a persona registers the set on its OWN application after login, and the acting application id reaches the render (UR-20261012-057) | DONE (113 files / 1161 tests / 0 failures) |
+| M73 | A persona's command registration was wrong in BOTH directions in turn: UR-055 wrote the same payload to both routes (every command twice), UR-056 over-corrected to the guild only (no global core commands, so /health did nothing in a DM or another guild). It now mirrors command-deployer.ts: core GLOBAL, standard/marketplace to the bound guild, admin excluded, each command in exactly ONE scope. A DM invocation also ANSWERS with a refusal instead of throwing into Discord's "did not respond" (UR-20261012-058) | DONE (20 persona-runtime + 28 router tests; typecheck/lint/format clean) |
+| M74a | UR-058's deploy was SKIPPED: its rewritten router test left `CommandScopeDeniedError` IMPORTED BUT UNUSED, so the lint step failed, Gates failed, and Railway skipped Docker and Integration. Lint was run on the source files but not on that test file | DONE (unused import removed; lint/format/typecheck clean; 28 router tests pass) |
+| M75 | "Only some emoji" -- EIGHT call sites omitted the emoji scope and silently borrowed the MAIN BOT's ids (nav, Discover, Refresh, module decoration, uninstall, Info-card logo). The scope is now a REQUIRED argument, so the compiler enumerates every site; the authoritative value is the interaction's own application, and the shared core-frame handlers read it from there. ALSO: a persona registers core commands globally, so her commands appeared in servers she does not serve -- assertBoundGuild now refuses every command outside her bound guild with a clear "not my server" notice (UR-20261012-060) | DONE (30 router tests pass; typecheck/lint/format clean) |
+| M76 | MODULE OWNERSHIP IS PER PROFILE: /modules, /dashboard and /browse filtered by the GUILD's enablement and consulted NO ownership, so installing in the main bot made a module appear installed for a persona everywhere. One ownership read (resolveOwner -> PersonaCommandBindingService.resolveCommandOwner, memoized) is now a page-data dependency consulted by every page; each page takes actingProfileId; /browse marks a module another profile holds as OCCUPIED (section + dropdown option) and the install refuses it, while a persona installing an unclaimed module WRITES THE BINDING (that is what makes first-come real) (UR-20261012-061) | DONE (94 tests across affected files; typecheck/lint/format clean) |
+| M77 | UR-060 and UR-061 were SKIPPED: the `format` step failed on `src/rendering/page-data.ts`. My local check used `prettier --check "src/**/*.ts"`, and THE SHELL DOES NOT EXPAND THAT GLOB -- prettier matched nothing and reported clean, a FALSE PASS repeated across several commits. CI runs `prettier --check .`. RECORDED: run the CI STEP's own command, not a hand-written glob that can silently match nothing | DONE (format --write . applied; all five CI steps verified locally with CI's own commands) |
+| M78 | The COVERAGE gate failed next: `src/commands/**` branches at 63.36% (floor 65) -- the new router branches (the occupancy option label/description, the scope fallbacks, the empty browse path) were untested. Added tests exercising buildBrowseRender with an occupied entry and with an empty provider; branches now clear the floor (All files 68.04% branch, no threshold error) | DONE (113 files / 1167 tests / 0 failures; coverage gate passes) |
+| M79 | THE MAIN BOT LOST EVERY EMOJI while a persona kept hers. UR-060 made the RENDER resolve an emoji by the application on the interaction (the main bot's real app id) but left the main bot's UPLOAD registering under the DEFAULT scope (empty string), so registration and lookup used different keys. A persona passed its own id on BOTH sides, which is why only the main bot broke. Fixed by passing the application id to the upload; pinned by a test that the upload registers under the given id, that application resolves it, and another does NOT (UR-20261012-062) | DONE (114 files / 1168 tests / 0 failures; coverage 68.17% branch, no threshold error; all CI steps verified locally) |
+| M80 | THE BCCM RENAME WAS UNDONE BY EVERY BOOT. The rename machinery is sound (applyBatch removes the old key, resolveCommandPayloads inherits the source definition, and a successful push writes guild_command_renames), but command-deployer.ts NEVER READ THAT TABLE -- no reference to bccm/rename/alias/queue/overrides at all -- so each boot re-registered the registry's names and reverted the rename, producing the flapping the operator saw. The deployer now takes commandRenames(guildId), wired to guild_command_renames, and reuses resolveCommandPayloads with a source map (UR-20261012-063) | DONE (115 files / 1169 tests / 0 failures; coverage 68.17% branch; all CI steps verified locally). STILL OPEN: the table persists RENAMES only, so a queued alias or disable is still reverted by a boot |
+| M81 | THE HOME/NAV/DISCOVER FALLBACKS. Five router call sites resolved the emoji scope from a per-router OPTION, which is undefined for the main bot, while the upload keys by its real application id -- so every lookup missed (Home in both nav rows, Discover, the module decoration, the browse Home option). I had reverted those five to the option myself when fixing a type error. residentApplicationId is now REMOVED from the router options; a single emojiScope(interaction) accessor replaces it, and the two helper methods take the scope explicitly. One source, compiler-enforced (UR-20261012-064) | DONE (115 files / 1169 tests / 0 failures; coverage 68.31% branch; typecheck/lint/format clean). STILL OPEN: the framework icon assets are listed in the CORE, including first-party module logos, which the docs say belong to the modules |
+| M82 | INSPECTION: the module logos are the ONE genuine remaining "two sources for one fact" instance. Each module declares its emoji name (`ui.icon`) in its own manifest AND its PNG is hardcoded in the core (`module-emoji-upload.ts`, 7 paths into apps/main/assets/module-icons). The intended layout already exists and is EMPTY: `packages/modules/<slug>/assets/` is listed by structure.md and described by building-a-module.md as "static assets your module serves". Everything else the scan found is framework chrome (legitimate per ADR-012) or a false positive (metric names). NOT EXECUTED: the core has NO module root at runtime (`LoadedModule` carries no path, `loader.ts` reads no directory, first-party modules arrive via a seeding/promotion pipeline into a VOLUME), so moving the PNGs would likely leave the upload skipping every logo and reproduce the fallback symptom. Plan + precondition recorded (UR-20261012-065) | OPEN (proposed; blocked on the deploy packaging carrying each module's assets/ into the volume) |
+| M83 | THE MODULE LOGOS GO HOME. Seven first-party logos were hardcoded in the core while each module already declared its emoji name -- one fact, two owners, the wrong one authoritative. UR-065 named the blocker (the core had no module root at runtime); this record RESOLVES it by tracing the chain end to end: packages/modules/<slug>/assets -> build:modules -> dist-modules -> place-first-party-modules (cpSync) -> /mnt/modules -> Dockerfile -> /app/baked-modules (MODULES_DIR). THE ONE MISSING LINK WAS `build:modules`, WHICH COPIED locales/ BUT NOT assets/ -- a one-line addition. Change: build carries assets; LoadedModule.root set in swastik-loader; ui.iconAsset on the schema; the 7 PNGs move into their modules; the upload takes its module list from the registry, leaving only framework chrome in the core (UR-20261012-066) | DONE (115 files / 1170 tests / 0 failures; coverage 68.25% branch; all CI gates clean). RECORDED: the blocker was a PACKAGING fact; the move alone would have reproduced the fallback symptom SILENTLY |
+| M84 | EXECUTION CONTEXT. The framework hosts the main bot and any number of personas in ONE process, but the module-facing contract (`CommandContext` in the SDK) carried only `config` and `data` -- NO identity, guild or profile. A module could not tell which identity was running its command, which application to speak as, or which guild it was bound to; the core had to decide for it, which is how the core came to hold facts the modules own. `CommandContext` now carries a REQUIRED `identity` (profileId, kind, applicationId, profileName, guildId, boundGuildId) and `module` (moduleId, tier, enabled, owner, ownedByCaller), built in ONE place -- the router's dispatch -- from the interaction plus the router's own identity. Requiring the field made TypeScript enumerate the construction sites: there was ONE. The registry gains `modulesByTier` (UR-20261012-067) | DONE (115 files / 1173 tests / 0 failures; coverage 68.57% branch; all CI gates clean). RECORDED: `isModuleEnabledInGuild(moduleId, guildId)` takes two strings, so a swapped argument TYPECHECKS -- I made that mistake and caught it by reading the signature |
+| M74 | The persona/main-bot OWNERSHIP model is stated in ONE place (UR-20261012-059): core shared and undisputed (global commands, owned by no profile); standard/marketplace OWNED per guild, first come; a profile's pages show what IT owns; the second profile sees the owner named and cannot install. /modules, /dashboard and /browse currently filter by GUILD enablement with no ownership dimension -- the root of "modules are shared not synced". PROPOSED, no code yet | OPEN (model awaiting confirmation) |
 
 Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (reason)`.
 
@@ -103,9 +171,8 @@ Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (rea
 - **Evidence:** the dashboard declares no core sub-pages; only standard-tier modules carry a page.
 
 ### M12 — BCCM rename bug + required argument + reset
-- **Status:** IN-PROGRESS
-- **Evidence:** the `/queue` command argument is now required; a `reset` action is added and accepted by the effect handler.
-- **Residual:** the autocomplete-source fix (suggestions reflecting the current, renamed name) is the remaining slice; it belongs to the autocomplete provider.
+- **Status:** DONE (R12, 2026-10-10)
+- **Evidence:** the `/queue` command argument is `required: true`; a `reset` boolean is declared and mapped to the `reset` action; the action is accepted (`bccm-effects.ts`) and handled (`bccm-batch-push.ts`); the autocomplete source now resolves the current (renamed) name via `resolveEffectiveCommandNames` (`bootstrap.ts`). All three sub-parts present in the tree at HEAD `039da060`.
 
 ### M13 — Module-specific dashboard pages
 - **Status:** DONE
@@ -218,3 +285,651 @@ Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (rea
 1. **Application suite not run.** The environment has no installed dependencies, so the typecheck/lint/unit suite is pending on the real toolchain. The corpus gate suite (25/25) is green.
 2. **Latent array holes.** `browse.command.ts` and `modules.command.ts` carried a trailing `,,` (a sparse-array hole); both were rewritten during this pass.
 3. **Asset dependency.** The default banner and default white icon are still to be supplied; the framework defaults apply until they arrive.
+
+---
+
+## State-of-Record Reconciliation (R12) — 2026-10-10 (Trigger-Chain Run, State B)
+
+> Executed by `prompts/meta-prompt.md` → `prompts/entry.md` → `migration/migration-prompt.md` §3.0.2,
+> against working HEAD `039da060` (the tree, not the frozen snapshot).
+
+**Work-order probe:** ACTIVE — request records present and this ledger carries items not `DONE`.
+**State:** State B — Migration.
+
+| Item | Ledger (before) | R12 verdict (tree) | Evidence | Residual / next slice |
+|------|-----------------|--------------------|----------|-----------------------|
+| M10 | IN-PROGRESS | PARTIAL | `command-router.ts` mints `dumby:act:<inv>:search:browse`; `page-data.ts` returns the installable `modules` list | text-input search modal; >25-option paging |
+| M12 | IN-PROGRESS | DONE | required arg + `reset` + autocomplete source (`resolveEffectiveCommandNames`) all present | — |
+| M14 | DONE (summary) / IN-PROGRESS (record) | PARTIAL | content lists modules with icon + name + description; per-module `info` control minted | private (ephemeral) info embed |
+| M16 | DONE (summary) / IN-PROGRESS (record) | PARTIAL | list + `info`/`uninstall/disable` buttons + nav paging row present | page-switch divider; uninstall effect wiring |
+
+**Corrections applied:** M12 → DONE (summary + item record). M14, M16 summary rows aligned to PARTIAL to match their item records and the tree. The summary/item-record contradiction is recorded, not hidden.
+
+**Verification limit.** The application toolchain (`tsc` / `vitest`) was not run — the workspace requires Node ≥ 22 and this environment provides Node 20.20.2 with no installed dependencies. Every verdict above is a tree-inspection verdict, not a toolchain-verified one; the landed slices stay toolchain-unverified until the app suite runs.
+
+**Resume note.** Next session: land the remaining slices (M10 modal + paging; M14 ephemeral embed; M16 divider + uninstall effect), then run `pnpm --filter @workspace/dumby typecheck` and the unit suite on Node ≥ 22 to close the items. The corpus gate suite is green (25/25).
+
+---
+
+## Dashboard Page Upgrade (UR-20261011-001) — 2026-10-11
+
+> A separate, page-scoped work order (one page per request). Coordinated with `UR-20261011-001` and
+> recorded in `upgradation/change-log.md`.
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-1 | Navigation button grammar (title-case labels) | DONE (CI-verified) |
+| DP-2 | Home control icon weight | DONE (CI-verified) |
+| DP-3 | Navigation controls moved inside the container, below the footer divider | DONE (CI-verified) |
+| DP-4 | Module icon beside every module command list (main + module pages) | DONE (CI-verified) |
+| DP-5 | Regenerated default module icon asset | DONE (asset) |
+| DP-6 | Core commands combined; core modules keep no own page | UNCHANGED (already correct) |
+| DP-7 | Module-page identity (own banner/footer; default banner fallback) | DONE (CI-verified) |
+| DP-8 | Module pages list only own commands, BCCM-effective name + status | DONE (CI-verified) |
+| DP-9 | Banner assets confirmed (dashboard amber + default grayscale) | DONE (byte-identical) |
+
+**Corrections (UR-20261011-002, 2026-10-11):**
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-10 | Core module logo icons on the main page (per-module, not one shared default) | DONE (tree) |
+| DP-11 | Generated bold white Home icon (replaces the emoji substitution) | DONE (asset) |
+| DP-12 | Module-page default-banner fallback + versioned banner URLs | DONE (tree) |
+
+---
+
+## Browse (Marketplace) Page Upgrade (UR-20261011-003) — 2026-10-11
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-13 | Drop the in-content "Marketplace" heading | DONE (tree) |
+| DP-14 | Discover control at the top | DONE (tree) |
+| DP-15 | Install dropdown (String Select) at the bottom | DONE (tree) |
+| DP-16 | Generated bold white Discover icon | DONE (asset) |
+| DP-17 | Available not-installed modules listed with the default icon | DONE (tree) |
+| DP-18 | Discover opens a modal text input; results replace the content | DONE (tree) |
+| DP-19 | Result cap 25 + dropdown synced | DONE (tree) |
+| DP-20 | Rename Search to Discover | DONE (tree) |
+| DP-21 | Inline Info control per module (Section accessory), ephemeral | DONE (tree) |
+| DP-22 | Dropdown option installs the module (guild_module_states) | DONE (tree) |
+
+**Corrections (UR-20261011-004, 2026-10-11):**
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-23 | Install dropdown always present (disabled placeholder when empty) | DONE (tree) |
+| DP-24 | Discover + Home controls moved to a row before the title | DONE (tree) |
+| DP-25 | Bold title "Explore new modules to install" | DONE (tree) |
+| DP-26 | Discover control carries the word Discover | DONE (tree) |
+| DP-27 | Home control (white home emoji) returns to the dashboard home | DONE (tree) |
+
+**Corrections (UR-20261011-005, 2026-10-11):**
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-28 | No extra dividers between the browse content blocks | DONE (tree) |
+| DP-29 | Discover + Home kept together, adjacent to the title | DONE (tree) |
+| DP-30 | Home returns to the /browse main view (resets the search) | DONE (tree) |
+
+**Corrections (UR-20261011-006, 2026-10-11):**
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-31 | Home becomes a permanent first option of the install dropdown | DONE (tree) |
+| DP-32 | The standalone Home button is removed (Discover only) | DONE (tree) |
+| DP-33 | Selecting Home in the dropdown returns to the /browse main view, installs nothing | DONE (tree) |
+| DP-34 | Per-page module listing caps at 24; dropdown caps at 25 (one slot reserved for Home) | DONE (tree) |
+| DP-35 | The install dropdown is always enabled (permanent Home retires the disabled placeholder) | DONE (tree) |
+
+**Corrections (UR-20261011-007, 2026-10-11):**
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-36 | Discover sits in-line with the title (the title Section's accessory) | DONE (tree) |
+
+**Health redesign (UR-20261011-008, 2026-10-11):**
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-37 | Health leads with an overall status headline (dot + word + compact summary) | DONE (tree) |
+| DP-38 | One compact line per subsystem, each with a status dot and its metrics | DONE (tree) |
+| DP-39 | Refresh control in-line with the headline (generated white circular-arrow icon) | DONE (asset + tree) |
+| DP-40 | Overall state = worst subsystem (gateway/db down → down; cache down → degraded) | DONE (tree) |
+
+**Modules rework (UR-20261011-009, 2026-10-11):**
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-41 | New fallback logo asset; white square is now the dashboard module-page command decoration | DONE (asset + tree) |
+| DP-42 | Clean listing: per-module Section (logo, name, title-cased tier, description subtext) | DONE (tree) |
+| DP-43 | Inline Info control per module; per-module uninstall rows + instruction line removed | DONE (tree) |
+| DP-44 | Uninstall/disable moved into the module card; icon-only new white icon; disabled for core / uninstalled marketplace | DONE (asset + tree) |
+| DP-45 | /modules navigation matches the dashboard (Home / Next / Previous); list paginated | DONE (tree) |
+| DP-46 | Module Info card is always ephemeral | DONE (tree) |
+
+**Info card & lifecycle (UR-20261011-010, 2026-10-11):**
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-47 | /modules Home returns to /modules page 0 (not the dashboard) | DONE (tree) |
+| DP-48 | Info card renders at Mode M, banner-less, single block (no per-field dividers) | DONE (tree) |
+| DP-49 | Info card carries meaningful fields (name+tier, description, developer, version, status, commands) | DONE (tree) |
+| DP-50 | Developer resolved by name (first-party → Quixotic Mnemonics), never the raw devId | DONE (tree) |
+| DP-51 | Disable/enable function: state write + dispatch gate + BCCM command enqueue | DONE (tree) |
+| DP-52 | /browse lists installable + re-enableable modules (disabled standard = "Previously installed") | DONE (tree) |
+| DP-53 | No uninstall control rendered on a core module's Info | DONE (tree) |
+
+**Disable enforcement (UR-20261011-011, 2026-10-11):**
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-54 | Disable writes an instant `@everyone` deny override on the module's commands (Discord command permissions) | DONE (tree) |
+| DP-55 | Disable/enable also enqueue the module's commands on BCCM for batched deregistration/re-registration | DONE (tree) |
+| DP-56 | EventRouter gates dispatch by module enablement (a disabled module's handlers do not fire) | DONE (tree) |
+| DP-57 | /modules lists only enabled modules for the guild | DONE (tree) |
+| DP-58 | The dashboard registers a page only for an enabled standard module | DONE (tree) |
+| DP-59 | /browse lists a disabled module as "Previously installed" for re-enablement | DONE (tree) |
+
+**Verification.** The application suite was verified in **CI** on `3faa1b16`: Gate 1 strict
+typecheck, lint, format, the flow suite, Gate 4 unit tests, the live-Postgres+Redis integration job,
+and the Docker build — all green. (The first push `8caac653` failed only Gate 4, on one unit test
+that asserted the pre-change module-page behaviour; it was updated to the new arrangement.)
+
+---
+
+## Modules Corrections & Disable Enforcement (UR-20261011-013) — 2026-10-11
+
+> A correction work order. The operator reports that the DP-41…DP-59 arrangements above were
+> written to the tree (`DONE (tree)`) but **do not behave as specified on a live surface**. These
+> items therefore **re-open** the corresponding DP rows; the specification (§9.10–§9.12) is
+> authority, and the code is the gap to close. Coordinated with `upgradation/change-log.md`.
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-60 | Fallback logo is `dumby_module_fallback`; the white square is the command decoration only (R1) | REOPENED |
+| DP-61 | Listing renders name + title-cased tier + `-#` description, cleanly (R2) | REOPENED |
+| DP-62 | Per-module Info control sits in-line after each module; button rows removed (R3) | REOPENED |
+| DP-63 | Uninstall/disable is an icon-only control inside the Info card (`dumby_uninstall`, no label) (R4) | REOPENED |
+| DP-64 | `/modules` navigation matches the other surfaces' grammar (R5) | REOPENED |
+| DP-65 | Info card is always ephemeral (R6) | REOPENED |
+| DP-66 | `/modules` Home returns to `/modules` page 0, not the dashboard (R7) | REOPENED |
+| DP-67 | Info card renders as a single Mode M/C block (R8) | REOPENED |
+| DP-68 | Info card carries no per-field dividers/separators (R9) | REOPENED |
+| DP-69 | Every Info field is meaningful (no filler, no raw tokens) (R10) | REOPENED |
+| DP-70 | Developer resolved by name (first-party → Quixotic Mnemonics); never the raw `devId` (R11) | REOPENED |
+| DP-71 | Disable writes an instant `@everyone` deny override + BCCM enqueue + dispatch gate (R12) | REOPENED |
+| DP-72 | Disabled Standard module offered in `/browse` as "Previously installed" and re-enables via the dropdown (R12) | REOPENED |
+| DP-73 | A core module's Info renders no uninstall/disable control (R13) | REOPENED |
+
+**Observed violations (operator, 2026-10-11):** the Info card reports a module disabled while the
+module stays listed in `/modules`, its command stays registered/loaded in the guild, its dashboard
+page stays registered, and it is not offered in `/browse` for re-install. Acceptance ids:
+`ACC-UR-023-1…14` (see `upgradation/UR-20261011-013.md`).
+
+---
+
+## Codebase Interception (UR-20261011-014) — 2026-10-11
+
+> A code-correction work order from the codebase-level interception. It fixes one genuine defect and
+> records the implementation verdict for the /modules path.
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-74 | `envBool` replaces `z.coerce.boolean()` on all five env fields — the string `"false"` no longer reads as `true` (R1) | DONE (typecheck+lint) |
+| DP-75 | Regression tests for boolean env parsing (`env-schema.test.ts`) (R2) | DONE (CI) |
+| DP-76 | /modules implementation verdict recorded — UR-009/010/011 are implemented at HEAD; the S2 symptom is the BCCM dry-run env defect | DONE |
+
+**Verification.** `typecheck` and `lint` green locally (Node 20.20.2; the workspace declares Node ≥ 22).
+`test:unit` and `tsx` could not run in the interception environment (WebAssembly unavailable); CI runs
+them. Acceptance ids: `ACC-UR-024-1…4`.
+
+---
+
+## Modules Enablement Read & Developer Attribution (UR-20261011-015) — 2026-10-11
+
+> Root-cause corrections found from the operator's live-surface screenshots. The /modules features
+> are present; two functions carried wrong semantics.
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-77 | First-party developer attribution resolves to `Quixotic Mnemonics`, not the `@master_ronix` handle (R1) | DONE (typecheck+lint) |
+| DP-78 | `isModuleEnabledForGuild` falls back to the tier default for a missing row (card/listing/browse/event-gate now agree) (R2) | DONE (typecheck+lint) |
+| DP-79 | Regression tests: `developer-registry.test.ts`, `core-renderer.test.ts` no-`@` case (R1) | DONE (CI) |
+| DP-80 | Verdict recorded: the two defects reproduce the operator's screenshots (S1/S4) | DONE |
+
+**Verification.** `typecheck` and `lint` green locally; `test:unit` in CI. Acceptance ids:
+`ACC-UR-025-1…6`.
+
+---
+
+## Deploy-Gate Corrections (UR-20261011-016) — 2026-10-11
+
+> The `ae2a6d3` deploy was SKIPPED (Railway `checkSuites`), so production ran `8355ba4`. Three causes
+> found and fixed.
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-81 | `env-schema.test.ts` is Prettier-clean (Gate 3 format) (R1) | DONE (format) |
+| DP-82 | `check-code-reconciliation` freshness tolerates a shallow checkout — warns when the commit is absent, fails only on a non-ancestor (R2) | DONE |
+| DP-83 | `deferReply({ ephemeral })` → `flags: MessageFlags.Ephemeral` at all three sites (R3) | DONE (typecheck+lint) |
+| DP-84 | `deferReply` test assertions updated to the `flags` form (Gate 4 fix) (R3) | DONE (CI) |
+
+**Verification.** `typecheck` and `lint` green locally; `format` green; the corpus gate suite 27/27
+(incl. the fixed freshness gate). Acceptance ids: `ACC-UR-026-1…5`.
+
+---
+
+## Disable-Button Root Cause (UR-20261011-017) — 2026-10-11
+
+> The operator reported the module Disable button non-functional on the live build. Root cause: the
+> `guild_module_states` upserts used a bare `ON CONFLICT` target that did not match the table's
+> **partial** unique index, so the write threw (42P10) and the disable never persisted.
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-85 | `uninstallModule` upsert carries the partial-index predicate (`... where "deletedAt" is null`) (R1) | DONE (typecheck+lint) |
+| DP-86 | `installModule` upsert — the same fix (R2) | DONE |
+| DP-87 | `isModuleEnabledInGuild` default-row seed — the same fix (R3) | DONE |
+| DP-88 | DB-free regression test locking the SQL contract (`module-state-upsert.test.ts`) | DONE (CI) |
+
+**Proof.** The generated SQL now reads `on conflict ("guildId", "moduleSlug") where "deletedAt" is null
+do update set …`. Acceptance ids: `ACC-UR-027-1…5`.
+
+---
+
+## Disable-Flow Corrections (UR-20261011-018) — 2026-10-11
+
+> The operator's four live requests after the disable fix went live: a Compact confirmation, a real
+> instant hide/restrict, no disable control on `/browse`, and a spurious FORBIDDEN.
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-89 | Disable shows a formal Mode C confirmation (R1) | DONE (typecheck+lint) |
+| DP-90 | `setModuleCommandAccess` uses a Bearer token (`DISCORD_COMMAND_PERMISSIONS_TOKEN`) — the endpoint rejects a bot token (R2) | DONE |
+| DP-91 | The `/browse` Info view carries no disable control; the `/modules` card does (R3) | DONE |
+| DP-92 | Both adapters pass `isGuildOwner`; the component adapter passes member context (R4) | DONE |
+
+**Verification.** `typecheck`, `lint`, `format` green locally; the ConfigMap gate unchanged (27 keys).
+Acceptance ids: `ACC-UR-028-1…5`.
+
+---
+
+## Self-Describing Warnings (UR-20261011-019) — 2026-10-11
+
+> `discord-client-error`, `build-signing-key-invalid` and `module-provenance-unverified` carried their
+> detail only in structured fields the operator's log viewer drops.
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-93 | client error/warn messages carry the text (mirrors `command-execution-error`) | DONE |
+| DP-94 | signing-key warning carries the `createPublicKey` error + the PEM remedy | DONE |
+| DP-95 | provenance warning carries its reason | DONE |
+
+**Verification.** `typecheck`, `lint`, `format` green locally. Acceptance ids: `ACC-UR-029-1…3`.
+
+---
+
+## Durable Command-Permission Tokens (UR-20261011-020) — 2026-10-11
+
+> Discord requires a **user** Bearer token (`applications.commands.permissions.update`) for the
+> command-permissions endpoint, obtainable with a refresh token only via the authorization-code grant;
+> its refresh response rotates the refresh token, so the latest must be stored.
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-96 | `guild_command_permission_tokens` table — sealed access/refresh credential ids | DONE |
+| DP-97 | `/auth/callback` — state check, code exchange, Manage Server check, store | DONE |
+| DP-98 | `/dashboard` — Authorize Dumby button + connection status | DONE |
+| DP-99 | Scheduled refresh (every 6h, 24h lead) with rotation + revoked/expired state | DONE |
+| DP-100 | Resolution: stored token → env token → current behaviour | DONE |
+
+**Verification.** `typecheck`, `lint`, `format` green locally. Acceptance ids: `ACC-UR-030-1…5`.
+
+---
+
+## BCCM Put-Failure Observability (UR-20261011-021) — 2026-10-11
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-101 | `bccm-batch-put-failed` message carries the error text + HTTP status | DONE |
+| DP-102 | UR-020 refresh tests assert the intended near-expiry behaviour | DONE |
+
+**Verification.** `typecheck`, `lint`, `format` green locally. Acceptance ids: `ACC-UR-031-1…3`.
+
+---
+
+## OAuth Route Coverage (UR-20261011-022) — 2026-10-11
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-103 | OAuth routes exercised via Fastify inject (0% → covered) | DONE |
+| DP-104 | Callback served at `/auth/callback` and `/oauth/callback` | DONE |
+
+**Verification.** `typecheck`, `lint`, `format` green locally. Acceptance ids: `ACC-UR-032-1…4`.
+
+---
+
+## New-Guild Deploy, Per-Guild Auth, BCCM Payload (UR-20261011-023) — 2026-10-11
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-105 | `deployForGuild` + `onGuildJoin`, so a joining guild gets commands at once | DONE |
+| DP-106 | `/dashboard` lists every guild with its own Authorize link + status | DONE |
+| DP-107 | BCCM sends full command objects (`description` required by Discord) | DONE |
+
+**Verification.** `typecheck`, `lint`, `format` green locally. Acceptance ids: `ACC-UR-033-1…4`.
+
+---
+
+## A Disabled Module's Queued Work and Schedule (UR-20261012-069) — 2026-10-12
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-108 | A job whose payload names a guild that disabled the module is skipped | DONE |
+| DP-109 | A job for a guild that still wants the module runs; gated on the job's own guild | DONE |
+| DP-110 | A fleet-wide job, and a queue with no owner, are not gated | DONE |
+| DP-111 | A cron task whose module no guild wants does not execute | DONE |
+| DP-112 | Every gate fails open on a read error; command dispatch still fails closed | DONE |
+| DP-113 | One enablement read (`module-system/enablement.ts`) shared by both bootstrap paths | DONE |
+| DP-114 | Core/Admin short-circuit closed in the EVENT gate, not only in the router | DONE |
+
+**Verification.** `typecheck`, `lint`, `format` green locally; 117 files / 1197 tests / 0 failures;
+coverage 68.98% branch, no threshold error. Acceptance ids: `ACC-UR-069-1…7`.
+
+---
+
+## The Dispatch Path Must Not Fail, and Must Not Lie (UR-20261012-068) — 2026-10-12
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-115 | The scope assertions fail closed on a fault, and log the cause | DONE |
+| DP-116 | `CommandScopeDeniedError` carries `scopeCause`; one message no longer serves two failures | DONE |
+| DP-117 | `NoticeReasonCode.STATE_UNAVAILABLE` — the member is told the state was unreadable | DONE |
+| DP-118 | `moduleStanding` is advisory: both reads guarded, logged, conservative fallbacks | DONE |
+| DP-119 | A Core module is `shared` and `enabled` without reading either dependency | DONE |
+
+**Verification.** `typecheck`, `lint`, `format` green locally; router suite 39 tests green.
+Acceptance ids: `ACC-UR-068-1…5`.
+
+---
+
+## The Context Reaches Events, Jobs and Tasks (UR-20261012-070) — 2026-10-12
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-120 | The SDK declares a `ModuleContextStore`; the host installs the carrier | DONE |
+| DP-121 | `currentModuleContext` / `requireModuleContext` / `runWithModuleContext` exported | DONE |
+| DP-122 | The app installs an `AsyncLocalStorage`-backed store at boot | DONE |
+| DP-123 | One resolver: fixed process identity + per-invocation guild + standing | DONE |
+| DP-124 | The resolver never throws; a fault yields the conservative standing | DONE |
+| DP-125 | The loader wraps events, jobs and tasks in one place | DONE |
+
+**Verification.** `typecheck`, `lint`, `format` green locally; SDK builds; the context suite 10 tests
+green. Acceptance ids: `ACC-UR-070-1…7`.
+
+---
+
+## A Module Can Stop What It Started (UR-20261012-071) — 2026-10-12
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-126 | `ModuleLifecycle` (SDK) declares `onEnable` and `onDisable` | DONE |
+| DP-127 | `LoadedModule` (app) declares both hooks | DONE |
+| DP-128 | `readyAll` fires `onEnable` after `onReady`; a throw leaves the module DISABLED | DONE |
+| DP-129 | `unloadAll` fires `onDisable` before `onUnload`, caught separately | DONE |
+| DP-130 | A per-guild toggle does NOT fire the hooks (§13.7); that is the execution gates' job | DONE |
+
+**Verification.** `typecheck`, `lint`, `format` green locally; SDK builds; the lifecycle suite 6 tests
+green. Acceptance ids: `ACC-UR-071-1…7`.
+
+---
+
+## The Last Two Hooks (UR-20261012-072) — 2026-10-12
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-131 | `ModuleLifecycle` (SDK) declares `onError` and `onConfigChange` | DONE |
+| DP-132 | `LoadedModule` (app) declares both hooks | DONE |
+| DP-133 | `onError` fires at the load and ready failure boundaries, guarded | DONE |
+| DP-134 | A throwing `onError` never masks the original failure | DONE |
+| DP-135 | `notifyConfigChange` no-ops for an unknown/hookless module and catches throws | DONE |
+| DP-136 | `GuildConfigService.setModuleConfig` notifies, via a bootstrap-injected callback | DONE |
+
+**Verification.** `typecheck`, `lint`, `format` green locally; SDK builds; the hooks suite 9 tests
+green. Acceptance ids: `ACC-UR-072-1…8`.
+
+---
+
+## Is the Redirect URL Configured? (UR-20261012-073) — 2026-10-14
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-137 | `persona_identities.oauthVerifiedAt` added (nullable) | DONE |
+| DP-138 | `markOauthVerified` on the store, identity, row type and in-memory mirror | DONE |
+| DP-139 | The OAuth callback records it on success, guarded | DONE |
+| DP-140 | A failing verification write does not fail the callback | DONE |
+| DP-141 | `page-data` exposes `oauthVerified` for the persona page to render | DONE |
+
+**Verification.** `typecheck`, `lint`, `format` green locally; the OAuth route suite 14 tests green.
+Acceptance ids: `ACC-UR-073-1…5`.
+
+---
+
+## A Disabled Module Is Not a Permission Problem (UR-20261012-074) — 2026-10-14
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-142 | `CommandScopeCause` gained `'out-of-scope'` and made it the default | DONE |
+| DP-143 | Only the `!enabled` site passes `'module-disabled'` | DONE |
+| DP-144 | The permission resolver passes `'permission-denied'` | DONE |
+| DP-145 | `NoticeReasonCode.MODULE_DISABLED` with a heading and a remedy-naming explanation | DONE |
+| DP-146 | The test pinning FORBIDDEN for a disabled module corrected | DONE |
+
+**Verification.** `typecheck`, `lint`, `format` green locally; the router suite 40 tests green.
+Acceptance ids: `ACC-UR-074-1…5`.
+
+---
+
+## The Primary Render Carries the Acting Profile (UR-20261012-075) — 2026-10-14
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-147 | The reported `/modules` icon defect checked; found stale, not changed | DONE |
+| DP-148 | `applicationId` and `actingProfileId` required on both provider declarations | DONE |
+| DP-149 | The primary render at dispatch passes the acting profile | DONE |
+| DP-150 | The factory's return type reconciled with the dependency's | DONE |
+
+**Verification.** `typecheck`, `lint`, `format` green locally; the router suite 42 tests green.
+Acceptance ids: `ACC-UR-075-1…5`.
+
+---
+
+## Unblocking the Deploy (UR-20261012-076) — 2026-10-14
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-151 | The deploy blocker found: the Gates job failed, so Railway skipped every recent commit | DONE |
+| DP-152 | The failing flow test identified (a scope denial reported as FORBIDDEN) | DONE |
+| DP-153 | The harness registers `flow-std`'s tier, so the RBAC rank check is reached | DONE |
+| DP-154 | A stale build is not "corrupted modules" — check the pipeline before the code | DONE |
+
+**Verification.** `typecheck`, `lint`, `format` green locally; the flow suite runs against live Postgres
+in CI. Acceptance ids: `ACC-UR-076-1…4`.
+
+---
+
+## A Refusal Names the Actor (UR-20261012-077) — 2026-10-14
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-155 | `PersonaOccupiedError` names the actor and the owner | DONE |
+| DP-156 | Both throw sites pass the actor | DONE |
+| DP-157 | The misdiagnosis corrected in the record (`actor=main`) | DONE |
+| DP-158 | The main-bot claim asymmetry recorded as its own finding | DONE |
+| DP-159 | UR-076's "every commit was skipped" claim corrected (only UR-074/075) | DONE |
+
+**Verification.** `typecheck`, `lint`, `format` green locally. Acceptance ids: `ACC-UR-077-1…4`.
+
+---
+
+## The Main Bot Owns What the Main Bot Enabled (UR-20261012-078) — 2026-10-14
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-160 | `resolveCommandOwner` answers `'main'` for an enabled-but-unbound module | DONE |
+| DP-161 | The enablement read is an optional, late-bound dependency | DONE |
+| DP-162 | A missing or failing read leaves ownership unanswered, never guessed | DONE |
+| DP-163 | The dispatch assertion accepts the main bot's own id (`residentPersonaId ?? 'main'`) | DONE |
+| DP-164 | The install path's actor defaults to `'main'` | DONE |
+
+**Verification.** 121 files / 1237 tests / 0 failures; `typecheck`, `lint`, `format` green locally.
+Acceptance ids: `ACC-UR-078-1…6`.
+
+---
+
+## The Occupancy Note Inverted (UR-20261012-079) — 2026-10-14
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-165 | The regression found: `holder === undefined` no longer means "the main bot" | DONE |
+| DP-166 | `heldByMain` recognises both spellings | DONE |
+| DP-167 | The note no longer mislabels a main-bot module as a persona's | DONE |
+| DP-168 | A regression test pins both directions (persona view, main-bot view) | DONE |
+
+**Verification.** 121 files / 1238 tests / 0 failures; `typecheck`, `lint`, `format` green locally.
+Acceptance ids: `ACC-UR-079-1…5`.
+
+---
+
+## A Persona Could Not Run Any Core Command (UR-20261012-080) — 2026-10-14
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-169 | The regression found: core modules read as the main bot's, refusing every core command | DONE |
+| DP-170 | The dispatch assertion short-circuits the shared tiers | DONE |
+| DP-171 | `resolveCommandOwner` answers `'shared'` for core/admin | DONE |
+| DP-172 | A persona runs a core command; a persona is still refused a main-bot standard module | DONE |
+
+**Verification.** 121 files / 1240 tests / 0 failures; `typecheck`, `lint`, `format` green locally.
+Acceptance ids: `ACC-UR-080-1…4`.
+
+## The Persona Management Surface (UR-20261012-081) — 2026-10-14
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-173 | Migration `20260101000051_add_persona_presentation`: `presenceStatus`, `note`, `accent` | DONE |
+| DP-174 | `presenceStatus` is separate from the lifecycle `status` | DONE |
+| DP-175 | The presence is applied at login, non-fatally (activity type 4 = CUSTOM) | DONE |
+| DP-176 | `updatePersona` — only the keys present; explicit null clears; invalid refused by name | DONE |
+| DP-177 | `revokePersona` — retires, soft-deletes, and releases the bindings first | DONE |
+| DP-178 | `rotatePersonaCredentials` — sealed at the surface; null clears the OAuth secret | DONE |
+| DP-179 | The credential value never reaches a log line | DONE |
+| DP-180 | The four new routes + the three registration configs | DONE |
+
+**Verification.** 121 files / 1240 tests / 0 failures; `typecheck`, `lint`, `format` green locally.
+Acceptance ids: `ACC-UR-081-1…9`.
+
+## A Presence Set Through Twill Did Not Reach the Running Persona (UR-20261012-082) — 2026-10-14
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-181 | The finding: the presence was applied only at login, so a PATCH changed nothing live | DONE |
+| DP-182 | `PersonaRuntime.applyPresence` re-applies to the running client, non-fatally | DONE |
+| DP-183 | It returns a boolean — `false` when the persona is not hosted, rather than claiming success | DONE |
+| DP-184 | The PATCH route applies it, and logs the two non-applied cases distinctly | DONE |
+| DP-185 | Bootstrap wires the hook late-bound across the runtime's conditional block | DONE |
+
+**Verification.** 122 files / 1259 tests / 0 failures; `typecheck`, `lint`, `format` green locally.
+Acceptance ids: `ACC-UR-082-1…4`.
+
+## A Revoked Persona Stayed Online With Every Command Loaded (UR-20261012-083) — 2026-10-14
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-186 | The finding: the revoke reached Postgres only, leaving the client and the commands | DONE |
+| DP-187 | `PersonaRuntime.stopPersona` destroys the client and clears the commands, non-fatally | DONE |
+| DP-188 | It takes the persona's identity — a lookup after the revoke would not find her | DONE |
+| DP-189 | `clearCommands` reuses the deploy path with empty payloads | DONE |
+| DP-190 | The DELETE route reads her, revokes her, then stops her | DONE |
+
+**Verification.** 122 files / 1262 tests / 0 failures; `typecheck`, `lint`, `format` green locally.
+Acceptance ids: `ACC-UR-083-1…4`.
+
+## A Revoked Persona Kept Its Application Id Forever (UR-20261012-084) — 2026-10-14
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-191 | The finding: a plain unique constraint constrains soft-deleted rows too | DONE |
+| DP-192 | Migration `20260101000052`: partial unique index replaces the plain constraint | DONE |
+| DP-193 | The index is created BEFORE the constraint is dropped — no unconstrained window | DONE |
+| DP-194 | UR-081's false claim carries an explicit correction note | DONE |
+| DP-195 | Proved against a real PostgreSQL, both directions of the constraint | DONE |
+
+**Verification.** 122 files / 1262 tests / 0 failures; `typecheck`, `lint`, `format` green locally.
+Migration applied through `knex.migrate.latest()` against embedded PostgreSQL and asserted directly.
+Acceptance ids: `ACC-UR-084-1…4`.
+
+## Registering, Binding or Re-credentialing Needed a Restart (UR-20261012-085) — 2026-10-14
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-196 | The finding: the runtime reads the persona table once, at boot | DONE |
+| DP-197 | `start(only?)` — one persona can be (re)started without disturbing the rest | DONE |
+| DP-198 | `reloadPersona` — stop, then start from the CURRENT row | DONE |
+| DP-199 | It returns `undefined` for a row that is gone, not a fabricated result | DONE |
+| DP-200 | Register, bind and rotate each reload through one non-fatal helper | DONE |
+
+**Verification.** 122 files / 1266 tests / 0 failures; `typecheck`, `lint`, `format` green locally.
+Acceptance ids: `ACC-UR-085-1…6`.
+
+## A Registered Persona's Presence Was Dropped Before It Reached the Row (UR-20261012-086) — 2026-10-14
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-201 | The finding: `buildPersonaIdentity` dropped the three presentation fields | DONE |
+| DP-202 | It now carries them; absent stays absent rather than becoming an empty string | DONE |
+| DP-203 | The CUSTOM activity carries the quote in `state`, not `name` | DONE |
+| DP-204 | An unavailable `client.user` is logged, not silently swallowed | DONE |
+| DP-205 | Tests assert the BUILT persona, not the parsed input | DONE |
+
+**Verification.** 122 files / 1268 tests / 0 failures; `typecheck`, `lint`, `format` green locally.
+Acceptance ids: `ACC-UR-086-1…4`.
+
+## There Was No Way to Restart One Persona (UR-20261012-087) — 2026-10-14
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-206 | The finding: `reloadPersona` existed but was never exposed | DONE |
+| DP-207 | `POST /twill/personas/:personaId/reload` reloads one persona | DONE |
+| DP-208 | An absent result is reported as `reload: null`, not hidden | DONE |
+| DP-209 | `501` when the runtime is disabled; `404` for an unknown persona | DONE |
+
+**Verification.** 122 files / 1268 tests / 0 failures; `typecheck`, `lint`, `format` green locally.
+Acceptance ids: `ACC-UR-087-1…4`.
+
+## A Persona's Bound Guild Could Not Be Changed (UR-20261012-088) — 2026-10-14
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-210 | The finding: `boundGuildId` is not settable, and it is not a plain field | DONE |
+| DP-211 | `rebindPersona` releases the old-guild bindings, then moves the row | DONE |
+| DP-212 | `POST /twill/personas/:id/rebind` — stop against the OLD guild, move, reload | DONE |
+| DP-213 | Idempotent, and reported as `changed: false` rather than assumed | DONE |
+| DP-214 | A foreign-key refusal is translated into a readable reason | DONE |
+
+**Verification.** 122 files / 1271 tests / 0 failures; `typecheck`, `lint`, `format` green locally.
+Acceptance ids: `ACC-UR-088-1…5`.
+
+## Twill Accepted Malformed Credentials and Identifiers (UR-20261012-089) — 2026-10-15
+
+| Item | Clause | Status |
+|------|--------|--------|
+| DP-215 | The finding: identifiers were checked for presence, never for shape | DONE |
+| DP-216 | `SNOWFLAKE_PATTERN` / `BOT_TOKEN_PATTERN` / `CLIENT_SECRET_PATTERN` | DONE |
+| DP-217 | `applicationIdFromBotToken` — the token is checked against its application | DONE |
+| DP-218 | `registrarAuthority` is a Discord USER id, at registration and at grant | DONE |
+| DP-219 | Applied at every write: bind, rebind, credentials, registrar registry | DONE |
+| DP-220 | Every refusal names the field, the shape and the source of the value | DONE |
+
+**Verification.** 123 files / 1281 tests / 0 failures; `typecheck`, `lint`, `format` green locally.
+Acceptance ids: `ACC-UR-089-1…7`.

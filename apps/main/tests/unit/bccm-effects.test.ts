@@ -1,6 +1,7 @@
 import { describe, expect, test, vi } from 'vitest';
 import { createBccmEffectHandlers, type BccmEffectDeps } from '../../src/commands/bccm-effects.js';
 import { CommandNotFoundError } from '../../src/commands/command-router.js';
+import { InvalidCommandNameError } from '../../src/commands/bccm-batch-push.js';
 
 function harness() {
   const insert = vi.fn(async () => undefined);
@@ -29,6 +30,37 @@ describe('bccm effect handlers', () => {
     );
     expect(insert).toHaveBeenCalledTimes(1);
     expect(logger.info).toHaveBeenCalledWith('bccm-queue-submitted', expect.any(Object));
+  });
+
+  test('rejects a rename whose new name is not a legal Discord command name', async () => {
+    const { handlers, insert } = harness();
+    await expect(
+      handlers['bccm.submit']?.(
+        { commandKey: 'ban', action: 'rename', newName: 'Time Out' },
+        interaction('g1'),
+      ),
+    ).rejects.toBeInstanceOf(InvalidCommandNameError);
+    expect(insert).not.toHaveBeenCalled();
+  });
+
+  test('rejects an alias that is not a legal Discord command name', async () => {
+    const { handlers, insert } = harness();
+    await expect(
+      handlers['bccm.submit']?.(
+        { commandKey: 'kick', action: 'alias', alias: 'Yeet!' },
+        interaction('g1'),
+      ),
+    ).rejects.toBeInstanceOf(InvalidCommandNameError);
+    expect(insert).not.toHaveBeenCalled();
+  });
+
+  test('accepts a legal alias', async () => {
+    const { handlers, insert } = harness();
+    await handlers['bccm.submit']?.(
+      { commandKey: 'kick', action: 'alias', alias: 'yeet' },
+      interaction('g1'),
+    );
+    expect(insert).toHaveBeenCalledTimes(1);
   });
 
   test('ignores a submission outside a guild', async () => {

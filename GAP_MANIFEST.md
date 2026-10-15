@@ -1,12 +1,19 @@
 # GAP MANIFEST — Build-Engine Audit
 
-**Generated:** 2026-10-06
+**Generated:** 2026-10-06 · **Re-stated:** 2026-10-11
 **Protocol:** `docs/orchestration/master-prompt.md` §3 (Codebase State Detection & Audit Protocol)
 **Repository:** `master-ronix/Dumby-Suite`
-**Branch / ref:** `feature/dev` @ `b6ae1a6d860902274cd3c237d68c1c886687ba8b`
-**Codebase state:** State C — Enforcement (code present; work order INACTIVE)
-**Entry procedure followed:** `docs/prompts/entry.md` → `orchestration/master-prompt.md` (enforcement mode)
-**Run mode:** State C — audit (§3) → remediation (§4) → enforcement pass (§6), corpus-wide.
+**Branch / ref:** `feature/dev` @ `8355ba4f824269a714e22edef21797a602ab6800`
+**Codebase state:** State B — Migration (code present; work order ACTIVE)
+**Entry procedure followed:** `docs/prompts/entry.md` → `migration/migration-prompt.md` (migration mode)
+**Run mode:** State B — audit (§3) → state-of-record reconciliation (R12); the enforcement pass (§6) resumes when the work order is fully `DONE`.
+
+> **Supersession note (2026-10-10).** This manifest was generated 2026-10-06 as a **State C** run, when the work order was INACTIVE. The work order is now **ACTIVE** (request records present; `migration-ledger.md` carries open items M10/M14/M16), so the governing protocol is `migration/migration-prompt.md`. The classification table below is retained as the last full audit; its F4/F5 residuals remain open (see §2).
+
+> **Point-in-time notice (2026-10-11).** This manifest is a snapshot, not a live ledger. Its ref is
+> re-pointed to `feature/dev` @ `8355ba4f`; request-record counts are **not** restated here (read them
+> from `docs/scripts/docs/check-ur.mjs`). `check-side-docs` holds this manifest's ref in step with
+> `docs/status/code-reconciliation.json`.
 
 ---
 
@@ -14,9 +21,9 @@
 
 - **Docs base path:** `docs/` (resolved once).
 - **Authority layer:** `docs/manifest.json` read; normative set = `blueprint/`, `spec/**` (10 departments), `contracts/` (9). `documentation/` is derived; `archive/**` is not current. Precedence is owned by `spec/governance/directive-charter-how-to-use-this-document.md` §0.2 and is cited, not restated.
-- **State probe (`apps/main/`):** contains code — 205 `.ts` source files, 18,464 LOC, 45 Knex migrations.
-- **Work-order probe:** `upgradation/UR-*.md` → **none present** (glob empty); `migration-ledger.md` (repo root) → an **unconstructed template** (all rows are placeholders `<ID>`/`<Title>`/`<status>`, no real items). ⇒ work order **INACTIVE**.
-- **Classification:** code present **and** work order INACTIVE → **State C — Enforcement**. `migration/migration-prompt.md` §0.0 work-order guard correctly refuses (no active work order); `master-prompt.md` enforcement mode governs.
+- **State probe (`apps/main/`):** contains code — 501 `.ts` source files, 45 Knex migrations.
+- **Work-order probe:** `upgradation/UR-*.md` → **present** (records on disk); `migration-ledger.md` (repo root) → a **constructed ledger** with items not `DONE` (M10/M14/M16). ⇒ work order **ACTIVE**.
+- **Classification:** code present **and** work order ACTIVE → **State B — Migration**. `migration/migration-prompt.md` §0.0 work-order guard passes (an active work order exists).
 
 ---
 
@@ -74,7 +81,7 @@
 ### F5 — Coverage floors (FLOORS MET — 2026-10-06; per-layer conformance still open)
 **Status:** the enforced `test:coverage` gate is now **green** — 73.1% statements / 67.8% branches / 74.1% functions / 74.1% lines (was 55.8/52.4/57.5/56.6), above the configured 70/65/70/70 blended floor. Closed by authoring 19 new unit-test files (D-8.3 priority order) across the uncovered subsystems: bootstrap-adjacent utilities, http client/server/routes, crypto, module-system (promotion, build-signing), licensing, credentials, discord shard ownership, db replica routing, and more. **Residual:** directive D-8.2 mandates *per-layer* floors (Core 85/80, services 80/75, commands 75/70, repos 70/65, infra 70/65) and prohibits a blended average — the config still enforces one blended threshold, and `src/bootstrap/bootstrap.ts` (346 statements) remains at 0% because it needs a live runtime. Reaching the Core layer's 85% floor is a further, larger effort; it is recorded here rather than claimed.
 - **Spec:** directive D-8.2 — *"CI enforces these floors per layer — never as a blended repository-wide average"* (Application Core 85/80, module services 80/75, module commands 75/70, repositories 70/65, infra-adjacent 70/65). *"Any divergence between these floors and the enforced Vitest thresholds is a defect reported against this directive."*
-- **Delta:** `vitest run --coverage` measures **55.8% statements / 52.4% branches / 57.5% functions / 56.6% lines** against the configured blended floor of 70/65/70/70 — the gate **fails** (CI Gate 4, `test:coverage`). Two distinct defects: (1) the floors are not met; (2) the config enforces a single **blended** threshold, which D-8.2 explicitly prohibits (per-layer, never blended). Including the acceptance `.spec` suites in the coverage run barely moves the number (55.84% statements), so the shortfall is genuine untested code, not a config artifact — e.g. `src/webhooks/*`, `src/shutdown/fatal-handler.ts`, and several `src/shared/**` utilities sit near 0%.
+- **Delta (resolved 2026-10-11).** The pre-fix shortfall (**55.8% statements / 52.4% branches / 57.5% functions / 56.6% lines**, below the 70/65/70/70 blended floor) is retained in the paragraph above only as history and is **no longer current** — the blended floor is met (73.1/67.8/74.1/74.1). This bullet is kept so the section carries one live coverage figure, not two. **Residual (open):** D-8.2 mandates *per-layer* floors and prohibits a blended average; the config still enforces one blended threshold, and `src/bootstrap/bootstrap.ts` sits at 0% pending a live runtime.
 - **Remedy (not one-shot):** author the missing unit/subsystem tests in the D-8.3 priority order (bootstrap, cache, db, queue, events, http, permissions, modules, middleware, shutdown) to lift each layer to its floor, then re-express `vitest.config.ts` thresholds **per layer** (glob-scoped) to satisfy D-8.2 rather than a blended average. Verify by `test:coverage`.
 
 ---

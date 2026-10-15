@@ -3,6 +3,7 @@ import type { CommandRegistry } from './command-registry.js';
 import type { CommandDefinition } from './command-registry.js';
 import type { Logger } from '../logging/logger.js';
 import type { ModuleTier } from '../module-system/tier-rules.js';
+import { resolveCommandPayloads } from './bccm-batch-push.js';
 
 export interface DeployerConfig {
   botToken: string;
@@ -21,6 +22,15 @@ export interface CommandDeployerDeps {
   config: DeployerConfig;
   rest?: DiscordRestClient;
   enabledGuildResolver?: (moduleSlug: string) => Promise<readonly string[]>;
+  /**
+   * UR-20261012-063 — the APPLIED renames for a guild: command key -> its current name, from
+   * `guild_command_renames` (written when a BCCM rename is pushed).
+   *
+   * WITHOUT THIS the deployer re-registered the registry's names at every boot and silently REVERTED
+   * every rename: a rename applied on a queue window was undone by the next restart, so the operator
+   * saw the old name, then the new one, then neither.
+   */
+  commandRenames?: (guildId: string) => Promise<ReadonlyMap<string, string>>;
 }
 
 const isGuildScopedTier = (tier: ModuleTier): boolean =>
@@ -95,11 +105,34 @@ export class CommandDeployer {
 
         for (const [guildId, guildCommands] of guilds) {
           const guildLabel = guildId === config.devGuildId ? 'dev' : 'guild';
+          // UR-20261012-063 — register the RENAMED set, not the registry's names. The applied renames
+          // live in `guild_command_renames`; reusing `resolveCommandPayloads` with a source map means a
+          // renamed command keeps its real definition here exactly as it does on the BCCM push.
+          const renamed = await (this.deps.commandRenames?.(guildId) ?? new Map<string, string>());
+          const payloads =
+            renamed.size === 0
+              ? guildCommands
+              : resolveCommandPayloads(
+                  guildCommands.map(
+                    (command) =>
+                      renamed.get((command as { name?: string }).name ?? '') ??
+                      (command as { name?: string }).name ??
+                      '',
+                  ),
+                  registry,
+                  (name, reason) =>
+                    logger.warn(`command-deployer-command-skipped: ${name} (${reason})`, {
+                      guildId,
+                      name,
+                      reason,
+                    }),
+                  new Map([...renamed].map(([key, next]) => [next, key])),
+                );
           await rest.put(Routes.applicationGuildCommands(config.applicationId, guildId), {
             body: [],
           });
           await rest.put(Routes.applicationGuildCommands(config.applicationId, guildId), {
-            body: guildCommands,
+            body: payloads,
           });
           logger.info(`command-deployer-${guildLabel}-registered`, {
             commandCount: guildCommands.length,
@@ -123,6 +156,53 @@ export class CommandDeployer {
         standardOrMarketplace: guildScoped.length,
       },
     });
+  }
+
+  /**
+   * UR-20261011-023 — register ONE guild's commands. Called when a guild joins, so a new guild does
+   * not wait for the next boot: the boot deploy only covers the guilds known at that moment, and a
+   * guild joining afterwards would otherwise have no commands at all.
+   */
+  async deployForGuild(guildId: string): Promise<void> {
+    const { registry, logger, config, rest } = this.deps;
+    if (rest === undefined) return;
+    const commands = registry.all();
+    if (commands.length === 0) return;
+
+    // Development registers EVERY command to the development guild, and nothing elsewhere.
+    if (config.nodeEnv === 'development') {
+      if (guildId !== config.devGuildId) return;
+      await rest.put(Routes.applicationGuildCommands(config.applicationId, guildId), { body: [] });
+      await rest.put(Routes.applicationGuildCommands(config.applicationId, guildId), {
+        body: commands.map((c) => this.apiPayload(c)),
+      });
+      logger.info('command-deployer-dev-registered', { commandCount: commands.length, guildId });
+      return;
+    }
+
+    const admin = commands.filter((c) => this.tierOf(c) === 'admin');
+    const guildScoped = commands.filter((c) => isGuildScopedTier(this.tierOf(c)));
+    const desired: unknown[] = [];
+    if (guildId === config.devGuildId) {
+      desired.push(...admin.map((c) => ({ ...c.data, default_member_permissions: '0' })));
+    }
+    if (this.deps.enabledGuildResolver !== undefined) {
+      const byModule = new Map<string, CommandDefinition[]>();
+      for (const command of guildScoped) {
+        const list = byModule.get(command.moduleId) ?? [];
+        list.push(command);
+        byModule.set(command.moduleId, list);
+      }
+      for (const [moduleSlug, moduleCommands] of byModule) {
+        const guildIds = await this.deps.enabledGuildResolver(moduleSlug);
+        if (guildIds.includes(guildId)) desired.push(...moduleCommands.map((c) => c.data));
+      }
+    }
+    await rest.put(Routes.applicationGuildCommands(config.applicationId, guildId), { body: [] });
+    await rest.put(Routes.applicationGuildCommands(config.applicationId, guildId), {
+      body: desired,
+    });
+    logger.info('command-deployer-guild-registered', { guildId, commandCount: desired.length });
   }
 
   /** The REST payload for a command: admin-tier commands carry a deny-by-default permission. */

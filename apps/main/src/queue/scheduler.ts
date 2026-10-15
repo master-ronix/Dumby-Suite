@@ -9,6 +9,13 @@ export interface SchedulerDeps {
   logger: Logger;
   lockStore: LockStore;
   now?: () => number;
+  /**
+   * UR-20261012-069 — a cron task is FLEET-WIDE: `BaseTask.execute()` takes no guild, so a per-guild
+   * disable cannot address it the way it addresses a command, an event or a job. The faithful reading
+   * of "the module's schedule stops" is therefore: the task runs while at least one guild wants the
+   * module, and stops when none does. Absent, tasks run as before.
+   */
+  isModuleEnabledAnywhere?: (moduleId: string) => Promise<boolean>;
 }
 
 export interface ScheduledTask {
@@ -17,6 +24,8 @@ export interface ScheduledTask {
   task: BaseTask;
   intervalMs: number;
   lastTickAt?: number;
+  /** UR-20261012-069 — the module that registered the task, so its firing can be gated. */
+  moduleId?: string;
 }
 
 export class Scheduler {
@@ -28,12 +37,13 @@ export class Scheduler {
     this.deps = deps;
   }
 
-  register(task: BaseTask): void {
+  register(task: BaseTask, moduleId?: string): void {
     this.tasks.set(task.name, {
       name: task.name,
       cron: task.cron,
       task,
       intervalMs: this.cronToMs(task.cron),
+      ...(moduleId !== undefined ? { moduleId } : {}),
     });
   }
 
@@ -66,10 +76,19 @@ export class Scheduler {
     const acquired = await this.deps.lockStore.setNX(lockKey, OWNER_ID, LOCK_TTL_MS);
     if (acquired) {
       try {
-        const now = this.deps.now?.() ?? Date.now();
-        if (!scheduled.lastTickAt || now - scheduled.lastTickAt >= scheduled.intervalMs * 0.9) {
-          scheduled.lastTickAt = now;
-          await scheduled.task.execute();
+        // UR-20261012-069 — a disabled module's schedule does not fire. Fail open, like the event
+        // and job gates: an unavailable gate must not silently stop live work.
+        if (!(await this.moduleEnabled(scheduled.moduleId))) {
+          this.deps.logger.debug('scheduler-task-module-disabled', {
+            task: name,
+            moduleId: scheduled.moduleId,
+          });
+        } else {
+          const now = this.deps.now?.() ?? Date.now();
+          if (!scheduled.lastTickAt || now - scheduled.lastTickAt >= scheduled.intervalMs * 0.9) {
+            scheduled.lastTickAt = now;
+            await scheduled.task.execute();
+          }
         }
       } catch (err) {
         this.deps.logger.error('scheduler-task-failed', { task: name, error: String(err) });
@@ -78,6 +97,18 @@ export class Scheduler {
       }
     }
     this.arm(name, scheduled);
+  }
+
+  /** UR-20261012-069 — fails open; a task with no owner is never gated. */
+  private async moduleEnabled(moduleId: string | undefined): Promise<boolean> {
+    const check = this.deps.isModuleEnabledAnywhere;
+    if (check === undefined || moduleId === undefined) return true;
+    try {
+      return await check(moduleId);
+    } catch (err) {
+      this.deps.logger.warn('scheduler-module-gate-failed', { moduleId, error: String(err) });
+      return true;
+    }
   }
 
   /**

@@ -7,6 +7,88 @@ export type PersonaDmBehavior = (typeof DM_BEHAVIORS)[number];
 export const PERSONA_STATUSES = ['active', 'retired'] as const;
 export type PersonaStatus = (typeof PERSONA_STATUSES)[number];
 
+/**
+ * UR-20261012-081 — the bot's Discord PRESENCE. Distinct from `PERSONA_STATUSES`, which is the
+ * persona's lifecycle (active/retired). Setting one must never mean the other.
+ */
+export const PERSONA_PRESENCE_STATUSES = ['online', 'dnd', 'idle', 'invisible'] as const;
+export type PersonaPresenceStatus = (typeof PERSONA_PRESENCE_STATUSES)[number];
+
+/** A hex accent: `#RGB` or `#RRGGBB`. */
+/**
+ * UR-20261012-089 — Discord identifier shapes.
+ *
+ * Every one of these is a format Discord fixes, so Twill can refuse a malformed value at the boundary
+ * instead of discovering it later as an opaque failure: a bot token that cannot log in, an application
+ * id that is not an id, a guild the framework has never seen.
+ *
+ * A SNOWFLAKE is Discord's id format: a 64-bit integer as decimal digits. 17 to 20 digits covers the
+ * range in use — ids minted in 2015 are 17 digits, current ones are 19, and the format has headroom.
+ * Anchored, so a longer run of digits is not silently accepted.
+ */
+export const SNOWFLAKE_PATTERN = /^\d{17,20}$/;
+
+/**
+ * A bot token is THREE dot-separated base64url segments: the application id, a timestamp, and an HMAC.
+ * The lengths are generous because Discord does not publish them; the STRUCTURE is what is checked, and
+ * the first segment is additionally decoded and compared against the claimed application (see
+ * `applicationIdFromBotToken`).
+ */
+export const BOT_TOKEN_PATTERN = /^[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{20,}$/;
+
+/** A client secret is a single base64url run. */
+export const CLIENT_SECRET_PATTERN = /^[A-Za-z0-9_-]{20,}$/;
+
+export function isDiscordSnowflake(value: string): boolean {
+  return SNOWFLAKE_PATTERN.test(value);
+}
+
+export function isBotToken(value: string): boolean {
+  return BOT_TOKEN_PATTERN.test(value);
+}
+
+export function isClientSecret(value: string): boolean {
+  return CLIENT_SECRET_PATTERN.test(value);
+}
+
+/**
+ * The application id a bot token was minted for, or `undefined` when the token is malformed.
+ *
+ * Discord's token format embeds the application id as base64url in the first segment, which is what
+ * makes "the token belongs to the application you named" checkable WITHOUT calling Discord. The
+ * ownership proof at the surface still asks Discord; this refuses an obviously mismatched pair before
+ * a network round trip, and names which of the two is wrong.
+ */
+export function applicationIdFromBotToken(token: string): string | undefined {
+  const first = token.split('.')[0];
+  if (first === undefined || first === '') return undefined;
+  try {
+    const decoded = Buffer.from(first, 'base64').toString('utf8');
+    return /^\d{17,20}$/.test(decoded) ? decoded : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export const ACCENT_PATTERN = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+
+export class InvalidPersonaFieldError extends Error {
+  constructor(
+    readonly field: string,
+    reason: string,
+  ) {
+    super(`Invalid ${field}: ${reason}`);
+    this.name = 'InvalidPersonaFieldError';
+  }
+}
+
+/** The Discord presence int for an accent, for surfaces that take a colour number. */
+export function accentToInt(accent: string): number {
+  const hex = accent.slice(1);
+  const full = hex.length === 3 ? hex.replace(/./g, (c) => c + c) : hex;
+  return Number.parseInt(full, 16);
+}
+
 export const PERSONA_CHARTERS = ['free'] as const;
 export type PersonaCharterKind = (typeof PERSONA_CHARTERS)[number];
 
@@ -34,6 +116,108 @@ export interface PersonaIdentity {
    * only as a non-reversible equality/lookup aid alongside it.
    */
   readonly botTokenSealed: SealedEnvelope;
+  /**
+   * UR-20261012-030 — the persona application's OAuth2 client secret, sealed the same way. Present
+   * only when the registration supplied it; absent, the persona has no Route A authorization and the
+   * bot-token fallback (Route B) applies.
+   */
+  readonly oauthClientSecretSealed?: SealedEnvelope;
+  /**
+   * UR-20261012-073 — when this persona's OAuth leg last completed. A successful code exchange is
+   * proof Discord accepted the persona's redirect URI, because the exchange cannot succeed unless the
+   * authorize leg sent a registered one. Absent means "never completed".
+   */
+  readonly oauthVerifiedAt?: string;
+  /** UR-20261012-081 — the bot's Discord presence; absent means "not configured". */
+  readonly presenceStatus?: PersonaPresenceStatus;
+  /** UR-20261012-081 — the status quote shown beside the bot's name. */
+  readonly note?: string;
+  /** UR-20261012-081 — the hex accent for the persona's rendered surfaces. */
+  readonly accent?: string;
+}
+
+/**
+ * UR-20261012-081 — what an update may change. Everything optional: a PATCH carries only what it
+ * changes, and an absent field is left alone rather than cleared.
+ *
+ * Credentials are deliberately NOT here. A credential change is its own operation with its own audit
+ * trail, because it is the one change that can strand a running persona.
+ */
+/**
+ * UR-20261012-081 — validate an update and turn it into the COLUMNS to write. Only the keys present
+ * become columns, so an omitted field is left alone; an explicit `null` clears the column.
+ *
+ * Validation lives here rather than at the route so every caller — route, CLI, a future dashboard —
+ * gets the same rules. An invalid value is refused by NAME, because a 400 that says "bad request" is
+ * a support ticket.
+ */
+export function toPersonaUpdateColumns(
+  patch: PersonaUpdateInput,
+): Readonly<Record<string, unknown>> {
+  const columns: Record<string, unknown> = {};
+  if (patch.name !== undefined) {
+    if (patch.name.trim() === '') throw new InvalidPersonaFieldError('name', 'must not be empty');
+    columns['name'] = patch.name;
+  }
+  if (patch.dmBehavior !== undefined) {
+    if (!DM_BEHAVIORS.includes(patch.dmBehavior)) {
+      throw new InvalidPersonaFieldError('dmBehavior', `must be one of ${DM_BEHAVIORS.join(', ')}`);
+    }
+    columns['dmBehavior'] = patch.dmBehavior;
+  }
+  if (patch.shardAllocation !== undefined) {
+    if (!Number.isInteger(patch.shardAllocation) || patch.shardAllocation < 1) {
+      throw new InvalidPersonaFieldError('shardAllocation', 'must be a positive integer');
+    }
+    columns['shardAllocation'] = patch.shardAllocation;
+  }
+  if (patch.presenceStatus !== undefined) {
+    if (patch.presenceStatus === null) {
+      columns['presenceStatus'] = null;
+    } else if (!PERSONA_PRESENCE_STATUSES.includes(patch.presenceStatus)) {
+      throw new InvalidPersonaFieldError(
+        'presenceStatus',
+        `must be one of ${PERSONA_PRESENCE_STATUSES.join(', ')}`,
+      );
+    } else {
+      columns['presenceStatus'] = patch.presenceStatus;
+    }
+  }
+  if (patch.note !== undefined) {
+    if (patch.note === null) {
+      columns['note'] = null;
+    } else if (patch.note.length > 128) {
+      throw new InvalidPersonaFieldError('note', 'must be 128 characters or fewer');
+    } else {
+      columns['note'] = patch.note;
+    }
+  }
+  if (patch.accent !== undefined) {
+    if (patch.accent === null) {
+      columns['accent'] = null;
+    } else if (!ACCENT_PATTERN.test(patch.accent)) {
+      throw new InvalidPersonaFieldError('accent', 'must be a hex colour like #7A5AF8 or #7AF');
+    } else {
+      columns['accent'] = patch.accent;
+    }
+  }
+  if (patch.status !== undefined) {
+    if (!PERSONA_STATUSES.includes(patch.status)) {
+      throw new InvalidPersonaFieldError('status', `must be one of ${PERSONA_STATUSES.join(', ')}`);
+    }
+    columns['status'] = patch.status;
+  }
+  return columns;
+}
+
+export interface PersonaUpdateInput {
+  readonly name?: string;
+  readonly dmBehavior?: PersonaDmBehavior;
+  readonly shardAllocation?: number;
+  readonly presenceStatus?: PersonaPresenceStatus | null;
+  readonly note?: string | null;
+  readonly accent?: string | null;
+  readonly status?: PersonaStatus;
 }
 
 export interface PersonaRegistrationInput {
@@ -42,10 +226,16 @@ export interface PersonaRegistrationInput {
   readonly boundGuildId: string;
   readonly botTokenDigest: string;
   readonly botTokenSealed: SealedEnvelope;
+  /** UR-20261012-030 — optional; without it the persona cannot authorize (Route B applies). */
+  readonly oauthClientSecretSealed?: SealedEnvelope;
   readonly registrarAuthority: string;
   readonly dmBehavior?: PersonaDmBehavior;
   readonly shardAllocation?: number;
   readonly grandfathered?: boolean;
+  /** UR-20261012-081 — optional presentation, settable at registration and afterwards. */
+  readonly presenceStatus?: PersonaPresenceStatus;
+  readonly note?: string;
+  readonly accent?: string;
 }
 
 export interface PersonaBinding {
@@ -66,14 +256,24 @@ export interface CharterStatus {
 }
 
 export class PersonaOccupiedError extends Error {
+  /**
+   * UR-20261012-077 — the ACTOR is named, not only the owner.
+   *
+   * The message used to read "occupied by another persona ... already bound to persona X" whatever
+   * the actor was. When the MAIN BOT was refused a module a persona owned, that phrasing led a
+   * careful reader to conclude a persona had been refused for holding its own module — the wrong
+   * diagnosis, reached from the message alone. A refusal has two parties; naming one is half a
+   * message.
+   */
   constructor(
     readonly guildId: string,
     readonly moduleSlug: string,
     readonly personaId: string,
+    readonly actorId: string = 'main',
   ) {
     super(
-      `Command key "${moduleSlug}" in guild "${guildId}" is occupied by another persona ` +
-        `(guildId, moduleSlug pair already bound to persona "${personaId}")`,
+      `Command key "${moduleSlug}" in guild "${guildId}" is owned by persona "${personaId}", ` +
+        `so "${actorId}" may not install or claim it`,
     );
     this.name = 'PersonaOccupiedError';
   }
@@ -111,6 +311,24 @@ export class FreeCharterEndedError extends Error {
         `not wired here; existing single-server-bound personas are grandfathered.`,
     );
     this.name = 'FreeCharterEndedError';
+  }
+}
+
+/**
+ * UR-20261012-037 — the registrar is not recorded against this application. Authentication on the
+ * registration API is the internal key; THIS is authorisation: who may register what.
+ */
+export class RegistrarNotAuthorisedError extends Error {
+  constructor(
+    readonly authority: string,
+    readonly discordApplicationId: string,
+  ) {
+    super(
+      `registrar "${authority}" is not authorised to register a persona for application ` +
+        `"${discordApplicationId}" — grant it first (POST /twill/registrars, or the ` +
+        `PERSONA_REGISTRAR_AUTHORITIES seed)`,
+    );
+    this.name = 'RegistrarNotAuthorisedError';
   }
 }
 
@@ -182,6 +400,15 @@ export function buildPersonaIdentity(input: PersonaRegistrationInput): PersonaId
     status: 'active',
     botTokenDigest: input.botTokenDigest,
     botTokenSealed: input.botTokenSealed,
+    ...(input.oauthClientSecretSealed !== undefined
+      ? { oauthClientSecretSealed: input.oauthClientSecretSealed }
+      : {}),
+    // UR-20261012-086 — the presentation, carried through. These were parsed at the surface, declared
+    // on the input, and then DROPPED here: the row was written with nulls, so the runtime had no
+    // presence to apply and the operator saw a bot sitting at the default "online".
+    ...(input.presenceStatus !== undefined ? { presenceStatus: input.presenceStatus } : {}),
+    ...(input.note !== undefined ? { note: input.note } : {}),
+    ...(input.accent !== undefined ? { accent: input.accent } : {}),
   };
 }
 
@@ -242,6 +469,14 @@ export function sealPersonaBotToken(botToken: string, rootKey: EnvelopeRootKey):
   return seal(Buffer.from(botToken, 'utf8'), rootKey);
 }
 
+/** UR-20261012-030 — seal a persona's OAuth2 client secret for at-rest storage. */
+export function sealPersonaOAuthClientSecret(
+  clientSecret: string,
+  rootKey: EnvelopeRootKey,
+): SealedEnvelope {
+  return seal(Buffer.from(clientSecret, 'utf8'), rootKey);
+}
+
 /** ADR-003 — read a persona's bot token back in process (Twill presents it to Discord). */
 export function openPersonaBotToken(persona: PersonaIdentity, rootKey: EnvelopeRootKey): string {
   return Buffer.from(open(persona.botTokenSealed, rootKey)).toString('utf8');
@@ -249,5 +484,12 @@ export function openPersonaBotToken(persona: PersonaIdentity, rootKey: EnvelopeR
 
 function nextPersonaId(): string {
   // Appendix C #23 — ids must not come from a process-local counter (they collide across replicas).
-  return `persona-${randomUUID()}`;
+  //
+  // UR-20261012-048 — a BARE uuid, not `persona-<uuid>`. `persona_identities.id` is declared
+  // `table.uuid('id')` and `guild_persona_bindings.personaId` is a `uuid` FK to it, so a prefixed
+  // string is rejected by Postgres before anything is created:
+  //   invalid input syntax for type uuid: "persona-…"
+  // Registration could therefore NEVER succeed. The prefix was decorative — nothing reads it — so the
+  // generator was the side that disagreed with the schema.
+  return randomUUID();
 }

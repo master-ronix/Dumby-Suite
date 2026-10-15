@@ -82,6 +82,34 @@ test('DiscordOAuth2Client surfaces exchange and fetch failures', async () => {
   ).rejects.toThrow(/no id/);
 });
 
+test('DiscordOAuth2Client refreshes a token and lists the user guilds', async () => {
+  const fetchImpl = vi
+    .fn()
+    .mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({ access_token: 'new', refresh_token: 'rot', expires_in: 604800 }),
+        { status: 200 },
+      ),
+    )
+    .mockResolvedValueOnce(
+      new Response(JSON.stringify([{ id: 'g1', permissions: '32' }]), { status: 200 }),
+    );
+  const client = new DiscordOAuth2Client({ config, logger, fetchImpl });
+  expect(await client.refreshToken('old')).toStrictEqual({
+    accessToken: 'new',
+    refreshToken: 'rot',
+    expiresIn: 604800,
+  });
+  expect(await client.fetchGuilds('new')).toStrictEqual([{ id: 'g1', permissions: '32' }]);
+});
+
+test('DiscordOAuth2Client surfaces a refresh refusal and a guilds failure', async () => {
+  const failing = vi.fn().mockResolvedValue(new Response('no', { status: 401 }));
+  const client = new DiscordOAuth2Client({ config, logger, fetchImpl: failing });
+  await expect(client.refreshToken('old')).rejects.toThrow(/status 401/);
+  await expect(client.fetchGuilds('t')).rejects.toThrow(/status 401/);
+});
+
 test('isConfigured is false for an empty client id', () => {
   const client = new DiscordOAuth2Client({
     config: { clientId: '', clientSecret: '', redirectUri: '' },

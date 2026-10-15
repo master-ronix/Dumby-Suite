@@ -9,6 +9,8 @@ export { defineModule, moduleTiers, moduleManifestSchema } from "./manifest.js";
 export { validateManifest } from "./validate.js";
 export type {
   CommandContext,
+  ExecutionIdentity,
+  ModuleStanding,
   CommandDeclaration,
   CommandHandler,
   CommandPageData,
@@ -22,3 +24,14 @@ export {
   EventCatalogError,
   type EventCatalogEntry,
 } from "./events.js";
+export type {
+  ModuleEntryPoint,
+  ModuleExecutionContext,
+  ModuleContextStore,
+} from "./context.js";
+export {
+  currentModuleContext,
+  installModuleContextStore,
+  requireModuleContext,
+  runWithModuleContext,
+} from "./context.js";

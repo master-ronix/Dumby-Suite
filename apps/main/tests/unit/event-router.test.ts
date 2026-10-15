@@ -75,4 +75,25 @@ describe('EventRouter', () => {
     const { router } = makeRouter();
     await expect(router.dispatch('guildCreate')).resolves.toBeUndefined();
   });
+
+  test('dispatch skips a handler whose module is disabled for the event guild (UR-20261011-011)', async () => {
+    const logger = { info: vi.fn(), error: vi.fn(), debug: vi.fn(), warn: vi.fn() };
+    const router = new EventRouter({
+      logger: logger as never,
+      cache: {} as never,
+      isModuleEnabled: async (moduleId) => moduleId !== 'hello',
+    });
+    const calls: string[] = [];
+    router.register(
+      handler('messageCreate', async () => calls.push('a')),
+      'health',
+    );
+    router.register(
+      handler('messageCreate', async () => calls.push('b')),
+      'hello',
+    );
+
+    await router.dispatch('messageCreate', { guildId: 'g1' });
+    expect(calls).toEqual(['a']);
+  });
 });

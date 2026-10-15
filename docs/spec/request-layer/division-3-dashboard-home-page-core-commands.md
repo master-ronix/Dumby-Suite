@@ -181,6 +181,32 @@ If any asset is missing, the default value for that asset is used. The manifest 
 
 ---
 
+### 3.11 Dashboard Page Update (UR-20261011-001) — the current arrangements
+
+> **Authority.** These arrangements are the operator's final authority (UR-20261011-001, 11/10/2026)
+> and supersede the earlier clauses of this Division where they conflict — notably §3.7's earlier
+> "module pages show no icon", which is reversed.
+
+- **Navigation grammar.** Every button label is title-cased — `Next page`, `Previous page`,
+  `First page`, `Info`, `Uninstall/disable`, `Search`.
+- **Navigation placement.** The navigation row renders **inside** the frame, at the bottom, **below
+  the footer's divider**.
+- **Home control.** The Home control carries a generated **bold white house icon** (a bundled asset,
+  uploaded as an application emoji), not a text glyph.
+- **Command lists.** On the **main page**, each core-tier module's command carries **that module's
+  own logo icon** beside it. On a **module-specific page**, the command carries the framework's
+  **default white icon**. The icon is the module's declared `ui.icon`; the framework default when
+  none is declared.
+- **Core vs standard.** The main page lists the commands of **all core-tier modules combined**; only
+  **standard-tier** modules carry their own page. A core-tier module never has its own page.
+- **Module-page identity.** A standard-tier module's page resolves **that module's** banner, icon,
+  accent and footer — falling back to the default banner, default icon and default accent when the
+  module declares none. (The `hello-world` page shows the default banner.)
+- **Module-page content.** A module page lists **only** that module's registered commands, under
+  their **current (BCCM-effective) name** and their **status** — nothing else.
+- **Assets.** The dashboard banner (amber) and the default banner (grayscale) are the framework
+  assets (`apps/main/assets/dashboard-banner.png`, `apps/main/assets/dumby-banner.png`).
+
 ## Contract
 - `contracts/rbac.enums.json`
 - `contracts/commands.json`

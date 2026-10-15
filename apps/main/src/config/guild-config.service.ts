@@ -19,6 +19,25 @@ const CONFIG_CACHE_TTL = 120_000;
  * (never raw Knex), and every value is validated against `guildConfigSchema`.
  */
 export class GuildConfigService {
+  /**
+   * UR-20261012-072 — told when a MODULE's per-guild config is written, so the module's
+   * `onConfigChange` hook can run (§11.7: "react to a per-guild config change without a reload").
+   * Injected by bootstrap, because a config service must not know the module registry.
+   */
+  private onModuleConfigChanged:
+    | ((moduleSlug: string, guildId: string, config: Readonly<Record<string, unknown>>) => void)
+    | undefined;
+
+  setModuleConfigChangeNotifier(
+    notify: (
+      moduleSlug: string,
+      guildId: string,
+      config: Readonly<Record<string, unknown>>,
+    ) => void,
+  ): void {
+    this.onModuleConfigChanged = notify;
+  }
+
   constructor(
     private readonly store: GuildConfigStore,
     private readonly cache: CacheManager,
@@ -55,5 +74,7 @@ export class GuildConfigService {
     moduleConfig: Record<string, unknown>,
   ): Promise<void> {
     await this.set(guildId, { [moduleSlug]: moduleConfig });
+    // §11.7 — the module is told, so it can refresh cached values rather than recompute on every read.
+    this.onModuleConfigChanged?.(moduleSlug, guildId, moduleConfig);
   }
 }

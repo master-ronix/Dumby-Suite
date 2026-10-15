@@ -1,6 +1,7 @@
 import type { Knex } from 'knex';
 import type { CommandRegistry } from './command-registry.js';
 import { CommandNotFoundError } from './command-router.js';
+import { InvalidCommandNameError, isValidCommandName } from './bccm-batch-push.js';
 import type { Logger } from '../logging/logger.js';
 
 export interface BccmEffectDeps {
@@ -46,10 +47,18 @@ export function createBccmEffectHandlers(deps: BccmEffectDeps): Record<string, E
       }
 
       const entry: Record<string, unknown> = { action, submittedBy: interaction.user.id };
+      // UR-20261012-032 — a rename/alias target becomes a Discord command name at push time, and the
+      // BCCM drops an invalid one silently. Reject it here, where the user can be told.
       const alias = str(payload['alias']);
-      if (alias !== undefined) entry['alias'] = alias;
+      if (alias !== undefined) {
+        if (!isValidCommandName(alias)) throw new InvalidCommandNameError(alias);
+        entry['alias'] = alias;
+      }
       const newName = str(payload['newName']);
-      if (newName !== undefined) entry['newName'] = newName;
+      if (newName !== undefined) {
+        if (!isValidCommandName(newName)) throw new InvalidCommandNameError(newName);
+        entry['newName'] = newName;
+      }
       if (typeof payload['disable'] === 'boolean') entry['disable'] = payload['disable'];
 
       await knex('guild_command_queue').insert({

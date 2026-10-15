@@ -9,6 +9,12 @@ export const RESERVATION_TTL_MS = 24 * 60 * 60 * 1000;
 /** A command as Discord knows it. Only `name` matters for the "is this new?" diff. */
 export interface RegisteredCommand {
   readonly name: string;
+  /**
+   * UR-20261012-044 — for a RENAME target, the command key it renamed. A rename changes what a
+   * command is called, never how it is invoked (§17.8), so the target is not a registry key; carrying
+   * the source lets the payload builder inherit that command's real definition.
+   */
+  readonly source?: string;
 }
 
 /**
@@ -54,6 +60,83 @@ export interface BccmBatchPushDeps {
   now?: () => number;
 }
 
+/** UR-20261011-023 — the minimal registry shape the payload builder needs. */
+export interface CommandDefinitionLike {
+  data: object;
+}
+export interface CommandLookup {
+  get(name: string): CommandDefinitionLike | undefined;
+}
+
+/**
+ * UR-20261011-023 — Discord's command-name rule: 1–32 characters from
+ * `[-_\p{L}\p{N}\p{sc=Deva}\p{sc=Thai}]`, lowercase only. Because the BCCM sends a BULK
+ * overwrite, one invalid name rejects the WHOLE batch and nothing changes — so an invalid name must
+ * never be sent.
+ */
+/**
+ * UR-20261012-032 — thrown when a submitted rename/alias name is not a legal Discord command name.
+ * Rejecting it at the point of entry is what stops a rename being accepted and then silently dropped
+ * at push time (UR-20261012-027 §6).
+ */
+export class InvalidCommandNameError extends Error {
+  constructor(readonly attempted: string) {
+    super(
+      `"${attempted}" is not a valid command name — Discord allows 1-32 lowercase characters from ` +
+        `letters, digits, hyphen and underscore`,
+    );
+    this.name = 'InvalidCommandNameError';
+  }
+}
+
+export function isValidCommandName(name: string): boolean {
+  return /^[-_\p{L}\p{N}\p{sc=Deva}\p{sc=Thai}]{1,32}$/u.test(name) && name === name.toLowerCase();
+}
+
+/**
+ * UR-20261011-023 — Discord's bulk overwrite needs a FULL command object (a `name` AND a
+ * `description`); sending `{ name }` alone is rejected with a 400, which is what made the first
+ * real BCCM push fail. Resolve each desired name to its registered definition, keeping the
+ * requested name (a rename target is not a registry key, so it falls back to a minimal valid
+ * object and is reported).
+ */
+export function resolveCommandPayloads(
+  names: readonly string[],
+  registry: CommandLookup,
+  onProblem?: (name: string, reason: 'invalid-name' | 'unresolved') => void,
+  /**
+   * UR-20261012-044 — rename target → the command key it renamed. Optional: without it a rename
+   * target still resolves to a minimal valid object (A2.4's recorded behaviour).
+   */
+  sources?: ReadonlyMap<string, string>,
+): object[] {
+  const payloads: object[] = [];
+  for (const name of names) {
+    if (!isValidCommandName(name)) {
+      // Dropped, not sent: one invalid name fails the entire bulk overwrite.
+      onProblem?.(name, 'invalid-name');
+      continue;
+    }
+    const definition = registry.get(name);
+    if (definition !== undefined) {
+      payloads.push({ ...definition.data, name });
+      continue;
+    }
+    // UR-20261012-044 (A2.4) — a rename target is not a registry key, but its SOURCE is. Inherit that
+    // command's definition so a renamed command carries its real description and options instead of a
+    // description that merely repeats its own name.
+    const source = sources?.get(name);
+    const inherited = source === undefined ? undefined : registry.get(source);
+    if (inherited !== undefined) {
+      payloads.push({ ...inherited.data, name });
+      continue;
+    }
+    onProblem?.(name, 'unresolved');
+    payloads.push({ name, description: name });
+  }
+  return payloads;
+}
+
 /**
  * The desired command set for a guild: the registered set with the batch's renames, aliases and
  * disables applied. A rename changes what a command is called, never how it is invoked (§17.8).
@@ -79,6 +162,20 @@ export function applyBatch(
 }
 
 /** New names = desired − registered, diffed against Discord (the authority for "new"). */
+/**
+ * UR-20261012-044 — rename target -> the command key it renamed. The desired-name set loses that
+ * provenance (`applyBatch` returns names only), so it is derived from the same entries.
+ */
+export function renameSources(entries: readonly BccmQueueEntry[]): Map<string, string> {
+  const sources = new Map<string, string>();
+  for (const entry of entries) {
+    if (entry.action === 'rename' && entry.newName !== undefined) {
+      sources.set(entry.newName, entry.commandKey);
+    }
+  }
+  return sources;
+}
+
 export function newNames(
   registered: readonly RegisteredCommand[],
   desired: readonly string[],
@@ -153,9 +250,15 @@ export async function runBccmBatchPush(deps: BccmBatchPushDeps): Promise<BccmBat
     // undercount the daily budget.
     await store.reserve(guildId, fresh, nowMs);
     try {
+      // UR-20261012-044 — a rename target travels with its source key so the payload can inherit the
+      // renamed command's real definition.
+      const sources = renameSources(entries);
       await discord.putCommands(
         guildId,
-        desired.map((name) => ({ name })),
+        desired.map((name) => {
+          const source = sources.get(name);
+          return source === undefined ? { name } : { name, source };
+        }),
       );
     } catch (err) {
       if (isDailyCreateLimitError(err)) {
@@ -165,7 +268,14 @@ export async function runBccmBatchPush(deps: BccmBatchPushDeps): Promise<BccmBat
         continue;
       }
       await store.dropReservations(guildId, fresh);
-      logger.error('bccm-batch-put-failed', { guildId, error: String(err) });
+      // The log viewer drops a record's structured fields, so the message string carries the error
+      // text — which for a Discord API error includes the HTTP status and code — directly (the
+      // `command-execution-error` pattern), with the status also named when the error carries one.
+      const status = (err as { status?: number }).status;
+      logger.error(
+        `bccm-batch-put-failed guild=${guildId}${status === undefined ? '' : ` status=${status}`}: ${String(err)}`,
+        { guildId, error: String(err) },
+      );
       guilds.push({ ...base, sent: false, skippedReason: 'put-failed' });
       continue;
     }

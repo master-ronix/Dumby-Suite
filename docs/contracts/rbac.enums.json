@@ -1,5 +1,6 @@
 {
   "$id": "contracts/rbac.enums.json",
+  "title": "RBAC enums \u2014 layers, ranks, grant types",
   "layers": [
     "owner_override",
     "blacklist",

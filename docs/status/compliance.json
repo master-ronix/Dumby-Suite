@@ -46,20 +46,20 @@
     },
     {
       "path": "contracts/openapi.yaml",
-      "id": null,
-      "title": null,
+      "id": "contracts/openapi.yaml",
+      "title": "Dumby API",
       "present": true
     },
     {
       "path": "contracts/rbac.enums.json",
       "id": "contracts/rbac.enums.json",
-      "title": null,
+      "title": "RBAC enums — layers, ranks, grant types",
       "present": true
     },
     {
       "path": "contracts/ui-renderer.schema.json",
       "id": "contracts/ui-renderer.schema.json",
-      "title": null,
+      "title": "UI renderer schema — Components v2",
       "present": true
     }
   ],
@@ -152,6 +152,7 @@
     },
     {
       "id": "CAP-017",
+      "title": "Ecosystem Flow Suite (bootstrap→shutdown coordination spine)",
       "status": "specified"
     }
   ],

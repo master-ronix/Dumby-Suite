@@ -6,8 +6,12 @@ import {
   createBannerMediaGallery,
   createTitleBlock,
   DEFAULT_ACCENT_COLOR,
+  linkButton,
+  section,
   separator,
+  stringSelect,
   textDisplay,
+  type ButtonComponent,
   type Component,
   type ComponentsV2Message,
 } from '../shared/utils/components-v2.js';
@@ -18,6 +22,9 @@ export const FOLLOWUP_ALARM_MS = 13 * 60 * 1000;
 export type RenderMode = 'D' | 'M' | 'C';
 
 export type NoticeReasonCode =
+  | 'STATE_UNAVAILABLE'
+  | 'MODULE_DISABLED'
+  | 'OUT_OF_BOUND_GUILD'
   | 'UNKNOWN_COMMAND'
   | 'MAINTENANCE'
   | 'NOT_FOUND'
@@ -27,7 +34,9 @@ export type NoticeReasonCode =
   | 'RATE_LIMITED'
   | 'GUILD_UNAVAILABLE'
   | 'MODULE_ERROR'
-  | 'OVERDUE';
+  | 'OVERDUE'
+  /** UR-20261012-032 — a submitted value is not acceptable (e.g. a rename name Discord rejects). */
+  | 'INVALID_INPUT';
 
 export interface RenderIdentity {
   surface: string;
@@ -51,14 +60,8 @@ export interface NavigationOption {
   readonly label: string;
   readonly value: string;
   readonly description?: string;
-  readonly emoji?: string;
+  readonly emoji?: string | { name: string; id?: string };
   readonly default?: boolean;
-}
-
-/** §11.3 — the navigation dropdown: one minted customId plus the page options. */
-export interface NavigationControl {
-  readonly customId: string;
-  readonly options: readonly NavigationOption[];
 }
 
 /** §1.2/§3.3 — the footer's D/M/C density control, one minted customId per mode. */
@@ -68,15 +71,57 @@ export interface ModeControl {
 
 /** item 11/15/17 — a page-declared action button (info, uninstall, paging, search). */
 export interface PageActionButton {
-  readonly customId: string;
+  /** Omitted for a LINK button (style 5), which carries `url` instead of an id. */
+  readonly customId?: string;
   readonly label: string;
-  readonly style?: 1 | 2 | 3 | 4;
+  readonly style?: 1 | 2 | 3 | 4 | 5;
   /** A no-op control (e.g. Previous on page 0) is disabled rather than given a colliding id. */
   readonly disabled?: boolean;
+  /** item 2 — an optional custom-emoji icon (the Home control's bold house). */
+  readonly emoji?: { name: string; id?: string };
+  /**
+   * UR-20261012-031 — a LINK button's destination. Present means Discord renders style 5 and sends
+   * no interaction, so `customId` is ignored.
+   */
+  readonly url?: string;
+}
+
+/** One page action control as a Discord button: a link when it carries a url, else an interaction. */
+function blockButton(action: PageActionButton): ButtonComponent {
+  if (action.url !== undefined) return linkButton(action.url, action.label, action.emoji);
+  return button(
+    action.customId ?? '',
+    action.label,
+    (action.style ?? 2) as 1 | 2 | 3 | 4,
+    action.disabled ?? false,
+    action.emoji,
+  );
 }
 
 /** item 17 — one action row; Discord shows up to five buttons per row. */
 export type PageActionRow = readonly PageActionButton[];
+
+/**
+ * item 8 — a richer content block. A `section` renders its text with the accessory button IN-LINE
+ * after it; a `select` renders a String Select row (the install dropdown); a `text` is plain text.
+ */
+export type RenderBlock =
+  | { readonly kind: 'text'; readonly content: string }
+  | { readonly kind: 'section'; readonly content: string; readonly accessory: PageActionButton }
+  | { readonly kind: 'row'; readonly buttons: readonly PageActionButton[] }
+  | {
+      readonly kind: 'select';
+      readonly customId: string;
+      readonly placeholder: string;
+      readonly options: readonly NavigationOption[];
+      readonly disabled?: boolean;
+      /**
+       * UR-20261012-054 — render this block BELOW the footer instead of above it. The operator asked
+       * for the profile switcher to sit under the footer: a selector is a control for the whole page,
+       * and the footer closes the content above it.
+       */
+      readonly placement?: 'trailing';
+    };
 
 export interface RenderDescriptor extends RenderIdentity {
   mode?: RenderMode;
@@ -88,12 +133,12 @@ export interface RenderDescriptor extends RenderIdentity {
    * exists the slot is omitted rather than pointed at a URL that would 404.
    */
   banner?: string;
-  /** §11.3 — present in Modes D and M; omitted in Mode C. */
-  navigation?: NavigationControl;
   /** §1.2 — the footer density control. */
   modeControl?: ModeControl;
   /** item 11/15/17 — page-declared action buttons rendered below the footer. */
   actions?: readonly PageActionRow[];
+  /** item 8 — richer content blocks (inline sections, selects) that replace the plain sections. */
+  blocks?: readonly RenderBlock[];
 }
 
 /**
@@ -228,6 +273,19 @@ export class CoreRenderer {
     await interaction.editReply(this.renderNotice(descriptor));
   }
 
+  /**
+   * UR-20261012-058 — ANSWER with a notice where nothing has been sent yet. `editNotice` edits a reply
+   * that already exists; a refusal raised before the buffer is drawn (a DM, say) has none, so editing
+   * would itself fail and the member would see Discord's "The application did not respond" instead of
+   * the reason.
+   */
+  async replyNotice(
+    interaction: RendererInteraction,
+    descriptor: FormalNoticeDescriptor,
+  ): Promise<void> {
+    await interaction.reply(this.renderNotice(descriptor));
+  }
+
   renderBuffer(identity: RenderIdentity): ComponentsV2Message {
     return this.frame([
       createTitleBlock(identity.surface, identity.developer ?? DEFAULT_DEVELOPER),
@@ -250,12 +308,20 @@ export class CoreRenderer {
   render(input: RenderDescriptor): ComponentsV2Message {
     const mode = input.mode ?? 'D';
     const sections = input.sections ?? (input.summary ? [input.summary] : []);
-    if (sections.length === 0) {
+    // item 8 — a page may carry content as blocks (sections/select) instead of plain sections.
+    const hasBlocks = input.blocks !== undefined && input.blocks.length > 0;
+    if (sections.length === 0 && !hasBlocks) {
       throw new InvalidRenderDescriptorError();
     }
 
     const developer = input.developer ?? DEFAULT_DEVELOPER;
     const components: Component[] = [];
+
+    // UR-20261012-054 — blocks that declare themselves `trailing` render BELOW the footer, so the
+    // split is made once, here, rather than at each render site.
+    const trailingBlocks = (input.blocks ?? []).filter(
+      (b) => b.kind === 'select' && b.placement === 'trailing',
+    );
 
     // §1.2 / §1.3 / §1.4 - the banner slot opens the frame, and is present in Mode D only.
     // item 6 - a module's own banner wins; then the default. The dashboard carries its own.
@@ -268,8 +334,10 @@ export class CoreRenderer {
     }
 
     // items 6/7/8 - the identity band: a bold "Dumby Suite | <page>" title, then the developer.
-    // item 2 - the attribution is the developer's registered username, not a static name.
-    const attribution = input.devUsername !== undefined ? `@${input.devUsername}` : developer;
+    // UR-20261011-013 R11 - the band shows the developer's display NAME, not a handle: the spec
+    // band is "Developed by Quixotic Mnemonics", with no '@'. The registered value is the display
+    // name, so it is rendered verbatim.
+    const attribution = input.devUsername ?? developer;
     components.push(createTitleBlock(input.surface, attribution));
     components.push(separator());
 
@@ -278,6 +346,37 @@ export class CoreRenderer {
       components.push(textDisplay(this.oneLineRender(input.surface, sections[0] ?? input.surface)));
     } else if (mode === 'M') {
       components.push(textDisplay(this.condensedRender(sections)));
+    } else if (hasBlocks) {
+      // item 8 — richer blocks: a Section (text with an inline accessory), a text block, or a Select.
+      (input.blocks ?? [])
+        .filter((b) => !(b.kind === 'select' && b.placement === 'trailing'))
+        .forEach((block) => {
+          // item 3 — no extra dividers between blocks; the page's own bands already separate them.
+          if (block.kind === 'text') {
+            components.push(textDisplay(block.content));
+          } else if (block.kind === 'section') {
+            const a = block.accessory;
+            components.push(section(block.content, blockButton(a)));
+          } else if (block.kind === 'row') {
+            components.push(actionRow(block.buttons.map((b) => blockButton(b))));
+          } else {
+            components.push(
+              actionRow([
+                stringSelect(
+                  block.customId,
+                  block.options.map((o) => ({
+                    label: o.label,
+                    value: o.value,
+                    ...(o.description !== undefined ? { description: o.description } : {}),
+                    ...(o.emoji !== undefined ? { emoji: o.emoji } : {}),
+                  })),
+                  block.placeholder,
+                  block.disabled,
+                ),
+              ]),
+            );
+          }
+        });
     } else {
       sections.forEach((section, index) => {
         if (index > 0) components.push(separator());
@@ -292,22 +391,47 @@ export class CoreRenderer {
       components.push(textDisplay(footer));
     }
 
-    // items 10/11/15/17 - page-declared action controls. Interactive components are NOT valid
-    // inside a Components v2 container; they are emitted as top-level action rows beside it.
-    const topLevel: Component[] = [];
-    const actions = input.actions;
-    if (actions !== undefined) {
-      for (const row of actions) {
-        if (row.length === 0) continue;
-        topLevel.push(
-          actionRow(row.map((b) => button(b.customId, b.label, b.style ?? 2, b.disabled ?? false))),
+    // UR-20261012-054 — TRAILING blocks: a control the page wants BELOW the footer. The profile
+    // switcher is one: it acts on the whole page, and the footer closes the content above it.
+    if (trailingBlocks.length > 0) {
+      components.push(separator());
+      for (const block of trailingBlocks) {
+        if (block.kind !== 'select') continue;
+        components.push(
+          actionRow([
+            stringSelect(
+              block.customId,
+              block.options.map((o) => ({
+                label: o.label,
+                value: o.value,
+                ...(o.description !== undefined ? { description: o.description } : {}),
+                ...(o.emoji !== undefined ? { emoji: o.emoji } : {}),
+              })),
+              block.placeholder,
+              block.disabled,
+            ),
+          ]),
         );
       }
     }
-    // item 1 - a divider separates the footer (build id · dev username) from the action controls.
-    if (topLevel.length > 0) components.push(separator());
 
-    return this.frame(components, input.accent, topLevel);
+    // items 3/10/11/15/17 - page-declared action controls render INSIDE the container, at the
+    // bottom, below the footer's divider (item 3). An ActionRow is a valid child of a Components v2
+    // container, so the navigation controls sit within the frame rather than beside it.
+    const actions = input.actions;
+    if (actions !== undefined) {
+      const rows: Component[] = [];
+      for (const row of actions) {
+        if (row.length === 0) continue;
+        rows.push(actionRow(row.map((b) => blockButton(b))));
+      }
+      if (rows.length > 0) {
+        components.push(separator());
+        components.push(...rows);
+      }
+    }
+
+    return this.frame(components, input.accent);
   }
 
   renderNotice(input: FormalNoticeDescriptor): ComponentsV2Message {
@@ -362,8 +486,22 @@ export class CoreRenderer {
     if (err instanceof InvalidRenderDescriptorError) return 'MODULE_ERROR';
     const name = err instanceof Error ? err.name : '';
     if (name === 'CommandNotFoundError') return 'UNKNOWN_COMMAND';
-    if (name === 'CommandScopeDeniedError') return 'FORBIDDEN';
+    if (name === 'CommandScopeDeniedError') {
+      // UR-20261012-074 — a scope refusal has THREE causes now, and they are NOT the same to a member:
+      // "your permissions do not allow this", "we could not read the state", and "the module is
+      // switched off here". Reporting the third as the first told a member they lacked permission when
+      // the truth was that an admin had turned the module off — the exact confusion reported from a
+      // live server. The error carries which, so the notice says which.
+      const cause = (err as { scopeCause?: string }).scopeCause;
+      if (cause === 'state-unreadable') return 'STATE_UNAVAILABLE';
+      if (cause === 'module-disabled') return 'MODULE_DISABLED';
+      return 'FORBIDDEN';
+    }
     if (name === 'PersonaOccupiedError') return 'FORBIDDEN';
+    // UR-20261012-060 — a persona is bound to ONE guild; anywhere else it refuses everything.
+    if (name === 'PersonaBoundGuildError') return 'OUT_OF_BOUND_GUILD';
+    // UR-20261012-032 — a rejected submission is an input fault, not a permission or module fault.
+    if (name === 'InvalidCommandNameError') return 'INVALID_INPUT';
     // blueprint.md §22.2 / Table 22-A — a Power Engine `suspendGuild` blocks dispatch in that guild,
     // so the user sees the GUILD_UNAVAILABLE formal notice rather than a partial render.
     if (name === 'GuildSuspendedError') return 'GUILD_UNAVAILABLE';
@@ -421,6 +559,12 @@ export class CoreRenderer {
 
   private defaultNoticeHeading(reason: NoticeReasonCode): string {
     switch (reason) {
+      case 'STATE_UNAVAILABLE':
+        return 'Could not check this server';
+      case 'MODULE_DISABLED':
+        return 'This module is switched off';
+      case 'OUT_OF_BOUND_GUILD':
+        return 'This is not my server';
       case 'UNKNOWN_COMMAND':
         return 'Unknown command';
       case 'MAINTENANCE':
@@ -439,11 +583,19 @@ export class CoreRenderer {
         return 'Interaction overdue';
       case 'MODULE_ERROR':
         return 'Module error';
+      case 'INVALID_INPUT':
+        return 'Invalid input';
     }
   }
 
   private defaultNoticeExplanation(reason: NoticeReasonCode): string {
     switch (reason) {
+      case 'STATE_UNAVAILABLE':
+        return 'This server\u2019s module state could not be read, so the command was refused rather than allowed on a guess. This is a fault on our side, not a permission decision \u2014 try again shortly.';
+      case 'MODULE_DISABLED':
+        return 'The module that provides this command is switched off in this server, so this is not a permissions problem. A server admin can turn it back on from /browse.';
+      case 'OUT_OF_BOUND_GUILD':
+        return 'This persona is bound to one server and refuses every command and action everywhere else. Invite the main bot, or use the persona in its own server.';
       case 'UNKNOWN_COMMAND':
         return 'That command is not registered or is not available here.';
       case 'MAINTENANCE':
@@ -464,6 +616,8 @@ export class CoreRenderer {
         return 'The interaction expired before a final render was available.';
       case 'MODULE_ERROR':
         return 'The module failed while handling the interaction.';
+      case 'INVALID_INPUT':
+        return 'That value cannot be used here. Check it and try again.';
     }
   }
 }

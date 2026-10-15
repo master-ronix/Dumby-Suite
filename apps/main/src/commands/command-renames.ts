@@ -34,3 +34,38 @@ export async function resolveEffectiveCommandNames(
 export function effectiveCommandName(names: EffectiveCommandNames, commandKey: string): string {
   return names.get(commandKey) ?? commandKey;
 }
+
+/** A guild's effective command status, keyed by the registered command key. */
+export type CommandStatuses = ReadonlyMap<string, 'enabled' | 'disabled'>;
+
+/**
+ * BCCM — the resolution layer for command status. Reads a guild's `enabled`/`disabled` overrides so
+ * a surface can mark a command as disabled rather than presenting it as always available. Later
+ * writes win, so the rows are read oldest-first and the last one for a key stands. Empty when the
+ * caller has no guild or the guild has no overrides.
+ */
+export async function resolveCommandStatuses(
+  knex: Knex,
+  guildId: string | null,
+): Promise<CommandStatuses> {
+  if (guildId === null) return new Map();
+  const rows = (await knex('guild_command_overrides')
+    .where({ guildId })
+    .whereIn('overrideType', ['enabled', 'disabled'])
+    .whereNull('deletedAt')
+    .orderBy('updatedAt', 'asc')
+    .select('commandKey', 'overrideType')) as Array<{
+    commandKey?: unknown;
+    overrideType?: unknown;
+  }>;
+  const statuses = new Map<string, 'enabled' | 'disabled'>();
+  for (const row of rows) {
+    if (
+      typeof row.commandKey === 'string' &&
+      (row.overrideType === 'enabled' || row.overrideType === 'disabled')
+    ) {
+      statuses.set(row.commandKey, row.overrideType);
+    }
+  }
+  return statuses;
+}

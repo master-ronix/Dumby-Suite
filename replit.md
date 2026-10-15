@@ -1,6 +1,8 @@
 # Dumby — Unified Modular Bot System
 
-A TypeScript Discord bot framework: one bootstrap sequence, one DI container, one permission engine, one configuration system, into which independently-authored modules load as the sole source of every behavior the bot exhibits.
+A TypeScript (ESM, Node ≥ 22) modular Discord bot framework: one bootstrap sequence, one DI
+container, one permission engine, one configuration system, into which independently-authored
+**modules** load as the sole source of every behavior the bot exhibits.
 
 ## Run & Operate
 
@@ -34,7 +36,7 @@ pnpm --filter @workspace/dumby run swastik:deploy
 
 - **Runtime:** Node.js ≥ 22, TypeScript strict + NodeNext modules, ESM only
 - **Discord:** discord.js v14, no wrapper abstraction
-- **DB:** PostgreSQL via Knex.js (no ORM), 30 core migrations
+- **DB:** PostgreSQL via Knex.js (no ORM), 45 core migrations
 - **Cache:** L1 (in-process LRU) + L2 (Redis via ioredis)
 - **Queue:** BullMQ (Redis-backed)
 - **HTTP:** Fastify (health, metrics, admin REST, Power Engine)
@@ -42,74 +44,80 @@ pnpm --filter @workspace/dumby run swastik:deploy
 - **Metrics:** prom-client
 - **Tracing:** OpenTelemetry SDK
 - **Validation:** Zod at every trust boundary
-- **Tests:** Vitest (33 test files, 446 tests passing)
+- **Tests:** Vitest (85 test files, 865 tests)
 
 ## Where Things Live
 
 ```
 workspace/
-├── apps/main/              ← Dumby bot framework (THE BUILD)
+├── apps/main/                 ← Dumby bot framework (THE BUILD)
 │   ├── src/
-│   │   ├── bootstrap/      ← 18-stage startup sequence
-│   │   ├── di/             ← Container + Symbol tokens + 3 lifetimes
-│   │   ├── commands/       ← CommandRegistry, CommandRouter, CommandDeployer
-│   │   ├── events/         ← InternalEventBus + cycle detection
-│   │   ├── middleware/      ← 12 built-in pipeline stages
-│   │   ├── permissions/    ← 7-layer resolver + RBAC + blacklist
-│   │   ├── config/         ← Zod env schema + ConfigService
-│   │   ├── db/             ← Knex client + 30 migrations + BaseRepository
-│   │   ├── cache/          ← L1Cache + CacheManager + StampedeGuard + key-namespace
-│   │   ├── http/           ← Fastify servers + PowerEngineDispatcher
-│   │   ├── queue/          ← QueueManager + autoscaler
-│   │   ├── modules/        ← manifest schema + registry + loader + 22 modules
-│   │   │   ├── health/     ← Core: /health command (Components V2)
-│   │   │   ├── hello/      ← Core: /hello command (Components V2)
-│   │   │   └── _template/  ← Module scaffolding template
-│   │   ├── entry/          ← main, worker, power-engine, clai, swastik, credentials
-│   │   └── ...             ← errors, resilience, ratelimit, shutdown, discord, i18n, ...
-│   ├── tests/unit/         ← 33 test files, 446 tests
-│   ├── deploy/             ← k8s (base + overlays) + Terraform modules
-│   ├── docs/adr/           ← 5 ADRs covering all resolved conflicts + open items
-│   └── .env.example        ← All required env vars documented
-├── docs/                   ← Architecture source documents (blueprint, directive, etc.)
-├── assets/                 ← Reserved placeholder
-├── design/                 ← Reserved placeholder
-├── specs/                  ← Reserved placeholder
-├── tools/release_manager/  ← Reserved placeholder
-└── website/                ← Reserved placeholder (MDIS frontend; out of scope)
+│   │   ├── bootstrap/         ← 18-stage startup sequence
+│   │   ├── di/                ← Container + Symbol tokens + 3 lifetimes
+│   │   ├── commands/          ← CommandRegistry, CommandRouter, CommandDeployer, BCCM
+│   │   ├── events/            ← InternalEventBus + cycle detection
+│   │   ├── middleware/        ← 12 built-in pipeline stages
+│   │   ├── permissions/       ← 7-layer resolver + RBAC + blacklist
+│   │   ├── config/            ← Zod env schema + ConfigService
+│   │   ├── db/                ← Knex client + 45 migrations + BaseRepository
+│   │   ├── cache/             ← L1Cache + CacheManager + StampedeGuard + key-namespace
+│   │   ├── rendering/         ← the core Renderer + page-data + module-icons
+│   │   ├── http/              ← Fastify servers + PowerEngineDispatcher
+│   │   ├── queue/             ← QueueManager + autoscaler
+│   │   ├── module-system/     ← manifest schema + registry + loader + developer-registry
+│   │   ├── interactions/      ← InteractionRegistry (custom_id minting + dispatch)
+│   │   ├── entry/             ← main, worker, power-engine, clai, swastik, credentials
+│   │   └── ...                ← errors, resilience, ratelimit, shutdown, discord, i18n, ...
+│   ├── tests/                 ← unit / flow / integration / modules / ci suites
+│   └── .env.example           ← all required env vars documented
+├── packages/
+│   ├── swastik/               ← the module-authoring SDK (defineCommand + manifest schema)
+│   └── modules/               ← the eight first-party modules
+│       ├── dashboard/  health/  browse/  queue/
+│       └── persona/    permit/  modules/ hello-world/
+├── docs/                      ← the documentation corpus (blueprint / documentation / spec /
+│                                  contracts / status / adr / upgradation / orchestration …)
+├── assets/  design/  specs/  tools/  website/   ← reserved placeholders
 ```
 
 ## Architecture Decisions
 
-- **No `src/core/` wrapper:** All core subsystems (`bootstrap/`, `di/`, `commands/`, etc.) are direct siblings under `src/` — reconciled from `directive.md` §16.2 against the actual directory layout.
-- **CLAI is SSH-public-key-only:** Never password, never TOTP, never public internet — Conflict 1 from `master-prompt.md` §0.4, resolved in favor of `blueprint.md`/`directive.md`.
-- **`deploy/` not `infra/`:** Directory naming follows `directory.md` (ground truth), not `blueprint.md`/`documentation.md`.
-- **Permission engine fail-open/fail-closed asymmetry is intentional:** Layers 2, 3, 5, 6 fail closed; layers 4, 7 fail open. Do not "normalize" this.
-- **Stampede guard + PER both active:** Both mechanisms run together on hot keys — distributed lock for true misses, probabilistic early refresh to amortize most misses before they happen.
+- **No `src/core/` wrapper:** all core subsystems (`bootstrap/`, `di/`, `commands/`, …) are direct
+  siblings under `apps/main/src/`.
+- **One canonical command path:** a single `CommandRouter` (`src/commands/command-router.ts`),
+  wired in `bootstrap.ts`; no retired command trees.
+- **The Renderer is the only presentation path:** Components v2; the classic
+  `EmbedBuilder`/`MessageEmbed` ban is absolute.
+- **Modules never live in this repository:** they reach runtime only through Swastik (upload →
+  validate → stage → atomic promote → reload) on per-tier volumes.
+- **Permission engine fail-open/fail-closed asymmetry is intentional:** layers 2, 3, 5, 6 fail
+  closed; layers 4, 7 fail open. Do not "normalize" this.
+- **Accent identity:** amber `#FFCA6D` is the framework default, with per-module accents
+  (ADR-012, superseding ADR-010's blurple).
 
 ## Three-Tier Build Scope
 
 | Tier | Status |
 |---|---|
-| Tier 1 (full) | Bootstrap · Shutdown · DI · Config · DB+migrations · Cache (L1+L2+StampedeGuard) · Commands · Events · Middleware (12 stages) · Permissions (7 layers) · RBAC · Module system · Errors · Observability · `/health` + `/hello` · Health endpoints · HTTP server |
-| Tier 2 (functional) | Job queue (BullMQ) · Rate limiting · Webhook infra · Power Engine (all 17 domains) · Credentials Service |
+| Tier 1 (full) | Bootstrap · Shutdown · DI · Config · DB + migrations · Cache (L1+L2+StampedeGuard) · Commands · Events · Middleware (12 stages) · Permissions (7 layers) · RBAC · Module system · Renderer · Errors · Observability · `/health` + `/hello` · Health endpoints · HTTP server |
+| Tier 2 (functional) | Job queue (BullMQ) · Rate limiting · Webhook infra · Power Engine · Credentials Service |
 | Tier 3 (scaffolded) | CLAI (SSH REPL) · Swastik (filesystem staging) · Persona/Twill data model · MDIS backend contract |
-
-## User Preferences
-
-_Populate as you build._
 
 ## Gotchas
 
 - `pnpm test` / `pnpm typecheck` must be run from `apps/main/` or with `--filter @workspace/dumby`.
-- The bot runs headless by default (no live Discord token required) — `DISCORD_ADAPTER=mock` in `.env.example`.
+- The bot runs headless by default (no live Discord token required) — `DISCORD_ADAPTER=mock`.
 - `audit_logs` is insert-only forever — no UPDATE or DELETE against that table, ever.
 - Every migration needs a working `down()` or CI will fail.
-- Coverage floors are **per-layer** (Core 85/80, services 80/75, commands 75/70, repos 70/65, infra 70/65) — never blended.
+- Coverage floors are **per-layer** (Core 85/80, services 80/75, commands 75/70, repos 70/65,
+  infra 70/65) — never blended.
+- The documentation gates do **not** run `tsc`; the app typecheck is a separate gate.
 
 ## Pointers
 
-- Source architecture documents: `docs/` (blueprint.md, directive.md, interface.md, etc.)
-- Build execution brief: `docs/master-prompt.md`
-- ADRs: `apps/main/docs/adr/` (5 decisions covering the 3 cross-doc conflicts + 3-tier scope + 2 open items)
+- Documentation corpus: `docs/` (entry point `docs/README.md`; manifest `docs/manifest.json`).
+- Build engine: `docs/prompts/meta-prompt.md` → `docs/prompts/entry.md` →
+  `docs/orchestration/master-prompt.md` | `docs/migration/migration-prompt.md`.
+- Decision records: `docs/adr/` (15 ADRs).
+- Reconciliation ledgers: `docs/status/code-reconciliation.json`, `migration-ledger.md`.
 - See the `pnpm-workspace` skill for workspace structure and conventions.
