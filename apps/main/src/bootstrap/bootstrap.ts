@@ -1565,8 +1565,14 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
       // guild: the persona bound to it, else the resident main bot. Both the read endpoint and the
       // token are per-application, so the owner decides both.
       const ownerPersonaId = await personaBindingService.resolveCommandOwner(guildId, moduleId);
-      const ownerPersona =
-        ownerPersonaId === undefined ? undefined : await personaIdentities.findById(ownerPersonaId);
+      // 'main' (enabled-but-unbound) and 'shared' (core/admin) are sentinels, not persona ids
+      // (see resolveCommandOwner). Feeding them to the UUID-typed persona_identities.id column
+      // throws `invalid input syntax for type uuid`; fall through to the main bot's applicationId.
+      const isPersonaOwner =
+        ownerPersonaId !== undefined && ownerPersonaId !== 'main' && ownerPersonaId !== 'shared';
+      const ownerPersona = isPersonaOwner
+        ? await personaIdentities.findById(ownerPersonaId)
+        : undefined;
       const ownerApplicationId = ownerPersona?.discordApplicationId ?? applicationId;
       if (ownerApplicationId === '') return;
 
