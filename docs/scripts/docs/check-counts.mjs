@@ -40,6 +40,30 @@ if (existsSync('status/coverage-ledger.json') && 'coverage_rows' in c) {
   const l = JSON.parse(readFileSync('status/coverage-ledger.json', 'utf8'));
   checks.push(['coverage_rows', c.coverage_rows, l.total_rows, 'coverage-ledger.json']);
 }
+// UR-20261015-090 R8 — verify every remaining key that has a local source.
+if (existsSync('../apps/main/src/bootstrap/stages.ts')) {
+  const t = readFileSync('../apps/main/src/bootstrap/stages.ts', 'utf8');
+  const arrLen = (name) => {
+    const m = t.match(new RegExp(`${name}\\s*=\\s*\\[([\\s\\S]*?)\\]\\s*as const`));
+    return m ? (m[1].match(/'[^']+'/g) || []).length : 0;
+  };
+  const bs = arrLen('BOOTSTRAP_STAGES');
+  if (bs) checks.push(['bootstrap_stages', c.bootstrap_stages, bs, 'stages.ts BOOTSTRAP_STAGES']);
+  const ss = arrLen('SHUTDOWN_STEPS');
+  if (ss) checks.push(['shutdown_steps', c.shutdown_steps, ss, 'stages.ts SHUTDOWN_STEPS']);
+}
+if (existsSync('../apps/main/src/middleware/built-in')) {
+  const n = readdirSync('../apps/main/src/middleware/built-in').filter(
+    (f) => f.endsWith('.ts') && f !== 'index.ts',
+  ).length;
+  if (n) checks.push(['middleware_stages', c.middleware_stages, n, 'middleware/built-in/*.ts']);
+}
+if (existsSync('contracts/rbac.enums.json')) {
+  const r = JSON.parse(readFileSync('contracts/rbac.enums.json', 'utf8'));
+  if (r.layers) checks.push(['rbac_layers', c.rbac_layers, r.layers.length, 'contracts/rbac.enums.json layers']);
+  if (r.ranks) checks.push(['ranks', c.ranks, r.ranks.length, 'contracts/rbac.enums.json ranks']);
+  if (r.grant_types) checks.push(['grant_types', c.grant_types, r.grant_types.length, 'contracts/rbac.enums.json grant_types']);
+}
 
 let bad = 0;
 for (const [k, declared, actual, src] of checks)

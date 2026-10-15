@@ -8,7 +8,7 @@ Dumby is a TypeScript (ESM, Node ≥ 22) modular Discord bot framework: one pnpm
 stages), one DI container, one command router, one seven-layer permission engine, one Renderer
 (Components v2; the classic embed ban is absolute), a Knex/PostgreSQL data layer, an L1+L2 cache,
 a BullMQ job queue, and Pino/prom-client/OpenTelemetry observability. Its documentation corpus
-(`docs/`) is gate-verified (25/25) and code-grounded; where spec and code diverge the divergence
+(`docs/`) is gate-verified (27/27) and code-grounded; where spec and code diverge the divergence
 is recorded in `docs/status/code-reconciliation.json`. Current chain state: **State B — Migration**
 (the change-set work order is active; see `migration-ledger.md`).
 
@@ -26,7 +26,11 @@ Run from the repository root:
 
 ```bash
 pnpm install --frozen-lockfile
+pnpm -r --filter "./packages/**" --if-present run build   # build workspace packages first
 pnpm --filter @workspace/dumby typecheck
 pnpm --filter @workspace/dumby lint
 pnpm --filter @workspace/dumby test:unit
 ```
+
+The workspace-package build is required before any test command: the app imports
+`@workspace/swastik` at runtime and in tests.

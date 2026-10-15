@@ -42,8 +42,27 @@ try {
         process.exit(1);
       }
       const head = execSync('git rev-parse HEAD', { stdio: 'ignore' }).toString().trim();
+      // Freshness (UR-20261015-090 R2): the ledger verifies DOCS against CODE. It goes stale only
+      // when the CODE moves — a docs-only commit does not invalidate a code-grounding claim. So fail
+      // when any commit since verified_commit touched the code surfaces (apps/main, packages).
+      // Pathspecs use the :/ root prefix so this works from the docs/ working directory.
+      const codeDrift = execSync(
+        `git rev-list ${d.verified_commit}..HEAD -- :/apps/main :/packages 2>/dev/null || true`,
+        { stdio: ['ignore', 'pipe', 'ignore'] },
+      )
+        .toString()
+        .trim();
+      if (codeDrift) {
+        const n = codeDrift.split('\n').filter(Boolean).length;
+        console.error(
+          `FAIL: ${n} commit(s) touched apps/main|packages since verified_commit ${d.verified_commit.slice(0, 7)} (HEAD ${head.slice(0, 7)}) — re-verify the ledger and re-anchor`,
+        );
+        process.exit(1);
+      }
       if (head !== d.verified_commit) {
-        console.warn(`WARN: reconciliation verified at ${d.verified_commit.slice(0, 7)}; HEAD is ${head.slice(0, 7)} — re-verify when the code moves`);
+        console.log(
+          `OK: reconciliation verified at ${d.verified_commit.slice(0, 7)}; HEAD ${head.slice(0, 7)} — no code change since (docs-only commits do not invalidate)`,
+        );
       }
     }
   }
