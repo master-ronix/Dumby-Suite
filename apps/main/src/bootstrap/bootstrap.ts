@@ -1570,7 +1570,9 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
       // throws `invalid input syntax for type uuid`; fall through to the main bot's applicationId.
       const isPersonaOwner =
         ownerPersonaId !== undefined && ownerPersonaId !== 'main' && ownerPersonaId !== 'shared';
-      const ownerPersona = isPersonaOwner ? await personaIdentities.findById(ownerPersonaId) : undefined;
+      const ownerPersona = isPersonaOwner
+        ? await personaIdentities.findById(ownerPersonaId)
+        : undefined;
       const ownerApplicationId = ownerPersona?.discordApplicationId ?? applicationId;
       if (ownerApplicationId === '') return;
 
