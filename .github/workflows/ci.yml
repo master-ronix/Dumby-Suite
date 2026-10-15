@@ -18,6 +18,11 @@ on:
 
 permissions:
   contents: read
+  # gitleaks-action lists the PR's commits on pull_request events
+  # (GET /repos/.../pulls/{n}/commits). Without this the call returns 403
+  # "Resource not accessible by integration", which aborts the fail-fast gates job
+  # at the Secret scanning step, so no real gate ever runs on a pull request.
+  pull-requests: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
