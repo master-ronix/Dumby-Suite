@@ -21,6 +21,10 @@
 Run from the repo root. Verification chain (mirrors CI; run in this order before pushing):
 
 - `pnpm install --frozen-lockfile`
+- `pnpm -r --filter "./packages/**" --if-present run build` — build workspace packages. The app
+  imports `@workspace/swastik` (and its subpaths) at runtime and in tests, so this is **required
+  before `test:unit` / `test:coverage` / `test:flow` / `test:integration`** (CI runs it as its own
+  step; skipping it locally fails 9 test files on the missing `dist`).
 - `pnpm --filter @workspace/dumby typecheck` — the only typecheck an app change needs.
 - `pnpm typecheck` (root) — additionally builds the `lib/*` project references (`tsc --build`)
   and typechecks `artifacts/**` and `scripts/`. Use it when touching anything outside `apps/main/src`.

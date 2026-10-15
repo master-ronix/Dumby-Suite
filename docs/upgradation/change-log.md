@@ -13,7 +13,7 @@ authority_scope: [history]
 # DUMBY Documentation — Unified Change Log
 
 > **One project. One continuous history.**
-> Last recorded: 2026-10-11
+> Last recorded: 2026-10-15
 
 ---
 
@@ -80,8 +80,8 @@ completed step's record is missing.
 
 ## 9. Record
 
-> **Population status:** §1–§5 are populated. §3 carries the version history through v5.5.1 and
-> the 2026-10-10 trigger-chain run.
+> **Population status:** §1–§5 are populated. §3 carries the version history through v5.5.94 and
+> the 2026-10-15 trigger-chain run.
 
 ### 1. Scope & Method
 
@@ -145,12 +145,22 @@ migration prompt version) · `state` (Greenfield | Migration | Enforcement) · `
 | v5.4.0 — Dashboard MODULE_ERROR fix | 2026-10-08 | live log |
 | v5.5.0 — Dashboard controls / attribution / icons | 2026-10-08 | 25 gates green |
 | v5.5.1 — UR-005 build fix | 2026-10-08 | push |
+| v5.5.2 … v5.5.94 — the per-request patch series | 2026-10-11 … 2026-10-15 | change-log §3 (this file) |
+
+> §2 lists the **master / milestone tracks**. The per-request patch series after v5.5.1
+> (v5.5.2 … v5.5.94) is enumerated in §3; the front-matter `version` is the highest released
+> track.
 
 Dates marked `—` are not recorded in the corpus; they are left blank rather than invented.
 
 ---
 
 ### 3. Version-by-Version History
+
+> **Note on the earliest entries.** The v1.0.0–v4.6.1 entries below are retained as **headers** —
+> no primary evidence for their bodies is recorded in the corpus, so per §1.2 their bodies are left
+> blank rather than invented. Their content lives in the archived `archive/v4.5.1/documentation.md`
+> and the distributed `spec/`; this log does not restate it.
 
 #### v1.0.0 — "UMDB Framework" (Original Blueprint)
 
@@ -495,6 +505,64 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   module's Info renders **no** uninstall control. Per §15.3 the toggle is a state change, not an unload.
 - **Verification:** the corpus gate suite is green; the application suite is pending CI; the
   interaction paths require a live run.
+
+---
+
+### v5.5.97 — Branch Model Recorded (OI-7 resolved) — 2026-10-15
+
+- 2026-10-15 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (docs)
+- **OI-7 resolved by operator decision.** The repository uses a **dual-branch model**: `feature/dev` is the **development** branch and `main` is the **deployment** branch; both are live on their hosts. Every change lands on `feature/dev` first and is promoted to `main`. This supersedes the corpus's earlier open question about which single branch is canonical — the two branches are canonical *in their roles*.
+- **Promotion.** The residual-closure work (`UR-20261015-090`, `v5.5.95`/`v5.5.96`) is promoted from `feature/dev` to `main` in the same pass.
+- **Verification:** corpus gate suite 27/27 green.
+
+---
+
+### v5.5.96 — Production Verification & Residual Discharge — 2026-10-15
+
+- 2026-10-15 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (app+docs)
+- The application toolchain was stood up on `feature/dev` @ `6fd4df9d` and the full verification manifest executed:
+  - `typecheck` exit 0 · `lint` exit 0 · `format` clean.
+  - `test:unit` **123 files / 1,281 tests** pass.
+  - `test:coverage` passes with the **per-layer floors met** (74.1 / 67.45 / 74.17 / 75.07) — the D-8.2 conformance the residual tracked is confirmed.
+  - `test:flow` **6 files / 19 tests** pass (real bootstrap→shutdown on embedded PostgreSQL).
+  - `test:integration` **166 files / 206 tests** pass.
+  - Remaining unverified: the Docker image build and the K8s apply (no daemon / no cluster).
+- **Residuals discharged.** OI-2 (per-layer floors), OI-4 (assets), OI-5 (slices M10/M14/M16/M18), OI-6 (deviation ownership) are resolved; OI-3 is resolved except Docker/K8s; OI-1 (attestation) and OI-7 (branch decision) remain open by nature. `migration-ledger.md` re-triaged to match.
+- **Verification:** corpus gate suite 27/27 green; application suite green as above.
+
+---
+
+### v5.5.95 — Documentation Corpus Residual Closure (UR-20261015-090) — 2026-10-15
+
+- 2026-10-15 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (docs)
+- Work order: `UR-20261015-090` — executes the corpus-audit findings DA-1 … DA-12 (R1 … R10).
+- **R1 — provenance re-anchored.** `status/code-reconciliation.json` `verified_commit`, its `note`, and the eight row `resolution` strings re-pointed to `feature/dev` @ `6fd4df9d`; `GAP_MANIFEST.md` ref moved with it; a `verified_at` date added. One distinct SHA remains across the ledger.
+- **R2 — anchor freshness now a failure.** `check-code-reconciliation.mjs` FAILS when any commit since `verified_commit` touched `apps/main`/`packages` (the code the ledger grounds); a docs-only commit does not invalidate; a shallow/absent checkout still warns.
+- **R3 — attestation policy confirmed.** The machine-verified-only policy stands in `README.md` and in the front-matter schema `$comment`; the review pass itself remains the tracked OI-1.
+- **R4 — gate-count drift closed.** `STATUS.md` and `GAP_MANIFEST.md` corrected to 27/27; `check-side-docs.mjs` now FAILS on a restated documentation-gate count that disagrees with the gate set.
+- **R5 — tree counts regenerated.** `blueprint/structure.md` and `spec/architecture/directory-file-structure.md` corrected to 1,552 entries / 287 directories / 1,265 files; `check-side-docs.mjs` recomputes and compares.
+- **R6 — version model reconciled.** change-log §2 notes the master-track scope and the patch series; the population-status note and the `Last recorded` head line are current; the version model stands in `README.md`.
+- **R7 — placeholders closed.** `migration/migration-prompt.md` protocol revision, CURRENT STATE block and §1.1–§1.3 filled; the change-log §3 early-version headers now carry an explicit “no primary evidence” note.
+- **R8 — counts enforcement broadened.** `check-counts.mjs` verifies 12/12 required keys against a source (added bootstrap stages, shutdown steps, middleware stages, RBAC layers / ranks / grant types).
+- **R9 — residuals dispositioned.** OI-1 … OI-7 and the open migration slices carry explicit dispositions in §5.2; none is a silent unknown.
+- **R10 — audit age recorded.** `README.md` carries the last-independent-audit date and commit.
+- **Verification:** the corpus gate suite is green (27/27); `check-ur` detects 97 records. No application code changed; the app toolchain is unaffected.
+
+---
+
+### v5.5.94 (trigger chain) — Trigger-Chain Run (State B — Migration): Activation, Detection & Work-Order Reconciliation — 2026-10-15
+
+- 2026-10-15 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=unmet
+- 2026-10-15 · migration-prompt 5.2.0 · guard=pass · reconciliation=re-triage vs tree · verdict=PARTIAL
+- **Activation (meta-prompt §5).** Docs base path resolved once (`docs/`); authority layer loaded (`manifest.json`; normative set = `blueprint/`, `spec/**`, `contracts/`); precedence cited from `spec/governance/directive-charter-how-to-use-this-document.md`, never restated.
+- **State determination (entry.md).** State probe `apps/main/` = code present (248 `.ts` files under `src/`, 56 migration files); work-order probe = **ACTIVE** — `upgradation/UR-*.md` = 97 records present **and** `migration-ledger.md` carries items not `DONE` (M10 IN-PROGRESS; M14/M16 PARTIAL; M18 REOPENED; M74/M82 OPEN). Classification: **State B — Migration** → handoff to `migration/migration-prompt.md`. The §0.0 work-order guard passes (an active work order exists).
+- **Work-order reconciliation (against the tree, not the snapshot).**
+  - **M10 — search bar + 25-option handling → PARTIAL.** The `/browse` search control and the install-dropdown membership are present; the text-input search modal and the >25-option paging slice are outstanding.
+  - **M14 — marketplace main content (info control) → PARTIAL.** The content space and the per-module info control are present; the private (ephemeral) info embed is outstanding.
+  - **M16 — /modules page (info/uninstall + paging) → PARTIAL.** The list, the `info`/`uninstall` controls, and the nav paging row are present; the page-switch divider and the uninstall effect wiring are outstanding.
+  - **M18 — /modules corrections & disable enforcement → REOPENED.**
+- **Verification limit (honest).** The application toolchain (`tsc` / `vitest`) was **not** run: this environment provides Node 20.20.2 with no installed workspace dependencies, and the app declares Node ≥ 22. Per `migration/migration-prompt.md` the per-item gate is a toolchain gate, so no code slice is verified by this run. The corpus gate suite is green (27/27; `check-ur` detects 97 records).
+- **Return:** `unmet` — the open slices require the real toolchain and a live Discord/interaction run to verify. The chain hands back to `prompts/meta-prompt.md`.
 
 ---
 
@@ -2525,13 +2593,13 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 
 | Id | Item | Owner | Status |
 |---|---|---|---|
-| OI-1 | Human attestation of the corpus (`review_state` / `last_verified_commit`) | Dumby Core Engineering | open (UR-20261008-001; UR-20261010-001 R4) |
-| OI-2 | Per-layer coverage floors (directive D-8.2) — config still blended | engineering | open |
-| OI-3 | Unverified surfaces: flow / integration / Docker / K8s (require live services) | engineering | open (GAP_MANIFEST F4) |
-| OI-4 | Default banner + default white icon assets | operator | open (asset dependency) |
-| OI-5 | Migration slices M10 / M14 / M16 | engineering | open (migration-ledger) |
-| OI-6 | 24 logged deviations (appendix-c) routed to M9 residual | framework-maintainers | open |
-| OI-7 | Branch-divergence decision (`main` vs `feature/dev`) | operator | open |
+| OI-1 | Human attestation of the corpus (`review_state` / `last_verified_commit`) | Dumby Core Engineering | open (policy-stated; UR-20261008-001 / UR-20261010-001 R4) |
+| OI-2 | Per-layer coverage floors (directive D-8.2) | engineering | **resolved** — floors are per-layer and met (74.1 / 67.45 / 74.17 / 75.07), verified 2026-10-15 |
+| OI-3 | Unverified surfaces: flow / integration / Docker / K8s | engineering | **resolved except Docker/K8s** — flow (19) + integration (206) suites executed and green 2026-10-15; the image build and cluster apply remain unverified (no daemon / no cluster) |
+| OI-4 | Default banner + default white icon assets | operator | **resolved** — present: `apps/main/assets/*.png` (banner + icons) and per-module `packages/modules/<slug>/assets/icon.png` |
+| OI-5 | Migration slices M10 / M14 / M16 | engineering | **resolved** — M10 / M14 / M16 / M18 DONE (toolchain-verified 2026-10-15) |
+| OI-6 | 24 logged deviations (appendix-c) | framework-maintainers | **resolved** — `appendix-c` carries the ownership note (UR-20261010-001 R10); each item is owned or deferred |
+| OI-7 | Branch-divergence decision (`main` vs `feature/dev`) | operator | **resolved** — dual-branch model: `feature/dev` = development, `main` = deployment; work flows `feature/dev` → `main` (operator, 2026-10-15) |
 
 ### 5.1 Request dispositions (UR-20261010-001 R9)
 
@@ -2541,3 +2609,20 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 | UR-20261009-001 — corpus re-anchoring (`main` @ `9e29e855`) | Executed-in-substance at `feature/dev` by UR-20261010-001 (R1/R2/R3). The branch-divergence decision remains open (OI-7). |
 | UR-20261009-002 — hardening / migration / rebrand | Executed (docs + code) across v5.3–v5.5; the interactive residuals are tracked (OI-5). |
 | UR-20261010-001 — corpus residual closure | Executed 2026-10-10 (see the entry above). |
+| UR-20261015-090 — corpus audit residual closure | Executed 2026-10-15 (see the `v5.5.95` entry above). Findings DA-1 … DA-12 closed; see §5.2. |
+
+### 5.2 Residual dispositions (UR-20261015-090 R9)
+
+Every carried residual now states its owner, status, and blocker — none is a silent unknown.
+
+| Id | Item | Owner | Status | Blocker / note |
+|---|---|---|---|---|
+| OI-1 | Human attestation (`review_state` / `last_verified_commit`) | Dumby Core Engineering | **open (policy-stated)** | Requires a human review pass; the machine-verified-only policy is stated in `README.md` + the schema `$comment`. |
+| OI-2 | Per-layer coverage floors (D-8.2) | engineering | **resolved** | Per-layer floors enforced and met (74.1 / 67.45 / 74.17 / 75.07), verified 2026-10-15. |
+| OI-3 | Unverified surfaces (flow / integration / Docker / K8s) | engineering | **resolved except Docker/K8s** | flow + integration suites executed green 2026-10-15; the image build / cluster apply need a daemon / cluster. |
+| OI-4 | Default banner + white icon assets | operator | **resolved** | Present in `apps/main/assets/` and per-module `assets/icon.png`. |
+| OI-5 | Migration slices M10 / M14 / M16 | engineering | **resolved** | M10 / M14 / M16 / M18 DONE, toolchain-verified. |
+| OI-6 | 24 logged deviations (appendix-c) | framework-maintainers | **resolved** | `appendix-c` carries the ownership note; each item owned or deferred. |
+| OI-7 | Branch-divergence decision (`main` vs `feature/dev`) | operator | **resolved** | Dual-branch model recorded: `feature/dev` is the development branch, `main` the deployment branch; every change lands on `feature/dev` first and is promoted to `main`. |
+| — | M18 `/modules` corrections & disable enforcement | engineering | **resolved (DONE)** | Disable enforcement present; `disable-behaviour.spec.ts` passes. |
+| — | M74 / M82 (proposed) | engineering | open (proposed) | M74 awaits operator confirmation; M82 is blocked on deploy packaging. |

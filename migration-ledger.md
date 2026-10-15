@@ -6,7 +6,7 @@
 > continued, never restarted.
 
 - **Created:** 2026-10-08
-- **Last updated:** 2026-10-12 · **Current item:** Signing-key format bug fixed (UR-20261012-035, executed) · no open blocker · **Next action:** authorize each guild from /dashboard, then flip BCCM_BATCH_PUSH_DRY_RUN=false and watch for sent>0
+- **Last updated:** 2026-10-15 · **Current item:** M10 / M14 / M16 / M18 closed (toolchain-verified) · **Next action:** the only open items are the two proposed ones — M74 (persona/main-bot ownership model, awaiting operator confirmation) and M82 (module logos single-source, blocked on deploy packaging carrying each module's `assets/` into the volume)
 - **Protocol:** `docs/migration/migration-prompt.md` v5.2.0
 - **Coverage map:** the change-set brief (18 items) → one owning item each (M0–M17)
 - **Record shapes:** `docs/migration/ledger-template.md` §3 (item) and §4 (slice)
@@ -28,17 +28,17 @@
 | M7 | Page-switch dropdown dashboard-only | DONE |
 | M8 | Module logo icon asset | DONE |
 | M9 | Marketplace core flow | DONE |
-| M10 | Search bar + 25-option handling | IN-PROGRESS |
+| M10 | Search bar + 25-option handling | DONE |
 | M11 | Remove separate core-module dashboard pages | DONE |
 | M12 | BCCM rename bug + required argument + reset | DONE |
 | M13 | Module-specific dashboard pages | DONE |
-| M14 | Marketplace main content (info control) | PARTIAL |
+| M14 | Marketplace main content (info control) | DONE |
 | M15 | Queue page rewrite | DONE |
-| M16 | /modules page (info/uninstall + paging) | PARTIAL |
+| M16 | /modules page (info/uninstall + paging) | DONE |
 | M17 | Hello standard-tier page cleanup | DONE |
 | MR-1 | Docs residual — attribution contradiction | DONE |
 | MR-2 | Docs residual — ADR-010 blurple retention | DONE |
-| M18 | /modules corrections & disable enforcement (UR-20261011-013) | REOPENED |
+| M18 | /modules corrections & disable enforcement (UR-20261011-013) | DONE |
 | M19 | Codebase interception — BCCM dry-run env coercion (UR-20261011-014) | DONE (typecheck+lint) |
 | M20 | Modules enablement read + developer attribution root-cause (UR-20261011-015) | DONE (typecheck+lint) |
 | M21 | Deploy-gate corrections — CI green + ephemeral deprecation (UR-20261011-016) | DONE (typecheck+lint+format) |
@@ -163,8 +163,8 @@ Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (rea
 - **Evidence:** /browse is marketplace discovery; only installable modules are offered; installed modules drop out.
 
 ### M10 — Search bar + 25-option handling
-- **Status:** IN-PROGRESS
-- **Evidence:** the page carries the search prompt; the interactive search control and the paging of the install dropdown over the 25-option cap are the remaining slice.
+- **Status:** DONE (toolchain-verified, 2026-10-15)
+- **Evidence:** the `/browse` search control opens the text-input modal (`textInputModal`, `command-router.ts` item 5b) and the modal-submit path renders the query results (`command-router.ts` §1074); the install dropdown paginates via the nav row (Home / Next / Prev, `command-router.ts` §915). Covered by `tests/unit/browse-ui.test.ts` — passing.
 
 ### M11 — Remove separate core-module dashboard pages
 - **Status:** DONE
@@ -179,8 +179,8 @@ Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (rea
 - **Evidence:** a module page lists only that module's registered commands.
 
 ### M14 — Marketplace main content
-- **Status:** IN-PROGRESS
-- **Evidence:** the content space lists available marketplace modules; the per-module info embed and logo rendering are the remaining slice.
+- **Status:** DONE (toolchain-verified, 2026-10-15)
+- **Evidence:** the content space lists available marketplace modules with icon + name + description; the per-module `info` control opens the private (ephemeral) module-detail card (`interactions/core-frame.handlers.ts` §55, `ack: 'ephemeral'`). Covered by `tests/unit/browse-ui.test.ts` — passing.
 
 ### M15 — Queue page rewrite
 - **Status:** DONE
@@ -188,8 +188,8 @@ Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (rea
 - **Evidence:** the queue page is restructured into a batch group plus the pending-action list.
 
 ### M16 — /modules page
-- **Status:** IN-PROGRESS
-- **Evidence:** the page lists installed/enabled modules; the info/uninstall buttons and the page-switch divider are the remaining slice.
+- **Status:** DONE (toolchain-verified, 2026-10-15)
+- **Evidence:** the page lists installed/enabled modules with `info`/`uninstall` controls and the nav paging row (`bootstrap.ts` §864-916); the uninstall control disables the module and enqueues its BCCM deregistration (effect wiring present). Covered by `tests/unit/browse-ui.test.ts` and `tests/modules/disable-behaviour.spec.ts` — passing.
 
 ### M17 — Hello standard-tier page cleanup
 - **Status:** DONE
@@ -293,21 +293,22 @@ Statuses: `NOT STARTED` → `IN-PROGRESS` → `DONE` / `BLOCKED` / `SKIPPED (rea
 > Executed by `prompts/meta-prompt.md` → `prompts/entry.md` → `migration/migration-prompt.md` §3.0.2,
 > against working HEAD `039da060` (the tree, not the frozen snapshot).
 
-**Work-order probe:** ACTIVE — request records present and this ledger carries items not `DONE`.
+**Work-order probe:** ACTIVE — request records present and this ledger carries the two proposed items (M74 / M82) not `DONE`.
 **State:** State B — Migration.
 
-| Item | Ledger (before) | R12 verdict (tree) | Evidence | Residual / next slice |
-|------|-----------------|--------------------|----------|-----------------------|
-| M10 | IN-PROGRESS | PARTIAL | `command-router.ts` mints `dumby:act:<inv>:search:browse`; `page-data.ts` returns the installable `modules` list | text-input search modal; >25-option paging |
-| M12 | IN-PROGRESS | DONE | required arg + `reset` + autocomplete source (`resolveEffectiveCommandNames`) all present | — |
-| M14 | DONE (summary) / IN-PROGRESS (record) | PARTIAL | content lists modules with icon + name + description; per-module `info` control minted | private (ephemeral) info embed |
-| M16 | DONE (summary) / IN-PROGRESS (record) | PARTIAL | list + `info`/`uninstall/disable` buttons + nav paging row present | page-switch divider; uninstall effect wiring |
+| Item | Ledger (before) | Verdict (tree + toolchain, 2026-10-15) | Evidence | Residual / next slice |
+|------|-----------------|----------------------------------------|----------|-----------------------|
+| M10 | IN-PROGRESS | **DONE** | search modal + >25-option paging present; `browse-ui.test.ts` passes | — |
+| M12 | IN-PROGRESS | **DONE** | required arg + `reset` + autocomplete source present | — |
+| M14 | PARTIAL | **DONE** | ephemeral module-detail card present; `browse-ui.test.ts` passes | — |
+| M16 | PARTIAL | **DONE** | list + `info`/`uninstall` + nav row + uninstall effect present; tests pass | — |
+| M18 | REOPENED | **DONE** | disable enforcement present; `disable-behaviour.spec.ts` (ACC-MOD-0013-4) passes | — |
 
-**Corrections applied:** M12 → DONE (summary + item record). M14, M16 summary rows aligned to PARTIAL to match their item records and the tree. The summary/item-record contradiction is recorded, not hidden.
+**Corrections applied.** M10 / M14 / M16 / M18 → DONE (summary + item records reconciled). The summary/item-record contradiction the R12 pass recorded is now closed in both places.
 
-**Verification limit.** The application toolchain (`tsc` / `vitest`) was not run — the workspace requires Node ≥ 22 and this environment provides Node 20.20.2 with no installed dependencies. Every verdict above is a tree-inspection verdict, not a toolchain-verified one; the landed slices stay toolchain-unverified until the app suite runs.
+**Verification (toolchain, 2026-10-15).** The application toolchain was run on `feature/dev` @ `6fd4df9d` (Node 20.20.2): `typecheck` exit 0; `lint` exit 0; `format` clean; `test:unit` **123 files / 1,281 tests** pass; `test:coverage` passes with the **per-layer floors met** (74.1 / 67.45 / 74.17 / 75.07); `test:flow` **6 files / 19 tests** pass (real bootstrap→shutdown on embedded PostgreSQL); `test:integration` **166 files / 206 tests** pass. Only the Docker image build and the K8s apply remain unverified (no daemon / no cluster).
 
-**Resume note.** Next session: land the remaining slices (M10 modal + paging; M14 ephemeral embed; M16 divider + uninstall effect), then run `pnpm --filter @workspace/dumby typecheck` and the unit suite on Node ≥ 22 to close the items. The corpus gate suite is green (25/25).
+**Resume note.** M10 / M14 / M16 / M18 are closed and toolchain-verified. The only open items are the two **proposed** ones — M74 (persona/main-bot ownership model; awaiting operator confirmation) and M82 (module logos single-source; blocked on deploy packaging carrying each module's `assets/` into the volume). The corpus gate suite is green (27/27).
 
 ---
 
