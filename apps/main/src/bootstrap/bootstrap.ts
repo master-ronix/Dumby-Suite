@@ -1509,6 +1509,32 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
             async (route, body) => rest.put(route as `/${string}`, { body }),
           );
         },
+        // item 2 (follow-up) — the persona's OWN BCCM batch push. Her `/queue` writes renames to HER
+        // application scope, which the main bot's push deliberately ignores, so without this they sit
+        // `pending` forever. Same store and ceiling as the main bot — but HER token, HER application
+        // and HER scope.
+        runBccmPush: async (persona, botToken) => {
+          const rest = new REST({ version: '10' }).setToken(botToken);
+          const applicationId = persona.discordApplicationId;
+          await runBccmBatchPush({
+            store: bccmStore,
+            logger,
+            ceiling: commandCeiling,
+            dryRun: config.get('BCCM_BATCH_PUSH_DRY_RUN'),
+            applicationId,
+            discord: {
+              getRegistered: async (guildId) =>
+                (await rest.get(
+                  `/applications/${applicationId}/guilds/${guildId}/commands`,
+                )) as readonly { name: string }[],
+              putCommands: async (guildId, commands) => {
+                await rest.put(`/applications/${applicationId}/guilds/${guildId}/commands`, {
+                  body: commands,
+                });
+              },
+            },
+          });
+        },
         createInteractionHandler: (persona, registry) =>
           buildPersonaInteractionHandler({
             registry: interactionRegistry,
