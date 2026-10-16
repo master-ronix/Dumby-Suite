@@ -82,6 +82,21 @@ export function resetModuleEmojis(): void {
   emojiIdsByApplication.clear();
 }
 
+/** Remove a single name→id registration (e.g. after the emoji is deleted from Discord). */
+export function unregisterModuleEmoji(
+  name: string,
+  applicationId: string = DEFAULT_EMOJI_SCOPE,
+): void {
+  emojiIdsByApplication.get(applicationId)?.delete(name);
+}
+
+/** Every name→id this application has registered, so a caller can compute what to prune. */
+export function registeredEmojiIds(
+  applicationId: string = DEFAULT_EMOJI_SCOPE,
+): ReadonlyMap<string, string> {
+  return emojiIdsByApplication.get(applicationId) ?? new Map<string, string>();
+}
+
 /** This application's id for an emoji NAME, or undefined. Never borrowed from another application. */
 function emojiIdFor(name: string, applicationId: string): string | undefined {
   return emojiIdsByApplication.get(applicationId)?.get(name);

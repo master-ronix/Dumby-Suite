@@ -9,6 +9,17 @@ export interface CommandPermissions {
   nsfw?: boolean;
 }
 
+/**
+ * item 2 — WHICH profile a registry serves. A registry is built per identity; this names it so that
+ * registration, loading, unloading and de-registration are profile-context aware. `applicationId` is
+ * the Discord application the profile's commands deploy to ('' is the main bot's default scope).
+ */
+export interface CommandProfile {
+  readonly kind: 'main' | 'persona';
+  readonly id: string;
+  readonly applicationId: string;
+}
+
 export interface CommandDefinition {
   data: RESTPostAPIChatInputApplicationCommandsJSONBody;
   execute: (interaction: unknown, context: CommandContext) => Promise<unknown>;
@@ -61,6 +72,22 @@ export class CommandModuleNotRegisteredError extends Error {
 export class CommandRegistry {
   private readonly commands = new Map<string, CommandDefinition>();
   private readonly moduleTiers = new Map<string, ModuleTier>();
+  private readonly _profile: CommandProfile;
+
+  /**
+   * item 2 — a registry is built PER IDENTITY, so it is profile-context aware by construction. The
+   * main bot passes the default (`{ kind: 'main', id: 'main', applicationId: '' }`); a hosted persona
+   * passes its own id and application id, so every register / load / unload / de-register it performs
+   * is attributed to — and scoped to — that profile.
+   */
+  constructor(profile: CommandProfile = { kind: 'main', id: 'main', applicationId: '' }) {
+    this._profile = profile;
+  }
+
+  /** item 2 — the profile this registry serves. */
+  get profile(): CommandProfile {
+    return this._profile;
+  }
 
   registerModule(moduleId: string, tier: ModuleTier): void {
     this.moduleTiers.set(moduleId, tier);
@@ -91,6 +118,33 @@ export class CommandRegistry {
 
   count(): number {
     return this.commands.size;
+  }
+
+  /** item 2 — de-registration: remove one command by name. Returns whether it was present. */
+  unregister(name: string): boolean {
+    return this.commands.delete(name);
+  }
+
+  /**
+   * item 2 — de-registration: remove every command a module registered, and its tier, so an unloaded
+   * module leaves nothing behind. Returns the names removed.
+   */
+  unregisterModule(moduleId: string): readonly string[] {
+    const removed: string[] = [];
+    for (const [name, def] of this.commands) {
+      if (def.moduleId === moduleId) {
+        this.commands.delete(name);
+        removed.push(name);
+      }
+    }
+    this.moduleTiers.delete(moduleId);
+    return removed;
+  }
+
+  /** item 2 — de-registration: drop everything (a full unload of this profile's registry). */
+  clear(): void {
+    this.commands.clear();
+    this.moduleTiers.clear();
   }
 
   /**

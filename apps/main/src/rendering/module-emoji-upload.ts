@@ -1,4 +1,5 @@
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
+import { join } from 'node:path';
 import type { Client } from 'discord.js';
 import type { Logger } from '../logging/logger.js';
 import {
@@ -8,6 +9,7 @@ import {
   INFO_ICON_NAME,
   PROFILE_ICON_NAME,
   registerModuleEmoji,
+  unregisterModuleEmoji,
   STATUS_OFFLINE_ICON_NAME,
   STATUS_ONLINE_ICON_NAME,
   UNINSTALL_ICON_NAME,
@@ -110,4 +112,118 @@ export async function ensureDefaultModuleEmoji(
       );
     }
   }
+}
+
+/** The image extensions a module's asset directory may hold for an emoji. */
+const EMOJI_ASSET_EXT = /\.(png|webp|gif|jpe?g)$/i;
+
+/**
+ * item 5 — every emoji image in a module's OWN asset directory (`<moduleRoot>/assets/`), each mapped
+ * to a stable application-emoji name `dumby_<slug>_<basename>`. This is the "render the emojis that
+ * live in the module's root asset directory alongside its other branding" method: a module ships its
+ * visual assets under `assets/`, and the core registers each as an application emoji it owns.
+ *
+ * A missing or unreadable directory yields an empty list (a module need not ship assets).
+ */
+export async function collectModuleEmojiAssets(
+  moduleRoot: string,
+  slug: string,
+): Promise<readonly ModuleIconAsset[]> {
+  const dir = join(moduleRoot, 'assets');
+  let entries;
+  try {
+    entries = await readdir(dir, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+  const safeSlug = slug.replace(/[^a-z0-9_]/gi, '_').toLowerCase();
+  const out: ModuleIconAsset[] = [];
+  for (const entry of entries) {
+    if (!entry.isFile() || !EMOJI_ASSET_EXT.test(entry.name)) continue;
+    const base = entry.name.replace(EMOJI_ASSET_EXT, '').replace(/[^a-z0-9_]/gi, '_').toLowerCase();
+    out.push({ name: `dumby_${safeSlug}_${base}`, path: join(dir, entry.name) });
+  }
+  return out;
+}
+
+/**
+ * item 5 — DELETE one application emoji by name, and drop its registration. Idempotent: a name that
+ * is not present is a no-op (returns false) rather than an error, so a sync that runs twice is safe.
+ */
+export async function deleteModuleEmoji(
+  client: Client,
+  logger: Logger,
+  name: string,
+  applicationId: string = DEFAULT_EMOJI_SCOPE,
+): Promise<boolean> {
+  const application = client.application;
+  if (application === null || application === undefined) {
+    logger.warn('module-emoji-delete-failed', { reason: 'application-unavailable', name });
+    return false;
+  }
+  try {
+    const existing = await application.emojis.fetch();
+    const found = existing.find((emoji) => emoji.name === name);
+    unregisterModuleEmoji(name, applicationId);
+    if (found === undefined) return false;
+    await application.emojis.delete(found.id);
+    logger.info(`module-emoji-deleted app=${applicationId || 'main'} name=${name} id=${found.id}`);
+    return true;
+  } catch (err) {
+    logger.warn(
+      `module-emoji-delete-failed app=${applicationId || 'main'} name=${name} reason=${String(err)}`,
+    );
+    return false;
+  }
+}
+
+/**
+ * item 5 — PRUNE application emojis the framework manages (`dumby_*`) that are no longer declared,
+ * so a module's removed or renamed asset does not leave a dangling emoji behind. `keep` is the full
+ * set of names still in use. Only names matching the managed prefix are considered — an emoji the
+ * operator uploaded by hand is never touched.
+ */
+export async function pruneModuleEmojis(
+  client: Client,
+  logger: Logger,
+  applicationId: string,
+  keep: ReadonlySet<string>,
+  prefix = 'dumby_',
+): Promise<readonly string[]> {
+  const application = client.application;
+  if (application === null || application === undefined) return [];
+  const deleted: string[] = [];
+  try {
+    const existing = await application.emojis.fetch();
+    for (const emoji of existing.values()) {
+      const name = emoji.name;
+      if (name === null || !name.startsWith(prefix) || keep.has(name)) continue;
+      await deleteModuleEmoji(client, logger, name, applicationId);
+      deleted.push(name);
+    }
+  } catch (err) {
+    logger.warn(`module-emoji-prune-failed app=${applicationId || 'main'} reason=${String(err)}`);
+  }
+  return deleted;
+}
+
+/**
+ * item 5 — the full sync: register/load every declared emoji, then prune the managed emojis that are
+ * no longer declared. One call gives a module's asset set and the framework chrome a stable, pruned
+ * application-emoji population.
+ */
+export async function syncModuleEmojis(
+  client: Client,
+  logger: Logger,
+  applicationId: string = DEFAULT_EMOJI_SCOPE,
+  moduleIcons: readonly ModuleIconAsset[] = [],
+  options: { prune?: boolean } = {},
+): Promise<void> {
+  await ensureDefaultModuleEmoji(client, logger, applicationId, moduleIcons);
+  if (options.prune !== true) return;
+  const keep = new Set<string>([
+    ...ICON_ASSETS.map(([name]) => name),
+    ...moduleIcons.map((icon) => icon.name),
+  ]);
+  await pruneModuleEmojis(client, logger, applicationId, keep);
 }

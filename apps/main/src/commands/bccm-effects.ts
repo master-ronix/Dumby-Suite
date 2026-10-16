@@ -8,6 +8,12 @@ export interface BccmEffectDeps {
   knex: Knex;
   registry: CommandRegistry;
   logger: Logger;
+  /**
+   * item 2 — the BCCM scope for the identity these handlers serve: '' (the sentinel) for the main bot,
+   * the persona's own application id for a persona. Built per identity, so a persona's /queue writes
+   * to HER scope and never the main bot's.
+   */
+  applicationId?: string;
 }
 
 /** §6.4 / item 13 — the BCCM action types, including the reset that reverts a command's name. */
@@ -30,13 +36,16 @@ const str = (value: unknown): string | undefined =>
  * queue request naming a command that is not registered is.
  */
 export function createBccmEffectHandlers(deps: BccmEffectDeps): Record<string, EffectHandler> {
-  const { knex, registry, logger } = deps;
+  const { knex, registry, logger, applicationId = '' } = deps;
 
   return {
     'bccm.submit': async (payload, interaction) => {
       const guildId = interaction.guildId;
       if (guildId === null) return;
-
+      // item 2 — the BCCM scope is this handler's identity scope: '' (the sentinel) for the main bot
+      // — consistent with DEFAULT_EMOJI_SCOPE and with the pre-migration rows the new column's default
+      // backfills — and the persona's own application id for a persona. Built per identity, so the two
+      // never write into each other's scope.
       const commandKey = str(payload['commandKey']);
       if (commandKey === undefined || !registry.has(commandKey)) {
         throw new CommandNotFoundError(commandKey ?? '(none)');
@@ -61,13 +70,16 @@ export function createBccmEffectHandlers(deps: BccmEffectDeps): Record<string, E
       }
       if (typeof payload['disable'] === 'boolean') entry['disable'] = payload['disable'];
 
+      // item 2 — the queue row carries the acting APPLICATION, so a persona's queued cosmetics do
+      // not collide with the main bot's in the same guild.
       await knex('guild_command_queue').insert({
         guildId,
+        applicationId,
         commandKey,
         payload: entry,
         status: 'pending',
       });
-      logger.info('bccm-queue-submitted', { guildId, commandKey, action });
+      logger.info('bccm-queue-submitted', { guildId, applicationId, commandKey, action });
     },
   };
 }

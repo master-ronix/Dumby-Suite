@@ -358,6 +358,20 @@ export class ModuleLoader {
       } catch (err) {
         this.logger.error('module-unload-failed', { module: name, error: String(err) });
       }
+      // item 2 — de-registration: an unloaded module must leave NOTHING in the command registry. The
+      // commands it registered (and its tier) are removed, scoped to this profile's registry — so a
+      // module that unloads does not linger as a dead command until the next boot.
+      const commandRegistry = this.container.tryResolve<CommandRegistry>(
+        CORE_TOKENS.CommandRegistry,
+      );
+      const removed = commandRegistry?.unregisterModule(name) ?? [];
+      if (removed.length > 0) {
+        this.logger.info('module-commands-deregistered', {
+          module: name,
+          profile: commandRegistry?.profile.id ?? 'main',
+          removed: removed.length,
+        });
+      }
     }
   }
 }
