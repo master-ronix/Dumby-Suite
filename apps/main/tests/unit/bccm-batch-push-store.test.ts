@@ -132,3 +132,30 @@ describe('knex bccm store', () => {
     );
   });
 });
+
+describe('scope isolation', () => {
+  test('reads and writes carry the acting application scope', async () => {
+    const { knex, calls } = fakeKnex();
+    const store = createKnexBccmStore(knex);
+    await store.reserve('g1', 'appA', ['x'], 1000);
+    expect(calls.find((c) => c.method === 'insert')?.args[0]).toEqual([
+      expect.objectContaining({ guildId: 'g1', applicationId: 'appA', name: 'x' }),
+    ]);
+    calls.length = 0;
+    await store.pendingEntries('g1', 'appA');
+    expect(calls.find((c) => c.method === 'where')?.args[0]).toEqual({
+      guildId: 'g1',
+      applicationId: 'appA',
+      status: 'pending',
+    });
+  });
+
+  test("the main bot's scope is the '' sentinel the migration backfills", async () => {
+    const { knex, calls } = fakeKnex();
+    await createKnexBccmStore(knex).pendingGuildIds('');
+    expect(calls.find((c) => c.method === 'where')?.args[0]).toEqual({
+      status: 'pending',
+      applicationId: '',
+    });
+  });
+});

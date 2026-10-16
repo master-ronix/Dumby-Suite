@@ -11,6 +11,7 @@ import {
   type BccmDiscordClient,
   type BccmQueueEntry,
 } from '../../src/commands/bccm-batch-push.js';
+import { createBccmEffectHandlers } from '../../src/commands/bccm-effects.js';
 
 interface QueueRow {
   guildId: string;
@@ -254,7 +255,63 @@ describe('bccm batch push — failure modes', () => {
     expect(store.queue[0]?.status).toBe('completed'); // queue ends done
     expect(store.renames).toEqual([{ guildId: 'g1', commandKey: 'ban', newName: 'timeout' }]);
     // Distinct names in the window — the same name is not counted twice.
-    expect(await store.dailyUsed('g1', Date.now())).toBe(1);
+    expect(await store.dailyUsed('g1', '', Date.now())).toBe(1);
+  });
+});
+
+describe('bccm effects — profile scope', () => {
+  const mkKnex = () => {
+    const rows: Array<{ table: string; row: { applicationId?: string } }> = [];
+    const knex = ((table: string) => ({
+      insert: async (row: { applicationId?: string }) => {
+        rows.push({ table, row });
+        return [1];
+      },
+    })) as never;
+    return { knex, rows };
+  };
+  const registry = (applicationId: string) =>
+    ({ has: () => true, profile: { kind: 'persona', id: 'p1', applicationId } }) as never;
+  const submit = (handlers: ReturnType<typeof createBccmEffectHandlers>) =>
+    handlers['bccm.submit']?.(
+      { commandKey: 'ban', action: 'rename', newName: 'timeout' },
+      { guildId: 'g1', user: { id: 'u1' } },
+    );
+
+  test("the queue row carries the handler's identity scope", async () => {
+    const { knex, rows } = mkKnex();
+    await submit(
+      createBccmEffectHandlers({
+        knex,
+        registry: registry('persona-app'),
+        logger: logger() as never,
+        applicationId: 'persona-app',
+      }),
+    );
+    expect(rows[0]?.row.applicationId).toBe('persona-app');
+  });
+
+  test("the main bot's scope is the '' sentinel — a persona never writes it", async () => {
+    const main = mkKnex();
+    const persona = mkKnex();
+    await submit(
+      createBccmEffectHandlers({
+        knex: main.knex,
+        registry: registry(''),
+        logger: logger() as never,
+        applicationId: '',
+      }),
+    );
+    await submit(
+      createBccmEffectHandlers({
+        knex: persona.knex,
+        registry: registry('persona-app'),
+        logger: logger() as never,
+        applicationId: 'persona-app',
+      }),
+    );
+    expect(main.rows[0]?.row.applicationId).toBe('');
+    expect(persona.rows[0]?.row.applicationId).toBe('persona-app');
   });
 });
 
