@@ -9,8 +9,8 @@ stages), one DI container, one command router, one seven-layer permission engine
 (Components v2; the classic embed ban is absolute), a Knex/PostgreSQL data layer, an L1+L2 cache,
 a BullMQ job queue, and Pino/prom-client/OpenTelemetry observability. Its documentation corpus
 (`docs/`) is gate-verified (27/27) and code-grounded; where spec and code diverge the divergence
-is recorded in `docs/status/code-reconciliation.json`. Current chain state: **State B — Migration**
-(the change-set work order is active; see `migration-ledger.md`).
+is recorded in `docs/status/code-reconciliation.json`. Current chain state: **State C — Enforcement**
+(the migration work order is closed — M82 superseded by M83, M74 model confirmed; see `migration-ledger.md`).
 
 ## Module Delivery Boundary
 

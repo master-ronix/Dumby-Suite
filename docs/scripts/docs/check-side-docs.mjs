@@ -14,7 +14,7 @@ import { execSync } from 'node:child_process';
 let bad = 0;
 
 // 1. no restated UR count in the side documents
-const SIDE = ['../GAP_MANIFEST.md', '../migration-ledger.md', 'upgradation/README.md'];
+const SIDE = ['../GAP_MANIFEST.md', '../migration-ledger.md', 'upgradation/README.md', 'migration/migration-prompt.md'];
 const COUNT = /\b\d+\s+(?:UR\s+)?records?\b/i;
 for (const f of SIDE) {
   if (!existsSync(f)) continue;
@@ -59,6 +59,45 @@ for (const f of ['../STATUS.md', '../GAP_MANIFEST.md', 'README.md']) {
   }
 }
 
+// 3b. the change-log head states a *current* gate count, and it must match too (UR-20261016-091 R6)
+{
+  const f = 'upgradation/change-log.md';
+  if (existsSync(f)) {
+    const head = readFileSync(f, 'utf8').split('\n').slice(0, 90).join('\n');
+    for (const re of GATE_CLAIM) {
+      for (const m of head.matchAll(re)) {
+        if (Number(m[1]) !== gateCount) {
+          console.error(`FAIL: ${f} (head) claims ${m[1]} documentation gates ("${m[0].trim()}") but ${gateCount} check-*.mjs gates exist`);
+          bad++;
+        }
+      }
+    }
+  }
+}
+
+// 3c. provenance unification: the current-provenance surfaces may name ONE commit (UR-20261016-091 R3)
+{
+  const rec = JSON.parse(readFileSync('status/code-reconciliation.json', 'utf8'));
+  const canonical = rec.verified_commit;
+  const STALE = ['8355ba4f', '039da060', '6fd4df9d'];
+  for (const f of ['../GAP_MANIFEST.md', 'status/code-reconciliation.json', 'migration/migration-prompt.md', 'README.md']) {
+    if (!existsSync(f)) continue;
+    const text = readFileSync(f, 'utf8');
+    for (const m of text.matchAll(/\b[0-9a-f]{40}\b/g)) {
+      if (m[0] !== canonical) {
+        console.error(`FAIL: ${f} names commit ${m[0].slice(0, 7)} — not the canonical ${canonical.slice(0, 7)}`);
+        bad++;
+      }
+    }
+    for (const s of STALE) {
+      if (text.includes(s)) {
+        console.error(`FAIL: ${f} carries the stale commit literal ${s}`);
+        bad++;
+      }
+    }
+  }
+}
+
 // 4. tree entry counts match the tree
 function treeCounts(root) {
   let files;
@@ -89,7 +128,7 @@ function treeCounts(root) {
   return { files: files.length, dirs: dirs.size, entries: files.length + dirs.size };
 }
 const tc = treeCounts('..');
-const TREE_CLAIM = /\(([\d,]+) entries: ([\d,]+) directories, ([\d,]+) files\)/g;
+const TREE_CLAIM = /([\d,]+)\s+entries(?:\s*:\s*|\s*\(\s*)([\d,]+)\s+directories,\s*([\d,]+)\s+files\)?/g;
 const num = (s) => Number(s.replace(/,/g, ''));
 for (const f of ['blueprint/structure.md', 'spec/architecture/directory-file-structure.md']) {
   if (!existsSync(f)) continue;

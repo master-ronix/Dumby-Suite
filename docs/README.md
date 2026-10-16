@@ -63,9 +63,10 @@ the application `tsc` / `vitest` (the app typecheck is a separate gate). Per-fil
 `upgradation/change-log.md`). A bare `5.x.y` in prose names the change-log track unless a
 document says otherwise.
 
-**Last independent audit.** 2026-10-15, against `feature/dev` @ `6fd4df9d` — a full-scope corpus
-audit whose findings (DA-1 … DA-12) are formalised as `upgradation/UR-20261015-090.md` and closed
-under it. The audit's date and commit are recorded here so audit staleness is visible the same way
+**Last independent audit.** 2026-10-16, against `feature/dev` @ `3ee7fa53` — a full-scope corpus
+audit whose findings (AU-1 … AU-11) are formalised as `upgradation/UR-20261016-091.md` and closed
+under it. The audit's date, commit, scope and request are also recorded machine-readably in
+`status/audit-age.json`. The audit's date and commit are recorded here so audit staleness is visible the same way
 provenance staleness is.
 
 **Branch model.** `feature/dev` is the **development** branch and `main` is the **deployment**

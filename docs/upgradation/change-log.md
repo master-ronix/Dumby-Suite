@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.94
+version: 5.5.99
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -13,7 +13,7 @@ authority_scope: [history]
 # DUMBY Documentation — Unified Change Log
 
 > **One project. One continuous history.**
-> Last recorded: 2026-10-15
+> Last recorded: 2026-10-16
 
 ---
 
@@ -80,8 +80,8 @@ completed step's record is missing.
 
 ## 9. Record
 
-> **Population status:** §1–§5 are populated. §3 carries the version history through v5.5.94 and
-> the 2026-10-15 trigger-chain run.
+> **Population status:** §1–§5 are populated. §3 carries the version history through v5.5.99 and
+> the 2026-10-16 enforcement pass. The corpus gate suite is **27 gates, all green** at HEAD.
 
 ### 1. Scope & Method
 
@@ -123,20 +123,20 @@ migration prompt version) · `state` (Greenfield | Migration | Enforcement) · `
 
 | Version | Date | Basis of verification |
 |---|---|---|
-| v1.0.0 — "UMDB Framework" (original blueprint) | — | corpus record |
-| v2.0.0 — Renamed to Dumby; 22-module catalog | — | corpus record |
-| v2.1.0 — Module depth completion | — | corpus record |
-| v3.0.0 — Tiered module system + TypeScript migration | — | corpus record |
-| v3.0.2 — Terminology sweep + backfill fix | — | corpus record |
-| v4.0.0 — 9-part restructure | — | corpus record |
-| v4.1.0 — Extensibility contract + reliability hardening | — | corpus record |
-| v4.2.0 — Security & compliance hardening | — | corpus record |
-| v4.3.0 — Catalog to illustrative-only; Power Engine | — | corpus record |
-| v4.4.0 — Power Engine panel, RBAC redesign, BCCM, CLAI, MTP, 404 mode, personas | — | corpus record |
-| v4.5.0 — Rosetta stone; Swastik; Credentials Service | — | corpus record |
-| v4.5.1 — Structure-enforced edition | — | corpus record |
-| v4.6.0 — Production-readiness edition | — | corpus record |
-| v4.6.1 — Build-engine remediation pass | — | corpus record |
+| v1.0.0 — "UMDB Framework" (original blueprint) | — | corpus record (header-only) |
+| v2.0.0 — Renamed to Dumby; 22-module catalog | — | corpus record (header-only) |
+| v2.1.0 — Module depth completion | — | corpus record (header-only) |
+| v3.0.0 — Tiered module system + TypeScript migration | — | corpus record (header-only) |
+| v3.0.2 — Terminology sweep + backfill fix | — | corpus record (header-only) |
+| v4.0.0 — 9-part restructure | — | corpus record (header-only) |
+| v4.1.0 — Extensibility contract + reliability hardening | — | corpus record (header-only) |
+| v4.2.0 — Security & compliance hardening | — | corpus record (header-only) |
+| v4.3.0 — Catalog to illustrative-only; Power Engine | — | corpus record (header-only) |
+| v4.4.0 — Power Engine panel, RBAC redesign, BCCM, CLAI, MTP, 404 mode, personas | — | corpus record (header-only) |
+| v4.5.0 — Rosetta stone; Swastik; Credentials Service | — | corpus record (header-only) |
+| v4.5.1 — Structure-enforced edition | — | corpus record (header-only) |
+| v4.6.0 — Production-readiness edition | — | corpus record (header-only) |
+| v4.6.1 — Build-engine remediation pass | — | corpus record (header-only) |
 | v5.0.0 — Consolidated re-baseline | 2026-09 | gate suite + reconciliation ledger |
 | v5.1.0 — Governed trigger chain | — | chain documents |
 | v5.2.0 — Tri-state trigger chain & finding remediation | — | 23 gates green |
@@ -145,10 +145,10 @@ migration prompt version) · `state` (Greenfield | Migration | Enforcement) · `
 | v5.4.0 — Dashboard MODULE_ERROR fix | 2026-10-08 | live log |
 | v5.5.0 — Dashboard controls / attribution / icons | 2026-10-08 | 25 gates green |
 | v5.5.1 — UR-005 build fix | 2026-10-08 | push |
-| v5.5.2 … v5.5.94 — the per-request patch series | 2026-10-11 … 2026-10-15 | change-log §3 (this file) |
+| v5.5.2 … v5.5.99 — the per-request patch series | 2026-10-11 … 2026-10-16 | change-log §3 (this file) |
 
 > §2 lists the **master / milestone tracks**. The per-request patch series after v5.5.1
-> (v5.5.2 … v5.5.94) is enumerated in §3; the front-matter `version` is the highest released
+> (v5.5.2 … v5.5.99) is enumerated in §3; the front-matter `version` is the highest released
 > track.
 
 Dates marked `—` are not recorded in the corpus; they are left blank rather than invented.
@@ -160,7 +160,8 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 > **Note on the earliest entries.** The v1.0.0–v4.6.1 entries below are retained as **headers** —
 > no primary evidence for their bodies is recorded in the corpus, so per §1.2 their bodies are left
 > blank rather than invented. Their content lives in the archived `archive/v4.5.1/documentation.md`
-> and the distributed `spec/`; this log does not restate it.
+> and the distributed `spec/`; this log does not restate it. Each such entry is **explicitly marked**
+> `header-only` in §2 — an empty body here is a declared record, never an implied completion.
 
 #### v1.0.0 — "UMDB Framework" (Original Blueprint)
 
@@ -508,6 +509,38 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 
 ---
 
+### v5.5.99 (enforcement) — Corpus Enforcement Pass: UR-20261016-091 Implemented, Gate-Truth Restored, Residuals Discharged — 2026-10-16
+
+- 2026-10-16 · master-prompt 5.2.0 · enforce · subsystem=docs-corpus · verdict=COMPLETE
+- **Chain reclassification.** M82 closed (superseded by M83); M74's ownership model confirmed (operator directive); the migration work order now holds no open code item → work-order probe INACTIVE → **State C — Enforcement**.
+- **R1/R2 — gate-truth restored.** `blueprint/structure.md` and `spec/architecture/directory-file-structure.md` regenerated to the tree; `check-side-docs.mjs` generalised to match every phrasing of the entry count, not one.
+- **R3/R4 — provenance re-unified.** One canonical commit across `status/code-reconciliation.json`, `GAP_MANIFEST.md` (ref + prose), `migration/migration-prompt.md` and the audit line in `README.md`; `verified_at` added; `check-side-docs.mjs` now fails on any stale commit literal in the provenance surfaces.
+- **R5 — version model reconciled.** change-log front-matter, §2 note and §9 population line all at the highest track; the `v5.5.96`/`v5.5.97` OI-7 statements reconciled.
+- **R6 — guard-class closure.** `migration-prompt.md` no longer restates the UR count; the gate-count guard now covers the change-log head; the 121-vs-live distinction is stated in `upgradation/README.md`.
+- **R7 — records hygiene.** change-log §3 early bodies explicitly marked header-only (§2 basis updated); the `migration-prompt.md` §3 template tokens marked as shapes, not values.
+- **R8 — audit age.** `status/audit-age.json` records the audit date, commit, scope and request; `README.md` names the current audit.
+- **Verification.** Corpus gate suite **27/27 green**. Application toolchain not run (Node 20.20.2; app requires Node ≥ 22; no deps) — app-side items are outside the corpus scope.
+- **Return.** `met` (corpus scope) — every AU finding closed; OI-1 (human attestation) and OI-3 (Docker/K8s) remain honest standing items, not defects.
+
+---
+
+### v5.5.98 (trigger chain) — Trigger-Chain Run (State B — Migration): Activation, Detection & Work-Order Re-Triage — 2026-10-16
+
+- 2026-10-16 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=unmet
+- **Activation.** `docs/` base path resolved once; authority layer loaded (`manifest.json`; precedence cited from `spec/governance/directive-charter-how-to-use-this-document.md`, never restated).
+- **Detection (entry.md).** State probe: `apps/main/` contains code (248 `.ts` under `apps/main/src`; the first-party module set present under `packages/modules/`). Work-order probe: `upgradation/UR-*.md` present (98 records) and `migration-ledger.md` carries items not `DONE` (M74 proposed, M82 open) → **ACTIVE**. Classification: code present **and** work order ACTIVE → **State B — Migration**.
+- **Handoff.** Exactly one route fired: `migration/migration-prompt.md`.
+- **Work-order guard (§0.0).** Passes — an active work order exists.
+- **R12 state-of-record re-triage.** Every code slice M0–M18, MR-1, MR-2 is `DONE` in the ledger. Two items are not `DONE`:
+  - **M74** — persona/main-bot ownership model: `PROPOSED`, no code; awaiting the operator's confirmation of the model. **BLOCKED (operator).**
+  - **M82** — module logos single-source: recorded `OPEN` with blocker "deploy packaging carrying each module's `assets/` into the volume" — but **M83 (DONE) records that it resolved exactly that blocker and executed the remedy** ("build carries assets; `LoadedModule.root` set in swastik-loader; the 7 PNGs move into their modules"). The M82 row is therefore **stale**: it is superseded by M83 and should be closed or re-scoped.
+- **No row closed this pass.** No code delta landed: the only non-`DONE` items are blocked (M74) or superseded (M82). Per R11, open rows get no change-log line.
+- **Verification.** Corpus gate suite run: **26/27** — `check-side-docs` **fails** (`blueprint/structure.md` claims 1,552 entries; the tree is 1,555). The docs finding is owned by `upgradation/UR-20261016-091.md`. The application toolchain (`tsc`/`vitest`) was **not** run (Node 20.20.2; the app requires Node ≥ 22; no installed dependencies).
+- **Return.** `unmet` — the migration's acceptance criteria are not met (items not all `DONE`; two remain blocked/superseded). Per §7 the documentation audit was **not** re-done (this protocol forbids it); the docs finding is routed to its own request record.
+- **Open question surfaced.** With the code work order effectively empty (M74 blocked on the operator; M82 superseded by M83), the chain may legitimately reclassify to **State C — Enforcement** once the operator dispositions those two items — the ledger's ACTIVE declaration rests solely on them.
+
+---
+
 ### v5.5.97 — Branch Model Recorded (OI-7 resolved) — 2026-10-15
 
 - 2026-10-15 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (docs)
@@ -527,7 +560,7 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   - `test:flow` **6 files / 19 tests** pass (real bootstrap→shutdown on embedded PostgreSQL).
   - `test:integration` **166 files / 206 tests** pass.
   - Remaining unverified: the Docker image build and the K8s apply (no daemon / no cluster).
-- **Residuals discharged.** OI-2 (per-layer floors), OI-4 (assets), OI-5 (slices M10/M14/M16/M18), OI-6 (deviation ownership) are resolved; OI-3 is resolved except Docker/K8s; OI-1 (attestation) and OI-7 (branch decision) remain open by nature. `migration-ledger.md` re-triaged to match.
+- **Residuals discharged.** OI-2 (per-layer floors), OI-4 (assets), OI-5 (slices M10/M14/M16/M18), OI-6 (deviation ownership) are resolved; OI-3 is resolved except Docker/K8s; OI-1 (attestation) and OI-7 (branch decision) remain open by nature (OI-7 was then resolved in `v5.5.97`, the next entry — this line is superseded by it). `migration-ledger.md` re-triaged to match.
 - **Verification:** corpus gate suite 27/27 green; application suite green as above.
 
 ---
@@ -2610,6 +2643,7 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 | UR-20261009-002 — hardening / migration / rebrand | Executed (docs + code) across v5.3–v5.5; the interactive residuals are tracked (OI-5). |
 | UR-20261010-001 — corpus residual closure | Executed 2026-10-10 (see the entry above). |
 | UR-20261015-090 — corpus audit residual closure | Executed 2026-10-15 (see the `v5.5.95` entry above). Findings DA-1 … DA-12 closed; see §5.2. |
+| UR-20261016-091 — corpus audit + enforcement (gate-truth, provenance, version model, guard classes) | Executed 2026-10-16 (see the `v5.5.99` entry above). Findings AU-1 … AU-11 closed; see §5.2. |
 
 ### 5.2 Residual dispositions (UR-20261015-090 R9)
 
@@ -2617,12 +2651,12 @@ Every carried residual now states its owner, status, and blocker — none is a s
 
 | Id | Item | Owner | Status | Blocker / note |
 |---|---|---|---|---|
-| OI-1 | Human attestation (`review_state` / `last_verified_commit`) | Dumby Core Engineering | **open (policy-stated)** | Requires a human review pass; the machine-verified-only policy is stated in `README.md` + the schema `$comment`. |
+| OI-1 | Human attestation (`review_state` / `last_verified_commit`) | Dumby Core Engineering | **standing (policy)** | Not a defect: the corpus is machine-verified only, the policy is stated in `README.md` + the schema `$comment`, and a human review pass is a deliberate standing item — never faked. |
 | OI-2 | Per-layer coverage floors (D-8.2) | engineering | **resolved** | Per-layer floors enforced and met (74.1 / 67.45 / 74.17 / 75.07), verified 2026-10-15. |
-| OI-3 | Unverified surfaces (flow / integration / Docker / K8s) | engineering | **resolved except Docker/K8s** | flow + integration suites executed green 2026-10-15; the image build / cluster apply need a daemon / cluster. |
+| OI-3 | Unverified surfaces (flow / integration / Docker / K8s) | engineering | **resolved except Docker/K8s** | flow + integration suites green 2026-10-15; the image build / cluster apply need a daemon / cluster unavailable in the build sandbox — an environment limit, recorded honestly, not a code defect. |
 | OI-4 | Default banner + white icon assets | operator | **resolved** | Present in `apps/main/assets/` and per-module `assets/icon.png`. |
 | OI-5 | Migration slices M10 / M14 / M16 | engineering | **resolved** | M10 / M14 / M16 / M18 DONE, toolchain-verified. |
 | OI-6 | 24 logged deviations (appendix-c) | framework-maintainers | **resolved** | `appendix-c` carries the ownership note; each item owned or deferred. |
 | OI-7 | Branch-divergence decision (`main` vs `feature/dev`) | operator | **resolved** | Dual-branch model recorded: `feature/dev` is the development branch, `main` the deployment branch; every change lands on `feature/dev` first and is promoted to `main`. |
 | — | M18 `/modules` corrections & disable enforcement | engineering | **resolved (DONE)** | Disable enforcement present; `disable-behaviour.spec.ts` passes. |
-| — | M74 / M82 (proposed) | engineering | open (proposed) | M74 awaits operator confirmation; M82 is blocked on deploy packaging. |
+| — | M74 / M82 | operator | **M74 confirmed; M82 closed** | M74's ownership model (`upgradation/UR-20261012-059.md`) is confirmed by operator directive; its implementation is a code item outside the docs corpus. M82 closed — superseded by M83 (DONE). |

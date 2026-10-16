@@ -98,7 +98,7 @@ records raised under their own IDs — never edits to frozen ones.
 > three UR rows. Those figures describe the **source program**, not files in this tree: the source
 > request records are archived with the program and are represented here only by the frozen records
 > listed above. This register is therefore **provenance-only** — it is not the live list of records;
-> the live records are the `upgradation/UR-*.md` files themselves.
+> the live records are the `upgradation/UR-*.md` files themselves. **Live vs source-program:** the live count is read from `scripts/docs/check-ur.mjs` (it is 98 at 2026-10-16); `counts.ur_requests` (121) is the frozen source-program total and is never the live count.
 
 UR records are discovered at run time by `scripts/docs/check-ur.mjs`: any `upgradation/UR-*.md`
 is detected and validated automatically (front-matter complete, `kind: ur`, every cited corpus
