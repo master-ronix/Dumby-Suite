@@ -52,17 +52,9 @@ export interface BccmBatchStore {
     nowMs: number,
   ): Promise<void>;
   confirm(guildId: string, applicationId: string, names: readonly string[]): Promise<void>;
-  dropReservations(
-    guildId: string,
-    applicationId: string,
-    names: readonly string[],
-  ): Promise<void>;
+  dropReservations(guildId: string, applicationId: string, names: readonly string[]): Promise<void>;
   /** One transaction: write the rename view and mark the batch's queue entries done. */
-  commit(
-    guildId: string,
-    applicationId: string,
-    entries: readonly BccmQueueEntry[],
-  ): Promise<void>;
+  commit(guildId: string, applicationId: string, entries: readonly BccmQueueEntry[]): Promise<void>;
 }
 
 export interface BccmBatchPushDeps {
@@ -246,7 +238,10 @@ export async function runBccmBatchPush(deps: BccmBatchPushDeps): Promise<BccmBat
       continue;
     }
 
-    if ((await store.dailyUsed(guildId, applicationId, nowMs)) + fresh.length > DAILY_CREATE_LIMIT) {
+    if (
+      (await store.dailyUsed(guildId, applicationId, nowMs)) + fresh.length >
+      DAILY_CREATE_LIMIT
+    ) {
       logger.warn('bccm-batch-daily-limit', { guildId, newNames: fresh.length });
       guilds.push({ ...base, sent: false, skippedReason: 'daily-limit' });
       continue;

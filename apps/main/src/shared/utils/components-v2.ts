@@ -361,7 +361,11 @@ export function actionRow(
  * item 3 — a small image usable as a Section accessory (Discord type 11). Mirrors the embed
  * thumbnail slot; Discord renders it right-aligned beside the section's text.
  */
-export function thumbnail(url: string, description?: string, spoiler?: boolean): ThumbnailComponent {
+export function thumbnail(
+  url: string,
+  description?: string,
+  spoiler?: boolean,
+): ThumbnailComponent {
   const result: ThumbnailComponent = {
     type: ComponentType.THUMBNAIL,
     media: { url },

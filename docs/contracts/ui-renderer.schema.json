@@ -20,11 +20,7 @@
     "IS_COMPONENTS_V2": 32768,
     "EPHEMERAL": 64
   },
-  "density_modes": [
-    "D",
-    "M",
-    "C"
-  ],
+  "density_modes": ["D", "M", "C"],
   "accent": "#FFCA6D",
   "accent_resolution": [
     "explicit page/module accent",

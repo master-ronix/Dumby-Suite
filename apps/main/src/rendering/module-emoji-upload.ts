@@ -140,7 +140,10 @@ export async function collectModuleEmojiAssets(
   const out: ModuleIconAsset[] = [];
   for (const entry of entries) {
     if (!entry.isFile() || !EMOJI_ASSET_EXT.test(entry.name)) continue;
-    const base = entry.name.replace(EMOJI_ASSET_EXT, '').replace(/[^a-z0-9_]/gi, '_').toLowerCase();
+    const base = entry.name
+      .replace(EMOJI_ASSET_EXT, '')
+      .replace(/[^a-z0-9_]/gi, '_')
+      .toLowerCase();
     out.push({ name: `dumby_${safeSlug}_${base}`, path: join(dir, entry.name) });
   }
   return out;

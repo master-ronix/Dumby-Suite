@@ -21,7 +21,6 @@ import {
   type Component,
   type ComponentsV2Message,
   type EntitySelectComponent,
-  type ThumbnailComponent,
 } from '../shared/utils/components-v2.js';
 import { pageSections } from './page-layouts.js';
 
@@ -140,7 +139,8 @@ export type RenderBlock =
       readonly kind: 'section';
       readonly content: string;
       /** A button (interaction/link) OR a thumbnail image as the single in-line accessory. */
-      readonly accessory: PageActionButton | { readonly thumbnail: string; readonly description?: string };
+      readonly accessory:
+        PageActionButton | { readonly thumbnail: string; readonly description?: string };
     }
   | { readonly kind: 'row'; readonly buttons: readonly PageActionButton[] }
   | {
@@ -337,7 +337,10 @@ export function accentToInt(accent: string | undefined): number | undefined {
  * then the ACTING PROFILE's declared accent (a persona's own colour), then the framework default.
  * The main bot's profile carries no accent, so it lands on amber.
  */
-export function resolveAccent(explicit: string | undefined, profile: RenderProfile | undefined): number {
+export function resolveAccent(
+  explicit: string | undefined,
+  profile: RenderProfile | undefined,
+): number {
   const fromProfile =
     profile?.accent ?? (profile?.kind === 'persona' ? DEFAULT_PERSONA_ACCENT : undefined);
   return accentToInt(explicit) ?? accentToInt(fromProfile) ?? DEFAULT_ACCENT_COLOR;
@@ -538,10 +541,7 @@ export class CoreRenderer {
     // (string/user/role/mentionable/channel), and the trailing selects a page declares all belong
     // here, and there is no limit on how many a page places. (The button zone above the footer is the
     // page's own action bar; it does NOT exclude buttons from this zone.)
-    const interactiveBlocks: RenderBlock[] = [
-      ...(input.interactive ?? []),
-      ...trailingBlocks,
-    ];
+    const interactiveBlocks: RenderBlock[] = [...(input.interactive ?? []), ...trailingBlocks];
     if (interactiveBlocks.length > 0) {
       components.push(separator());
       for (const block of interactiveBlocks) {
@@ -550,7 +550,12 @@ export class CoreRenderer {
       }
     }
 
-    return this.frame(components, resolveAccent(input.accent, input.profile), [], input.ephemeral === true);
+    return this.frame(
+      components,
+      resolveAccent(input.accent, input.profile),
+      [],
+      input.ephemeral === true,
+    );
   }
 
   /**

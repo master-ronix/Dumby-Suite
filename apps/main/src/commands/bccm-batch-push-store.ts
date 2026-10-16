@@ -29,7 +29,10 @@ export function createKnexBccmStore(knex: Knex): BccmBatchStore {
       return rows.map((row) => String(row.guildId));
     },
 
-    async pendingEntries(guildId: string, applicationId: string): Promise<readonly BccmQueueEntry[]> {
+    async pendingEntries(
+      guildId: string,
+      applicationId: string,
+    ): Promise<readonly BccmQueueEntry[]> {
       const rows = await knex('guild_command_queue')
         .where({ guildId, applicationId, status: 'pending' })
         .whereNull('deletedAt')
