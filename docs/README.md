@@ -20,7 +20,7 @@ upgradation/ prompts/` (build & migration assets) · `_generated/` (generated in
 **Boundary.** `apps/main/docs/` (adr · api · architecture · compliance · privacy · runbooks ·
 security) is an application-local, **non-normative** set. It is **outside this corpus and its
 gates**; nothing there is an authority. The single normative ADR series is `adr/` (ADR-001 …
-ADR-015). `check-corpus-boundary` guards this boundary; `apps/main/docs/` carries no corpus
+ADR-016). `check-corpus-boundary` guards this boundary; `apps/main/docs/` carries no corpus
 front-matter and makes no normative claim.
 
 ## Reading paths

@@ -11,6 +11,7 @@ import {
   type BccmDiscordClient,
   type BccmQueueEntry,
 } from '../../src/commands/bccm-batch-push.js';
+import { createBccmEffectHandlers } from '../../src/commands/bccm-effects.js';
 
 interface QueueRow {
   guildId: string;
@@ -27,10 +28,13 @@ class FakeStore implements BccmBatchStore {
   failCommitOnce = false;
   constructor(readonly queue: QueueRow[]) {}
 
-  async pendingGuildIds(): Promise<readonly string[]> {
+  async pendingGuildIds(_applicationId: string): Promise<readonly string[]> {
     return [...new Set(this.queue.filter((q) => q.status === 'pending').map((q) => q.guildId))];
   }
-  async pendingEntries(guildId: string): Promise<readonly BccmQueueEntry[]> {
+  async pendingEntries(
+    guildId: string,
+    _applicationId: string,
+  ): Promise<readonly BccmQueueEntry[]> {
     return this.queue
       .filter((q) => q.guildId === guildId && q.status === 'pending')
       .map((q) => ({
@@ -40,25 +44,34 @@ class FakeStore implements BccmBatchStore {
         ...(q.alias !== undefined ? { alias: q.alias } : {}),
       }));
   }
-  async dailyUsed(guildId: string, nowMs: number): Promise<number> {
+  async dailyUsed(guildId: string, _applicationId: string, nowMs: number): Promise<number> {
     const names = new Set(
       this.tally.filter((t) => t.guildId === guildId && t.expiresAt > nowMs).map((t) => t.name),
     );
     return names.size;
   }
-  async reserve(guildId: string, names: readonly string[], nowMs: number): Promise<void> {
+  async reserve(
+    guildId: string,
+    _applicationId: string,
+    names: readonly string[],
+    nowMs: number,
+  ): Promise<void> {
     for (const name of names) {
       this.tally.push({ guildId, name, status: 'in-flight', expiresAt: nowMs + 86_400_000 });
     }
   }
-  async confirm(guildId: string, names: readonly string[]): Promise<void> {
+  async confirm(guildId: string, _applicationId: string, names: readonly string[]): Promise<void> {
     for (const t of this.tally) {
       if (t.guildId === guildId && t.status === 'in-flight' && names.includes(t.name)) {
         t.status = 'confirmed';
       }
     }
   }
-  async dropReservations(guildId: string, names: readonly string[]): Promise<void> {
+  async dropReservations(
+    guildId: string,
+    _applicationId: string,
+    names: readonly string[],
+  ): Promise<void> {
     for (let i = this.tally.length - 1; i >= 0; i -= 1) {
       const t = this.tally[i];
       if (t && t.guildId === guildId && t.status === 'in-flight' && names.includes(t.name)) {
@@ -66,7 +79,11 @@ class FakeStore implements BccmBatchStore {
       }
     }
   }
-  async commit(guildId: string, entries: readonly BccmQueueEntry[]): Promise<void> {
+  async commit(
+    guildId: string,
+    _applicationId: string,
+    entries: readonly BccmQueueEntry[],
+  ): Promise<void> {
     if (this.failCommitOnce) {
       this.failCommitOnce = false;
       throw new Error('commit failed');
@@ -238,7 +255,63 @@ describe('bccm batch push — failure modes', () => {
     expect(store.queue[0]?.status).toBe('completed'); // queue ends done
     expect(store.renames).toEqual([{ guildId: 'g1', commandKey: 'ban', newName: 'timeout' }]);
     // Distinct names in the window — the same name is not counted twice.
-    expect(await store.dailyUsed('g1', Date.now())).toBe(1);
+    expect(await store.dailyUsed('g1', '', Date.now())).toBe(1);
+  });
+});
+
+describe('bccm effects — profile scope', () => {
+  const mkKnex = () => {
+    const rows: Array<{ table: string; row: { applicationId?: string } }> = [];
+    const knex = ((table: string) => ({
+      insert: async (row: { applicationId?: string }) => {
+        rows.push({ table, row });
+        return [1];
+      },
+    })) as never;
+    return { knex, rows };
+  };
+  const registry = (applicationId: string) =>
+    ({ has: () => true, profile: { kind: 'persona', id: 'p1', applicationId } }) as never;
+  const submit = (handlers: ReturnType<typeof createBccmEffectHandlers>) =>
+    handlers['bccm.submit']?.(
+      { commandKey: 'ban', action: 'rename', newName: 'timeout' },
+      { guildId: 'g1', user: { id: 'u1' } },
+    );
+
+  test("the queue row carries the handler's identity scope", async () => {
+    const { knex, rows } = mkKnex();
+    await submit(
+      createBccmEffectHandlers({
+        knex,
+        registry: registry('persona-app'),
+        logger: logger() as never,
+        applicationId: 'persona-app',
+      }),
+    );
+    expect(rows[0]?.row.applicationId).toBe('persona-app');
+  });
+
+  test("the main bot's scope is the '' sentinel — a persona never writes it", async () => {
+    const main = mkKnex();
+    const persona = mkKnex();
+    await submit(
+      createBccmEffectHandlers({
+        knex: main.knex,
+        registry: registry(''),
+        logger: logger() as never,
+        applicationId: '',
+      }),
+    );
+    await submit(
+      createBccmEffectHandlers({
+        knex: persona.knex,
+        registry: registry('persona-app'),
+        logger: logger() as never,
+        applicationId: 'persona-app',
+      }),
+    );
+    expect(main.rows[0]?.row.applicationId).toBe('');
+    expect(persona.rows[0]?.row.applicationId).toBe('persona-app');
   });
 });
 

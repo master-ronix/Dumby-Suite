@@ -1,23 +1,47 @@
 {
   "$id": "contracts/ui-renderer.schema.json",
-  "title": "UI renderer schema \u2014 Components v2",
+  "title": "UI renderer schema — Components v2",
   "components_v2": {
     "Container": 17,
     "TextDisplay": 10,
     "MediaGallery": 12,
     "Separator": 14,
-    "ActionRow": 1
+    "ActionRow": 1,
+    "Section": 9,
+    "Button": 2,
+    "StringSelect": 3,
+    "UserSelect": 5,
+    "RoleSelect": 6,
+    "MentionableSelect": 7,
+    "ChannelSelect": 8,
+    "Thumbnail": 11
   },
   "flags": {
-    "IS_COMPONENTS_V2": 32768
+    "IS_COMPONENTS_V2": 32768,
+    "EPHEMERAL": 64
   },
-  "density_modes": [
-    "D",
-    "M",
-    "C"
-  ],
+  "density_modes": ["D", "M", "C"],
   "accent": "#FFCA6D",
+  "accent_resolution": [
+    "explicit page/module accent",
+    "acting profile accent (persona)",
+    "framework default #FFCA6D"
+  ],
+  "persona_default_accent": "#808080",
+  "ephemeral": {
+    "single_container": true,
+    "accent_enforced": false,
+    "density_modes": false,
+    "free_composition": true
+  },
+  "zones": {
+    "button_zone": "above footer — the page's action bar (buttons)",
+    "interactive_zone": "below footer — any interactive component including buttons, unlimited"
+  },
   "reason_codes": [
+    "STATE_UNAVAILABLE",
+    "MODULE_DISABLED",
+    "OUT_OF_BOUND_GUILD",
     "UNKNOWN_COMMAND",
     "MAINTENANCE",
     "NOT_FOUND",
@@ -27,6 +51,7 @@
     "RATE_LIMITED",
     "GUILD_UNAVAILABLE",
     "MODULE_ERROR",
-    "OVERDUE"
+    "OVERDUE",
+    "INVALID_INPUT"
   ]
 }

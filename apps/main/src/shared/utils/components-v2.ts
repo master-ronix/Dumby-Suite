@@ -1,4 +1,6 @@
 export const IS_COMPONENTS_V2 = 32768;
+/** 1 << 6 — a message only the invoking user can see. Combinable with IS_COMPONENTS_V2. */
+export const EPHEMERAL = 64;
 
 export const ComponentType = {
   ACTION_ROW: 1,
@@ -10,6 +12,13 @@ export const ComponentType = {
   BUTTON: 2,
   /** item 8 — a Section: text blocks beside an accessory (e.g. an inline button). */
   SECTION: 9,
+  /** item 3 — a small image usable as a Section accessory (Discord type 11). */
+  THUMBNAIL: 11,
+  /** item 6 — the select-menu family: user / role / mentionable / channel (Discord types 5-8). */
+  USER_SELECT: 5,
+  ROLE_SELECT: 6,
+  MENTIONABLE_SELECT: 7,
+  CHANNEL_SELECT: 8,
 } as const;
 
 export type ComponentTypeValue =
@@ -20,7 +29,12 @@ export type ComponentTypeValue =
   | typeof ComponentType.CONTAINER
   | typeof ComponentType.STRING_SELECT
   | typeof ComponentType.BUTTON
-  | typeof ComponentType.SECTION;
+  | typeof ComponentType.SECTION
+  | typeof ComponentType.THUMBNAIL
+  | typeof ComponentType.USER_SELECT
+  | typeof ComponentType.ROLE_SELECT
+  | typeof ComponentType.MENTIONABLE_SELECT
+  | typeof ComponentType.CHANNEL_SELECT;
 
 export interface ComponentBase {
   type: ComponentTypeValue;
@@ -70,6 +84,28 @@ export interface StringSelectComponent extends ComponentBase {
   }>;
 }
 
+/**
+ * item 6 — the select-menu family that is NOT the string select. Discord types 5-8 (user, role,
+ * mentionable, channel) share one shape: a minted customId, optional placeholder/min/max/disabled,
+ * and an optional `default_values` list. They carry no `options` array — the client enumerates the
+ * candidates (members, roles, channels) itself.
+ */
+export interface EntitySelectComponent extends ComponentBase {
+  type:
+    | typeof ComponentType.USER_SELECT
+    | typeof ComponentType.ROLE_SELECT
+    | typeof ComponentType.MENTIONABLE_SELECT
+    | typeof ComponentType.CHANNEL_SELECT;
+  custom_id: string;
+  placeholder?: string;
+  min_values?: number;
+  max_values?: number;
+  disabled?: boolean;
+  default_values?: Array<{ id: string; type: 'user' | 'role' | 'channel' }>;
+  /** Channel select only — restrict to these channel types (Discord channel type numbers). */
+  channel_types?: number[];
+}
+
 export interface ButtonComponent extends ComponentBase {
   type: typeof ComponentType.BUTTON;
   style: 1 | 2 | 3 | 4 | 5;
@@ -82,17 +118,29 @@ export interface ButtonComponent extends ComponentBase {
 
 export interface ActionRowComponent extends ComponentBase {
   type: typeof ComponentType.ACTION_ROW;
-  components: Array<ButtonComponent | StringSelectComponent>;
+  components: Array<ButtonComponent | StringSelectComponent | EntitySelectComponent>;
 }
 
 /**
- * item 8 — a Section holds one or more Text Displays beside a single accessory (a button), so a
- * control can sit IN-LINE after its text rather than on a separate row.
+ * item 3 — a small image (Discord type 11). Usable ONLY as a Section accessory, and (item 6) also
+ * usable as a standalone content element. Mirrors the embed thumbnail slot.
+ */
+export interface ThumbnailComponent extends ComponentBase {
+  type: typeof ComponentType.THUMBNAIL;
+  media: { url: string };
+  description?: string;
+  spoiler?: boolean;
+}
+
+/**
+ * item 8 — a Section holds one or more Text Displays beside a single accessory, so a control can sit
+ * IN-LINE after its text rather than on a separate row. Discord allows exactly one accessory, and it
+ * is either a Button or a Thumbnail (item 3).
  */
 export interface SectionComponent extends ComponentBase {
   type: typeof ComponentType.SECTION;
   components: TextDisplayComponent[];
-  accessory: ButtonComponent;
+  accessory: ButtonComponent | ThumbnailComponent;
 }
 
 export type Component =
@@ -101,13 +149,15 @@ export type Component =
   | SeparatorComponent
   | ContainerComponent
   | StringSelectComponent
+  | EntitySelectComponent
   | ButtonComponent
   | ActionRowComponent
-  | SectionComponent;
+  | SectionComponent
+  | ThumbnailComponent;
 
 export interface ComponentsV2Message {
   components: Component[];
-  flags: typeof IS_COMPONENTS_V2;
+  flags: number;
 }
 
 export function textDisplay(content: string): TextDisplayComponent {
@@ -196,6 +246,64 @@ export function stringSelect(
   return result;
 }
 
+/** item 6 — the shared shape of the user/role/mentionable/channel select family. */
+function entitySelect(
+  type: EntitySelectComponent['type'],
+  customId: string,
+  options: {
+    placeholder?: string;
+    minValues?: number;
+    maxValues?: number;
+    disabled?: boolean;
+    defaultValues?: Array<{ id: string; type: 'user' | 'role' | 'channel' }>;
+    channelTypes?: number[];
+  } = {},
+): EntitySelectComponent {
+  const result: EntitySelectComponent = {
+    type,
+    custom_id: customId,
+    min_values: options.minValues ?? 1,
+    max_values: options.maxValues ?? 1,
+  };
+  if (options.placeholder !== undefined) result.placeholder = options.placeholder;
+  if (options.disabled !== undefined) result.disabled = options.disabled;
+  if (options.defaultValues !== undefined) result.default_values = options.defaultValues;
+  if (options.channelTypes !== undefined) result.channel_types = options.channelTypes;
+  return result;
+}
+
+/** item 6 — a User Select menu (Discord type 5). */
+export function userSelect(
+  customId: string,
+  options?: Parameters<typeof entitySelect>[2],
+): EntitySelectComponent {
+  return entitySelect(ComponentType.USER_SELECT, customId, options);
+}
+
+/** item 6 — a Role Select menu (Discord type 6). */
+export function roleSelect(
+  customId: string,
+  options?: Parameters<typeof entitySelect>[2],
+): EntitySelectComponent {
+  return entitySelect(ComponentType.ROLE_SELECT, customId, options);
+}
+
+/** item 6 — a Mentionable Select menu (Discord type 7: users and roles). */
+export function mentionableSelect(
+  customId: string,
+  options?: Parameters<typeof entitySelect>[2],
+): EntitySelectComponent {
+  return entitySelect(ComponentType.MENTIONABLE_SELECT, customId, options);
+}
+
+/** item 6 — a Channel Select menu (Discord type 8), optionally restricted to channel types. */
+export function channelSelect(
+  customId: string,
+  options?: Parameters<typeof entitySelect>[2],
+): EntitySelectComponent {
+  return entitySelect(ComponentType.CHANNEL_SELECT, customId, options);
+}
+
 export function button(
   customId: string,
   label: string,
@@ -241,7 +349,7 @@ export function linkButton(
 }
 
 export function actionRow(
-  components: Array<ButtonComponent | StringSelectComponent>,
+  components: Array<ButtonComponent | StringSelectComponent | EntitySelectComponent>,
 ): ActionRowComponent {
   return {
     type: ComponentType.ACTION_ROW,
@@ -249,22 +357,47 @@ export function actionRow(
   };
 }
 
-/** item 8 — a Section: a text block with an accessory button rendered in-line after it. */
-export function section(content: string, accessory: ButtonComponent): SectionComponent {
+/**
+ * item 3 — a small image usable as a Section accessory (Discord type 11). Mirrors the embed
+ * thumbnail slot; Discord renders it right-aligned beside the section's text.
+ */
+export function thumbnail(
+  url: string,
+  description?: string,
+  spoiler?: boolean,
+): ThumbnailComponent {
+  const result: ThumbnailComponent = {
+    type: ComponentType.THUMBNAIL,
+    media: { url },
+  };
+  if (description !== undefined) result.description = description;
+  if (spoiler !== undefined) result.spoiler = spoiler;
+  return result;
+}
+
+/** item 8 — a Section: a text block with an accessory (button or thumbnail) rendered in-line. */
+export function section(
+  content: string | TextDisplayComponent[],
+  accessory: ButtonComponent | ThumbnailComponent,
+): SectionComponent {
+  const components = typeof content === 'string' ? [textDisplay(content)] : content;
   return {
     type: ComponentType.SECTION,
-    components: [textDisplay(content)],
+    components,
     accessory,
   };
 }
 
-/** item 5 — a modal carrying one short Text Input, for the Discover search (a text-input interface). */
+/** item 5 — a modal text input (short, style 1) or paragraph (style 2). */
 export interface ModalTextInput {
   customId: string;
   label: string;
   placeholder?: string;
   required?: boolean;
   maxLength?: number;
+  /** item 6 — style 2 is a multi-line paragraph input. */
+  style?: 'short' | 'paragraph';
+  minLength?: number;
 }
 
 export interface ModalPayload {
@@ -276,12 +409,31 @@ export interface ModalPayload {
       type: 4;
       custom_id: string;
       label: string;
-      style: 1;
+      style: 1 | 2;
       placeholder?: string;
       required?: boolean;
       max_length?: number;
+      min_length?: number;
     }>;
   }>;
+}
+
+function textInputRow(input: ModalTextInput): ModalPayload['components'][number] {
+  return {
+    type: ComponentType.ACTION_ROW,
+    components: [
+      {
+        type: 4,
+        custom_id: input.customId,
+        label: input.label,
+        style: input.style === 'paragraph' ? 2 : 1,
+        ...(input.placeholder !== undefined ? { placeholder: input.placeholder } : {}),
+        ...(input.required !== undefined ? { required: input.required } : {}),
+        ...(input.maxLength !== undefined ? { max_length: input.maxLength } : {}),
+        ...(input.minLength !== undefined ? { min_length: input.minLength } : {}),
+      },
+    ],
+  };
 }
 
 export function textInputModal(
@@ -292,33 +444,45 @@ export function textInputModal(
   return {
     custom_id: customId,
     title,
-    components: [
-      {
-        type: ComponentType.ACTION_ROW,
-        components: [
-          {
-            type: 4,
-            custom_id: input.customId,
-            label: input.label,
-            style: 1,
-            ...(input.placeholder !== undefined ? { placeholder: input.placeholder } : {}),
-            ...(input.required !== undefined ? { required: input.required } : {}),
-            ...(input.maxLength !== undefined ? { max_length: input.maxLength } : {}),
-          },
-        ],
-      },
-    ],
+    components: [textInputRow(input)],
   };
 }
 
-export function buildComponentsV2(components: Component[]): ComponentsV2Message {
+/** item 6 — a modal carrying several inputs (short inputs and/or paragraphs), one per action row. */
+export function multiInputModal(
+  customId: string,
+  title: string,
+  inputs: readonly ModalTextInput[],
+): ModalPayload {
+  return {
+    custom_id: customId,
+    title,
+    components: inputs.map(textInputRow),
+  };
+}
+
+/**
+ * item 5 — build a Components-v2 message. `ephemeral` adds the EPHEMERAL flag (1 << 6) alongside
+ * IS_COMPONENTS_V2, producing a message only the invoking user can see.
+ */
+export function buildComponentsV2(
+  components: Component[],
+  options: { ephemeral?: boolean } = {},
+): ComponentsV2Message {
   return {
     components,
-    flags: IS_COMPONENTS_V2,
+    flags: options.ephemeral === true ? IS_COMPONENTS_V2 | EPHEMERAL : IS_COMPONENTS_V2,
   };
 }
 
 export const DEFAULT_ACCENT_COLOR = 0xffca6d;
+
+/**
+ * item 2 — the accent a Twill-registered persona falls back to when none is configured: a neutral
+ * gray. Distinct from the framework's amber default, so a persona with no declared identity is
+ * visibly its own surface rather than the framework's.
+ */
+export const DEFAULT_PERSONA_ACCENT = '#808080';
 
 export function createBannerMediaGallery(bannerUrl: string): MediaGalleryComponent {
   return mediaGallery(bannerUrl, 'Dumby banner');

@@ -39,15 +39,22 @@ export interface BccmQueueEntry {
  * database; the knex implementation lives in `bccm-batch-push-store.ts`.
  */
 export interface BccmBatchStore {
-  pendingGuildIds(): Promise<readonly string[]>;
-  pendingEntries(guildId: string): Promise<readonly BccmQueueEntry[]>;
+  // item 2 — every store operation is scoped by the acting APPLICATION, so the main bot's push never
+  // consumes a persona's queued cosmetics (or vice versa) in a shared guild. '' is the main bot.
+  pendingGuildIds(applicationId: string): Promise<readonly string[]>;
+  pendingEntries(guildId: string, applicationId: string): Promise<readonly BccmQueueEntry[]>;
   /** Distinct new names reserved or confirmed for the guild within the window. */
-  dailyUsed(guildId: string, nowMs: number): Promise<number>;
-  reserve(guildId: string, names: readonly string[], nowMs: number): Promise<void>;
-  confirm(guildId: string, names: readonly string[]): Promise<void>;
-  dropReservations(guildId: string, names: readonly string[]): Promise<void>;
+  dailyUsed(guildId: string, applicationId: string, nowMs: number): Promise<number>;
+  reserve(
+    guildId: string,
+    applicationId: string,
+    names: readonly string[],
+    nowMs: number,
+  ): Promise<void>;
+  confirm(guildId: string, applicationId: string, names: readonly string[]): Promise<void>;
+  dropReservations(guildId: string, applicationId: string, names: readonly string[]): Promise<void>;
   /** One transaction: write the rename view and mark the batch's queue entries done. */
-  commit(guildId: string, entries: readonly BccmQueueEntry[]): Promise<void>;
+  commit(guildId: string, applicationId: string, entries: readonly BccmQueueEntry[]): Promise<void>;
 }
 
 export interface BccmBatchPushDeps {
@@ -58,6 +65,8 @@ export interface BccmBatchPushDeps {
   /** When true the task computes and logs the batch but writes nothing and sends nothing. */
   dryRun: boolean;
   now?: () => number;
+  /** item 2 — the acting APPLICATION this push is for; '' is the main bot's scope. */
+  applicationId?: string;
 }
 
 /** UR-20261011-023 — the minimal registry shape the payload builder needs. */
@@ -210,11 +219,12 @@ export interface BccmBatchPushReport {
  */
 export async function runBccmBatchPush(deps: BccmBatchPushDeps): Promise<BccmBatchPushReport> {
   const { store, logger, ceiling, discord, dryRun } = deps;
+  const applicationId = deps.applicationId ?? '';
   const nowMs = deps.now?.() ?? Date.now();
   const guilds: GuildBatchReport[] = [];
 
-  for (const guildId of await store.pendingGuildIds()) {
-    const entries = await store.pendingEntries(guildId);
+  for (const guildId of await store.pendingGuildIds(applicationId)) {
+    const entries = await store.pendingEntries(guildId, applicationId);
     const registered = await discord.getRegistered(guildId);
     const desired = applyBatch(registered, entries);
     const fresh = newNames(registered, desired);
@@ -228,7 +238,10 @@ export async function runBccmBatchPush(deps: BccmBatchPushDeps): Promise<BccmBat
       continue;
     }
 
-    if ((await store.dailyUsed(guildId, nowMs)) + fresh.length > DAILY_CREATE_LIMIT) {
+    if (
+      (await store.dailyUsed(guildId, applicationId, nowMs)) + fresh.length >
+      DAILY_CREATE_LIMIT
+    ) {
       logger.warn('bccm-batch-daily-limit', { guildId, newNames: fresh.length });
       guilds.push({ ...base, sent: false, skippedReason: 'daily-limit' });
       continue;
@@ -248,7 +261,7 @@ export async function runBccmBatchPush(deps: BccmBatchPushDeps): Promise<BccmBat
 
     // Reserve the names before the send, so a crash between the PUT and the commit cannot
     // undercount the daily budget.
-    await store.reserve(guildId, fresh, nowMs);
+    await store.reserve(guildId, applicationId, fresh, nowMs);
     try {
       // UR-20261012-044 — a rename target travels with its source key so the payload can inherit the
       // renamed command's real definition.
@@ -267,7 +280,7 @@ export async function runBccmBatchPush(deps: BccmBatchPushDeps): Promise<BccmBat
         guilds.push({ ...base, sent: false, skippedReason: 'over-limit' });
         continue;
       }
-      await store.dropReservations(guildId, fresh);
+      await store.dropReservations(guildId, applicationId, fresh);
       // The log viewer drops a record's structured fields, so the message string carries the error
       // text — which for a Discord API error includes the HTTP status and code — directly (the
       // `command-execution-error` pattern), with the status also named when the error carries one.
@@ -280,8 +293,8 @@ export async function runBccmBatchPush(deps: BccmBatchPushDeps): Promise<BccmBat
       continue;
     }
 
-    await store.confirm(guildId, fresh);
-    await store.commit(guildId, entries);
+    await store.confirm(guildId, applicationId, fresh);
+    await store.commit(guildId, applicationId, entries);
     guilds.push({ ...base, sent: true });
   }
 

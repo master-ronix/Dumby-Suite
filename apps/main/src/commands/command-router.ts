@@ -18,6 +18,7 @@ import {
   type RenderIdentity,
   type RenderBlock,
   type RenderMode,
+  type RenderProfile,
   derivePageSections,
 } from '../rendering/core-renderer.js';
 import { customEmojiParts, DEFAULT_EMOJI_SCOPE } from '../rendering/module-icons.js';
@@ -156,6 +157,11 @@ export interface CommandRouterOptions {
    */
   residentProfileName?: string;
   /**
+   * item 1 — the acting profile's declared accent (a persona's own colour); absent means the
+   * framework default. A persona with no configured accent falls back to the neutral persona gray.
+   */
+  residentAccent?: string;
+  /**
    * blueprint.md §22.2 / Table 22-A — the Power Engine `suspendGuild` state. When present, dispatch
    * consults it before anything else in the guild: a suspension overrides the guild's own
    * configuration rather than editing it.
@@ -219,12 +225,34 @@ export class CommandRouter {
     this.renderer = options.renderer ?? new CoreRenderer();
   }
 
+  /**
+   * item 1 — the acting profile, so every render is context-aware. A persona carries its own id and
+   * its declared accent (falling back to the neutral persona gray in the renderer); the main bot is
+   * `kind: 'main'` with no accent, so it falls back to the framework amber.
+   */
+  private renderProfile(): RenderProfile {
+    const id = this.options.residentPersonaId;
+    if (id !== undefined) {
+      return {
+        kind: 'persona',
+        id,
+        ...(this.options.residentAccent !== undefined
+          ? { accent: this.options.residentAccent }
+          : {}),
+      };
+    }
+    return { kind: 'main', id: 'main' };
+  }
+
   async dispatch(
     interaction: CommandInteraction,
     options: { mode?: RenderMode; page?: number; query?: string } = {},
   ): Promise<void> {
     const name = interaction.commandName;
-    const identity: RenderIdentity = { surface: this.pageTitle(name) };
+    const identity: RenderIdentity = {
+      surface: this.pageTitle(name),
+      profile: this.renderProfile(),
+    };
 
     const traceId = this.renderer.createTraceId();
 
