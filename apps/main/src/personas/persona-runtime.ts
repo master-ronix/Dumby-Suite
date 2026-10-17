@@ -101,6 +101,12 @@ export interface PersonaRuntimeDeps {
     persona: RuntimePersona,
     registry: CommandRegistry,
   ) => (interaction: unknown) => void;
+  /**
+   * item 2 (follow-up) — run this persona's OWN BCCM batch push, so a rename she queued through
+   * `/queue` (written to HER application scope) actually reaches Discord. Without it her queued
+   * cosmetics sit `pending` forever — the main bot's push deliberately ignores her scope.
+   */
+  runBccmPush?: (persona: RuntimePersona, botToken: string) => Promise<void>;
   logger: Logger;
 }
 
@@ -286,6 +292,15 @@ export class PersonaRuntime {
             );
           } catch (err) {
             logger.warn(`persona-presence-failed id=${persona.id} reason=${String(err)}`);
+          }
+        }
+        // item 2 (follow-up) — apply this persona's queued BCCM cosmetics on HER own application.
+        // Non-fatal, like the emoji upload and presence: a failed push must not stop the persona.
+        if (this.deps.runBccmPush !== undefined) {
+          try {
+            await this.deps.runBccmPush(persona, token);
+          } catch (err) {
+            logger.warn(`persona-bccm-push-failed id=${persona.id} reason=${String(err)}`);
           }
         }
         this.clients.set(persona.id, client);
