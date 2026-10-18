@@ -222,10 +222,10 @@
       "id": "REC-025",
       "area": "module load — build-provenance floor (§15.8 / D-4.10)",
       "doc_claim": "hash-bound provenance verification against the build record is the enforced floor where the signing subsystem is absent (spec/governance/part-4-module-system-framework.md, rule D-4.10)",
-      "code_truth": "the loader's provenance guard is armed only when a build-signing key is configured (BUILD_SIGNING_PUBLIC_KEY); with no key the guard is OFF and modules load unverified, logging module-provenance-unverified — fail-open, not enforced",
+      "code_truth": "the loader runs load-time provenance verification only when BOTH a buildStore and a verifier are supplied (swastik-loader `guardActive`), and bootstrap supplies them only when the signing guard is armed; the check verifies the artifact hash AND the Ed25519 signature together, so with no signing key NEITHER is checked and modules import unverified (module-provenance-unverified) — fail-open, not the enforced floor",
       "code_ref": "apps/main/src/module-system/build-signing.ts ; apps/main/src/bootstrap/bootstrap.ts",
       "verdict": "code-gap",
-      "resolution": "Surfaced by the 2026-10-18 Railway run (no signing key configured). The spec calls provenance verification 'the enforced floor'; the runtime is fail-open when the key is absent. Closing it is a code/config-track item (arm the key, or fail closed), not a documentation change — recorded, not fixed."
+      "resolution": "Surfaced by the 2026-10-18 Railway run (no build-signing key configured on the deployment). Spec D-4.10 makes hash-bound provenance verification 'the enforced floor' where the signing subsystem is absent, but the code couples hash verification to the signing key (`guardActive` requires both buildStore and verifier), so with no key the floor is not enforced. Setting the key is a mitigation and needs a real keypair the builder signs with; the correct fix is a code change — decouple hash verification from the signing key, or fail closed. Recorded, not fixed — a code-track item."
     }
   ],
   "counts": {
