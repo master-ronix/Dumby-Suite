@@ -20,7 +20,7 @@ upgradation/ prompts/` (build & migration assets) · `_generated/` (generated in
 **Boundary.** `apps/main/docs/` (adr · api · architecture · compliance · privacy · runbooks ·
 security) is an application-local, **non-normative** set. It is **outside this corpus and its
 gates**; nothing there is an authority. The single normative ADR series is `adr/` (ADR-001 …
-ADR-015). `check-corpus-boundary` guards this boundary; `apps/main/docs/` carries no corpus
+ADR-016). `check-corpus-boundary` guards this boundary; `apps/main/docs/` carries no corpus
 front-matter and makes no normative claim.
 
 ## Reading paths
@@ -36,7 +36,7 @@ front-matter and makes no normative claim.
 ## Verification
 
 Every source heading is mapped to a target file, and a gate verifies each heading is actually
-present in its target (`status/coverage-ledger.json`, 2,246 rows). Run all 27 gates from `docs/`:
+present in its target (`status/coverage-ledger.json`, 2,246 rows). Run all 30 gates from `docs/`:
 
 ```
 cd docs
@@ -46,7 +46,7 @@ for g in scripts/docs/check-*.mjs; do node "$g"; done
 CI runs the same loop: `.github/workflows/docs-gates.yml` at the **repository root** executes
 every gate on any change under `docs/` (a `.github/` nested under `docs/` would be inert).
 
-Gates (27): manifest · coverage · **ledger-content** · frontmatter · contracts · **compliance** · counts · no-restatement · archive-guard · **asset-adaptation** · status-evidence · anchors · anchor-paths · **edges** · acceptance · reconciliation · code-reconciliation · **entities** · **terminology** · **authority** · **facts** · **normative-markers** · **chain** · **chain-states** · **corpus-boundary** · **side-docs** · **ur**.
+Gates (30): manifest · coverage · **ledger-content** · frontmatter · contracts · **compliance** · counts · no-restatement · archive-guard · **asset-adaptation** · status-evidence · anchors · anchor-paths · **edges** · acceptance · reconciliation · code-reconciliation · **entities** · **terminology** · **authority** · **facts** · **normative-markers** · **chain** · **chain-states** · **corpus-boundary** · **side-docs** · **ur** · **generated** · **section-order** · **supersession**.
 
 **Verification status (policy).** These gates are structural: they prove the corpus is internally
 consistent and single-sourced, not that a human has reviewed every section, and they do **not** run
@@ -63,9 +63,10 @@ the application `tsc` / `vitest` (the app typecheck is a separate gate). Per-fil
 `upgradation/change-log.md`). A bare `5.x.y` in prose names the change-log track unless a
 document says otherwise.
 
-**Last independent audit.** 2026-10-15, against `feature/dev` @ `6fd4df9d` — a full-scope corpus
-audit whose findings (DA-1 … DA-12) are formalised as `upgradation/UR-20261015-090.md` and closed
-under it. The audit's date and commit are recorded here so audit staleness is visible the same way
+**Last independent audit.** 2026-10-18, against `feature/dev` @ `416864b` — a full-scope corpus
+audit whose findings (DR-1 … DR-12) are formalised as `upgradation/UR-20261018-092.md`; the prior
+audit's findings (AU-1 … AU-11, `upgradation/UR-20261016-091.md`) are closed under it. The audit's date, commit, scope and request are also recorded machine-readably in
+`status/audit-age.json`. The audit's date and commit are recorded here so audit staleness is visible the same way
 provenance staleness is.
 
 **Branch model.** `feature/dev` is the **development** branch and `main` is the **deployment**

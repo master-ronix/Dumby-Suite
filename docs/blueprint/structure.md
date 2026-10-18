@@ -11,7 +11,7 @@ note: transcribed from the real repository tree at branch feature/dev
 # DUMBY-SUITE — Complete File Directory Structure
 
 **Transcribed from the real repository** — `master-ronix/Dumby-Suite`, branch `feature/dev`
-(1,552 entries: 287 directories, 1,265 files). Directories and key files, annotated (`←`) with
+({{counts.tree_entries}} entries: {{counts.tree_dirs}} directories, {{counts.tree_files}} files). Directories and key files, annotated (`←`) with
 each folder's role. This is the **physical tree as it is**, not an intended layout: where an
 earlier draft showed a `src/core/` wrapper or a `container/` / `modules/` naming, the real
 tree is flat `src/` with `di/` and `module-system/`.

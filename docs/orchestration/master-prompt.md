@@ -641,7 +641,7 @@ The build is complete only when a full re-audit yields an all-`COMPLETE` Gap Man
 
 ## 8. Change-Log Record
 
-Per the entry discipline in `upgradation/change-log.md` §1.5, this document writes a **Build** line per phase, an **Enforcement** line per verification pass (State C), and a **Verified** line at completion:
+Per the entry discipline in `upgradation/change-log.md` §1.5, this document writes a **Build** line per phase, an **Enforcement** line per verification pass (State C), and a **Verified** line at completion. The tokens below (`<date>`, `<n>`, `<name>`, `<A|B|C>`, `<COMPLETE|PARTIAL|BLOCKED>`, `<COMPLETE|FAULTY|PARTIAL|MISSING>`) are **shapes, never values** — filled at record time:
 
 ```
 - <date> · master-prompt 5.2.0 · phase=<n> · state=<A|B|C> · result=<COMPLETE|PARTIAL|BLOCKED>

@@ -11,10 +11,12 @@ export type EffectiveCommandNames = ReadonlyMap<string, string>;
 export async function resolveEffectiveCommandNames(
   knex: Knex,
   guildId: string | null,
+  /** item 2 — the acting APPLICATION; '' is the main bot's scope. BCCM is profile-scoped. */
+  applicationId = '',
 ): Promise<EffectiveCommandNames> {
   if (guildId === null) return new Map();
   const rows = (await knex('guild_command_renames')
-    .where({ guildId })
+    .where({ guildId, applicationId })
     .whereNull('deletedAt')
     .select('commandKey', 'newName')) as Array<{ commandKey?: unknown; newName?: unknown }>;
   const names = new Map<string, string>();
@@ -47,10 +49,12 @@ export type CommandStatuses = ReadonlyMap<string, 'enabled' | 'disabled'>;
 export async function resolveCommandStatuses(
   knex: Knex,
   guildId: string | null,
+  /** item 2 — the acting APPLICATION; '' is the main bot's scope. BCCM is profile-scoped. */
+  applicationId = '',
 ): Promise<CommandStatuses> {
   if (guildId === null) return new Map();
   const rows = (await knex('guild_command_overrides')
-    .where({ guildId })
+    .where({ guildId, applicationId })
     .whereIn('overrideType', ['enabled', 'disabled'])
     .whereNull('deletedAt')
     .orderBy('updatedAt', 'asc')

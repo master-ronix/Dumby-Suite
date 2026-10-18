@@ -18,8 +18,7 @@ review_state: pending-evidence
 **Status:** [SPEC]
 
 > **This section describes the real physical tree.** It is transcribed from the actual
-> `master-ronix/Dumby-Suite` repository at branch `feature/dev` (the live tree, 1,552 entries:
-> 287 directories, 1,265 files), not from the earlier intended tree. Where the intended layout
+> `master-ronix/Dumby-Suite` repository at branch `feature/dev` (the live tree, {{counts.tree_entries}} entries: {{counts.tree_dirs}} directories, {{counts.tree_files}} files), not from the earlier intended tree. Where the intended layout
 > and the real tree ever differ, **the real tree is what is written here**; the difference is
 > recorded in `status/code-reconciliation.json`.
 
@@ -224,7 +223,7 @@ empty scaffold is a conscious decision rather than an oversight.
 ### 7.7 How To Verify This Section Against the Code
 
 The tree above is the actual physical tree of `master-ronix/Dumby-Suite` at branch
-`feature/dev` — 1,552 entries (287 directories, 1,265 files), with `apps/main/src` holding 48
+`feature/dev` — {{counts.tree_entries}} entries ({{counts.tree_dirs}} directories, {{counts.tree_files}} files), with `apps/main/src` holding 48
 directories and `packages/modules/` holding exactly the eight first-party modules. Where the
 earlier intended tree and this real tree differ (for example the retired `src/core` wrapper),
 the real tree wins and the difference is recorded in `status/code-reconciliation.json`.

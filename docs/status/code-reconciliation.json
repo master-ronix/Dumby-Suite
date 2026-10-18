@@ -1,9 +1,10 @@
 {
   "$id": "docs/status/code-reconciliation.json",
   "title": "Docs ↔ Code reconciliation",
-  "note": "Every row compares what the NEW documentation asserts against the actual source in master-ronix/Dumby-Suite (apps/main at 6fd4df9db2f432e4f1af79c9a35aafd777c6bcf9, branch feature/dev). Standing rule: the specification is authority; where the code is narrower, the code is the gap to close.",
-  "verified_commit": "6fd4df9db2f432e4f1af79c9a35aafd777c6bcf9",
+  "note": "Every row compares what the NEW documentation asserts against the actual source in master-ronix/Dumby-Suite (apps/main at 416864b603616bd9b984b1bd7f6fc6c773f8ace6, branch feature/dev). Standing rule: the specification is authority; where the code is narrower, the code is the gap to close.",
+  "verified_commit": "416864b603616bd9b984b1bd7f6fc6c773f8ace6",
   "verified_branch": "feature/dev",
+  "verified_at": "2026-10-18",
   "verdicts": [
     "match",
     "doc-incomplete",
@@ -18,7 +19,7 @@
       "code_truth": "releaseStatus is required and is z.enum(['private','public'])",
       "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
       "verdict": "match",
-      "resolution": "Re-verified against HEAD 6fd4df9db2f432e4f1af79c9a35aafd777c6bcf9 — the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
+      "resolution": "Re-verified against HEAD 416864b603616bd9b984b1bd7f6fc6c773f8ace6 — the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
     },
     {
       "id": "REC-002",
@@ -27,7 +28,7 @@
       "code_truth": "the schema carries a required visibility enum (['public','unlisted','private'])",
       "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
       "verdict": "match",
-      "resolution": "Re-verified against HEAD 6fd4df9db2f432e4f1af79c9a35aafd777c6bcf9 — the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
+      "resolution": "Re-verified against HEAD 416864b603616bd9b984b1bd7f6fc6c773f8ace6 — the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
     },
     {
       "id": "REC-003",
@@ -54,7 +55,7 @@
       "code_truth": "the schema requires name, version, description, tier, hardcoded, devId, buildId, visibility and releaseStatus — matching the contract's required list",
       "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
       "verdict": "match",
-      "resolution": "Re-verified against HEAD 6fd4df9db2f432e4f1af79c9a35aafd777c6bcf9 — the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
+      "resolution": "Re-verified against HEAD 416864b603616bd9b984b1bd7f6fc6c773f8ace6 — the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
     },
     {
       "id": "REC-006",
@@ -153,7 +154,7 @@
       "code_truth": "22 CORE_TOKENS declared (Logger, Config, Db, EventBus, Cache, Queue, ModuleRegistry, PermissionResolver, Metrics, I18n, CommandRegistry, CommandRouter, Renderer, InteractionRegistry, CommandCeilingService, CollisionResolutionService, Personas, EventRouter, Scheduler, AdminEvalGate, OAuth2, MtpTokens)",
       "code_ref": "apps/main/src/di/tokens.ts",
       "verdict": "match",
-      "resolution": "Re-verified against HEAD 6fd4df9db2f432e4f1af79c9a35aafd777c6bcf9 — the registry declares 22 core tokens (I18n added since the earlier 21-token count); the docs count and list now match the code."
+      "resolution": "Re-verified against HEAD 416864b603616bd9b984b1bd7f6fc6c773f8ace6 — the registry declares 22 core tokens (I18n added since the earlier 21-token count); the docs count and list now match the code."
     },
     {
       "id": "REC-018",
@@ -170,7 +171,7 @@
       "code_truth": "marketplaceCategory is a closed five-value enum ('audio'|'community'|'security'|'integrations'|'utility')",
       "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
       "verdict": "match",
-      "resolution": "Re-verified against HEAD 6fd4df9db2f432e4f1af79c9a35aafd777c6bcf9 — the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
+      "resolution": "Re-verified against HEAD 416864b603616bd9b984b1bd7f6fc6c773f8ace6 — the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
     },
     {
       "id": "REC-020",
@@ -179,7 +180,7 @@
       "code_truth": "depends: array of {token,version}; provides: array of {token,contract}; services: array of {token,class,lifetime,deps}",
       "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
       "verdict": "match",
-      "resolution": "Re-verified against HEAD 6fd4df9db2f432e4f1af79c9a35aafd777c6bcf9 — the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
+      "resolution": "Re-verified against HEAD 416864b603616bd9b984b1bd7f6fc6c773f8ace6 — the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
     },
     {
       "id": "REC-021",
@@ -188,7 +189,7 @@
       "code_truth": "devId and buildId are both required",
       "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
       "verdict": "match",
-      "resolution": "Re-verified against HEAD 6fd4df9db2f432e4f1af79c9a35aafd777c6bcf9 — the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
+      "resolution": "Re-verified against HEAD 416864b603616bd9b984b1bd7f6fc6c773f8ace6 — the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
     },
     {
       "id": "REC-022",
@@ -197,15 +198,41 @@
       "code_truth": "required: z.boolean().default(false)",
       "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
       "verdict": "match",
-      "resolution": "Re-verified against HEAD 6fd4df9db2f432e4f1af79c9a35aafd777c6bcf9 — the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
+      "resolution": "Re-verified against HEAD 416864b603616bd9b984b1bd7f6fc6c773f8ace6 — the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
+    },
+    {
+      "id": "REC-023",
+      "area": "BCCM — profile/application scope",
+      "doc_claim": "command cosmetics are keyed by the acting application, not by the guild alone (spec/operations/multi-identity-operation-twill-personas.md §35.4)",
+      "code_truth": "the BCCM store scopes every query by applicationId; migration 20260101000053 adds a not-null applicationId (default '') to guild_command_renames, guild_command_overrides, guild_command_queue and guild_command_daily_creates",
+      "code_ref": "apps/main/src/commands/bccm-batch-push-store.ts ; apps/main/src/db/migrations/20260101000053_add_command_application_scope.ts",
+      "verdict": "match",
+      "resolution": "Documented in v5.5.101 (spec §35.4); the main bot's scope is the empty string, so every pre-existing row and behaviour is unchanged."
+    },
+    {
+      "id": "REC-024",
+      "area": "BCCM — persona-side batch push",
+      "doc_claim": "each identity runs its own BCCM batch push against its own application scope (spec/operations/multi-identity-operation-twill-personas.md §35.4)",
+      "code_truth": "PersonaRuntimeDeps.runBccmPush is supplied by bootstrap and invoked per persona start; it runs runBccmBatchPush against the persona's own applicationId, so the main bot's push (which ignores the persona scope) never carries her queued cosmetics",
+      "code_ref": "apps/main/src/personas/persona-runtime.ts ; apps/main/src/bootstrap/bootstrap.ts",
+      "verdict": "match",
+      "resolution": "Documented in v5.5.101 (spec §35.4); previously a landed behaviour with no documentation and no reconciliation row (UR-20261018-092 DR-2). Confirmed live 2026-10-18: the persona-side push ran on Railway (bccm-batch-push-complete dryRun=false)."
+    },
+    {
+      "id": "REC-025",
+      "area": "module load — build-provenance floor (§15.8 / D-4.10)",
+      "doc_claim": "hash-bound provenance verification against the build record is the enforced floor where the signing subsystem is absent (spec/governance/part-4-module-system-framework.md, rule D-4.10)",
+      "code_truth": "the loader runs load-time provenance verification only when BOTH a buildStore and a verifier are supplied (swastik-loader `guardActive`), and bootstrap supplies them only when the signing guard is armed; the check verifies the artifact hash AND the Ed25519 signature together, so with no signing key NEITHER is checked and modules import unverified (module-provenance-unverified) — fail-open, not the enforced floor",
+      "code_ref": "apps/main/src/module-system/build-signing.ts ; apps/main/src/bootstrap/bootstrap.ts",
+      "verdict": "code-gap",
+      "resolution": "Surfaced by the 2026-10-18 Railway run (no build-signing key configured on the deployment). Spec D-4.10 makes hash-bound provenance verification 'the enforced floor' where the signing subsystem is absent, but the code couples hash verification to the signing key (`guardActive` requires both buildStore and verifier), so with no key the floor is not enforced. Setting the key is a mitigation and needs a real keypair the builder signs with; the correct fix is a code change — decouple hash verification from the signing key, or fail closed. Recorded, not fixed — a code-track item."
     }
   ],
   "counts": {
-    "match": 22,
+    "match": 24,
     "doc-incomplete": 0,
-    "code-gap": 0,
+    "code-gap": 1,
     "code-anchor-broken": 0,
-    "total": 22
-  },
-  "verified_at": "2026-10-15"
+    "total": 25
+  }
 }

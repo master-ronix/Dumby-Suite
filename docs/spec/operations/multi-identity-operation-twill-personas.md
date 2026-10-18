@@ -106,6 +106,16 @@ using both has up to 200 available slots. Voice-connection allocation is identic
 identity a voice-dependent module is bound to uses that identity's single per-guild voice
 connection.
 
+Command cosmetics are scoped the same way. The Bot Command Cosmetics for Marketplace (BCCM)
+state — a command's rename, its enabled/disabled override, its pending-change queue, and its
+per-guild daily-create counter — is keyed by the **acting application**, not by the guild alone,
+so a rename the main bot applies and one a persona applies in the same guild never collide on a
+shared key. The main bot's rows carry the empty application scope (every pre-existing row is
+unchanged); a persona's rows carry its own application id. Each identity runs its **own** BCCM
+batch push against its own application scope, so a rename a persona queues through `/queue`
+reaches Discord without the main bot's push — which deliberately ignores the persona's scope —
+ever touching it.
+
 ### 35.5 Governance
 
 Persona registration runs through the **Twill registration API**: the guild admin registers the

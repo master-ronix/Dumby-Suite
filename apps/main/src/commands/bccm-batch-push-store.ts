@@ -12,40 +12,55 @@ function toEntry(row: unknown): BccmQueueEntry {
   };
 }
 
-/** The knex-backed implementation of the BCCM batch-push store. */
+/**
+ * The knex-backed implementation of the BCCM batch-push store.
+ *
+ * item 2 — every query is scoped by the acting APPLICATION (`applicationId`), so the main bot and a
+ * persona can hold independent command cosmetics in the SAME guild without colliding. `''` is the
+ * main bot's scope.
+ */
 export function createKnexBccmStore(knex: Knex): BccmBatchStore {
   return {
-    async pendingGuildIds(): Promise<readonly string[]> {
+    async pendingGuildIds(applicationId: string): Promise<readonly string[]> {
       const rows = await knex('guild_command_queue')
-        .where({ status: 'pending' })
+        .where({ status: 'pending', applicationId })
         .whereNull('deletedAt')
         .distinct<{ guildId: string }[]>('guildId');
       return rows.map((row) => String(row.guildId));
     },
 
-    async pendingEntries(guildId: string): Promise<readonly BccmQueueEntry[]> {
+    async pendingEntries(
+      guildId: string,
+      applicationId: string,
+    ): Promise<readonly BccmQueueEntry[]> {
       const rows = await knex('guild_command_queue')
-        .where({ guildId, status: 'pending' })
+        .where({ guildId, applicationId, status: 'pending' })
         .whereNull('deletedAt')
         .select('commandKey', 'payload');
       return rows.map(toEntry);
     },
 
-    async dailyUsed(guildId: string, nowMs: number): Promise<number> {
+    async dailyUsed(guildId: string, applicationId: string, nowMs: number): Promise<number> {
       // Distinct names within the window, so an in-flight row and a later confirmed row for the
       // same name are not counted twice.
       const rows = await knex('guild_command_daily_creates')
-        .where({ guildId })
+        .where({ guildId, applicationId })
         .where('expiresAt', '>', new Date(nowMs))
         .distinct<{ name: string }[]>('name');
       return rows.length;
     },
 
-    async reserve(guildId: string, names: readonly string[], nowMs: number): Promise<void> {
+    async reserve(
+      guildId: string,
+      applicationId: string,
+      names: readonly string[],
+      nowMs: number,
+    ): Promise<void> {
       if (names.length === 0) return;
       await knex('guild_command_daily_creates').insert(
         names.map((name) => ({
           guildId,
+          applicationId,
           name,
           status: 'in-flight',
           expiresAt: new Date(nowMs + RESERVATION_TTL_MS),
@@ -53,40 +68,49 @@ export function createKnexBccmStore(knex: Knex): BccmBatchStore {
       );
     },
 
-    async confirm(guildId: string, names: readonly string[]): Promise<void> {
+    async confirm(guildId: string, applicationId: string, names: readonly string[]): Promise<void> {
       if (names.length === 0) return;
       await knex('guild_command_daily_creates')
-        .where({ guildId, status: 'in-flight' })
+        .where({ guildId, applicationId, status: 'in-flight' })
         .whereIn('name', [...names])
         .update({ status: 'confirmed', updatedAt: knex.fn.now() });
     },
 
-    async dropReservations(guildId: string, names: readonly string[]): Promise<void> {
+    async dropReservations(
+      guildId: string,
+      applicationId: string,
+      names: readonly string[],
+    ): Promise<void> {
       if (names.length === 0) return;
       await knex('guild_command_daily_creates')
-        .where({ guildId, status: 'in-flight' })
+        .where({ guildId, applicationId, status: 'in-flight' })
         .whereIn('name', [...names])
         .delete();
     },
 
-    async commit(guildId: string, entries: readonly BccmQueueEntry[]): Promise<void> {
+    async commit(
+      guildId: string,
+      applicationId: string,
+      entries: readonly BccmQueueEntry[],
+    ): Promise<void> {
       await knex.transaction(async (trx) => {
         for (const entry of entries) {
           if (entry.action !== 'rename' || entry.newName === undefined) continue;
           const updated = await trx('guild_command_renames')
-            .where({ guildId, commandKey: entry.commandKey })
+            .where({ guildId, applicationId, commandKey: entry.commandKey })
             .whereNull('deletedAt')
             .update({ newName: entry.newName, updatedAt: trx.fn.now() });
           if (updated === 0) {
             await trx('guild_command_renames').insert({
               guildId,
+              applicationId,
               commandKey: entry.commandKey,
               newName: entry.newName,
             });
           }
         }
         await trx('guild_command_queue')
-          .where({ guildId, status: 'pending' })
+          .where({ guildId, applicationId, status: 'pending' })
           .whereIn(
             'commandKey',
             entries.map((entry) => entry.commandKey),

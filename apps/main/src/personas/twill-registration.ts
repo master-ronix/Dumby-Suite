@@ -33,6 +33,7 @@ import {
   type PersonaRegistrationInput,
 } from './persona.js';
 import type { PersonaCommandBindingService } from './persona-command-binding.service.js';
+import { DEFAULT_PERSONA_ACCENT } from '../shared/utils/components-v2.js';
 
 const str = (value: unknown): string | undefined =>
   typeof value === 'string' && value.trim() !== '' ? value.trim() : undefined;
@@ -146,10 +147,13 @@ export function parsePersonaRegistration(
   if (note !== undefined && note.length > 128) {
     return { ok: false, reason: 'note must be 128 characters or fewer' };
   }
-  const accent = str(body.accent);
-  if (accent !== undefined && !ACCENT_PATTERN.test(accent)) {
+  const accentInput = str(body.accent);
+  if (accentInput !== undefined && !ACCENT_PATTERN.test(accentInput)) {
     return { ok: false, reason: 'accent must be a hex colour like #7A5AF8 or #7AF' };
   }
+  // item 2 — a Twill-registered persona defaults to the neutral persona gray when no accent is given,
+  // so every persona has a defined colour and a render never falls through to the framework amber.
+  const accent = accentInput ?? DEFAULT_PERSONA_ACCENT;
 
   const secret = str(body.oauthClientSecret);
   if (secret !== undefined && !isClientSecret(secret)) {
@@ -245,6 +249,7 @@ export interface TwillPersonaRouteDeps {
     boundGuildId: string;
     botTokenSealed: unknown;
     status: string;
+    accent?: string;
   }) => Promise<unknown>;
   stopPersona?: (persona: {
     id: string;
@@ -253,6 +258,7 @@ export interface TwillPersonaRouteDeps {
     boundGuildId: string;
     botTokenSealed: unknown;
     status: string;
+    accent?: string;
   }) => Promise<boolean>;
 }
 
@@ -298,6 +304,7 @@ export function registerTwillPersonaRoutes(
         boundGuildId: persona.boundGuildId,
         botTokenSealed: persona.botTokenSealed,
         status: persona.status,
+        ...(persona.accent !== undefined ? { accent: persona.accent } : {}),
       });
     } catch (err) {
       logger.warn(`twill-reload-failed id=${personaId} reason=${reasonOf(err)}`);
@@ -566,6 +573,23 @@ export function registerTwillPersonaRoutes(
             }
           }
         }
+        // item 7 — a persona DISABLED through this surface must stop NOW, not at the next restart.
+        // Before this, setting `status` to a non-active value left the running client serving every
+        // command until the process cycled, so the disable looked like it had done nothing.
+        if ('status' in body && persona.status !== 'active' && deps.stopPersona !== undefined) {
+          const stopped = await deps.stopPersona({
+            id: persona.id,
+            name: persona.name,
+            discordApplicationId: persona.discordApplicationId,
+            boundGuildId: persona.boundGuildId,
+            botTokenSealed: persona.botTokenSealed,
+            status: persona.status,
+            ...(persona.accent !== undefined ? { accent: persona.accent } : {}),
+          });
+          logger.info(
+            `persona-status-not-active id=${persona.id} status=${persona.status} stopped=${stopped}`,
+          );
+        }
         return reply.code(200).send(publicPersonaView(persona));
       } catch (err) {
         logger.warn(`twill-update-failed: ${reasonOf(err)}`);
@@ -631,6 +655,7 @@ export function registerTwillPersonaRoutes(
             boundGuildId: from,
             botTokenSealed: persona.botTokenSealed,
             status: persona.status,
+            ...(persona.accent !== undefined ? { accent: persona.accent } : {}),
           });
         }
         const moved = await service.rebindPersona(persona.id, guildId);
@@ -682,6 +707,7 @@ export function registerTwillPersonaRoutes(
           boundGuildId: persona.boundGuildId,
           botTokenSealed: persona.botTokenSealed,
           status: persona.status,
+          ...(persona.accent !== undefined ? { accent: persona.accent } : {}),
         });
         logger.info(`twill-reload-requested id=${persona.id} result=${JSON.stringify(result)}`);
         // The persona's own view, plus what the reload did — an absent result means her row no longer
@@ -713,6 +739,7 @@ export function registerTwillPersonaRoutes(
             boundGuildId: persona.boundGuildId,
             botTokenSealed: persona.botTokenSealed,
             status: persona.status,
+            ...(persona.accent !== undefined ? { accent: persona.accent } : {}),
           });
           if (!stopped) {
             logger.info(

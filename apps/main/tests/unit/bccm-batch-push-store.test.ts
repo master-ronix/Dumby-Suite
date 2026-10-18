@@ -58,7 +58,7 @@ function fakeKnex(opts: { rows?: unknown[]; updateResult?: number } = {}): {
 describe('knex bccm store', () => {
   test('pendingGuildIds and dailyUsed read their rows', async () => {
     const { knex } = fakeKnex({ rows: [{ guildId: 'g1' }, { guildId: 'g2' }] });
-    expect(await createKnexBccmStore(knex).pendingGuildIds()).toEqual(['g1', 'g2']);
+    expect(await createKnexBccmStore(knex).pendingGuildIds('')).toEqual(['g1', 'g2']);
   });
 
   test('pendingEntries projects the queue payload', async () => {
@@ -68,7 +68,7 @@ describe('knex bccm store', () => {
         { commandKey: 'kick' },
       ],
     });
-    expect(await createKnexBccmStore(knex).pendingEntries('g1')).toEqual([
+    expect(await createKnexBccmStore(knex).pendingEntries('g1', '')).toEqual([
       { commandKey: 'ban', action: 'rename', newName: 'timeout' },
       { commandKey: 'kick', action: 'rename' },
     ]);
@@ -76,35 +76,35 @@ describe('knex bccm store', () => {
 
   test('dailyUsed counts the rows within the window', async () => {
     const { knex } = fakeKnex({ rows: [{ name: 'a' }, { name: 'b' }] });
-    expect(await createKnexBccmStore(knex).dailyUsed('g1', Date.now())).toBe(2);
+    expect(await createKnexBccmStore(knex).dailyUsed('g1', '', Date.now())).toBe(2);
   });
 
   test('reserve inserts when there are names and is a no-op when there are none', async () => {
     const { knex, calls } = fakeKnex();
     const store = createKnexBccmStore(knex);
-    await store.reserve('g1', ['a'], Date.now());
+    await store.reserve('g1', '', ['a'], Date.now());
     expect(calls.some((c) => c.method === 'insert')).toBe(true);
     calls.length = 0;
-    await store.reserve('g1', [], Date.now());
+    await store.reserve('g1', '', [], Date.now());
     expect(calls.some((c) => c.method === 'insert')).toBe(false);
   });
 
   test('confirm and dropReservations are no-ops on an empty name set', async () => {
     const { knex, calls } = fakeKnex();
     const store = createKnexBccmStore(knex);
-    await store.confirm('g1', ['a']);
-    await store.dropReservations('g1', ['a']);
+    await store.confirm('g1', '', ['a']);
+    await store.dropReservations('g1', '', ['a']);
     expect(calls.some((c) => c.method === 'update')).toBe(true);
     expect(calls.some((c) => c.method === 'delete')).toBe(true);
     calls.length = 0;
-    await store.confirm('g1', []);
-    await store.dropReservations('g1', []);
+    await store.confirm('g1', '', []);
+    await store.dropReservations('g1', '', []);
     expect(calls.some((c) => c.method === 'update' || c.method === 'delete')).toBe(false);
   });
 
   test('commit updates an existing rename and marks the queue done', async () => {
     const { knex, calls } = fakeKnex({ updateResult: 1 });
-    await createKnexBccmStore(knex).commit('g1', [
+    await createKnexBccmStore(knex).commit('g1', '', [
       { commandKey: 'ban', action: 'rename', newName: 'timeout' },
     ]);
     expect(calls.some((c) => c.table === 'guild_command_renames' && c.method === 'update')).toBe(
@@ -120,7 +120,7 @@ describe('knex bccm store', () => {
 
   test('commit inserts a rename when none exists and skips non-rename entries', async () => {
     const { knex, calls } = fakeKnex({ updateResult: 0 });
-    await createKnexBccmStore(knex).commit('g1', [
+    await createKnexBccmStore(knex).commit('g1', '', [
       { commandKey: 'ban', action: 'rename', newName: 'timeout' },
       { commandKey: 'kick', action: 'disable' },
     ]);
@@ -130,5 +130,32 @@ describe('knex bccm store', () => {
     expect(calls.some((c) => c.table === 'guild_command_queue' && c.method === 'update')).toBe(
       true,
     );
+  });
+});
+
+describe('scope isolation', () => {
+  test('reads and writes carry the acting application scope', async () => {
+    const { knex, calls } = fakeKnex();
+    const store = createKnexBccmStore(knex);
+    await store.reserve('g1', 'appA', ['x'], 1000);
+    expect(calls.find((c) => c.method === 'insert')?.args[0]).toEqual([
+      expect.objectContaining({ guildId: 'g1', applicationId: 'appA', name: 'x' }),
+    ]);
+    calls.length = 0;
+    await store.pendingEntries('g1', 'appA');
+    expect(calls.find((c) => c.method === 'where')?.args[0]).toEqual({
+      guildId: 'g1',
+      applicationId: 'appA',
+      status: 'pending',
+    });
+  });
+
+  test("the main bot's scope is the '' sentinel the migration backfills", async () => {
+    const { knex, calls } = fakeKnex();
+    await createKnexBccmStore(knex).pendingGuildIds('');
+    expect(calls.find((c) => c.method === 'where')?.args[0]).toEqual({
+      status: 'pending',
+      applicationId: '',
+    });
   });
 });

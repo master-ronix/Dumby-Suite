@@ -2,24 +2,45 @@ import {
   actionRow,
   buildComponentsV2,
   button,
+  channelSelect,
   container,
   createBannerMediaGallery,
   createTitleBlock,
   DEFAULT_ACCENT_COLOR,
+  DEFAULT_PERSONA_ACCENT,
   linkButton,
+  mentionableSelect,
+  roleSelect,
   section,
   separator,
   stringSelect,
   textDisplay,
+  thumbnail,
+  userSelect,
   type ButtonComponent,
   type Component,
   type ComponentsV2Message,
+  type EntitySelectComponent,
 } from '../shared/utils/components-v2.js';
 import { pageSections } from './page-layouts.js';
 
 export const FOLLOWUP_ALARM_MS = 13 * 60 * 1000;
 
 export type RenderMode = 'D' | 'M' | 'C';
+
+/**
+ * item 1 — WHICH profile an action was triggered by. The Renderer is context-aware: a render
+ * triggered by a persona falls back to the persona's configured accent, and one triggered by the
+ * main bot falls back to the framework amber. `accent` is the acting profile's declared accent
+ * (hex); absent means "use the framework default".
+ */
+export interface RenderProfile {
+  readonly kind: 'main' | 'persona';
+  /** 'main' for the main bot, or the persona id. */
+  readonly id: string;
+  /** The acting profile's declared accent, e.g. `#7A5AF8`. Absent for the main bot. */
+  readonly accent?: string;
+}
 
 export type NoticeReasonCode =
   | 'STATE_UNAVAILABLE'
@@ -54,6 +75,8 @@ export interface RenderIdentity {
   buildId?: string;
   /** item 9 — the module developer username shown in the footer. */
   devUsername?: string;
+  /** item 1 — which profile triggered this render; supplies the fallback accent. */
+  profile?: RenderProfile;
 }
 
 export interface NavigationOption {
@@ -101,13 +124,24 @@ function blockButton(action: PageActionButton): ButtonComponent {
 /** item 17 — one action row; Discord shows up to five buttons per row. */
 export type PageActionRow = readonly PageActionButton[];
 
+/** item 6 — the non-string select family a page or module may place in the interactive zone. */
+export type EntitySelectKind = 'user' | 'role' | 'mentionable' | 'channel';
+
 /**
- * item 8 — a richer content block. A `section` renders its text with the accessory button IN-LINE
- * after it; a `select` renders a String Select row (the install dropdown); a `text` is plain text.
+ * item 8 — a richer content block. A `section` renders its text with an accessory IN-LINE after it
+ * (a button, or a thumbnail — item 3); a `select` renders a String Select row (the install
+ * dropdown); an `entitySelect` renders one of the user/role/mentionable/channel selects (item 6); a
+ * `thumbnail` renders a standalone small image; a `text` is plain text.
  */
 export type RenderBlock =
   | { readonly kind: 'text'; readonly content: string }
-  | { readonly kind: 'section'; readonly content: string; readonly accessory: PageActionButton }
+  | {
+      readonly kind: 'section';
+      readonly content: string;
+      /** A button (interaction/link) OR a thumbnail image as the single in-line accessory. */
+      readonly accessory:
+        PageActionButton | { readonly thumbnail: string; readonly description?: string };
+    }
   | { readonly kind: 'row'; readonly buttons: readonly PageActionButton[] }
   | {
       readonly kind: 'select';
@@ -121,7 +155,74 @@ export type RenderBlock =
        * and the footer closes the content above it.
        */
       readonly placement?: 'trailing';
-    };
+    }
+  | {
+      readonly kind: 'entitySelect';
+      readonly selectType: EntitySelectKind;
+      readonly customId: string;
+      readonly placeholder?: string;
+      readonly minValues?: number;
+      readonly maxValues?: number;
+      readonly disabled?: boolean;
+      readonly channelTypes?: readonly number[];
+    }
+  | { readonly kind: 'thumbnail'; readonly url: string; readonly description?: string };
+
+function entitySelectBuilder(
+  block: Extract<RenderBlock, { kind: 'entitySelect' }>,
+): EntitySelectComponent {
+  const options = {
+    ...(block.placeholder !== undefined ? { placeholder: block.placeholder } : {}),
+    ...(block.minValues !== undefined ? { minValues: block.minValues } : {}),
+    ...(block.maxValues !== undefined ? { maxValues: block.maxValues } : {}),
+    ...(block.disabled !== undefined ? { disabled: block.disabled } : {}),
+    ...(block.channelTypes !== undefined ? { channelTypes: [...block.channelTypes] } : {}),
+  };
+  switch (block.selectType) {
+    case 'user':
+      return userSelect(block.customId, options);
+    case 'role':
+      return roleSelect(block.customId, options);
+    case 'mentionable':
+      return mentionableSelect(block.customId, options);
+    case 'channel':
+      return channelSelect(block.customId, options);
+  }
+}
+
+function renderBlockComponent(block: RenderBlock): Component | undefined {
+  switch (block.kind) {
+    case 'text':
+      return textDisplay(block.content);
+    case 'thumbnail':
+      return thumbnail(block.url, block.description);
+    case 'section': {
+      const accessory =
+        'thumbnail' in block.accessory
+          ? thumbnail(block.accessory.thumbnail, block.accessory.description)
+          : blockButton(block.accessory);
+      return section(block.content, accessory);
+    }
+    case 'row':
+      return actionRow(block.buttons.map((b) => blockButton(b)));
+    case 'select':
+      return actionRow([
+        stringSelect(
+          block.customId,
+          block.options.map((o) => ({
+            label: o.label,
+            value: o.value,
+            ...(o.description !== undefined ? { description: o.description } : {}),
+            ...(o.emoji !== undefined ? { emoji: o.emoji } : {}),
+          })),
+          block.placeholder,
+          block.disabled,
+        ),
+      ]);
+    case 'entitySelect':
+      return actionRow([entitySelectBuilder(block)]);
+  }
+}
 
 export interface RenderDescriptor extends RenderIdentity {
   mode?: RenderMode;
@@ -135,10 +236,25 @@ export interface RenderDescriptor extends RenderIdentity {
   banner?: string;
   /** §1.2 — the footer density control. */
   modeControl?: ModeControl;
-  /** item 11/15/17 — page-declared action buttons rendered below the footer. */
+  /**
+   * item 6 — the BUTTON ZONE: page-declared action buttons, rendered above the footer. Only buttons
+   * are permitted here.
+   */
   actions?: readonly PageActionRow[];
   /** item 8 — richer content blocks (inline sections, selects) that replace the plain sections. */
   blocks?: readonly RenderBlock[];
+  /**
+   * item 6 — the INTERACTIVE ZONE: interactive components rendered BELOW the footer. It accepts ANY
+   * interactive component with no restriction on kind — buttons (an Action Row), the string/user/
+   * role/mentionable/channel select menus, and trailing selects — and imposes no limit on how many a
+   * page places here. Buttons are NOT excluded from this zone.
+   */
+  interactive?: readonly RenderBlock[];
+  /**
+   * item 4/5 — render this message EPHEMERAL (only the invoking user sees it). The ephemeral grammar
+   * is its own (see `renderEphemeral`); an ephemeral render ignores density, accent and footer.
+   */
+  ephemeral?: boolean;
 }
 
 /**
@@ -155,6 +271,8 @@ export interface PageRenderDescriptor extends RenderIdentity {
   data: Readonly<Record<string, unknown>>;
   mode?: RenderMode;
   banner?: string;
+  profile?: RenderProfile;
+  ephemeral?: boolean;
 }
 
 /**
@@ -184,6 +302,8 @@ export interface FormalNoticeDescriptor extends RenderIdentity {
   traceId: string;
   heading?: string;
   explanation?: string;
+  /** item 4 — a notice for a private interaction is itself ephemeral. */
+  ephemeral?: boolean;
 }
 
 export interface RendererInteraction {
@@ -201,6 +321,29 @@ function titleCaseModuleId(id: string): string {
     .split(/[-_]/)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ');
+}
+
+/** Parse a `#RGB`/`#RRGGBB` hex into a Discord colour int, or undefined when malformed. */
+export function accentToInt(accent: string | undefined): number | undefined {
+  if (accent === undefined) return undefined;
+  const hex = accent.replace('#', '');
+  const full = hex.length === 3 ? hex.replace(/./g, (c) => c + c) : hex;
+  if (!/^[0-9a-fA-F]{6}$/.test(full)) return undefined;
+  return Number.parseInt(full, 16);
+}
+
+/**
+ * item 1 — resolve the container accent from context. Precedence: an explicit page/module accent,
+ * then the ACTING PROFILE's declared accent (a persona's own colour), then the framework default.
+ * The main bot's profile carries no accent, so it lands on amber.
+ */
+export function resolveAccent(
+  explicit: string | undefined,
+  profile: RenderProfile | undefined,
+): number {
+  const fromProfile =
+    profile?.accent ?? (profile?.kind === 'persona' ? DEFAULT_PERSONA_ACCENT : undefined);
+  return accentToInt(explicit) ?? accentToInt(fromProfile) ?? DEFAULT_ACCENT_COLOR;
 }
 
 export class InvalidRenderDescriptorError extends Error {
@@ -287,11 +430,16 @@ export class CoreRenderer {
   }
 
   renderBuffer(identity: RenderIdentity): ComponentsV2Message {
-    return this.frame([
-      createTitleBlock(identity.surface, identity.developer ?? DEFAULT_DEVELOPER),
-      separator(),
-      textDisplay(`⏳ Preparing ${identity.surface}…`),
-    ]);
+    return this.frame(
+      [
+        createTitleBlock(identity.surface, identity.developer ?? DEFAULT_DEVELOPER),
+        separator(),
+        textDisplay(`⏳ Preparing ${identity.surface}…`),
+      ],
+      resolveAccent(undefined, identity.profile),
+      [],
+      false,
+    );
   }
 
   renderPage(input: PageRenderDescriptor): ComponentsV2Message {
@@ -301,6 +449,8 @@ export class CoreRenderer {
       ...(input.version !== undefined ? { version: input.version } : {}),
       ...(input.mode !== undefined ? { mode: input.mode } : {}),
       ...(input.banner !== undefined ? { banner: input.banner } : {}),
+      ...(input.profile !== undefined ? { profile: input.profile } : {}),
+      ...(input.ephemeral !== undefined ? { ephemeral: input.ephemeral } : {}),
       sections: derivePageSections(input.page, input.data),
     });
   }
@@ -347,35 +497,13 @@ export class CoreRenderer {
     } else if (mode === 'M') {
       components.push(textDisplay(this.condensedRender(sections)));
     } else if (hasBlocks) {
-      // item 8 — richer blocks: a Section (text with an inline accessory), a text block, or a Select.
+      // item 8 — richer blocks: a Section (text with an inline accessory), a text block, a thumbnail,
+      // or a Select. Interactive selects that declare `trailing` are deferred to the interactive zone.
       (input.blocks ?? [])
         .filter((b) => !(b.kind === 'select' && b.placement === 'trailing'))
         .forEach((block) => {
-          // item 3 — no extra dividers between blocks; the page's own bands already separate them.
-          if (block.kind === 'text') {
-            components.push(textDisplay(block.content));
-          } else if (block.kind === 'section') {
-            const a = block.accessory;
-            components.push(section(block.content, blockButton(a)));
-          } else if (block.kind === 'row') {
-            components.push(actionRow(block.buttons.map((b) => blockButton(b))));
-          } else {
-            components.push(
-              actionRow([
-                stringSelect(
-                  block.customId,
-                  block.options.map((o) => ({
-                    label: o.label,
-                    value: o.value,
-                    ...(o.description !== undefined ? { description: o.description } : {}),
-                    ...(o.emoji !== undefined ? { emoji: o.emoji } : {}),
-                  })),
-                  block.placeholder,
-                  block.disabled,
-                ),
-              ]),
-            );
-          }
+          const component = renderBlockComponent(block);
+          if (component !== undefined) components.push(component);
         });
     } else {
       sections.forEach((section, index) => {
@@ -383,41 +511,10 @@ export class CoreRenderer {
         components.push(textDisplay(section));
       });
     }
-    // ADR-015 (amends ADR-013) — the module-page footer is `<name> [<id>]` and nothing else; the
-    // developer attribution stays in the identity band above and is never repeated in the footer.
-    const footer = this.moduleFooter(input.displayName, input.moduleId);
-    if (footer !== undefined) {
-      components.push(separator());
-      components.push(textDisplay(footer));
-    }
 
-    // UR-20261012-054 — TRAILING blocks: a control the page wants BELOW the footer. The profile
-    // switcher is one: it acts on the whole page, and the footer closes the content above it.
-    if (trailingBlocks.length > 0) {
-      components.push(separator());
-      for (const block of trailingBlocks) {
-        if (block.kind !== 'select') continue;
-        components.push(
-          actionRow([
-            stringSelect(
-              block.customId,
-              block.options.map((o) => ({
-                label: o.label,
-                value: o.value,
-                ...(o.description !== undefined ? { description: o.description } : {}),
-                ...(o.emoji !== undefined ? { emoji: o.emoji } : {}),
-              })),
-              block.placeholder,
-              block.disabled,
-            ),
-          ]),
-        );
-      }
-    }
-
-    // items 3/10/11/15/17 - page-declared action controls render INSIDE the container, at the
-    // bottom, below the footer's divider (item 3). An ActionRow is a valid child of a Components v2
-    // container, so the navigation controls sit within the frame rather than beside it.
+    // item 6 — the BUTTON ZONE: page-declared action buttons, rendered ABOVE the footer. Only
+    // buttons are permitted here (an ActionRow of buttons), so the footer cleanly separates the
+    // page's own controls from the interactive zone below it.
     const actions = input.actions;
     if (actions !== undefined) {
       const rows: Component[] = [];
@@ -431,27 +528,85 @@ export class CoreRenderer {
       }
     }
 
-    return this.frame(components, input.accent);
+    // ADR-015 (amends ADR-013) — the module-page footer is `<name> [<id>]` and nothing else; the
+    // developer attribution stays in the identity band above and is never repeated in the footer.
+    const footer = this.moduleFooter(input.displayName, input.moduleId);
+    if (footer !== undefined) {
+      components.push(separator());
+      components.push(textDisplay(footer));
+    }
+
+    // item 6 — the INTERACTIVE ZONE, below the footer. It is reserved for interactive components and
+    // imposes NO restriction on which kind: buttons (an Action Row), select menus of every kind
+    // (string/user/role/mentionable/channel), and the trailing selects a page declares all belong
+    // here, and there is no limit on how many a page places. (The button zone above the footer is the
+    // page's own action bar; it does NOT exclude buttons from this zone.)
+    const interactiveBlocks: RenderBlock[] = [...(input.interactive ?? []), ...trailingBlocks];
+    if (interactiveBlocks.length > 0) {
+      components.push(separator());
+      for (const block of interactiveBlocks) {
+        const component = renderBlockComponent(block);
+        if (component !== undefined) components.push(component);
+      }
+    }
+
+    return this.frame(
+      components,
+      resolveAccent(input.accent, input.profile),
+      [],
+      input.ephemeral === true,
+    );
+  }
+
+  /**
+   * item 4/5 — the EPHEMERAL grammar. An ephemeral (private) message has its own rules, distinct
+   * from the framed page grammar:
+   *
+   *   - ONE Components-v2 container holds everything (never several top-level containers);
+   *   - NO accent / colour is enforced — the container carries no `accent_color`;
+   *   - NO density modes, no banner, no identity band, no footer — the caller composes freely;
+   *   - the caller may place any content components (text, sections, media, separators, thumbnails)
+   *     and any interactive components (buttons, every select menu) inside.
+   *
+   * The only rule is the single container and the absent accent.
+   */
+  renderEphemeral(components: Component[]): ComponentsV2Message {
+    return buildComponentsV2([container(components)], { ephemeral: true });
+  }
+
+  /** item 4/5 — a convenience wrapper: ephemeral content built from text/section blocks. */
+  renderEphemeralBlocks(blocks: readonly RenderBlock[]): ComponentsV2Message {
+    const components: Component[] = [];
+    for (const block of blocks) {
+      const component = renderBlockComponent(block);
+      if (component !== undefined) components.push(component);
+    }
+    return this.renderEphemeral(components);
   }
 
   renderNotice(input: FormalNoticeDescriptor): ComponentsV2Message {
     const heading = input.heading ?? this.defaultNoticeHeading(input.reason);
     const explanation = input.explanation ?? this.defaultNoticeExplanation(input.reason);
 
-    return this.frame([
-      createTitleBlock(input.surface, input.developer ?? DEFAULT_DEVELOPER),
-      separator(),
-      textDisplay(
-        [
-          `⚠ ${heading}`,
-          '',
-          explanation,
-          '',
-          `reason: ${input.reason}`,
-          `trace: ${input.traceId}`,
-        ].join('\n'),
-      ),
-    ]);
+    return this.frame(
+      [
+        createTitleBlock(input.surface, input.developer ?? DEFAULT_DEVELOPER),
+        separator(),
+        textDisplay(
+          [
+            `⚠ ${heading}`,
+            '',
+            explanation,
+            '',
+            `reason: ${input.reason}`,
+            `trace: ${input.traceId}`,
+          ].join('\n'),
+        ),
+      ],
+      resolveAccent(undefined, input.profile),
+      [],
+      input.ephemeral === true,
+    );
   }
 
   normalizeHandlerResult(result: unknown, fallback: RenderDescriptor): RenderDescriptor {
@@ -476,6 +631,8 @@ export class CoreRenderer {
         ...(result.sections !== undefined ? { sections: result.sections } : {}),
         ...(result.summary !== undefined ? { summary: result.summary } : {}),
         ...(result.banner !== undefined ? { banner: result.banner } : {}),
+        ...(result.profile !== undefined ? { profile: result.profile } : {}),
+        ...(result.ephemeral !== undefined ? { ephemeral: result.ephemeral } : {}),
       };
     }
 
@@ -510,12 +667,11 @@ export class CoreRenderer {
 
   private frame(
     components: Parameters<typeof container>[0],
-    accent: string | undefined = undefined,
+    accent: number = DEFAULT_ACCENT_COLOR,
     topLevel: Component[] = [],
+    ephemeral = false,
   ): ComponentsV2Message {
-    const color =
-      accent !== undefined ? Number.parseInt(accent.replace('#', ''), 16) : DEFAULT_ACCENT_COLOR;
-    return buildComponentsV2([container(components, color), ...topLevel]);
+    return buildComponentsV2([container(components, accent), ...topLevel], { ephemeral });
   }
 
   /**

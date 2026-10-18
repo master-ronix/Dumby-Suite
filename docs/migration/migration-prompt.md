@@ -23,7 +23,7 @@ change_log: upgradation/change-log.md
 
 Bring an existing codebase — or an existing corpus — up to the current specification, one item at a time, in a fixed order. It does **not** audit the whole codebase and does **not** drive everything to 100% compliance: it lands the re-baseline deltas into the code, with a ledger that survives across sessions and a change-log line for every request row it closes. It is the correct protocol when the code and the specification are at different versions; the master prompt is the wrong protocol then, because it would mark nearly every subsystem faulty at once and produce wandering.
 
-**This protocol fires only when an active work order exists.** An active work order means at least one `upgradation/UR-*.md` is present (discovered dynamically — there is no static list) or the live ledger carries an item not `DONE`. With no work order there is nothing to migrate: this protocol does not run, and the chain hands to **State C (enforcement)** — `orchestration/master-prompt.md` §3 audit and §6 enforcement govern instead.
+**This protocol fires only when an active work order exists.** An active work order exists only while the live ledger `migration-ledger.md` carries at least one item not `DONE`; request records are discovered dynamically (there is no static list) and are provenance — a record alone does not open the work order, because the delta it names is open only while the ledger holds it. With no open item there is nothing to migrate: this protocol does not run, and the chain hands to **State C (enforcement)** — `orchestration/master-prompt.md` §3 audit and §6 enforcement govern instead.
 
 **Document type:** Migration Prompt — a scoped, delta-driven execution protocol. This is NOT the Master Build Prompt (`orchestration/master-prompt.md`, triggered via `prompts/meta-prompt.md`). It does not audit the whole codebase and it does not drive everything to 100% spec compliance. It does exactly one thing: lands the re-baseline deltas into the code, one item at a time, in a fixed order, with a ledger that survives across sessions and a change-log line for every request row it closes.
 
@@ -37,9 +37,9 @@ Bring an existing codebase — or an existing corpus — up to the current speci
 
 **CURRENT STATE — read before anything else.**
 
-- **State of record:** State B — Migration. Work order **ACTIVE** (97 `upgradation/UR-*.md` records; `migration-ledger.md` carries items not `DONE`).
-- **Current item:** the open slices M10 / M14 / M16 (`PARTIAL`) and M18 (`REOPENED`); the proposed items M74 / M82 await operator confirmation.
-- **Reconciliation:** last re-triage against the tree at `feature/dev` @ `6fd4df9d` (2026-10-15).
+- **State of record:** State C — Enforcement. Work order **INACTIVE** (the migration ledger holds no open code item; request records are read from the live glob).
+- **Current item:** none open in the code work order (M82 closed as superseded by M83; M74's model confirmed — its implementation is a code-track item).
+- **Reconciliation:** re-triaged against the tree at `feature/dev` @ `416864b` (2026-10-18).
 - **Blocker:** the application toolchain (`tsc` / `vitest`) and a live Discord run are required to verify any landed slice; resume from the live `migration-ledger.md`, never from this snapshot.
 
 **Relationship to the Master Build Prompt:** this prompt is a scoped *predecessor* to it. When every item in the Migration Work Order (§3) is marked DONE in the ledger, the master prompt's audit protocol and enforcement pass become the governing protocol again — not before.
@@ -47,7 +47,7 @@ Bring an existing codebase — or an existing corpus — up to the current speci
 ## 3. Preconditions
 
 - Invoked by `prompts/meta-prompt.md` with State B, or directly as a migration request.
-- **An active work order exists** (§2): at least one `upgradation/UR-*.md`, or open items in the live `migration-ledger.md`. If neither holds, STOP — return to `prompts/meta-prompt.md`; the run is State C (enforcement), not migration.
+- **An active work order exists** (§2): the live `migration-ledger.md` carries at least one item not `DONE`. If it holds no open item, STOP — return to `prompts/meta-prompt.md`; the run is State C (enforcement), not migration.
 - `apps/main/` contains code built against a specification older than the current one.
 - The state of record has been reconciled before any item executes: the ledger is rebuilt from `migration/ledger-template.md`, and all request rows are re-triaged against the tree, not the snapshot.
 
@@ -69,7 +69,7 @@ The protocol executes as the ordered sections below; their internal numbering is
 
 ### 0.0 THE WORK-ORDER GUARD (run first)
 
-**If no active work order exists, this protocol does not run.** An active work order means at least one `upgradation/UR-*.md` is present (discovered dynamically — there is no static list) or the live ledger `migration-ledger.md` carries an item not `DONE`. When neither holds, STOP: do not construct a ledger, do not invent work-order items, do not execute this protocol. Return to `prompts/meta-prompt.md`; the run is **State C (enforcement)**, and `orchestration/master-prompt.md` §3 audit and §6 enforcement govern. A migration with an empty work order is the exact failure this guard exists to prevent.
+**If no active work order exists, this protocol does not run.** An active work order exists only while the live ledger `migration-ledger.md` carries at least one item not `DONE` (request records are provenance, discovered dynamically; a record alone does not open the work order). When the ledger holds no open item, STOP: do not construct a ledger, do not invent work-order items, do not execute this protocol. Return to `prompts/meta-prompt.md`; the run is **State C (enforcement)**, and `orchestration/master-prompt.md` §3 audit and §6 enforcement govern. A migration with an empty work order is the exact failure this guard exists to prevent.
 
 ---
 
@@ -140,7 +140,7 @@ These rules override every other instruction you may have read in the documentat
 <!-- The work order is authored here. Each item below names its source of truth, the rows it
      owns (§3.0), its blast radius, and its done-gate. Populate each item before it is worked. -->
 
-Items are executed strictly in order, in three blocks: the framework block (M0–M8), the module-rewrite block (MR-1–MR-8), then the closing framework items (M9–M11).
+**This section is a template; the live work order is `migration-ledger.md`.** Every token below (`<rows>`, `<n>`, `<version>`, `<ID>`) is a *shape*, never a value. Items are executed strictly in order, in three blocks: the framework block (M0–M8), the module-rewrite block (MR-1–MR-8), then the closing framework items (M9–M11).
 
 **The ledger relationship.** `migration-ledger.md` at the repository root is the live, authoritative progress record — once it exists. Construct a fresh ledger from `migration/ledger-template.md`'s record shapes, seeded with the template's §2 snapshot — built entry by entry, never by copying the template file wholesale. From then on: read the ledger at the start of every session; update it at the end of every item and slice; never overwrite or re-create it.
 
@@ -148,7 +148,7 @@ The framework items are sequenced infrastructure-first: layout and plumbing befo
 
 #### 3.0 Request-Row Coverage Map (the traceability contract)
 
-The governing program record puts all requests in one master table (its §8.1.2). Every row is owned by exactly ONE work-order item below. At item-claim time, copy your item's rows into the ledger's row-triage field; at M11 the counts must reconcile: **<n> rows, <n> owners, 0 orphans.**
+The governing program record puts all requests in one master table (its §8.1.2). Every row is owned by exactly ONE work-order item below. At item-claim time, copy your item's rows into the ledger's row-triage field; at M11 the counts must reconcile — the live counts are read from `migration-ledger.md` and the request records; this template fixes no value.
 
 | Item | Owns UR §8.1.2 rows (request IDs) | Count |
 |---|---|---|
@@ -438,3 +438,5 @@ Per the entry discipline in the change-log, this document writes one **Migration
 ```
 - <date> · migration-prompt <version> · item=<ID> · rows=<UR-…> · status=<DONE|PARTIAL|BLOCKED>
 ```
+
+The line above is a **shape**, not a value: its tokens are filled at item close and never pre-populated.

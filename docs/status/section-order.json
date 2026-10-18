@@ -128,7 +128,8 @@
       "system-at-a-glance.md",
       "front-matter.md",
       "complete-engineering-implementation-reference.md",
-      "table-of-contents.md"
+      "table-of-contents.md",
+      "definitions.md"
     ],
     "spec/reference": [
       "appendix-a-extended-reference-discord-api-surface.md",

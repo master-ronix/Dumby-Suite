@@ -114,7 +114,7 @@ The restructured corpus under `docs/` is the authority, in this order: `docs/blu
 architectural wiring) → `docs/spec/governance/` (the imperative `D-<part>.<rule>` rules and the
 single normative precedence list) → `docs/spec/request-layer/` (the Discord/dashboard surfaces) →
 `docs/spec/**` by department. Record decisions in `docs/upgradation/change-log.md` and
-`docs/adr/` (**15** ADRs, ADR-001 … ADR-015). `docs/spec/architecture/directory-file-structure.md`
+`docs/adr/` (**16** ADRs, ADR-001 … ADR-016). `docs/spec/architecture/directory-file-structure.md`
 specifies the *intended* full tree — it lists CI pipelines, husky, changesets and similar that are
 not all present, so trust the tree over it. `apps/main/docs/architecture/README.md` is a fast
 orientation; note that `apps/main/docs/` is an application-local, **non-normative** set and is

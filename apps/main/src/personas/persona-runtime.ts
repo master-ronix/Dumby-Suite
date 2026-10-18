@@ -15,7 +15,7 @@
  * attaches that handler to every client it logs in, so a persona dispatches exactly as the main bot
  * does — the same adapters, the same registry contract, its own identity.
  */
-import { CommandRegistry } from '../commands/command-registry.js';
+import { CommandRegistry, type CommandProfile } from '../commands/command-registry.js';
 import type { Logger } from '../logging/logger.js';
 import type { SealedEnvelope } from '../crypto/envelope.js';
 
@@ -31,6 +31,11 @@ export interface RuntimePersona {
   readonly presenceStatus?: string;
   /** UR-20261012-081 — the status quote shown beside the bot's name. */
   readonly note?: string;
+  /**
+   * item 1 — the persona's declared accent, so her router renders with HER colour as the fallback.
+   * Absent means the neutral persona gray (the renderer's default for a persona).
+   */
+  readonly accent?: string;
 }
 
 /** The slice of a Discord client the runtime drives. */
@@ -96,6 +101,12 @@ export interface PersonaRuntimeDeps {
     persona: RuntimePersona,
     registry: CommandRegistry,
   ) => (interaction: unknown) => void;
+  /**
+   * item 2 (follow-up) — run this persona's OWN BCCM batch push, so a rename she queued through
+   * `/queue` (written to HER application scope) actually reaches Discord. Without it her queued
+   * cosmetics sit `pending` forever — the main bot's push deliberately ignores her scope.
+   */
+  runBccmPush?: (persona: RuntimePersona, botToken: string) => Promise<void>;
   logger: Logger;
 }
 
@@ -164,8 +175,10 @@ export async function deployPersonaCommands(
 export function filterRegistryForModules(
   source: CommandRegistry,
   moduleIds: ReadonlySet<string>,
+  /** item 2 — the profile the filtered registry serves (a persona's id + application). */
+  profile?: CommandProfile,
 ): CommandRegistry {
-  const out = new CommandRegistry();
+  const out = new CommandRegistry(profile);
   for (const def of source.all()) {
     if (!moduleIds.has(def.moduleId)) continue;
     const tier = source.getModuleTier(def.moduleId);
@@ -279,6 +292,15 @@ export class PersonaRuntime {
             );
           } catch (err) {
             logger.warn(`persona-presence-failed id=${persona.id} reason=${String(err)}`);
+          }
+        }
+        // item 2 (follow-up) — apply this persona's queued BCCM cosmetics on HER own application.
+        // Non-fatal, like the emoji upload and presence: a failed push must not stop the persona.
+        if (this.deps.runBccmPush !== undefined) {
+          try {
+            await this.deps.runBccmPush(persona, token);
+          } catch (err) {
+            logger.warn(`persona-bccm-push-failed id=${persona.id} reason=${String(err)}`);
           }
         }
         this.clients.set(persona.id, client);

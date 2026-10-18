@@ -749,11 +749,8 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     createClient: (oauthConfig) => new DiscordOAuth2Client({ config: oauthConfig, logger }),
     warn: (message, meta) => logger.warn(message, meta),
   });
-  const bccmEffects = createBccmEffectHandlers({
-    knex: db.knex,
-    registry: commandRegistry,
-    logger,
-  });
+  // item 2 — the BCCM effect handlers are built PER IDENTITY (see commandRouterOptions below), so a
+  // persona's /queue writes to HER scope and never the main bot's.
   // UR-20261012-049 — ONE description of how a router is configured, so a persona's router is
   // configured exactly as the main bot's is (system-map §11: "the framework running again under a
   // different identity"). `residentPersonaId` is the only thing that varies: the main bot sets it
@@ -763,6 +760,10 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     residentPersonaId?: string,
     residentBoundGuildId?: string,
     residentProfileName?: string,
+    residentAccent?: string,
+    // item 2 — the BCCM scope for this identity: '' (the sentinel) for the main bot, the persona's
+    // own application id for a persona.
+    residentBccmScope?: string,
   ) => ({
     devGuildId: config.get('DEV_GUILD_ID'),
     isModuleEnabledInGuild,
@@ -774,7 +775,12 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     // §22.2 / Table 22-A — the Power Engine `suspendGuild` state the dispatch path must consult.
     guildSuspensions,
     pageDataProvider,
-    effectHandlers: bccmEffects,
+    effectHandlers: createBccmEffectHandlers({
+      knex: db.knex,
+      registry: commandRegistry,
+      logger,
+      applicationId: residentBccmScope ?? '',
+    }),
     resolveCommandOwner: (guildId: string, moduleSlug: string) =>
       personaBindingService.resolveCommandOwner(guildId, moduleSlug),
     ...(residentPersonaId !== undefined ? { residentPersonaId } : {}),
@@ -784,6 +790,8 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     ...(residentBoundGuildId !== undefined ? { residentBoundGuildId } : {}),
     // UR-20261012-067 — the acting identity's display name, so a module can present whose page it is.
     ...(residentProfileName !== undefined ? { residentProfileName } : {}),
+    // item 1 — the acting profile's accent, so a persona's renders default to HER colour.
+    ...(residentAccent !== undefined ? { residentAccent } : {}),
   });
   const commandRouter = new CommandRouter(
     commandRegistry,
@@ -1239,6 +1247,8 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
         ceiling: commandCeiling,
         discord: bccmDiscordClient,
         dryRun: config.get('BCCM_BATCH_PUSH_DRY_RUN'),
+        // item 2 — the main bot's own scope ('' sentinel), so pre-migration rows stay visible.
+        applicationId: commandRegistry.profile.applicationId,
       });
     },
   });
@@ -1298,7 +1308,12 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
         const choices = await interactionRegistry.runAutocomplete(async () => {
           // §2.5 / BCCM — a command's suggestion shows its CURRENT name (the applied rename when
           // one exists), while the submitted value stays the registered command key.
-          const effective = await resolveEffectiveCommandNames(db.knex, interaction.guildId);
+          const effective = await resolveEffectiveCommandNames(
+            db.knex,
+            interaction.guildId,
+            // item 2 — BCCM is profile-scoped: the main bot's scope is '' (the sentinel).
+            commandRegistry.profile.applicationId,
+          );
           return commandRegistry
             .all()
             .map((command) => {
@@ -1494,6 +1509,32 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
             async (route, body) => rest.put(route as `/${string}`, { body }),
           );
         },
+        // item 2 (follow-up) — the persona's OWN BCCM batch push. Her `/queue` writes renames to HER
+        // application scope, which the main bot's push deliberately ignores, so without this they sit
+        // `pending` forever. Same store and ceiling as the main bot — but HER token, HER application
+        // and HER scope.
+        runBccmPush: async (persona, botToken) => {
+          const rest = new REST({ version: '10' }).setToken(botToken);
+          const applicationId = persona.discordApplicationId;
+          await runBccmBatchPush({
+            store: bccmStore,
+            logger,
+            ceiling: commandCeiling,
+            dryRun: config.get('BCCM_BATCH_PUSH_DRY_RUN'),
+            applicationId,
+            discord: {
+              getRegistered: async (guildId) =>
+                (await rest.get(
+                  `/applications/${applicationId}/guilds/${guildId}/commands`,
+                )) as readonly { name: string }[],
+              putCommands: async (guildId, commands) => {
+                await rest.put(`/applications/${applicationId}/guilds/${guildId}/commands`, {
+                  body: commands,
+                });
+              },
+            },
+          });
+        },
         createInteractionHandler: (persona, registry) =>
           buildPersonaInteractionHandler({
             registry: interactionRegistry,
@@ -1501,7 +1542,14 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
               new CommandRouter(
                 registry,
                 logger,
-                commandRouterOptions(persona.id, persona.boundGuildId, persona.name),
+                commandRouterOptions(
+                  persona.id,
+                  persona.boundGuildId,
+                  persona.name,
+                  persona.accent,
+                  // item 2 — the persona's own application id is her BCCM scope.
+                  persona.discordApplicationId,
+                ),
               ),
             logger,
           }),
@@ -1645,6 +1693,7 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
         ceiling: commandCeiling,
         discord: bccmDiscordClient as BccmDiscordClient,
         dryRun: config.get('BCCM_BATCH_PUSH_DRY_RUN'),
+        applicationId: commandRegistry.profile.applicationId,
       });
     }, 30_000).unref();
     const commandDeployer = new CommandDeployer({
@@ -1655,7 +1704,7 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
         try {
           const rows = (await db
             .knex('guild_command_renames')
-            .where({ guildId })
+            .where({ guildId, applicationId: commandRegistry.profile.applicationId })
             .whereNull('deletedAt')
             .select<{ commandKey: string; newName: string }[]>('commandKey', 'newName')) as Array<{
             commandKey: string;

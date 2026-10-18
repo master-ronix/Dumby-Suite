@@ -1,17 +1,17 @@
 # GAP MANIFEST — Build-Engine Audit
 
-**Generated:** 2026-10-06 · **Re-stated:** 2026-10-15
+**Generated:** 2026-10-06 · **Re-stated:** 2026-10-18
 **Protocol:** `docs/orchestration/master-prompt.md` §3 (Codebase State Detection & Audit Protocol)
 **Repository:** `master-ronix/Dumby-Suite`
-**Branch / ref:** `feature/dev` @ `6fd4df9db2f432e4f1af79c9a35aafd777c6bcf9`
-**Codebase state:** State B — Migration (code present; work order ACTIVE)
+**Branch / ref:** `feature/dev` @ `416864b603616bd9b984b1bd7f6fc6c773f8ace6`
+**Codebase state:** State C — Enforcement (code present; migration work order closed)
 **Entry procedure followed:** `docs/prompts/entry.md` → `migration/migration-prompt.md` (migration mode)
 **Run mode:** State B — audit (§3) → state-of-record reconciliation (R12); the enforcement pass (§6) resumes when the work order is fully `DONE`.
 
 > **Supersession note (2026-10-10).** This manifest was generated 2026-10-06 as a **State C** run, when the work order was INACTIVE. The work order is now **ACTIVE** (request records present; `migration-ledger.md` carries open items M10/M14/M16), so the governing protocol is `migration/migration-prompt.md`. The classification table below is retained as the last full audit; its F4/F5 residuals remain open (see §2).
 
 > **Point-in-time notice (2026-10-11).** This manifest is a snapshot, not a live ledger. Its ref is
-> re-pointed to `feature/dev` @ `8355ba4f`; request-record counts are **not** restated here (read them
+> re-pointed to `feature/dev` @ `416864b`; request-record counts are **not** restated here (read them
 > from `docs/scripts/docs/check-ur.mjs`). `check-side-docs` holds this manifest's ref in step with
 > `docs/status/code-reconciliation.json`.
 
@@ -21,7 +21,7 @@
 
 - **Docs base path:** `docs/` (resolved once).
 - **Authority layer:** `docs/manifest.json` read; normative set = `blueprint/`, `spec/**` (10 departments), `contracts/` (9). `documentation/` is derived; `archive/**` is not current. Precedence is owned by `spec/governance/directive-charter-how-to-use-this-document.md` §0.2 and is cited, not restated.
-- **State probe (`apps/main/`):** contains code — 501 `.ts` source files, 45 Knex migrations.
+- **State probe (`apps/main/`):** contains code — {{counts.code_ts_files}} `.ts` files ({{counts.code_src_ts_files}} under `apps/main/src`), {{counts.code_migrations}} Knex migrations.
 - **Work-order probe:** `upgradation/UR-*.md` → **present** (records on disk); `migration-ledger.md` (repo root) → a **constructed ledger** with items not `DONE` (M10/M14/M16). ⇒ work order **ACTIVE**.
 - **Classification:** code present **and** work order ACTIVE → **State B — Migration**. `migration/migration-prompt.md` §0.0 work-order guard passes (an active work order exists).
 
@@ -35,7 +35,7 @@
 | 2 | Unit tests (`vitest`, unit config) | `COMPLETE` | 66 files / 757 tests passed / 0 failed |
 | 3 | Lint (ESLint, `--max-warnings=0`) | `COMPLETE` | exit 0, zero warnings |
 | 4 | Format (Prettier `--check`) | `COMPLETE` | "All matched files use Prettier code style" |
-| 5 | Documentation gates (`docs/scripts/docs/check-*.mjs`) | `COMPLETE` | 27 / 27 gates green |
+| 5 | Documentation gates (`docs/scripts/docs/check-*.mjs`) | `COMPLETE` | 30 / 30 gates green |
 | 6 | Bootstrap (18-stage) | `COMPLETE` | `src/bootstrap/bootstrap.ts`; stage tests pass; readiness 503→200 |
 | 7 | DI container | `COMPLETE` | reconciliation REC-017 `match`; frozen-core + MockContainer tested |
 | 8 | Middleware pipeline | `COMPLETE` | 12 built-in middlewares at `src/middleware/built-in/`; REC-009 `match` |
@@ -43,15 +43,15 @@
 | 10 | Module system / manifest contract | `COMPLETE` | full contract expressed in `packages/swastik/src/manifest.ts` (see §2 F1) |
 | 11 | Renderer / embed ban | `COMPLETE` | 0 `new EmbedBuilder`/`new MessageEmbed` in `src/`; REC-015 `match` |
 | 12 | Command router (single canonical) | `COMPLETE` | one impl `src/commands/command-router.ts`; wired in `bootstrap.ts`; test enforces single router |
-| 13 | Migrations | `COMPLETE` | 45 migrations, every one exports `down()` |
+| 13 | Migrations | `COMPLETE` | {{counts.code_migrations}} migrations, every one exports `down()` |
 | 14 | Module storage discipline | `COMPLETE` | no `apps/main/src/modules`; `MODULES_DIR` tier volumes referenced; REC-012 `match` |
 | 15 | First-party command surface | `COMPLETE` | all 8 present under `packages/modules/`: dashboard, health, browse, queue, persona, permit, modules, hello-world |
-| 16 | Docs ↔ code reconciliation ledger | `COMPLETE` | re-verified at HEAD; 22/22 rows `match` (F1 fixed) |
+| 16 | Docs ↔ code reconciliation ledger | `PARTIAL` | re-verified at HEAD; 24 of 25 rows `match`, 1 `code-gap` (REC-025, build-provenance floor) — read the live counts from `status/code-reconciliation.json` |
 | 17 | `tests/unit/tier-rules.test.ts` + modules contract suite | `COMPLETE` | duplicate key removed; out-of-enum case added (F2 fixed) |
 | 18 | Capability ledger (`status/capabilities.json`) | `COMPLETE` | CAP-004/005 corrected; derived `compliance.json` regenerated (F3 fixed) |
 | 19 | Coverage floors (`test:coverage`, per-layer) | `COMPLETE` | per-layer floors met: 74.1% statements / 67.45% branches / 74.17% functions / 75.07% lines; gate green (2026-10-15) |
 | 20 | Flow / integration verification | `COMPLETE` | flow 6 files / 19 tests + integration 166 files / 206 tests pass on embedded PostgreSQL (2026-10-15) |
-| 21 | Docker image build / K8s apply | `UNVERIFIED` | require a Docker daemon / a cluster — not available in this sandbox |
+| 21 | Docker image build / K8s apply | `PARTIAL` | Docker image build **VALIDATED 2026-10-18 on Railway** (commit `416864b`): multi-stage build green, `/health/liveness` 200 (~80 s), bootstrap/discord-client/command-registry ready, Dumby + Redis + Postgres online; the K8s manifest apply remains unverified (Railway is not a cluster) |
 
 ---
 
@@ -75,9 +75,10 @@
 - **Delta:** CAP-005 says the canonical command system (`src/commands/`) is *"Dead Code — zero external importers."* At HEAD, `src/commands/command-router.ts` is the single canonical `CommandRouter`, constructed in `bootstrap.ts`, registered under `CORE_TOKENS.CommandRouter`, and dispatched on every interaction; `tests/unit/command-tree-structure.test.ts` asserts exactly one router implementation and no imports from retired command trees. CAP-004 (*"thinner than spec"*) similarly predates the current wiring.
 - **Remedy:** regenerate `capabilities.json` from the audit register against HEAD; correct CAP-005's status and evidence. Deferred items (CAP-001/002/003/007/008/009/011/013/015/016) remain correctly out of scope — do not build them.
 
-### F4 — Verification surfaces (flow + integration EXECUTED 2026-10-15; Docker/K8s UNVERIFIED)
+### F4 — Verification surfaces (flow + integration EXECUTED 2026-10-15; Docker build VALIDATED 2026-10-18; K8s apply UNVERIFIED)
 - **Executed (2026-10-15).** `test:flow` (embedded PostgreSQL) — 6 files / 19 tests pass; `test:integration` — 166 files / 206 tests pass. The D-8.10 integration surface is green.
-- **Still unverified (not defects).** The Docker multi-stage image build (D-8.6) and the K8s manifest apply require a Docker daemon / a cluster, unavailable in this sandbox; they remain recorded honestly as unverified rather than `COMPLETE`.
+- **Docker build VALIDATED (2026-10-18, Railway).** The multi-stage image (D-8.6) built for commit `416864b`; `/health/liveness` succeeded on attempt 6 (~80 s); `bootstrap-complete`, `discord-client-ready` and `command-registry-ready` all logged; `persona-runtime-started` reported 1 of 1 persona hosted; Dumby, Redis and Postgres online with no failures. Evidence reported by the Railway deployment run (the corpus commits that followed are docs-only and were skipped by Railway, so this validation stands for the new head too).
+- **Still unverified (not a defect).** The K8s manifest apply requires a cluster; Railway is not one. It remains recorded honestly as unverified rather than `COMPLETE`.
 - **Environment note (not a code defect):** the workspace declares `engines.node >= 22`; this run executed on Node 20.20.2. Typecheck, lint, format, unit, coverage, flow and integration all pass; only the engine warning is emitted.
 
 ### F5 — Coverage floors (PER-LAYER FLOORS MET — 2026-10-15)
@@ -98,7 +99,7 @@ Ordered by `master-prompt.md` §3.4 severity. No compile-blocking faults were fo
 4. **F5 (coverage floors) — CLOSED 2026-10-15.** Per-layer thresholds live in `vitest.config.ts` and are met; `test:coverage` green.
 5. **F4 (verification surfaces) — flow + integration CLOSED 2026-10-15** (19 + 206 tests pass); Docker/K8s remain unverified (no daemon / cluster).
 
-**Enforcement-pass status (updated 2026-10-15).** Every local gate is green — typecheck, ESLint (`--max-warnings=0`), Prettier, **1,281 unit tests across 123 files**, the modules contract suite, **19 flow tests across 6 files**, **206 integration tests across 166 files**, `test:coverage` with **per-layer floors met**, and **27 documentation gates**. F1, F2, F3, F5 and the flow/integration half of F4 are closed. The only remaining unverified items are the Docker image build and the K8s apply, which require a daemon / cluster. Per master-prompt §6.1 the manifest is `COMPLETE` for every surface reachable without external infrastructure.
+**Enforcement-pass status (updated 2026-10-15).** Every local gate is green — typecheck, ESLint (`--max-warnings=0`), Prettier, **1,281 unit tests across 123 files**, the modules contract suite, **19 flow tests across 6 files**, **206 integration tests across 166 files**, `test:coverage` with **per-layer floors met**, and **30 documentation gates**. F1, F2, F3, F5 and the flow/integration half of F4 are closed. The only remaining unverified items are the Docker image build and the K8s apply, which require a daemon / cluster. Per master-prompt §6.1 the manifest is `COMPLETE` for every surface reachable without external infrastructure.
 
 ---
 
