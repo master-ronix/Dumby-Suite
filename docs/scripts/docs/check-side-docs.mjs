@@ -114,29 +114,44 @@ for (const f of ['../STATUS.md', '../GAP_MANIFEST.md', 'README.md']) {
   }
   // with a git work tree, the canonical commit must be ON the named branch — the tip or an
   // ancestor of it. Equality is wrong: the branch legitimately advances past the commit the
-  // corpus was last verified at (a later commit re-anchors the ledger).
+  // corpus was last verified at (a later commit re-anchors the ledger). A SHALLOW checkout
+  // (fetch-depth 1 — the actions/checkout default) does not contain the canonical commit, so
+  // membership is not verifiable there: warn and skip, never fail (the same stance
+  // check-code-reconciliation takes for freshness).
   if (existsSync('../.git')) {
+    let present = true;
     try {
-      const tip = execSync(`git rev-parse ${rec.verified_branch}`, { cwd: '..', stdio: ['ignore', 'pipe', 'ignore'] })
-        .toString()
-        .trim();
-      if (tip && tip !== canonical) {
-        let onBranch = false;
-        try {
-          execSync(`git merge-base --is-ancestor ${canonical} ${tip}`, { cwd: '..', stdio: 'ignore' });
-          onBranch = true;
-        } catch {
-          onBranch = false;
-        }
-        if (!onBranch) {
-          console.error(
-            `FAIL: the canonical commit ${canonical.slice(0, 7)} is not on ${rec.verified_branch} (tip ${tip.slice(0, 7)})`,
-          );
-          bad++;
-        }
-      }
+      execSync(`git cat-file -e ${canonical}^{commit}`, { cwd: '..', stdio: 'ignore' });
     } catch {
-      /* ref not present locally — notice only */
+      present = false;
+    }
+    if (!present) {
+      console.warn(
+        `WARN: canonical commit ${canonical.slice(0, 7)} is not present in this checkout (shallow?) — branch membership not verifiable here`,
+      );
+    } else {
+      try {
+        const tip = execSync(`git rev-parse ${rec.verified_branch}`, { cwd: '..', stdio: ['ignore', 'pipe', 'ignore'] })
+          .toString()
+          .trim();
+        if (tip && tip !== canonical) {
+          let onBranch = false;
+          try {
+            execSync(`git merge-base --is-ancestor ${canonical} ${tip}`, { cwd: '..', stdio: 'ignore' });
+            onBranch = true;
+          } catch {
+            onBranch = false;
+          }
+          if (!onBranch) {
+            console.error(
+              `FAIL: the canonical commit ${canonical.slice(0, 7)} is not on ${rec.verified_branch} (tip ${tip.slice(0, 7)})`,
+            );
+            bad++;
+          }
+        }
+      } catch {
+        /* ref not present locally — notice only */
+      }
     }
   }
 }
