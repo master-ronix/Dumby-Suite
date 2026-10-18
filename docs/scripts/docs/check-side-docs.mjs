@@ -112,15 +112,28 @@ for (const f of ['../STATUS.md', '../GAP_MANIFEST.md', 'README.md']) {
       bad++;
     }
   }
-  // with a git work tree, the named branch must resolve to the named SHA
+  // with a git work tree, the canonical commit must be ON the named branch — the tip or an
+  // ancestor of it. Equality is wrong: the branch legitimately advances past the commit the
+  // corpus was last verified at (a later commit re-anchors the ledger).
   if (existsSync('../.git')) {
     try {
-      const sha = execSync(`git rev-parse ${rec.verified_branch}`, { cwd: '..', stdio: ['ignore', 'pipe', 'ignore'] })
+      const tip = execSync(`git rev-parse ${rec.verified_branch}`, { cwd: '..', stdio: ['ignore', 'pipe', 'ignore'] })
         .toString()
         .trim();
-      if (sha && sha !== canonical) {
-        console.error(`FAIL: ${rec.verified_branch} resolves to ${sha.slice(0, 7)}, not the canonical ${canonical.slice(0, 7)}`);
-        bad++;
+      if (tip && tip !== canonical) {
+        let onBranch = false;
+        try {
+          execSync(`git merge-base --is-ancestor ${canonical} ${tip}`, { cwd: '..', stdio: 'ignore' });
+          onBranch = true;
+        } catch {
+          onBranch = false;
+        }
+        if (!onBranch) {
+          console.error(
+            `FAIL: the canonical commit ${canonical.slice(0, 7)} is not on ${rec.verified_branch} (tip ${tip.slice(0, 7)})`,
+          );
+          bad++;
+        }
       }
     } catch {
       /* ref not present locally — notice only */
