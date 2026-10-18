@@ -1,11 +1,13 @@
 // Gate: numbers are single-sourced from status/counts.json AND the verifiable ones match
 // the corpus. (A count never checked against its source is not enforced.)
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
+import { join, dirname } from 'node:path';
 import { execSync } from 'node:child_process';
 
 const c = JSON.parse(readFileSync('status/counts.json', 'utf8'));
 const required = ['bootstrap_stages','shutdown_steps','middleware_stages','rbac_layers','ranks','grant_types',
-  'module_tiers','license_states','core_commands','adrs','ur_requests','deferred_greenfield'];
+  'module_tiers','license_states','core_commands','adrs','ur_requests','deferred_greenfield',
+  'tree_entries','tree_dirs','tree_files','code_ts_files','code_src_ts_files','code_migrations'];
 const missing = required.filter(k => !(k in c));
 if (missing.length) { console.error('FAIL: counts.json missing ' + missing.join(',')); process.exit(1); }
 
@@ -63,6 +65,58 @@ if (existsSync('contracts/rbac.enums.json')) {
   if (r.layers) checks.push(['rbac_layers', c.rbac_layers, r.layers.length, 'contracts/rbac.enums.json layers']);
   if (r.ranks) checks.push(['ranks', c.ranks, r.ranks.length, 'contracts/rbac.enums.json ranks']);
   if (r.grant_types) checks.push(['grant_types', c.grant_types, r.grant_types.length, 'contracts/rbac.enums.json grant_types']);
+}
+
+// UR-20261018-092 DR-11 — tree counts are single-sourced and verified against the tree.
+{
+  const SKIP = new Set(['node_modules', '.git', 'dist', 'coverage', '.cache', '.local']);
+  const files = [];
+  const walk = (dir, rel) => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      if (SKIP.has(e.name)) continue;
+      const r = rel ? `${rel}/${e.name}` : e.name;
+      if (e.isDirectory()) walk(join(dir, e.name), r);
+      else files.push(r);
+    }
+  };
+  walk('..', '');
+  const dirs = new Set();
+  for (const f of files) {
+    let d = dirname(f);
+    while (d && d !== '.') {
+      dirs.add(d);
+      d = dirname(d);
+    }
+  }
+  checks.push(['tree_entries', c.tree_entries, files.length + dirs.size, 'the repository tree']);
+  checks.push(['tree_dirs', c.tree_dirs, dirs.size, 'the repository tree']);
+  checks.push(['tree_files', c.tree_files, files.length, 'the repository tree']);
+}
+
+// UR-20261018-092 FD-2 — the code counts are verified against the tree, not self-reported.
+if (existsSync('../apps/main')) {
+  let ts = 0;
+  let srcTs = 0;
+  const w = (dir, cb) => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      if (e.name === 'node_modules' || e.name === '.git') continue;
+      const p = join(dir, e.name);
+      if (e.isDirectory()) w(p, cb);
+      else cb(p);
+    }
+  };
+  w('../apps/main', (p) => {
+    if (p.endsWith('.ts')) {
+      ts++;
+      if (p.includes('/src/')) srcTs++;
+    }
+  });
+  checks.push(['code_ts_files', c.code_ts_files, ts, 'apps/main *.ts']);
+  checks.push(['code_src_ts_files', c.code_src_ts_files, srcTs, 'apps/main/src *.ts']);
+  if (existsSync('../apps/main/src/db/migrations')) {
+    const mig = readdirSync('../apps/main/src/db/migrations').filter((f) => f.endsWith('.ts')).length;
+    checks.push(['code_migrations', c.code_migrations, mig, 'apps/main/src/db/migrations/*.ts']);
+  }
 }
 
 let bad = 0;

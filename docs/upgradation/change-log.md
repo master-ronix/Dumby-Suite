@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.99
+version: 5.5.101
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -13,7 +13,7 @@ authority_scope: [history]
 # DUMBY Documentation — Unified Change Log
 
 > **One project. One continuous history.**
-> Last recorded: 2026-10-16
+> Last recorded: 2026-10-18
 
 ---
 
@@ -80,8 +80,8 @@ completed step's record is missing.
 
 ## 9. Record
 
-> **Population status:** §1–§5 are populated. §3 carries the version history through v5.5.99 and
-> the 2026-10-16 enforcement pass. The corpus gate suite is **27 gates, all green** at HEAD.
+> **Population status:** §1–§5 are populated. §3 carries the version history through v5.5.101 and
+> the 2026-10-18 enforcement implementation. The corpus gate suite is **30 gates, all green** at HEAD.
 
 ### 1. Scope & Method
 
@@ -521,6 +521,63 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 - **R8 — audit age.** `status/audit-age.json` records the audit date, commit, scope and request; `README.md` names the current audit.
 - **Verification.** Corpus gate suite **27/27 green**. Application toolchain not run (Node 20.20.2; app requires Node ≥ 22; no deps) — app-side items are outside the corpus scope.
 - **Return.** `met` (corpus scope) — every AU finding closed; OI-1 (human attestation) and OI-3 (Docker/K8s) remain honest standing items, not defects.
+
+---
+
+### v5.5.101 — UR-20261018-092 Implemented: Generated-Artefact & Ledger Freshness, Code-Grounding Re-Anchor, Provenance Truth & Ungated-Ledger Closure — 2026-10-18
+
+- 2026-10-18 · meta-prompt 5.2.0 · state=Enforcement · handoff=master-prompt:enforce · return=met
+- **Work order.** `upgradation/UR-20261018-092.md` — implements R1 … R8 and closes findings DR-1 … DR-12 plus enforcement findings FD-1/FD-2.
+- **R1/R2 (DR-1, DR-11) — generated artefact + single-sourced counts.** `_generated/tree.md` regenerated to the tree; new `scripts/docs/check-generated.mjs` fails on a stale listing. The tree counts are single-sourced: `status/counts.json` gains `tree_entries`/`tree_dirs`/`tree_files` (verified against the tree by `check-counts`), and `blueprint/structure.md` + `spec/architecture/directory-file-structure.md` carry `{{counts.tree_*}}` tokens; `check-side-docs` fails a hand-transcribed literal.
+- **R3/R4 (DR-2) — code-grounding re-anchored.** `status/code-reconciliation.json` re-anchored to `feature/dev` @ `416864b`, `verified_at` 2026-10-18; two rows added (REC-023 BCCM application scope; REC-024 persona-side BCCM push); the duplicate `verified_at` key removed. The persona-side BCCM push is now documented in `spec/operations/multi-identity-operation-twill-personas.md` §35.4.
+- **R5/R6 (DR-3, DR-4) — audit age + provenance truth.** `check-side-docs` now reads `status/audit-age.json` (making its own note true), requires its commit and branch to match the reconciliation ledger, and — with a git work tree — fails when the named branch does not resolve to the named commit. All provenance surfaces re-pointed to `416864b`.
+- **R7 (DR-5, DR-6, DR-7) — records & ledgers.** `migration-ledger.md` M74/M82 reconciled to one status; `spec/orientation/definitions.md` added to `status/section-order.json`; new `scripts/docs/check-section-order.mjs`; `status/classification.json` marked archival/non-asserted.
+- **R8 (DR-8, DR-9) — hygiene.** `adr/ADR-012` / `adr/ADR-013` carry reciprocal `supersedes`; new `scripts/docs/check-supersession.mjs`; the residual engine template tokens labelled "shape, not value".
+- **DR-12/FD-1 — predicate reconciled.** `prompts/entry.md`, `migration/migration-prompt.md` (§0.0/§2/§3) and `migration/ledger-template.md` now state the work-order predicate the same way (ledger-driven), so state detection is deterministic again.
+- **FD-2 — code counts single-sourced.** `status/counts.json` gains `code_ts_files`/`code_src_ts_files`/`code_migrations` (verified by `check-counts`); `GAP_MANIFEST.md` carries `{{counts.*}}` tokens.
+- **DR-10 — coverage scope stated.** The `status/coverage-ledger.json` note records that the reader-facing trees (`blueprint/`, `documentation/`) are outside the coverage ledger.
+- **Gate suite.** 27 → **30 gates**; the added gates are `generated`, `section-order`, `supersession`. **30/30 green** at HEAD.
+- **Return.** `met` — every DR/FD finding closed. OI-1 (human attestation) and OI-3 (Docker/K8s) remain honest standing items, not defects (a human review pass and a daemon/cluster are required; neither is available here).
+
+---
+
+### v5.5.100 (trigger chain + enforcement) — Trigger-Chain Run (State C — Enforcement): Activation, Detection, Corpus Enforcement Pass & UR-20261018-092 Recorded — 2026-10-18
+
+- 2026-10-18 · meta-prompt 5.2.0 · state=Enforcement · handoff=master-prompt:enforce · return=met
+- **Activation (meta-prompt §5).** Docs base path resolved once (`docs/`); authority layer loaded
+  (`manifest.json`; normative set = `blueprint/`, `spec/**`, `contracts/`); precedence cited from
+  `spec/governance/directive-charter-how-to-use-this-document.md`, never restated.
+- **State determination (entry.md).** State probe: `apps/main/` contains code (564 `.ts`; 56 Knex
+  migration files under `apps/main/src/db/migrations`). Work-order probe: request records present
+  (discovered dynamically); the live `migration-ledger.md` declares the code work order INACTIVE
+  (M82 closed as superseded by M83; M74's model confirmed — no open code item). Classification: code
+  present **and** work order INACTIVE → **State C — Enforcement** → handoff to
+  `orchestration/master-prompt.md` (enforcement mode). **Ambiguity recorded (FD-1).** The M74 ledger
+  *row* still reads `OPEN` against the ledger head's "no open code item", and `prompts/entry.md`
+  (ledger-driven) and `migration/migration-prompt.md` §0.0 (record-driven) state the work-order
+  predicate differently; the classification follows the ledger head, the migration prompt's CURRENT
+  STATE and `v5.5.99`, which all declare State C.
+- **§3 audit (corpus-wide + code-structural).** Corpus: the full gate suite was run. Code-structural:
+  0 `EmbedBuilder`/`MessageEmbed` constructions in `apps/main/src` (the embed ban holds), one
+  canonical `CommandRouter`, 0 module code under `src/`, every migration exports `down()`, CI
+  workflows at the repository root. **Enforcement finding FD-2.** `GAP_MANIFEST.md` states "501 `.ts`
+  source files, 45 Knex migrations"; the tree holds 564 `.ts` and 56 migration files — the side
+  document's code counts are stale and uncorroborated by any gate.
+- **§4 remediation (remediate-or-record).** The deviations are **recorded, not silently fixed**: the
+  corpus-audit findings DR-1 … DR-11 are formalised as `upgradation/UR-20261018-092.md` (raised this
+  run; not yet implemented — per governance a request precedes its implementation), with FD-1 and
+  FD-2 added. The one mechanical correction landed with the request is the tree-entry counts in
+  `blueprint/structure.md` and `spec/architecture/directory-file-structure.md` (1,559→1,560 entries;
+  1,271→1,272 files) — the accompanying edit the corpus's own process requires when a record is added.
+- 2026-10-18 · master-prompt 5.2.0 · enforce · subsystem=docs-corpus · verdict=COMPLETE
+- **§6 enforcement pass.** Corpus gate suite **27/27 green**; `scripts/docs/check-ur.mjs` detects the
+  record count dynamically. Application toolchain not run (Node 20.20.2; the app requires Node ≥ 22;
+  no installed dependencies) — the app-side surfaces are outside the corpus scope and remain as
+  recorded in `GAP_MANIFEST.md`.
+- **Return.** `met` (corpus scope) — the corpus is gate-green and internally consistent; the four
+  unguarded surfaces the audit found (generated artefact, code-grounding, audit age, provenance
+  branch) are recorded for remediation under `upgradation/UR-20261018-092.md`. OI-1 (human
+  attestation) and OI-3 (Docker/K8s) remain honest standing items, not defects.
 
 ---
 
@@ -2644,6 +2701,7 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 | UR-20261010-001 — corpus residual closure | Executed 2026-10-10 (see the entry above). |
 | UR-20261015-090 — corpus audit residual closure | Executed 2026-10-15 (see the `v5.5.95` entry above). Findings DA-1 … DA-12 closed; see §5.2. |
 | UR-20261016-091 — corpus audit + enforcement (gate-truth, provenance, version model, guard classes) | Executed 2026-10-16 (see the `v5.5.99` entry above). Findings AU-1 … AU-11 closed; see §5.2. |
+| UR-20261018-092 — corpus audit (generated-artefact & ledger freshness, provenance/branch truth, ungated ledgers) | **Executed 2026-10-18** (see the `v5.5.101` entry above). Findings DR-1 … DR-12 plus enforcement findings FD-1/FD-2 closed. |
 
 ### 5.2 Residual dispositions (UR-20261015-090 R9)
 

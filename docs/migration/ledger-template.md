@@ -17,14 +17,17 @@ change_log: upgradation/change-log.md
 > copy this file over it, re-initialize it, or rebuild it.
 
 **When this template is used.** A live ledger is constructed only for a **State B (migration)**
-run — that is, only when an active work order exists (at least one `upgradation/UR-*.md`, or
-open items in the live ledger). With no work order, no ledger is built: the run is
+run — that is, only when an active work order exists (the live ledger carries at least one item not
+`DONE`; a request record alone does not open the work order). With no open item, no ledger is built: the run is
 **State C (enforcement)** and its artifact is the Gap Manifest at the repository root, not
 this ledger.
 
 ---
 
 ## 1. Header Block (the live ledger's opening matter)
+
+> Every `<...>` token in the shapes below is a **shape, never a value** — it is filled at
+> construction. A token read as a value is a defect.
 
 ```markdown
 # Migration Ledger — v5.0.0 Re-Baseline

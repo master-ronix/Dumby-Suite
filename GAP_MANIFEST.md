@@ -1,9 +1,9 @@
 # GAP MANIFEST — Build-Engine Audit
 
-**Generated:** 2026-10-06 · **Re-stated:** 2026-10-16
+**Generated:** 2026-10-06 · **Re-stated:** 2026-10-18
 **Protocol:** `docs/orchestration/master-prompt.md` §3 (Codebase State Detection & Audit Protocol)
 **Repository:** `master-ronix/Dumby-Suite`
-**Branch / ref:** `feature/dev` @ `3ee7fa53ad540480122374b793f0c4e1df45f449`
+**Branch / ref:** `feature/dev` @ `416864b603616bd9b984b1bd7f6fc6c773f8ace6`
 **Codebase state:** State C — Enforcement (code present; migration work order closed)
 **Entry procedure followed:** `docs/prompts/entry.md` → `migration/migration-prompt.md` (migration mode)
 **Run mode:** State B — audit (§3) → state-of-record reconciliation (R12); the enforcement pass (§6) resumes when the work order is fully `DONE`.
@@ -11,7 +11,7 @@
 > **Supersession note (2026-10-10).** This manifest was generated 2026-10-06 as a **State C** run, when the work order was INACTIVE. The work order is now **ACTIVE** (request records present; `migration-ledger.md` carries open items M10/M14/M16), so the governing protocol is `migration/migration-prompt.md`. The classification table below is retained as the last full audit; its F4/F5 residuals remain open (see §2).
 
 > **Point-in-time notice (2026-10-11).** This manifest is a snapshot, not a live ledger. Its ref is
-> re-pointed to `feature/dev` @ `3ee7fa53`; request-record counts are **not** restated here (read them
+> re-pointed to `feature/dev` @ `416864b`; request-record counts are **not** restated here (read them
 > from `docs/scripts/docs/check-ur.mjs`). `check-side-docs` holds this manifest's ref in step with
 > `docs/status/code-reconciliation.json`.
 
@@ -21,7 +21,7 @@
 
 - **Docs base path:** `docs/` (resolved once).
 - **Authority layer:** `docs/manifest.json` read; normative set = `blueprint/`, `spec/**` (10 departments), `contracts/` (9). `documentation/` is derived; `archive/**` is not current. Precedence is owned by `spec/governance/directive-charter-how-to-use-this-document.md` §0.2 and is cited, not restated.
-- **State probe (`apps/main/`):** contains code — 501 `.ts` source files, 45 Knex migrations.
+- **State probe (`apps/main/`):** contains code — {{counts.code_ts_files}} `.ts` files ({{counts.code_src_ts_files}} under `apps/main/src`), {{counts.code_migrations}} Knex migrations.
 - **Work-order probe:** `upgradation/UR-*.md` → **present** (records on disk); `migration-ledger.md` (repo root) → a **constructed ledger** with items not `DONE` (M10/M14/M16). ⇒ work order **ACTIVE**.
 - **Classification:** code present **and** work order ACTIVE → **State B — Migration**. `migration/migration-prompt.md` §0.0 work-order guard passes (an active work order exists).
 
@@ -35,7 +35,7 @@
 | 2 | Unit tests (`vitest`, unit config) | `COMPLETE` | 66 files / 757 tests passed / 0 failed |
 | 3 | Lint (ESLint, `--max-warnings=0`) | `COMPLETE` | exit 0, zero warnings |
 | 4 | Format (Prettier `--check`) | `COMPLETE` | "All matched files use Prettier code style" |
-| 5 | Documentation gates (`docs/scripts/docs/check-*.mjs`) | `COMPLETE` | 27 / 27 gates green |
+| 5 | Documentation gates (`docs/scripts/docs/check-*.mjs`) | `COMPLETE` | 30 / 30 gates green |
 | 6 | Bootstrap (18-stage) | `COMPLETE` | `src/bootstrap/bootstrap.ts`; stage tests pass; readiness 503→200 |
 | 7 | DI container | `COMPLETE` | reconciliation REC-017 `match`; frozen-core + MockContainer tested |
 | 8 | Middleware pipeline | `COMPLETE` | 12 built-in middlewares at `src/middleware/built-in/`; REC-009 `match` |
@@ -43,7 +43,7 @@
 | 10 | Module system / manifest contract | `COMPLETE` | full contract expressed in `packages/swastik/src/manifest.ts` (see §2 F1) |
 | 11 | Renderer / embed ban | `COMPLETE` | 0 `new EmbedBuilder`/`new MessageEmbed` in `src/`; REC-015 `match` |
 | 12 | Command router (single canonical) | `COMPLETE` | one impl `src/commands/command-router.ts`; wired in `bootstrap.ts`; test enforces single router |
-| 13 | Migrations | `COMPLETE` | 45 migrations, every one exports `down()` |
+| 13 | Migrations | `COMPLETE` | {{counts.code_migrations}} migrations, every one exports `down()` |
 | 14 | Module storage discipline | `COMPLETE` | no `apps/main/src/modules`; `MODULES_DIR` tier volumes referenced; REC-012 `match` |
 | 15 | First-party command surface | `COMPLETE` | all 8 present under `packages/modules/`: dashboard, health, browse, queue, persona, permit, modules, hello-world |
 | 16 | Docs ↔ code reconciliation ledger | `COMPLETE` | re-verified at HEAD; 22/22 rows `match` (F1 fixed) |
@@ -98,7 +98,7 @@ Ordered by `master-prompt.md` §3.4 severity. No compile-blocking faults were fo
 4. **F5 (coverage floors) — CLOSED 2026-10-15.** Per-layer thresholds live in `vitest.config.ts` and are met; `test:coverage` green.
 5. **F4 (verification surfaces) — flow + integration CLOSED 2026-10-15** (19 + 206 tests pass); Docker/K8s remain unverified (no daemon / cluster).
 
-**Enforcement-pass status (updated 2026-10-15).** Every local gate is green — typecheck, ESLint (`--max-warnings=0`), Prettier, **1,281 unit tests across 123 files**, the modules contract suite, **19 flow tests across 6 files**, **206 integration tests across 166 files**, `test:coverage` with **per-layer floors met**, and **27 documentation gates**. F1, F2, F3, F5 and the flow/integration half of F4 are closed. The only remaining unverified items are the Docker image build and the K8s apply, which require a daemon / cluster. Per master-prompt §6.1 the manifest is `COMPLETE` for every surface reachable without external infrastructure.
+**Enforcement-pass status (updated 2026-10-15).** Every local gate is green — typecheck, ESLint (`--max-warnings=0`), Prettier, **1,281 unit tests across 123 files**, the modules contract suite, **19 flow tests across 6 files**, **206 integration tests across 166 files**, `test:coverage` with **per-layer floors met**, and **30 documentation gates**. F1, F2, F3, F5 and the flow/integration half of F4 are closed. The only remaining unverified items are the Docker image build and the K8s apply, which require a daemon / cluster. Per master-prompt §6.1 the manifest is `COMPLETE` for every surface reachable without external infrastructure.
 
 ---
 

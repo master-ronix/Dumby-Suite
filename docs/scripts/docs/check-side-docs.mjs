@@ -1,12 +1,15 @@
 // Gate: side-document consistency. The corpus has side documents that sit OUTSIDE the traced
 // corpus (the build manifest, the migration ledger, the request register) plus reader-facing
-// files, and they restate status — so they drift. This gate holds four invariants:
+// files, and they restate status — so they drift. This gate holds these invariants:
 //   1. no side document restates the UR count as a bare number (read it from check-ur.mjs);
 //   2. the build manifest's "Branch / ref" names the commit the reconciliation ledger verified at;
 //   3. every restated documentation-gate count equals the real number of check-*.mjs gates
 //      (UR-20261015-090 R4);
-//   4. the tree entry counts in blueprint/structure.md and
-//      spec/architecture/directory-file-structure.md match the tree (UR-20261015-090 R5).
+//   4. provenance unification: the current-provenance surfaces name ONE commit, the audit-age
+//      ledger names that commit and branch, and (with a git work tree) the named branch resolves
+//      to that commit (UR-20261016-091 R3/R4; UR-20261018-092 DR-2/DR-3/DR-4);
+//   5. the tree entry counts are single-sourced via {{counts.tree_*}} tokens, not hand-transcribed
+//      (UR-20261018-092 DR-11 / R2).
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { execSync } from 'node:child_process';
@@ -41,10 +44,11 @@ if (existsSync(gm)) {
 // 3. restated documentation-gate counts match the real gate count
 const gateCount = readdirSync('scripts/docs').filter((f) => /^check-.*\.mjs$/.test(f)).length;
 const GATE_CLAIM = [
-  /(\d+)\s*\/\s*\d+\s*gates/gi, // e.g. "27 / 27 gates green"
-  /(\d+)\s+documentation gates/gi, // e.g. "27 documentation gates"
-  /gate-verified\s*\((\d+)\s*\/\s*\d+\)/gi, // e.g. "gate-verified (27/27)"
-  /Run all (\d+) gates/gi, // e.g. "Run all 27 gates"
+  /(\d+)\s*\/\s*\d+\s*gates/gi,
+  /(\d+)\s+documentation gates/gi,
+  /gate-verified\s*\((\d+)\s*\/\s*\d+\)/gi,
+  /Run all (\d+) gates/gi,
+  /(\d+)\s+gates,\s*all\s+green/gi,
 ];
 for (const f of ['../STATUS.md', '../GAP_MANIFEST.md', 'README.md']) {
   if (!existsSync(f)) continue;
@@ -59,7 +63,7 @@ for (const f of ['../STATUS.md', '../GAP_MANIFEST.md', 'README.md']) {
   }
 }
 
-// 3b. the change-log head states a *current* gate count, and it must match too (UR-20261016-091 R6)
+// 3b. the change-log head states a *current* gate count, and it must match too
 {
   const f = 'upgradation/change-log.md';
   if (existsSync(f)) {
@@ -75,7 +79,7 @@ for (const f of ['../STATUS.md', '../GAP_MANIFEST.md', 'README.md']) {
   }
 }
 
-// 3c. provenance unification: the current-provenance surfaces may name ONE commit (UR-20261016-091 R3)
+// 4. provenance unification + audit-age + branch resolution
 {
   const rec = JSON.parse(readFileSync('status/code-reconciliation.json', 'utf8'));
   const canonical = rec.verified_commit;
@@ -96,55 +100,57 @@ for (const f of ['../STATUS.md', '../GAP_MANIFEST.md', 'README.md']) {
       }
     }
   }
-}
-
-// 4. tree entry counts match the tree
-function treeCounts(root) {
-  let files;
-  try {
-    execSync('git rev-parse --git-dir', { stdio: 'ignore', cwd: root });
-    files = execSync('git ls-files', { cwd: root }).toString().trim().split('\n').filter(Boolean);
-  } catch {
-    const skip = new Set(['node_modules', '.git', 'dist', 'coverage', '.cache', '.local']);
-    files = [];
-    const walk = (dir, rel) => {
-      for (const e of readdirSync(dir, { withFileTypes: true })) {
-        if (skip.has(e.name)) continue;
-        const r = rel ? `${rel}/${e.name}` : e.name;
-        if (e.isDirectory()) walk(join(dir, e.name), r);
-        else files.push(r);
-      }
-    };
-    walk(root, '');
-  }
-  const dirs = new Set();
-  for (const f of files) {
-    let d = dirname(f);
-    while (d && d !== '.') {
-      dirs.add(d);
-      d = dirname(d);
+  // the audit-age ledger must name the canonical commit and the same branch (DR-3/DR-4)
+  if (existsSync('status/audit-age.json')) {
+    const aa = JSON.parse(readFileSync('status/audit-age.json', 'utf8')).last_audit || {};
+    if (aa.commit !== canonical) {
+      console.error(`FAIL: status/audit-age.json audit commit ${String(aa.commit).slice(0, 7)} != reconciliation verified_commit ${canonical.slice(0, 7)}`);
+      bad++;
+    }
+    if (aa.branch !== rec.verified_branch) {
+      console.error(`FAIL: status/audit-age.json branch "${aa.branch}" != reconciliation verified_branch "${rec.verified_branch}"`);
+      bad++;
     }
   }
-  return { files: files.length, dirs: dirs.size, entries: files.length + dirs.size };
+  // with a git work tree, the named branch must resolve to the named SHA
+  if (existsSync('../.git')) {
+    try {
+      const sha = execSync(`git rev-parse ${rec.verified_branch}`, { cwd: '..', stdio: ['ignore', 'pipe', 'ignore'] })
+        .toString()
+        .trim();
+      if (sha && sha !== canonical) {
+        console.error(`FAIL: ${rec.verified_branch} resolves to ${sha.slice(0, 7)}, not the canonical ${canonical.slice(0, 7)}`);
+        bad++;
+      }
+    } catch {
+      /* ref not present locally — notice only */
+    }
+  }
 }
-const tc = treeCounts('..');
-const TREE_CLAIM = /([\d,]+)\s+entries(?:\s*:\s*|\s*\(\s*)([\d,]+)\s+directories,\s*([\d,]+)\s+files\)?/g;
-const num = (s) => Number(s.replace(/,/g, ''));
+
+// 5. the tree entry counts are single-sourced tokens, not hand-transcribed literals
 for (const f of ['blueprint/structure.md', 'spec/architecture/directory-file-structure.md']) {
   if (!existsSync(f)) continue;
   const text = readFileSync(f, 'utf8');
-  for (const m of text.matchAll(TREE_CLAIM)) {
-    const [e, d, fl] = [num(m[1]), num(m[2]), num(m[3])];
-    if (e !== tc.entries || d !== tc.dirs || fl !== tc.files) {
-      console.error(
-        `FAIL: ${f} claims ${e} entries (${d} dirs, ${fl} files) but the tree is ${tc.entries} entries (${tc.dirs} dirs, ${tc.files} files)`,
-      );
-      bad++;
-    }
+  if (!text.includes('{{counts.tree_entries}}')) {
+    console.error(`FAIL: ${f} does not single-source the tree entry counts via {{counts.tree_entries}}`);
+    bad++;
+  }
+  if (/([\d,]+)\s+entries\s*:\s*[\d,]+\s+directories,\s*[\d,]+\s+files/.test(text)) {
+    console.error(`FAIL: ${f} still carries a hand-transcribed tree count literal`);
+    bad++;
+  }
+}
+// the build manifest's code counts are single-sourced too (UR-20261018-092 FD-2)
+if (existsSync(gm)) {
+  const t = readFileSync(gm, 'utf8');
+  if (!t.includes('{{counts.code_migrations}}')) {
+    console.error('FAIL: GAP_MANIFEST.md does not single-source its code counts via {{counts.*}}');
+    bad++;
   }
 }
 
 if (bad) process.exit(1);
 console.log(
-  `OK: side-docs (no restated UR count; manifest ref matches the ledger; ${gateCount} gate count consistent; tree counts match)`,
+  `OK: side-docs (no restated UR count; manifest ref matches the ledger; ${gateCount} gate count consistent; provenance + audit-age unified; tree counts single-sourced)`,
 );

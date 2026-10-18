@@ -1,5 +1,5 @@
 {
-  "_note": "P1 classification by statement-kind.",
+  "_note": "P1 classification by statement-kind. Archival: this ledger records the pre-restructure source records' classification and is retained as provenance; it is not asserted by a gate (unlike counts, coverage, entities, terminology, authority, facts, compliance, reconciliation, code-reconciliation, audit-age and section-order).",
   "artifacts": [
     {
       "file": "blueprint.md",
