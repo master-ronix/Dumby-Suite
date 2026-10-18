@@ -102,8 +102,7 @@ records raised under their own IDs — never edits to frozen ones.
 
 UR records are discovered at run time by `scripts/docs/check-ur.mjs`: any `upgradation/UR-*.md`
 is detected and validated automatically (front-matter complete, `kind: ur`, every cited corpus
-path resolving) — there is no registry to update, so adding or editing a record is a single-file
-operation. **The count is not restated here** — read it from the probe
+path resolving) — there is no registry to update, so the record file itself is the only *content* change (the generated `_generated/tree.md` and the single-sourced tree counts in `status/counts.json` refresh with it, as with any file addition). **The count is not restated here** — read it from the probe
 (`node scripts/docs/check-ur.mjs`). URs are provenance and are deliberately **excluded** from `status/coverage-ledger.json`
 and `status/entities.json`. To opt a UR's headings into the coverage ledger, run
 `node scripts/docs/sync-ur.mjs` (and `node scripts/docs/sync-ur.mjs --clear` to revert).

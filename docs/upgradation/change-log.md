@@ -2715,6 +2715,7 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 | UR-20261015-090 — corpus audit residual closure | Executed 2026-10-15 (see the `v5.5.95` entry above). Findings DA-1 … DA-12 closed; see §5.2. |
 | UR-20261016-091 — corpus audit + enforcement (gate-truth, provenance, version model, guard classes) | Executed 2026-10-16 (see the `v5.5.99` entry above). Findings AU-1 … AU-11 closed; see §5.2. |
 | UR-20261018-092 — corpus audit (generated-artefact & ledger freshness, provenance/branch truth, ungated ledgers) | **Executed 2026-10-18** (see the `v5.5.101` entry above). Findings DR-1 … DR-12 plus enforcement findings FD-1/FD-2 closed. |
+| UR-20261018-093 — module load provenance (enforce the D-4.10 hash-bound floor without a signing key) | **Raised 2026-10-18** — not yet implemented. Surfaced as REC-025 by the 2026-10-18 Railway runtime (`module-provenance-unverified`); a request precedes its implementation. |
 
 ### 5.2 Residual dispositions (UR-20261015-090 R9)
 
