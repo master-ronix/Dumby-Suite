@@ -46,12 +46,12 @@
 | 13 | Migrations | `COMPLETE` | {{counts.code_migrations}} migrations, every one exports `down()` |
 | 14 | Module storage discipline | `COMPLETE` | no `apps/main/src/modules`; `MODULES_DIR` tier volumes referenced; REC-012 `match` |
 | 15 | First-party command surface | `COMPLETE` | all 8 present under `packages/modules/`: dashboard, health, browse, queue, persona, permit, modules, hello-world |
-| 16 | Docs ↔ code reconciliation ledger | `COMPLETE` | re-verified at HEAD; 22/22 rows `match` (F1 fixed) |
+| 16 | Docs ↔ code reconciliation ledger | `PARTIAL` | re-verified at HEAD; 24 of 25 rows `match`, 1 `code-gap` (REC-025, build-provenance floor) — read the live counts from `status/code-reconciliation.json` |
 | 17 | `tests/unit/tier-rules.test.ts` + modules contract suite | `COMPLETE` | duplicate key removed; out-of-enum case added (F2 fixed) |
 | 18 | Capability ledger (`status/capabilities.json`) | `COMPLETE` | CAP-004/005 corrected; derived `compliance.json` regenerated (F3 fixed) |
 | 19 | Coverage floors (`test:coverage`, per-layer) | `COMPLETE` | per-layer floors met: 74.1% statements / 67.45% branches / 74.17% functions / 75.07% lines; gate green (2026-10-15) |
 | 20 | Flow / integration verification | `COMPLETE` | flow 6 files / 19 tests + integration 166 files / 206 tests pass on embedded PostgreSQL (2026-10-15) |
-| 21 | Docker image build / K8s apply | `UNVERIFIED` | require a Docker daemon / a cluster — not available in this sandbox |
+| 21 | Docker image build / K8s apply | `PARTIAL` | Docker image build **VALIDATED 2026-10-18 on Railway** (commit `416864b`): multi-stage build green, `/health/liveness` 200 (~80 s), bootstrap/discord-client/command-registry ready, Dumby + Redis + Postgres online; the K8s manifest apply remains unverified (Railway is not a cluster) |
 
 ---
 
@@ -75,9 +75,10 @@
 - **Delta:** CAP-005 says the canonical command system (`src/commands/`) is *"Dead Code — zero external importers."* At HEAD, `src/commands/command-router.ts` is the single canonical `CommandRouter`, constructed in `bootstrap.ts`, registered under `CORE_TOKENS.CommandRouter`, and dispatched on every interaction; `tests/unit/command-tree-structure.test.ts` asserts exactly one router implementation and no imports from retired command trees. CAP-004 (*"thinner than spec"*) similarly predates the current wiring.
 - **Remedy:** regenerate `capabilities.json` from the audit register against HEAD; correct CAP-005's status and evidence. Deferred items (CAP-001/002/003/007/008/009/011/013/015/016) remain correctly out of scope — do not build them.
 
-### F4 — Verification surfaces (flow + integration EXECUTED 2026-10-15; Docker/K8s UNVERIFIED)
+### F4 — Verification surfaces (flow + integration EXECUTED 2026-10-15; Docker build VALIDATED 2026-10-18; K8s apply UNVERIFIED)
 - **Executed (2026-10-15).** `test:flow` (embedded PostgreSQL) — 6 files / 19 tests pass; `test:integration` — 166 files / 206 tests pass. The D-8.10 integration surface is green.
-- **Still unverified (not defects).** The Docker multi-stage image build (D-8.6) and the K8s manifest apply require a Docker daemon / a cluster, unavailable in this sandbox; they remain recorded honestly as unverified rather than `COMPLETE`.
+- **Docker build VALIDATED (2026-10-18, Railway).** The multi-stage image (D-8.6) built for commit `416864b`; `/health/liveness` succeeded on attempt 6 (~80 s); `bootstrap-complete`, `discord-client-ready` and `command-registry-ready` all logged; `persona-runtime-started` reported 1 of 1 persona hosted; Dumby, Redis and Postgres online with no failures. Evidence reported by the Railway deployment run (the corpus commits that followed are docs-only and were skipped by Railway, so this validation stands for the new head too).
+- **Still unverified (not a defect).** The K8s manifest apply requires a cluster; Railway is not one. It remains recorded honestly as unverified rather than `COMPLETE`.
 - **Environment note (not a code defect):** the workspace declares `engines.node >= 22`; this run executed on Node 20.20.2. Typecheck, lint, format, unit, coverage, flow and integration all pass; only the engine warning is emitted.
 
 ### F5 — Coverage floors (PER-LAYER FLOORS MET — 2026-10-15)

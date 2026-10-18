@@ -216,14 +216,23 @@
       "code_truth": "PersonaRuntimeDeps.runBccmPush is supplied by bootstrap and invoked per persona start; it runs runBccmBatchPush against the persona's own applicationId, so the main bot's push (which ignores the persona scope) never carries her queued cosmetics",
       "code_ref": "apps/main/src/personas/persona-runtime.ts ; apps/main/src/bootstrap/bootstrap.ts",
       "verdict": "match",
-      "resolution": "Documented in v5.5.101 (spec §35.4); previously a landed behaviour with no documentation and no reconciliation row (UR-20261018-092 DR-2)."
+      "resolution": "Documented in v5.5.101 (spec §35.4); previously a landed behaviour with no documentation and no reconciliation row (UR-20261018-092 DR-2). Confirmed live 2026-10-18: the persona-side push ran on Railway (bccm-batch-push-complete dryRun=false)."
+    },
+    {
+      "id": "REC-025",
+      "area": "module load — build-provenance floor (§15.8 / D-4.10)",
+      "doc_claim": "hash-bound provenance verification against the build record is the enforced floor where the signing subsystem is absent (spec/governance/part-4-module-system-framework.md, rule D-4.10)",
+      "code_truth": "the loader's provenance guard is armed only when a build-signing key is configured (BUILD_SIGNING_PUBLIC_KEY); with no key the guard is OFF and modules load unverified, logging module-provenance-unverified — fail-open, not enforced",
+      "code_ref": "apps/main/src/module-system/build-signing.ts ; apps/main/src/bootstrap/bootstrap.ts",
+      "verdict": "code-gap",
+      "resolution": "Surfaced by the 2026-10-18 Railway run (no signing key configured). The spec calls provenance verification 'the enforced floor'; the runtime is fail-open when the key is absent. Closing it is a code/config-track item (arm the key, or fail closed), not a documentation change — recorded, not fixed."
     }
   ],
   "counts": {
     "match": 24,
     "doc-incomplete": 0,
-    "code-gap": 0,
+    "code-gap": 1,
     "code-anchor-broken": 0,
-    "total": 24
+    "total": 25
   }
 }

@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.101
+version: 5.5.102
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -80,7 +80,7 @@ completed step's record is missing.
 
 ## 9. Record
 
-> **Population status:** §1–§5 are populated. §3 carries the version history through v5.5.101 and
+> **Population status:** §1–§5 are populated. §3 carries the version history through v5.5.102 and
 > the 2026-10-18 enforcement implementation. The corpus gate suite is **30 gates, all green** at HEAD.
 
 ### 1. Scope & Method
@@ -521,6 +521,19 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 - **R8 — audit age.** `status/audit-age.json` records the audit date, commit, scope and request; `README.md` names the current audit.
 - **Verification.** Corpus gate suite **27/27 green**. Application toolchain not run (Node 20.20.2; app requires Node ≥ 22; no deps) — app-side items are outside the corpus scope.
 - **Return.** `met` (corpus scope) — every AU finding closed; OI-1 (human attestation) and OI-3 (Docker/K8s) remain honest standing items, not defects.
+
+---
+
+### v5.5.102 — OI-3 Partial Closure (Docker Build Validated on Railway) & Build-Provenance Divergence Recorded — 2026-10-18
+
+- 2026-10-18 · meta-prompt 5.2.0 · state=Enforcement · handoff=master-prompt:enforce · return=met
+- **OI-3 partial closure — Docker build validated.** The multi-stage image built on Railway for `416864b` (the head before the `v5.5.101` corpus commits): `/health/liveness` succeeded on attempt 6 (~80 s); `bootstrap-complete`, `discord-client-ready` and `command-registry-ready` all logged; `persona-runtime-started` reported 1 of 1 persona hosted; Dumby, Redis and Postgres online. The K8s apply remains unverified (Railway is not a cluster). `GAP_MANIFEST.md` row 21 and §F4 updated; the §5.2 OI-3 rows now read **resolved except K8s**.
+- **Corpus commits are docs-only.** `6578927` and `a85c00d` touch only `docs/`; Railway SKIPPED both, so the live bot is unchanged at `416864b` and the build validation stands for the new head.
+- **REC-024 confirmed live.** The persona-side BCCM push ran on a schedule (`bccm-batch-push-complete dryRun=false`), validating the spec §35.4 coverage added in `v5.5.101`; it reported `guilds=0 sent=0` (the code path executes; no bound guild yet).
+- **New divergence recorded — REC-025 (code-gap).** `module-provenance-unverified`: the loader's build-provenance guard is armed only when a build-signing key is configured; with none, modules load unverified. Spec D-4.10 (`part-4-module-system-framework.md`) calls hash-bound provenance verification "the enforced floor", so the runtime is **fail-open** against a MUST. Recorded in `status/code-reconciliation.json` (25 facts) — a code/config-track item, not a documentation change; recorded, not fixed.
+- **Non-defect observations (recorded, no action).** `persona-no-modules-bound` (no module bound to the persona yet — a configuration state); `Namaste` skipped (Discord rejected the command name); optional native builds skipped (`ssh2` crypto fallback to pure JS; `@embedded-postgres/linux-x64` build script ignored) — environment, non-fatal.
+- **Verification.** Corpus gate suite **30/30 green**.
+- **Return.** `met` — OI-3 is closed except the K8s apply; OI-1 (human attestation) remains open by policy.
 
 ---
 
@@ -2685,7 +2698,7 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 |---|---|---|---|
 | OI-1 | Human attestation of the corpus (`review_state` / `last_verified_commit`) | Dumby Core Engineering | open (policy-stated; UR-20261008-001 / UR-20261010-001 R4) |
 | OI-2 | Per-layer coverage floors (directive D-8.2) | engineering | **resolved** — floors are per-layer and met (74.1 / 67.45 / 74.17 / 75.07), verified 2026-10-15 |
-| OI-3 | Unverified surfaces: flow / integration / Docker / K8s | engineering | **resolved except Docker/K8s** — flow (19) + integration (206) suites executed and green 2026-10-15; the image build and cluster apply remain unverified (no daemon / no cluster) |
+| OI-3 | Unverified surfaces: flow / integration / Docker / K8s | engineering | **resolved except K8s** — flow (19) + integration (206) suites executed and green 2026-10-15; the Docker image build **VALIDATED 2026-10-18 on Railway**; only the K8s manifest apply remains unverified |
 | OI-4 | Default banner + default white icon assets | operator | **resolved** — present: `apps/main/assets/*.png` (banner + icons) and per-module `packages/modules/<slug>/assets/icon.png` |
 | OI-5 | Migration slices M10 / M14 / M16 | engineering | **resolved** — M10 / M14 / M16 / M18 DONE (toolchain-verified 2026-10-15) |
 | OI-6 | 24 logged deviations (appendix-c) | framework-maintainers | **resolved** — `appendix-c` carries the ownership note (UR-20261010-001 R10); each item is owned or deferred |
@@ -2711,7 +2724,7 @@ Every carried residual now states its owner, status, and blocker — none is a s
 |---|---|---|---|---|
 | OI-1 | Human attestation (`review_state` / `last_verified_commit`) | Dumby Core Engineering | **standing (policy)** | Not a defect: the corpus is machine-verified only, the policy is stated in `README.md` + the schema `$comment`, and a human review pass is a deliberate standing item — never faked. |
 | OI-2 | Per-layer coverage floors (D-8.2) | engineering | **resolved** | Per-layer floors enforced and met (74.1 / 67.45 / 74.17 / 75.07), verified 2026-10-15. |
-| OI-3 | Unverified surfaces (flow / integration / Docker / K8s) | engineering | **resolved except Docker/K8s** | flow + integration suites green 2026-10-15; the image build / cluster apply need a daemon / cluster unavailable in the build sandbox — an environment limit, recorded honestly, not a code defect. |
+| OI-3 | Unverified surfaces (flow / integration / Docker / K8s) | engineering | **resolved except K8s** | flow + integration suites green 2026-10-15; the Docker image build validated 2026-10-18 on Railway; only the K8s manifest apply remains unverified (Railway is not a cluster) — an environment limit, recorded honestly, not a code defect. |
 | OI-4 | Default banner + white icon assets | operator | **resolved** | Present in `apps/main/assets/` and per-module `assets/icon.png`. |
 | OI-5 | Migration slices M10 / M14 / M16 | engineering | **resolved** | M10 / M14 / M16 / M18 DONE, toolchain-verified. |
 | OI-6 | 24 logged deviations (appendix-c) | framework-maintainers | **resolved** | `appendix-c` carries the ownership note; each item owned or deferred. |
