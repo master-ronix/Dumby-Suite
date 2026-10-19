@@ -191,8 +191,7 @@ export function promoteAtomically(input: {
   const reserved = (input.reservedSlugs ?? []).some(
     (s) => s.toLowerCase() === slug.toLowerCase() || s.toLowerCase() === declaredName.toLowerCase(),
   );
-  const bakedDir = existsSync(liveLink) && !lstatIsLink(liveLink);
-  if (reserved || bakedDir) {
+  if (reserved) {
     throw new Error(
       `reserved slug "${slug}" (name "${declaredName}"): a baked module owns it — promotion refused (Option B)`,
     );
