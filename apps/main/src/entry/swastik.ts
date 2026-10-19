@@ -1,7 +1,7 @@
 import Fastify, { type FastifyReply } from 'fastify';
 import { isMainEntry } from './is-main-entry.js';
 import { randomBytes, randomUUID } from 'node:crypto';
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Redis } from 'ioredis';
 import { parseEnv, pickEnvKeys, type Env } from '../config/env.schema.js';
@@ -590,6 +590,18 @@ function buildPromotionProvenance(input: {
   };
 }
 
+/** UR-20261018-093 / Option B — the baked slugs from the image manifest, for the promotion guard. */
+function reservedBakedSlugs(): string[] {
+  const path = env.BAKED_MODULES_MANIFEST;
+  if (path === '' || !existsSync(path)) return [];
+  try {
+    const manifest = JSON.parse(readFileSync(path, 'utf8')) as Record<string, string>;
+    return Object.keys(manifest).map((k) => k.split('/').pop() ?? k);
+  } catch {
+    return [];
+  }
+}
+
 app.post('/internal/reload', async (request, reply) => {
   const query = request.query as Record<string, string>;
   const moduleName = query['module'] ? assertSafeSlug(query['module']) : undefined;
@@ -660,6 +672,7 @@ app.post('/internal/reload', async (request, reply) => {
       moduleSlug: moduleName,
       stagingDir: verification.stagingDir,
       provenance: reloadProvenance,
+      reservedSlugs: reservedBakedSlugs(),
     });
     await new PostgresBuildStore(db.knex).setProvenance({
       buildId: build.buildId,
@@ -927,6 +940,7 @@ app.post('/internal/deploy', async (request, reply) => {
       moduleSlug: safeModuleSlug,
       stagingDir: verification.stagingDir,
       provenance: deployProvenance,
+      reservedSlugs: reservedBakedSlugs(),
     });
     await new PostgresBuildStore(db.knex).setProvenance({
       buildId,
