@@ -32,7 +32,7 @@ function fixture() {
 }
 
 test('UR-100/B: an empty volume is seeded from the image', () => {
-  const { image, volume, manifestPath } = fixture();
+  const { volume, manifestPath } = fixture();
   const r = seedBakedVolume({ modulesDir: volume, manifestPath, logger: logger() });
   expect(r.seeded).toStrictEqual(['modules-core/hello-world']);
   expect(existsSync(join(volume, 'modules-core/hello-world/index.js'))).toBe(true);
@@ -40,7 +40,7 @@ test('UR-100/B: an empty volume is seeded from the image', () => {
 });
 
 test('UR-100/B: a current copy is skipped; a stale copy is re-seeded', () => {
-  const { image, volume, manifestPath } = fixture();
+  const { volume, manifestPath } = fixture();
   seedBakedVolume({ modulesDir: volume, manifestPath, logger: logger() });
   let r = seedBakedVolume({ modulesDir: volume, manifestPath, logger: logger() });
   expect(r.skipped).toStrictEqual(['modules-core/hello-world']);
@@ -52,7 +52,7 @@ test('UR-100/B: a current copy is skipped; a stale copy is re-seeded', () => {
 });
 
 test('UR-100/B: a promoted slug (not in the manifest) is never touched', () => {
-  const { image, volume, manifestPath } = fixture();
+  const { volume, manifestPath } = fixture();
   module_(volume, 'modules-standard/community-thing__1.0.0', 'export const onLoad = () => 2;\n');
   const r = seedBakedVolume({ modulesDir: volume, manifestPath, logger: logger() });
   expect(r.removed).toStrictEqual([]);
@@ -60,7 +60,7 @@ test('UR-100/B: a promoted slug (not in the manifest) is never touched', () => {
 });
 
 test('UR-100/B: a baked module removed from the image is removed from the volume', () => {
-  const { image, volume, manifestPath } = fixture();
+  const { volume, manifestPath } = fixture();
   seedBakedVolume({ modulesDir: volume, manifestPath, logger: logger() }); // records the seeded state
   // new image: manifest no longer lists hello-world
   writeFileSync(manifestPath, JSON.stringify({}));
