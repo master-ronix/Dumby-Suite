@@ -72,10 +72,12 @@ test('UR-100/B: a promoted slug (not in the manifest) is never touched', () => {
 });
 
 test('UR-100/B: a baked module removed from the image is removed from the volume', () => {
-  const { volume, manifestPath } = fixture();
+  const { image, volume, manifestPath } = fixture();
   seedBakedVolume({ modulesDir: volume, manifestPath, logger: logger() }); // records the seeded state
-  // new image: manifest no longer lists hello-world
-  writeFileSync(manifestPath, JSON.stringify({}));
+  // New image: hello-world is gone, bye-world is added. The manifest is NON-empty (an empty one now
+  // aborts) but omits hello-world, so hello-world is the removed baked module.
+  const h2 = module_(image, 'modules-core/bye-world', 'export const onLoad = () => 3;\n');
+  writeFileSync(manifestPath, JSON.stringify({ 'modules-core/bye-world': h2 }));
   const r = seedBakedVolume({ modulesDir: volume, manifestPath, logger: logger() });
   expect(r.removed).toStrictEqual(['modules-core/hello-world']);
   expect(existsSync(join(volume, 'modules-core/hello-world'))).toBe(false);
