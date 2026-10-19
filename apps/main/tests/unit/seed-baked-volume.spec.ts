@@ -81,6 +81,23 @@ test('UR-100/B: a baked module removed from the image is removed from the volume
   const r = seedBakedVolume({ modulesDir: volume, manifestPath, logger: logger() });
   expect(r.removed).toStrictEqual(['modules-core/hello-world']);
   expect(existsSync(join(volume, 'modules-core/hello-world'))).toBe(false);
+  // moved to the trash, not deleted
+  expect(existsSync(join(volume, '.trash'))).toBe(true);
+});
+
+test('UR-100/B: a manifest that shrinks too far is refused (truncated manifest)', () => {
+  const { volume, manifestPath } = fixture();
+  // pretend six modules were seeded by the previous image
+  writeFileSync(
+    join(volume, '.baked-seed.json'),
+    JSON.stringify(
+      Object.fromEntries(['a', 'b', 'c', 'd', 'e', 'f'].map((s) => [`modules-core/${s}`, 'h'])),
+    ),
+  );
+  // the new manifest lists only the one module in the image, so all six look "removed"
+  expect(() => seedBakedVolume({ modulesDir: volume, manifestPath, logger: logger() })).toThrow(
+    /shrank too far/,
+  );
 });
 
 test('UR-100/B: an EMPTY manifest aborts the seeder (no mass removal)', () => {

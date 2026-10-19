@@ -111,13 +111,27 @@ export function seedBakedVolume(input: {
   }
 
   // A slug baked by the PREVIOUS image but absent from the new manifest is a removed baked module.
-  for (const key of Object.keys(previous)) {
-    if (key in manifest) continue;
+  // A truncated or hand-edited manifest could list only a few slugs, making everything else look
+  // "removed" — so refuse if the removal count is implausibly large, and MOVE to a trash directory
+  // (never hard-delete) so a bad manifest is recoverable.
+  const toRemove = Object.keys(previous).filter((k) => !(k in manifest));
+  const removalLimit = Math.max(3, Math.floor(Object.keys(previous).length / 2));
+  if (toRemove.length > removalLimit) {
+    throw new Error(
+      `baked manifest shrank too far: would remove ${toRemove.length} of ${Object.keys(previous).length} seeded module(s) — refusing (truncated manifest?)`,
+    );
+  }
+  const trashRoot = join(modulesDir, '.trash', String(Date.now()));
+  for (const key of toRemove) {
+    const src = join(modulesDir, key);
+    if (!existsSync(src)) continue;
     try {
-      rmSync(join(modulesDir, key), { recursive: true, force: true });
+      const dest = join(trashRoot, key);
+      mkdirSync(dirname(dest), { recursive: true });
+      renameSync(src, dest);
       removed.push(key);
     } catch (err) {
-      logger.warn('baked-seed-remove-failed', { key, error: String(err) });
+      logger.warn('baked-seed-trash-failed', { key, error: String(err) });
     }
   }
 

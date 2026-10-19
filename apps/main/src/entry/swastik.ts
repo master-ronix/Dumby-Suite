@@ -586,7 +586,16 @@ function buildPromotionProvenance(input: {
 /** UR-20261018-093 / Option B — the baked slugs from the image manifest, for the promotion guard. */
 function reservedBakedSlugs(): string[] {
   const path = env.BAKED_MODULES_MANIFEST;
-  if (path === '' || !existsSync(path)) return [];
+  const bakedLess = env.BAKED_MODULES_MODE === 'none';
+  if (path === '' || !existsSync(path)) {
+    // Under Option B an unset/unreadable manifest leaves the guard with no authoritative list, so a
+    // promoted `<slug>__<version>` could collide with a baked slug. Refuse rather than degrade. Only a
+    // deliberately baked-less deploy (BAKED_MODULES_MODE=none) may promote with no manifest.
+    if (bakedLess) return [];
+    throw new Error(
+      'BAKED_MODULES_MANIFEST is unset — refusing promotion (set BAKED_MODULES_MODE=none for a deliberate baked-less deploy)',
+    );
+  }
   try {
     const manifest = JSON.parse(readFileSync(path, 'utf8')) as Record<string, string>;
     return Object.keys(manifest).map((k) => k.split('/').pop() ?? k);
