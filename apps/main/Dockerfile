@@ -66,7 +66,7 @@ COPY --from=builder /app/packages/swastik ./packages/swastik
 COPY --from=builder /mnt/modules /mnt/modules
 COPY --from=builder /mnt/modules /app/baked-modules
 RUN chown -R node:node /app/baked-modules /mnt/modules
-ENV MODULES_DIR=/app/baked-modules
+ENV MODULES_DIR=/mnt/modules
 COPY apps/main/package.json apps/main/tsconfig.json ./apps/main/
 EXPOSE 8080 8081 8082
 USER node

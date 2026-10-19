@@ -35,8 +35,23 @@ jobs:
         with:
           node-version: 22
 
+      # UR-20261019-094 — the gate suite reads inputs outside docs/ (apps/main source, the root
+      # side documents, the git work tree). Assert they are present so a gate can never fail open
+      # on an absent input. check-counts/check-side-docs also fail closed on an absent canonical
+      # input when CI is set; this step makes the requirement explicit and early.
+      - name: Assert canonical gate inputs
+        run: |
+          set -e
+          missing=0
+          for p in apps/main GAP_MANIFEST.md STATUS.md migration-ledger.md .git; do
+            if [ ! -e "$p" ]; then echo "::error::canonical gate input missing: $p"; missing=1; fi
+          done
+          [ "$missing" -eq 0 ]
+
       - name: Run documentation gates
         working-directory: docs
+        env:
+          CI: 'true'
         run: |
           for g in scripts/docs/check-*.mjs; do
             echo "::group::$g"

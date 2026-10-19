@@ -28,6 +28,8 @@
 - adr/ADR-016.md
 - archive/v4.5.1/README.md
 - archive/v4.5.1/documentation.md
+- audits/2026-10-19-docs-audit-addendum-2.md
+- audits/2026-10-19-docs-audit.md
 - blueprint/architecture-edges.md
 - blueprint/data-edges.md
 - blueprint/foundations-edges.md
@@ -327,4 +329,11 @@
 - upgradation/UR-20261016-091.md
 - upgradation/UR-20261018-092.md
 - upgradation/UR-20261018-093.md
+- upgradation/UR-20261019-094.md
+- upgradation/UR-20261019-095.md
+- upgradation/UR-20261019-096.md
+- upgradation/UR-20261019-097.md
+- upgradation/UR-20261019-098.md
+- upgradation/UR-20261019-099.md
+- upgradation/UR-20261019-100.md
 - upgradation/change-log.md

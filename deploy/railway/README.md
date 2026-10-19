@@ -32,10 +32,20 @@ The repo root carries `railway.json`:
 
 ## Volumes
 
-Attach one Railway volume to `@workspace/dumby` at **`/mnt/modules`** so promoted
-modules survive redeploys. Railway mounts volumes as root; the image runs as the
-non-root `node` user, so set `RAILWAY_RUN_UID=0` on the service (see the variables
-template) to avoid permission errors writing to the volume.
+**The module root is the Railway volume at `/mnt/modules`** (Option B — the volume is the source of
+truth). The loader reads **only** `MODULES_DIR` and its four tier sub-directories (`swastik-loader.ts`),
+and `MODULES_DIR`, `SWASTIK_LIVE_VOLUME_PATH` and `SWASTIK_STAGING_VOLUME_PATH` all point **into the
+volume**, so promoted modules **persist across redeploys**.
+
+Attach one Railway volume to `@workspace/dumby` at **`/mnt/modules`**. Railway mounts volumes as root
+and the image runs as the non-root `node` user, so set `RAILWAY_RUN_UID=0` (see the variables template).
+
+> **Seeding.** The mount **shadows** the baked tree the image carries at `/mnt/modules`, so a fresh
+> volume is empty and the bot boots with **zero commands** until it is seeded. Seed once (the Swastik
+> pipeline writes the first-party modules and, with W1, their provenance):
+> `pnpm --filter @workspace/dumby seed:modules --provision-governance` → `seed:modules --human-approved`.
+> Because those modules are promoted, **run the provenance backfill** before enforcing the floor
+> (UR-20261018-093 stage 3) — see `backfill-runbook-2026-10-19.md`.
 
 ## Variables
 
@@ -52,11 +62,15 @@ on start, so starting the app applies pending migrations against `DATABASE_URL`.
 
 ## Modules
 
-The loader blind-discovers modules from the tier volumes; empty volumes = zero
-modules = zero commands. Populate them through the Swastik promotion pipeline
-(`AGENTS.md`): `pnpm --filter @workspace/dumby build:modules` →
-`seed:modules --provision-governance` → `seed:modules --human-approved`. The first
-promotion of any module is human-gated (ADR-006).
+The loader blind-discovers modules from `MODULES_DIR`'s tier sub-directories; an empty root = zero
+modules = zero commands. This deployment keeps the module root on the **volume** (`/mnt/modules`,
+Option B), so modules added or promoted at runtime **survive redeploys** — at the cost of seeding the
+volume on first boot (see **Volumes**).
+
+To add or update a module: `pnpm --filter @workspace/dumby build:modules` →
+`seed:modules --provision-governance` → `seed:modules --human-approved`. The first promotion of any
+module is human-gated (ADR-006). Swastik writes to `SWASTIK_LIVE_VOLUME_PATH` (under `MODULES_DIR`), so
+the loader reads it on the next reload.
 
 ## Verification
 
