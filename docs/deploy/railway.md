@@ -1,3 +1,13 @@
+---
+id: DEPLOY-RAILWAY
+title: Deploying Dumby on Railway
+kind: documentation
+status: derived
+version: 1.0
+authority_scope: [operations]
+owners: [operator]
+---
+
 # Deploying Dumby on Railway
 
 This workspace is a **pnpm monorepo**, which drives every deployment decision
@@ -69,3 +79,16 @@ against the mock Discord gateway by default, so no `BOT_TOKEN` is needed.
 
 `@workspace/api-server` exposes `/api/healthz`. If you attach a Railway
 healthcheck, point it at that path.
+
+## Swastik module volumes
+
+The bot loads external modules from the module root (`MODULES_DIR`, default `/mnt/modules`).
+Swastik stages and promotes modules onto the same mount. These variables are set on the service
+and are part of the deployment surface (UR-20261019-096 / DA-9):
+
+| Variable | Purpose |
+| --- | --- |
+| `SWASTIK_LIVE_VOLUME_PATH` | the live module volume Swastik promotes into |
+| `SWASTIK_STAGING_VOLUME_PATH` | the shared staging volume used for module staging and promotion |
+| `SWASTIK_QUARANTINE_PATH` | where a module that fails load-time provenance verification is quarantined (§15.9) |
+| `MODULES_DIR` | the module root the loader reads (`/mnt/modules` in the image, `/app/baked-modules` when baked) |

@@ -16,6 +16,11 @@
 | Reference | spec/reference/ | compliance, appendices |
 | Contracts | contracts/ | machine-readable interfaces |
 | Status | status/ | capabilities, counts, coverage ledger |
-| Assets | orchestration/ migration/ upgradation/ prompts/ | engines + program records |
+| Assets | orchestration/ migration/ upgradation/ prompts/ _inbox/ | engines + program records |
+| Deploy | deploy/ | deployment guide (Railway) |
+| Audits | audits/ | corpus audit reports |
 | Decisions | adr/ | ADRs |
 | Archive | archive/ | quarantined legacy |
+| Generated | _generated/ | index + tree |
+| Schema | _meta/ | front-matter schema |
+| Gates | scripts/ | documentation gates |

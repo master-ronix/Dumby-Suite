@@ -10,9 +10,25 @@
 //      to that commit (UR-20261016-091 R3/R4; UR-20261018-092 DR-2/DR-3/DR-4);
 //   5. the tree entry counts are single-sourced via {{counts.tree_*}} tokens, not hand-transcribed
 //      (UR-20261018-092 DR-11 / R2).
+//
+// UR-20261019-094 — hermeticity. The side-document checks read files OUTSIDE docs/; an absent file
+// used to cause a SILENT skip. Now every skip is explicit and counted, and under CI an absent
+// canonical side document is a hard failure.
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { execSync } from 'node:child_process';
+
+const CI = !!process.env.CI;
+const skips = [];
+function requireInput(path, label) {
+  if (existsSync(path)) return true;
+  skips.push(`${label} (${path})`);
+  if (CI) {
+    console.error(`FAIL: side-docs — canonical input absent under CI: ${label} (${path})`);
+    process.exit(1);
+  }
+  return false;
+}
 
 let bad = 0;
 
@@ -30,7 +46,7 @@ for (const f of SIDE) {
 
 // 2. the build manifest's ref matches the reconciliation ledger's verified commit
 const gm = '../GAP_MANIFEST.md';
-if (existsSync(gm)) {
+if (requireInput(gm, 'root build manifest GAP_MANIFEST.md')) {
   const rec = JSON.parse(readFileSync('status/code-reconciliation.json', 'utf8'));
   const ref = readFileSync(gm, 'utf8').match(/\*\*Branch \/ ref:\*\*[^\n]*?`([0-9a-f]{40})`/);
   if (ref && rec.verified_commit && ref[1] !== rec.verified_commit) {
@@ -117,7 +133,7 @@ for (const f of ['../STATUS.md', '../GAP_MANIFEST.md', 'README.md']) {
   // corpus was last verified at (a later commit re-anchors the ledger). A SHALLOW checkout
   // (fetch-depth 1 — the actions/checkout default) does not contain the canonical commit, so
   // membership is not verifiable there: warn and skip, never fail (the same stance
-  // check-code-reconciliation takes for freshness).
+  // check-code-reconciliation takes for freshness). UR-20261019-094 — the skip is now counted.
   if (existsSync('../.git')) {
     let present = true;
     try {
@@ -126,6 +142,7 @@ for (const f of ['../STATUS.md', '../GAP_MANIFEST.md', 'README.md']) {
       present = false;
     }
     if (!present) {
+      skips.push('branch membership (canonical commit not present in this checkout — shallow?)');
       console.warn(
         `WARN: canonical commit ${canonical.slice(0, 7)} is not present in this checkout (shallow?) — branch membership not verifiable here`,
       );
@@ -153,6 +170,8 @@ for (const f of ['../STATUS.md', '../GAP_MANIFEST.md', 'README.md']) {
         /* ref not present locally — notice only */
       }
     }
+  } else {
+    skips.push('branch membership (no git work tree)');
   }
 }
 
@@ -179,6 +198,7 @@ if (existsSync(gm)) {
 }
 
 if (bad) process.exit(1);
+const skipNote = skips.length ? `; ${skips.length} check(s) SKIPPED (input absent): ${skips.join('; ')}` : '';
 console.log(
-  `OK: side-docs (no restated UR count; manifest ref matches the ledger; ${gateCount} gate count consistent; provenance + audit-age unified; tree counts single-sourced)`,
+  `OK: side-docs (no restated UR count; manifest ref matches the ledger; ${gateCount} gate count consistent; provenance + audit-age unified; tree counts single-sourced)${skipNote}`,
 );
