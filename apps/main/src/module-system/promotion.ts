@@ -176,10 +176,22 @@ export function promoteAtomically(input: {
   // on a persistent volume — would abort every restart. Reject it here, at promotion, not at load.
   // The authoritative list is the image manifest (`reservedSlugs`); case is normalised so a
   // `Hello-World` promotion cannot slip past a baked `hello-world`.
-  const reserved = (input.reservedSlugs ?? []).some((s) => s.toLowerCase() === slug.toLowerCase());
+  // The DIRECTORY slug can be spoofed: a promoted module may use a NEW slug but declare the manifest
+  // `name` of a baked module (the loader collides on the name, not the directory). So check the
+  // DECLARED name too, case-insensitively.
+  let declaredName = slug;
+  try {
+    const staged = JSON.parse(readFileSync(join(input.stagingDir, 'manifest.json'), 'utf8')) as { name?: string };
+    if (typeof staged.name === 'string' && staged.name !== '') declaredName = staged.name;
+  } catch {
+    // staged manifest unreadable — the slug check below still applies.
+  }
+  const reserved = (input.reservedSlugs ?? []).some(
+    (s) => s.toLowerCase() === slug.toLowerCase() || s.toLowerCase() === declaredName.toLowerCase(),
+  );
   const bakedDir = existsSync(liveLink) && !lstatIsLink(liveLink);
   if (reserved || bakedDir) {
-    throw new Error(`reserved slug "${slug}": a baked module owns it — promotion refused (Option B)`);
+    throw new Error(`reserved slug "${slug}" (name "${declaredName}"): a baked module owns it — promotion refused (Option B)`);
   }
 
   let previousTarget: string | null = null;

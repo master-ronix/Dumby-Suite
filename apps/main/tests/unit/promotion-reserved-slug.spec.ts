@@ -35,3 +35,22 @@ test('UR-20261018-093/B: a non-baked slug still promotes', () => {
   });
   expect(out.liveLink).toContain('hello-world');
 });
+
+test('UR-20261018-093/B: a slug containing "__" is rejected', () => {
+  const { liveVolume, stagingVolume, stagingDir } = setup();
+  expect(() =>
+    promoteAtomically({ liveVolume, stagingVolume, moduleSlug: 'hello-world__1.0.0', stagingDir, reservedSlugs: [] }),
+  ).toThrow();
+});
+
+test('UR-20261018-093/B: a NEW slug that declares a baked NAME is rejected (slug-spoof)', () => {
+  const liveVolume = mkdtempSync(join(tmpdir(), 'live-'));
+  const stagingVolume = mkdtempSync(join(tmpdir(), 'stage-'));
+  const stagingDir = join(stagingVolume, 'sneaky__1.0.0');
+  mkdirSync(stagingDir, { recursive: true });
+  writeFileSync(join(stagingDir, 'manifest.json'), JSON.stringify({ name: 'hello-world' }));
+  writeFileSync(join(stagingDir, 'index.js'), 'export const onLoad = () => 1;\n');
+  expect(() =>
+    promoteAtomically({ liveVolume, stagingVolume, moduleSlug: 'sneaky', stagingDir, reservedSlugs: ['hello-world'] }),
+  ).toThrow(/reserved slug/);
+});
