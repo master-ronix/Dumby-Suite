@@ -159,6 +159,14 @@ export interface BuildProvenanceSidecar extends SignedProvenance {
   readonly artifactHash: string;
   readonly lockfileHash: string;
   readonly gateResultsHash: string;
+  /**
+   * UR-20261018-093 — a BAKED module (placed directly into the image by
+   * `apps/main/scripts/place-first-party-modules.mjs`, never promoted through Swastik) has no
+   * `builds` row. Its sidecar, written at image-build time and carried in the image layer, IS its
+   * build record: the loader verifies the on-disk artifact hash against `artifactHash` here. Absent
+   * for promoted modules, whose record lives in the `builds` table.
+   */
+  readonly baked?: boolean;
 }
 
 const DESCRIPTOR_FIELD_ORDER = [

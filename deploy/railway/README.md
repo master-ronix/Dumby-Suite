@@ -32,10 +32,21 @@ The repo root carries `railway.json`:
 
 ## Volumes
 
-Attach one Railway volume to `@workspace/dumby` at **`/mnt/modules`** so promoted
-modules survive redeploys. Railway mounts volumes as root; the image runs as the
-non-root `node` user, so set `RAILWAY_RUN_UID=0` on the service (see the variables
-template) to avoid permission errors writing to the volume.
+**The module root is `/app/baked-modules`, in the image layer — not `/mnt/modules`.** The loader
+reads **only** `MODULES_DIR` and its four tier sub-directories (`swastik-loader.ts`), so a Railway
+volume mounted at `/mnt/modules` is **not in the read path**: modules placed there are never loaded.
+Keep `MODULES_DIR=/app/baked-modules` (see `railway.env.example`).
+
+Railway mounts any volume as root; the image runs as the non-root `node` user, so set
+`RAILWAY_RUN_UID=0` on the service (see the variables template) if a volume is used.
+
+> **Decision — persistence of promoted modules.** This image **bakes** the first-party modules and
+the current config is **baked-only**: Swastik promotes to `SWASTIK_LIVE_VOLUME_PATH`
+(`/app/baked-modules/modules-core`), the same tree the loader reads, but that tree is the image layer,
+so a promoted module is **ephemeral** (lost on redeploy). If promoted modules must **survive
+redeploys**, move the module root to the mounted volume — set `MODULES_DIR`, `SWASTIK_LIVE_VOLUME_PATH`
+and `SWASTIK_STAGING_VOLUME_PATH` all under the mount — and seed the baked modules into it (the mount
+shadows the baked tree). That is a deployment decision, tracked as audit finding DA-10.
 
 ## Variables
 
@@ -52,11 +63,16 @@ on start, so starting the app applies pending migrations against `DATABASE_URL`.
 
 ## Modules
 
-The loader blind-discovers modules from the tier volumes; empty volumes = zero
-modules = zero commands. Populate them through the Swastik promotion pipeline
-(`AGENTS.md`): `pnpm --filter @workspace/dumby build:modules` →
-`seed:modules --provision-governance` → `seed:modules --human-approved`. The first
-promotion of any module is human-gated (ADR-006).
+The loader blind-discovers modules from `MODULES_DIR`'s tier sub-directories; an empty root = zero
+modules = zero commands. This image **bakes** the first-party Core Command Surface at
+`/app/baked-modules`, so the bot boots with its commands and needs no external volume.
+
+To add or update a module at runtime, use the Swastik promotion pipeline (`AGENTS.md`):
+`pnpm --filter @workspace/dumby build:modules` → `seed:modules --provision-governance` →
+`seed:modules --human-approved`. The first promotion of any module is human-gated (ADR-006). Swastik
+writes to `SWASTIK_LIVE_VOLUME_PATH` — under `MODULES_DIR`, so the loader reads it — but that tree is
+the image layer, so a promoted module is ephemeral unless the module root is moved to a volume
+(see **Volumes**).
 
 ## Verification
 

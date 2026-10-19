@@ -106,3 +106,13 @@ path resolving) — there is no registry to update, so the record file itself is
 (`node scripts/docs/check-ur.mjs`). URs are provenance and are deliberately **excluded** from `status/coverage-ledger.json`
 and `status/entities.json`. To opt a UR's headings into the coverage ledger, run
 `node scripts/docs/sync-ur.mjs` (and `node scripts/docs/sync-ur.mjs --clear` to revert).
+
+---
+
+## Index scheme & withdrawn records
+
+UR records carry a single **global** numeric index in the filename (`UR-YYYYMMDD-<index>.md`); the date is the raise date only and never restarts the index. The index set is gapless, and an index that is withdrawn or reserved is declared here so `check-ur` can account for it.
+
+<!-- ur-index-withdrawn: 043 -->
+
+- **043** — reserved; never raised. Declared so the index is provably complete.

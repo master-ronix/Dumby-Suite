@@ -29,8 +29,6 @@ review_state: pending-evidence
 > versions until v4.0.0. The framework is TypeScript — all language
 > descriptions must use accurate "TypeScript" phrasing throughout.
 
-####
-
 > A single canonical command subsystem is consolidated (the top-level src/commands/ tree); no other command directory is canonical
 
 #### [From §2 (The Unified Modular Doctrine)] — Swastik (External-Module System)
@@ -92,55 +90,31 @@ review_state: pending-evidence
 - New version written to `versions/<mod>-vX.Y.Z/`; symlink in `live/` atomically updated; previous version preserved; on reload failure symlink reverts.
 - Maintain as the core hot-swap mechanism.
 
-####
-
 > parsing manifest.ts via static AST extraction (no code execution)
 
-####
+#### 3.2.1 Port Mapping: Docker Compose vs Kubernetes
 
-> ### 3.2.1 Port Mapping: Docker Compose vs Kubernetes
+#### 3.11.1 Licensing Gate
 
-####
+#### — Release Manager source integrity & build (immutable SHA, SBOM, signing, provenance)
 
-> ### 3.11.1 Licensing Gate
+#### — Release Manager–Swastik lease coordination (fencing tokens, heartbeat, upload queueing)
 
-####
+#### — Release Manager Deployment Strategies (Rolling, Blue-Green, Phased Ramp, DAG)
 
-> #### — Release Manager source integrity & build (immutable SHA, SBOM, signing, provenance)
+#### — Release Manager canary analysis with correlation & minimum-sample guard
 
-####
+#### — Release Manager config & migration safety (expand-only, advisory lock, destructive deferral)
 
-> #### — Release Manager–Swastik lease coordination (fencing tokens, heartbeat, upload queueing)
+#### — K8s Rolling Update with Zero-Unavailable (maxSurge 1 / maxUnavailable 0)
 
-####
-
-> #### — Release Manager Deployment Strategies (Rolling, Blue-Green, Phased Ramp, DAG)
-
-####
-
-> #### — Release Manager canary analysis with correlation & minimum-sample guard
-
-####
-
-> #### — Release Manager config & migration safety (expand-only, advisory lock, destructive deferral)
-
-####
-
-> #### — K8s Rolling Update with Zero-Unavailable (maxSurge 1 / maxUnavailable 0)
-
-####
-
-> #### — BullMQ queue + autoscaler + DLQ + scheduler
+#### — BullMQ queue + autoscaler + DLQ + scheduler
 
 #### [From §4 (Non-Goals & Explicit Boundaries)] — Release Manager 10-phase release state machine
 
 - ** IDLE→PHASE0 INTAKE→1 PREFLIGHT→2 BUILD→3 ARTIFACT VERIFY→4 CONFIG&MIGRATION→5 LEASE→6 SWASTIK LOCK→7 ROLLOUT→8 CANARY→9 FINALIZE / R: ROLLBACK; terminals ABORTED/FAILED/RECONCILING/NO_OP. The specification requires: ** Implemented state machine with durable phase checkpoints.
 
-####
-
 > The error taxonomy in `src/errors/taxonomy.ts` implements 13 subclasses extending `DumbyError`, each carrying `httpStatus`, a `retryable` flag, and `toJSON`. The documented set in Appendix B must be updated to match: `ValidationError`, `PermissionDeniedError`, `NotFoundError`, `ConflictError`, `ExternalServiceError`, `ConfigurationError`, `InternalError`, `RateLimitedError`, `MaintenanceModeError`, `DependencyUnavailableError`, `EventCycleError`, `UnauthorizedError`, `CommandCeilingExceededError`, and `CollisionPendingError`. The `isOperational` field is absent; code uses `retryable`.
-
-####
 
 > Invalid uploads are rejected with specific validation errors
 
@@ -180,17 +154,11 @@ review_state: pending-evidence
 - CacheManager (~180 LOC), L1Cache (~157 LOC), RedisLockStore (~95 LOC), StampedeGuard (~42 LOC), key-namespace (~116 LOC) — ALL IMPLEMENTED. PER formula, negative caching, write-through invalidation, pub/sub cross-pod L1 invalidation.
 - Maintained as production-grade cache.
 
-####
+#### 7.10.1 Power Engine Route Dispatch
 
-> ### 7.10.1 Power Engine Route Dispatch
+#### — CLAI (control-plane operator terminal)
 
-####
-
-> #### — CLAI (control-plane operator terminal)
-
-####
-
-> #### — RBAC grants (permit/blacklist/whitelist/cooldown/rate-limit)
+#### — RBAC grants (permit/blacklist/whitelist/cooldown/rate-limit)
 
 #### [From §8 (Application Bootstrap & Lifecycle)] Design consideration — shared connection pooler.
 
@@ -244,13 +212,9 @@ review_state: pending-evidence
 
 #### [From §8 (Application Bootstrap & Lifecycle)] 18-stage bootstrap Application
 
-####
+#### 8.4.1 Process-Module Config Scope (`ModuleConfigScope`)
 
-> #### 8.4.1 Process-Module Config Scope (`ModuleConfigScope`)
-
-####
-
-> #### Design Consideration — Managed Resource Registry
+#### Design Consideration — Managed Resource Registry
 
 #### [From §9 (Graceful Shutdown & Signal Handling)] — 9-Step Graceful Shutdown
 
@@ -325,11 +289,7 @@ Maintain as-is; document the contract validation and version constraint checking
 
 > **Design consideration — framework-injected runtime config.** Each module currently applies its own config schema during `onLoad` (Stage 12). A stronger contract is framework injection: bootstrap reads the manifest's declared config schema, validates the environment once, and hands the module a frozen, typed, validated config object — guaranteeing the declared schema is the schema actually used, and giving developers typed config for free. Impact: Medium; feasibility: High.
 
-####
-
 > requires the module to contain the public Dev ID and the buildId; the private Dev Token never ships inside the manifest
-
-####
 
 > The Credentials Service listen port must be config-driven via the Zod-validated `env.schema.ts` (`CREDENTIALS_SERVICE_PORT`, default `8086`), consistent with all sibling services that source ports from environment configuration. The hardcoded `8086` in `src/entry/credentials.ts` must be replaced with the config value.
 
@@ -342,8 +302,6 @@ Maintain as-is; document the contract validation and version constraint checking
 #### [From §11 (Module Anatomy & Manifest)] External Module Loading
 
 #### [From §11 (Module Anatomy & Manifest)] Manifest as Module Contract (declarative, versioned, ships with module)
-
-####
 
 > no field
 
@@ -396,19 +354,11 @@ Add additional locales.
 
 Maintain; wire core/commands into the active path.
 
-####
-
 > A single canonical retry mechanism is used: consolidate resilience/retry-policy.ts with shared/utils/retry.ts (exponential backoff with jitter and retryable detection) and remove the unused duplicate.
-
-####
 
 > PersonaCommandBindingService and CommandLifecycleHotSwapService are wired into bootstrap.ts and core/commands/ so persona bindings take effect and hot-swap is triggerable via the reload API; the built-and-tested classes are no longer without an entry point.
 
-####
-
 > All table access goes through typed repositories (BaseRepository / InsertOnlyRepository); no raw knex('table') calls remain outside repositories in bootstrap, admin routes, or entry points, and audit_logs uses InsertOnlyRepository.
-
-####
 
 > ErasureCoordinator is registered in the DI container (src/di/tokens.ts) and exposed for module registration of erasers/exporters; the implemented coordinator is no longer zero-caller.
 
@@ -432,19 +382,13 @@ Maintain; wire core/commands into the active path.
 
 #### [From §13 (Module Tiers & Lifecycle)] Defense-in-Depth Firewall (No Single Gate)
 
-####
-
 > Admin tier's bypass of the ordinary rate-limit and permission chain makes it the
 
 #### [From §14 (Inter-Module Communication)] — ModuleDisabledResult Sentinel
 
 Maintain; add a lint rule for unchecked sentinels.
 
-####
-
 > consolidated retry utility (exponential backoff, jitter, max-attempts)
-
-####
 
 > **Design consideration — type-level compatibility checks:** beyond semver range satisfaction, the specification requires for Swastik to resolve the full dependency graph and perform type-level compatibility checks between `provides` and `depends` contracts using the TypeScript type checker, so a breaking contract change forces a major-version bump instead of surfacing as a silent runtime `TypeError` in production. This turns version pinning from a convention into a mechanically enforced guarantee.
 
@@ -495,35 +439,19 @@ Maintained.
 
 Maintain API response + optional signed webhook.
 
-####
-
 > Approval scope is per-version, not developer-level: routine semver bumps auto-approve, while any change to declared permissions, entry points, or dependencies is flagged for manual review via a manifest diff comparator.
-
-####
 
 > The onUnload → onLoad → onReady hot-swap sequence is shipped as executable TypeScript in the Swastik service and Dumby runtime (POST /internal/reload): atomic symlink management, command/event re-registration, and automatic rollback on any lifecycle-hook failure
 
-####
-
 > The builds table carries provenance columns sourceArchiveHash, artifactHash, lockfileHash, gateResultsHash, signature, and sbomRef, bound to the buildId so every promotion is provably tied to a verified artifact
-
-####
 
 > Swastik assigns a buildId in semver+content-hash form (2.3.1+sha256:9f1c…) stored in swastik_builds.buildId and the manifest buildId field, replacing the integer counter
 
-####
-
 >
 
-####
-
 >
-
-####
 
 > , AND Swastik MUST accept TypeScript source (not pre-compiled JavaScript) and run a trusted build itself — `tsc --noEmit` plus the architecture-specific ESLint ruleset (§38.4) in a secure container — producing the artifact it then stages. Manifest Zod validation alone does not verify that uploaded JS was compiled from reviewed TypeScript
-
-####
 
 > (whose signature is verified at every load boundary — initial import, hot-swap re-import, and reload — not only at process restart; `Power Engine.revokeModuleSignature` triggers immediate re-verification of the affected module at the next load boundary)
 
@@ -549,8 +477,6 @@ Maintain API response + optional signed webhook.
 #### [From §16 (Marketplace, MDIS & Extension System)] — Review Feedback Is Specific (Never Generic Rejection)
 
 Maintain specific feedback requirement.
-
-####
 
 >
 
@@ -610,13 +536,9 @@ Maintain.
 
 #### [From §19 (Middleware Pipeline & Interceptors)] Memory Leak Threat Model (Five Vectors)
 
-####
-
 >
 
-####
-
-> #### 19.6.1 MDIS Backend — Schema-Driven Web Config UI
+#### 19.6.1 MDIS Backend — Schema-Driven Web Config UI
 
 #### [From §20 (Interaction & Component Handling)] Core-Owned InteractionRegistry with Action ID Prefixing
 
@@ -668,8 +590,6 @@ Maintain as-is; document the PaginationManager API and Redis session storage pat
 
 > **Function reference — Credentials Service (Argon2id, Internal Network Binding):** Provide a reference for the credentials service contract. Status: Fully Implemented. Credentials Service uses Argon2id for credential hashing. Internal-network-only binding for the credentials service. Separate entry point: `credentials.ts`. Requirement: Maintain as-is; ensure the internal-network-only binding is enforced at the network level (Kubernetes NetworkPolicy). touchpoints: `src/entry/credentials.ts`; `src/credentials/` (CredentialsService).
 
-####
-
 > > **ADR-005 deferral:** Hot-swap mechanism, worker-thread isolation,
 > scheduled zero-downtime core restart, and runtime sandbox are all
 > absent — correctly deferred per ADR-005 as V2 capabilities. No runtime
@@ -706,8 +626,6 @@ Maintain as-is; document the PaginationManager API and Redis session storage pat
 
 Maintain; ensure no raw Knex outside repos/migrations.
 
-####
-
 > migration #24 clai_authkeys (deprecated, superseded by the clai_operators/clai_authkeys design, §22.10)
 
 #### [From §25 (Caching Architecture)] — `shouldEarlyRecompute` (PER, Unused)
@@ -721,8 +639,6 @@ Called by CacheManager.get.
 #### [From §28 (Error Management & Fault Tolerance)] Function reference — DbClient (Knex wrapper with circuit breaker + slow query logging):
 
 > **Function reference — DbClient (Knex wrapper with circuit breaker + slow query logging):** Provide a reference for the HTTP client contract. Status: Fully Implemented. Modules call `httpClient.extend({ baseUrl, headers })` then `.get`, `.post`, etc. Framework Core provides circuit breaker, retries, and correlation-ID propagation.; Requirement: Maintain as-is; document the circuit breaker configuration and retry policy. touchpoints: `apps/main/src/http/client.ts`, `src/http/HttpClient`; circuit breaker; retry logic.
-
-####
 
 >
 
@@ -758,11 +674,7 @@ _template-backed scaffolding.
 
 #### [From §38 (Developer Experience & Tooling)] Zero-Trust Build Pipeline
 
-####
-
-> ### 38.11 eventsCatalog
-
-####
+#### 38.11 eventsCatalog
 
 > Isolation rules and the four sanctioned cross-module patterns complement the import ban: today they are enforced via ESLint (`no-cross-module-relative-import`) at compile time plus manual review; the target adds enforcement at Swastik upload and at runtime (ESM loader restrictions, ).
 
@@ -899,8 +811,6 @@ Maintain local command set.
 #### [From §41 (Infrastructure & Deployment)] Function reference — ESLint no-restricted-imports Forbids Cross-Module Core Imports:
 
 > **Function reference — ESLint no-restricted-imports Forbids Cross-Module Core Imports:** Ensure the ESLint rule blocks any attempt to bypass the official APIs. Status: Fully Implemented. The ESLint rule `no-restricted-imports` (§41.4) forbids cross-module imports into `src/core/`. The custom rule `dumby/forbidden-core-import` catches any attempt to bypass the official APIs. The build fails in CI; the PR is blocked. Requirement: Maintain as-is; ensure the ESLint rules cover all core internal modules. touchpoints: .eslintrc (no-restricted-imports rule); custom ESLint plugin dumby/forbidden-core-import; CI pipeline (tsc --noEmit + eslint); spec §41.4.
-
-####
 
 > the third Terraform module `cache` (note: the repo directory is currently named `redis` in `deploy/terraform/modules/redis/`; it must be renamed to `cache` to match the spec, or a documented exception must be recorded)
 

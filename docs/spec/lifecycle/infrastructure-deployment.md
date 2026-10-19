@@ -40,6 +40,8 @@ smaller attack surface, smaller image, faster pull. The build context is the wor
 never the application subdirectory.
 
 ### 41.2 Kubernetes Reference Configuration
+> **Deployment path — reference vs in use.** The Kubernetes configuration below is the *reference target* topology. The path in use is **Railway** (a Dockerfile builder; see `deploy/railway.md`), which is not a cluster — the K8s manifest apply is therefore a target, not a verified deployment (`upgradation/change-log.md` OI-3). Where this chapter and `deploy/railway.md` differ, `deploy/railway.md` describes what runs today.
+
 
 The reference deployment mounts the four per-tier module volumes plus staging at
 `/mnt/modules/{admin,core,standard,marketplace,staging}` and sets `MODULES_DIR=/mnt/modules`;

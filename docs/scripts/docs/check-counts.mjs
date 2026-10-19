@@ -1,8 +1,25 @@
 // Gate: numbers are single-sourced from status/counts.json AND the verifiable ones match
 // the corpus. (A count never checked against its source is not enforced.)
+//
+// UR-20261019-094 — hermeticity. Several checks depend on inputs OUTSIDE docs/ (apps/main source).
+// Previously an absent input caused a SILENT skip while the gate still printed OK and exited 0 —
+// a fail-open. Now every skip is explicit and counted, and under CI an absent canonical input is a
+// hard failure. A gate must never be unable to distinguish "verified" from "not run".
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { execSync } from 'node:child_process';
+
+const CI = !!process.env.CI;
+const skips = [];
+function requireInput(path, label) {
+  if (existsSync(path)) return true;
+  skips.push(`${label} (${path})`);
+  if (CI) {
+    console.error(`FAIL: counts — canonical input absent under CI: ${label} (${path})`);
+    process.exit(1);
+  }
+  return false;
+}
 
 const c = JSON.parse(readFileSync('status/counts.json', 'utf8'));
 const required = ['bootstrap_stages','shutdown_steps','middleware_stages','rbac_layers','ranks','grant_types',
@@ -43,7 +60,7 @@ if (existsSync('status/coverage-ledger.json') && 'coverage_rows' in c) {
   checks.push(['coverage_rows', c.coverage_rows, l.total_rows, 'coverage-ledger.json']);
 }
 // UR-20261015-090 R8 — verify every remaining key that has a local source.
-if (existsSync('../apps/main/src/bootstrap/stages.ts')) {
+if (requireInput('../apps/main/src/bootstrap/stages.ts', 'apps/main bootstrap stages')) {
   const t = readFileSync('../apps/main/src/bootstrap/stages.ts', 'utf8');
   const arrLen = (name) => {
     const m = t.match(new RegExp(`${name}\\s*=\\s*\\[([\\s\\S]*?)\\]\\s*as const`));
@@ -54,7 +71,7 @@ if (existsSync('../apps/main/src/bootstrap/stages.ts')) {
   const ss = arrLen('SHUTDOWN_STEPS');
   if (ss) checks.push(['shutdown_steps', c.shutdown_steps, ss, 'stages.ts SHUTDOWN_STEPS']);
 }
-if (existsSync('../apps/main/src/middleware/built-in')) {
+if (requireInput('../apps/main/src/middleware/built-in', 'apps/main built-in middleware')) {
   const n = readdirSync('../apps/main/src/middleware/built-in').filter(
     (f) => f.endsWith('.ts') && f !== 'index.ts',
   ).length;
@@ -94,7 +111,7 @@ if (existsSync('contracts/rbac.enums.json')) {
 }
 
 // UR-20261018-092 FD-2 — the code counts are verified against the tree, not self-reported.
-if (existsSync('../apps/main')) {
+if (requireInput('../apps/main', 'apps/main source tree')) {
   let ts = 0;
   let srcTs = 0;
   const w = (dir, cb) => {
@@ -113,7 +130,7 @@ if (existsSync('../apps/main')) {
   });
   checks.push(['code_ts_files', c.code_ts_files, ts, 'apps/main *.ts']);
   checks.push(['code_src_ts_files', c.code_src_ts_files, srcTs, 'apps/main/src *.ts']);
-  if (existsSync('../apps/main/src/db/migrations')) {
+  if (requireInput('../apps/main/src/db/migrations', 'apps/main db migrations')) {
     const mig = readdirSync('../apps/main/src/db/migrations').filter((f) => f.endsWith('.ts')).length;
     checks.push(['code_migrations', c.code_migrations, mig, 'apps/main/src/db/migrations/*.ts']);
   }
@@ -126,4 +143,5 @@ if (bad) process.exit(1);
 
 const usesN = execSync("grep -rl '{{counts.' spec 2>/dev/null || true").toString().trim().split('\n').filter(Boolean).length;
 if (usesN === 0) { console.error('FAIL: no {{counts.*}} tokens used in spec'); process.exit(1); }
-console.log(`OK: counts single-sourced (${required.length} keys; ${checks.length} verified against source; ${usesN} sections use tokens)`);
+const skipNote = skips.length ? `; ${skips.length} check(s) SKIPPED (input absent): ${skips.join('; ')}` : '';
+console.log(`OK: counts single-sourced (${required.length} keys; ${checks.length} verified against source; ${usesN} sections use tokens)${skipNote}`);
