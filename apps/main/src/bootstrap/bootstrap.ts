@@ -46,14 +46,12 @@ import { OperationalService } from '../operational/operational.service.js';
 import { PowerEngineDispatcher } from '../http/power-engine-dispatcher.js';
 import { loadModulesFromTierVolumes } from '../module-system/swastik-loader.js';
 import { PostgresBuildStore } from '../db/repositories/build.repository.js';
-import { PostgresSigningKeyStore } from '../db/repositories/signing-key.repository.js';
 import { rootKeyFromBase64 } from '../crypto/envelope.js';
 import { PostgresSealedCredentialStore } from '../db/repositories/sealed-credential.repository.js';
 import { SealedCredentialService } from '../credentials/sealed-credential.service.js';
 import { PostgresCommandPermissionTokenStore } from '../db/repositories/command-permission-token.repository.js';
 import { CommandPermissionTokenService } from '../commands/command-permission-tokens.js';
 import { PostgresGrantWriter } from '../db/repositories/rbac-grant.repository.js';
-import { armBuildProvenance, BuildSignatureVerifier } from '../module-system/build-signing.js';
 import { InFlightTracker } from '../shutdown/in-flight-tracker.js';
 import {
   registerShutdownSignalHandlers,
@@ -257,34 +255,13 @@ export async function bootstrapWorker(): Promise<void> {
   workerQueueGate = (moduleId, guildId) =>
     workerEnablement.isModuleEnabledForGuild(guildId, moduleId);
   const buildStore = new PostgresBuildStore(db.knex);
-  const verifier = new BuildSignatureVerifier();
-  const buildSigningKeyId = config.get('BUILD_SIGNING_KEY_ID');
-  const buildSigningPrivateKey = config.get('BUILD_SIGNING_PRIVATE_KEY');
-  const buildSigningPublicKey = config.get('BUILD_SIGNING_PUBLIC_KEY');
-  // UR-20261012-036 — the verifier needs only the PUBLIC key. UR-20261012-040 — resolution AND
-  // registration live in one helper that cannot throw, so an unusable key degrades to a warning
-  // instead of killing boot (which it did, as ERR_OSSL_UNSUPPORTED).
-  // UR-20261012-042 (A2.2) — the registry is the documented home for these keys; config is additive.
-  const registrySigningKeys = await new PostgresSigningKeyStore(db.knex).listActive();
-  const provenance = armBuildProvenance(
-    verifier,
-    buildSigningKeyId,
-    buildSigningPrivateKey,
-    buildSigningPublicKey,
-    registrySigningKeys,
-  );
-  const provenanceGuardArmed = provenance.armed;
-  if (provenance.error !== undefined) {
-    logger.warn(
-      `build-signing-key-invalid: ${provenance.error} — BUILD_SIGNING_PUBLIC_KEY (or BUILD_SIGNING_PRIVATE_KEY) must be a single-line PEM with escaped newlines; the provenance guard stays OFF and boot continues`,
-      { error: provenance.error },
-    );
-  }
+  // UR-20261019-101 — the loader trusts the per-module buildId the deploy flow issued (the `builds`
+  // row). No BUILD_SIGNING_* key is required, so no signing verifier is armed here.
   await loadModulesFromTierVolumes({
     modulesDir: config.get('MODULES_DIR'),
     registry: moduleRegistry,
     logger,
-    ...(provenanceGuardArmed ? { buildStore, verifier } : {}),
+    buildStore,
   });
 
   progress.advanceTo('MODULE_VALIDATE');
@@ -1140,38 +1117,15 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   const moduleContainer = container.createChild();
 
   progress.advanceTo('MODULE_DISCOVER');
-  // §15.8/§15.9 (finding #23): arm the loader's load-time provenance guard. It verifies against a
-  // signing key, so it is armed exactly when one is configured; without a key the loader keeps its
-  // pre-6b behaviour (warn once, import unverified) rather than quarantining every module.
+  // §15.8/§15.9 (finding #23): the loader's load-time provenance guard. UR-20261019-101 — it now
+  // trusts the per-module buildId the deploy flow issued (the `builds` row); no signing key is
+  // required, so no verifier is armed here.
   const buildStore = new PostgresBuildStore(db.knex);
-  const verifier = new BuildSignatureVerifier();
-  const buildSigningKeyId = config.get('BUILD_SIGNING_KEY_ID');
-  const buildSigningPrivateKey = config.get('BUILD_SIGNING_PRIVATE_KEY');
-  const buildSigningPublicKey = config.get('BUILD_SIGNING_PUBLIC_KEY');
-  // UR-20261012-036 — the verifier needs only the PUBLIC key. UR-20261012-040 — resolution AND
-  // registration live in one helper that cannot throw, so an unusable key degrades to a warning
-  // instead of killing boot (which it did, as ERR_OSSL_UNSUPPORTED).
-  // UR-20261012-042 (A2.2) — the registry is the documented home for these keys; config is additive.
-  const registrySigningKeys = await new PostgresSigningKeyStore(db.knex).listActive();
-  const provenance = armBuildProvenance(
-    verifier,
-    buildSigningKeyId,
-    buildSigningPrivateKey,
-    buildSigningPublicKey,
-    registrySigningKeys,
-  );
-  const provenanceGuardArmed = provenance.armed;
-  if (provenance.error !== undefined) {
-    logger.warn(
-      `build-signing-key-invalid: ${provenance.error} — BUILD_SIGNING_PUBLIC_KEY (or BUILD_SIGNING_PRIVATE_KEY) must be a single-line PEM with escaped newlines; the provenance guard stays OFF and boot continues`,
-      { error: provenance.error },
-    );
-  }
   const discoveredModules = await loadModulesFromTierVolumes({
     modulesDir: config.get('MODULES_DIR'),
     registry: moduleRegistry,
     logger,
-    ...(provenanceGuardArmed ? { buildStore, verifier } : {}),
+    buildStore,
     // UR-C-07: the operator-configured quarantine directory for a module that fails verification
     // (the loader falls back to `<modulesDir>/quarantine` when it is unset).
     ...(config.get('SWASTIK_QUARANTINE_PATH') !== ''
