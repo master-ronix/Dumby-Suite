@@ -165,6 +165,14 @@ export function promoteAtomically(input: {
   const incomingLink = safeJoin(input.liveVolume, `${slug}__incoming`);
   assertPathInside(input.liveVolume, incomingLink);
   const rollbackLink = safeJoin(input.liveVolume, `${slug}__rollback`);
+  // UR-20261018-093 / Option B — a BAKED slug is RESERVED. A promoted `<slug>__<version>` beside a
+  // baked `<slug>` gives the loader two modules with one manifest name, which aborts the boot and —
+  // on a persistent volume — would abort every restart. Reject it here, at promotion, not at load.
+  if (existsSync(liveLink) && !lstatIsLink(liveLink)) {
+    throw new Error(
+      `reserved slug "${slug}": a baked module already occupies ${liveLink} — promotion refused (Option B)`,
+    );
+  }
 
   let previousTarget: string | null = null;
   if (lstatIsLink(liveLink)) {

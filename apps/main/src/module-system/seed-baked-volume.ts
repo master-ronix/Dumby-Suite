@@ -1,5 +1,5 @@
-import { cpSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { cpSync, existsSync, mkdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 import type { Logger } from '../logging/logger.js';
 import { hashFile } from './build-signing.js';
 
@@ -32,10 +32,25 @@ export function seedBakedVolume(input: {
   const { modulesDir, manifestPath, logger } = input;
   const bakedRoot = input.bakedRoot ?? dirname(manifestPath);
   const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as Record<string, string>;
+
+  // Never seed the image onto itself. If the target IS the baked root (e.g. the pre-flip state, while
+  // MODULES_DIR still points at the image), there is nothing to reconcile — do nothing.
+  if (resolve(modulesDir) === resolve(bakedRoot)) {
+    logger.info('baked-seed-skipped-target-is-image', { modulesDir, bakedRoot });
+    return { seeded: [], skipped: Object.keys(manifest), removed: [], failed: [] };
+  }
+
   const statePath = join(modulesDir, SEED_STATE_FILE);
-  const previous = existsSync(statePath)
-    ? (JSON.parse(readFileSync(statePath, 'utf8')) as Record<string, string>)
-    : {};
+  // A corrupt or hand-edited record must not crash the boot: fall back to "nothing was seeded before".
+  let previous: Record<string, string> = {};
+  if (existsSync(statePath)) {
+    try {
+      previous = JSON.parse(readFileSync(statePath, 'utf8')) as Record<string, string>;
+    } catch (err) {
+      logger.warn('baked-seed-state-unreadable', { statePath, error: String(err) });
+      previous = {};
+    }
+  }
 
   const seeded: string[] = [];
   const skipped: string[] = [];
