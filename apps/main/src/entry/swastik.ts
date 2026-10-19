@@ -41,6 +41,8 @@ import {
 } from '../module-system/promotion.js';
 import { buildDeploymentRecord, type PromotionResult } from '../licensing/deployment-records.js';
 import { PostgresDeploymentRecordStore } from '../db/repositories/deployment-record.repository.js';
+import { hashFile, type BuildProvenanceSidecar } from '../module-system/build-signing.js';
+import { PostgresBuildStore } from '../db/repositories/build.repository.js';
 import { HttpCredentialClient, type CredentialClient } from '../credentials/credential-client.js';
 import {
   decideModuleOwnership,
@@ -550,6 +552,37 @@ app.get('/swastik/modules/:slug/builds/:buildId', async (request, reply) => {
   });
 });
 
+/**
+ * UR-20261018-093 (W1) — the §15.8 provenance sidecar written at promotion, so the loader's
+ * hash-bound floor (D-4.10) has a build record to verify against. L1 only: the signature fields
+ * are empty and are filled by W5 when the signing ceremony lands. The artifact hash is computed
+ * from the staged `index.js`, the same file the loader re-hashes after the atomic promotion.
+ */
+function buildPromotionProvenance(input: {
+  buildId: string;
+  moduleSlug: string;
+  version: string;
+  devId: string;
+  stagingDir: string;
+  sourceArchiveHash?: string | null;
+  lockfileHash?: string | null;
+  gateResultsHash?: string | null;
+}): BuildProvenanceSidecar {
+  return {
+    buildId: input.buildId,
+    moduleSlug: input.moduleSlug,
+    version: input.version,
+    devId: input.devId,
+    sourceArchiveHash: input.sourceArchiveHash ?? '',
+    artifactHash: hashFile(join(input.stagingDir, 'index.js')),
+    lockfileHash: input.lockfileHash ?? '',
+    gateResultsHash: input.gateResultsHash ?? '',
+    signature: '',
+    signatureKeyId: '',
+    signedDescriptor: '',
+  };
+}
+
 app.post('/internal/reload', async (request, reply) => {
   const query = request.query as Record<string, string>;
   const moduleName = query['module'] ? assertSafeSlug(query['module']) : undefined;
@@ -602,6 +635,16 @@ app.post('/internal/reload', async (request, reply) => {
     return reply.code(403).send({ error: gate.reason });
   }
   let promotion: PromotionOutcome | null = null;
+  const reloadProvenance = buildPromotionProvenance({
+    buildId: build.buildId,
+    moduleSlug: moduleName,
+    version: build.version,
+    devId: build.devId,
+    stagingDir: verification.stagingDir,
+    sourceArchiveHash: build.sourceArchiveHash ?? null,
+    lockfileHash: build.lockfileHash ?? null,
+    gateResultsHash: build.gateResultsHash ?? null,
+  });
   try {
     promotion = await promoteUnderLock({
       lockStore: promotionLock,
@@ -609,6 +652,21 @@ app.post('/internal/reload', async (request, reply) => {
       stagingVolume,
       moduleSlug: moduleName,
       stagingDir: verification.stagingDir,
+      provenance: reloadProvenance,
+    });
+    await new PostgresBuildStore(db.knex).setProvenance({
+      buildId: build.buildId,
+      moduleSlug: moduleName,
+      version: build.version,
+      devId: build.devId,
+      sourceArchiveHash: build.sourceArchiveHash ?? null,
+      artifactHash: reloadProvenance.artifactHash,
+      lockfileHash: build.lockfileHash ?? null,
+      gateResultsHash: build.gateResultsHash ?? null,
+      sbom: null,
+      signature: null,
+      signatureKeyId: null,
+      signedDescriptor: null,
     });
     await db
       .knex('builds')
@@ -840,6 +898,13 @@ app.post('/internal/deploy', async (request, reply) => {
   }
 
   let promotion: PromotionOutcome | null = null;
+  const deployProvenance = buildPromotionProvenance({
+    buildId,
+    moduleSlug: safeModuleSlug,
+    version: safeModuleVersion,
+    devId: providedDevId,
+    stagingDir: verification.stagingDir,
+  });
   try {
     promotion = await promoteUnderLock({
       lockStore: promotionLock,
@@ -847,6 +912,21 @@ app.post('/internal/deploy', async (request, reply) => {
       stagingVolume,
       moduleSlug: safeModuleSlug,
       stagingDir: verification.stagingDir,
+      provenance: deployProvenance,
+    });
+    await new PostgresBuildStore(db.knex).setProvenance({
+      buildId,
+      moduleSlug: safeModuleSlug,
+      version: safeModuleVersion,
+      devId: providedDevId,
+      sourceArchiveHash: null,
+      artifactHash: deployProvenance.artifactHash,
+      lockfileHash: null,
+      gateResultsHash: null,
+      sbom: null,
+      signature: null,
+      signatureKeyId: null,
+      signedDescriptor: null,
     });
     await db
       .knex('builds')
