@@ -511,7 +511,14 @@ app.post('/swastik/modules/upload', async (request, reply) => {
   if (!existsSync(stagingDir)) mkdirSync(stagingDir, { recursive: true });
   const manifestPath = join(stagingDir, 'manifest.json');
   const indexPath = join(stagingDir, 'index.js');
-  writeFileSync(manifestPath, JSON.stringify(rawManifest, null, 2), 'utf8');
+  // UR-20261019-099 (W4) — the staged/deployed manifest carries the PLATFORM-ISSUED buildId, so the
+  // manifest, the `builds` row and the provenance sidecar agree on one identity. Any author-declared
+  // buildId in the uploaded manifest is superseded here.
+  writeFileSync(
+    manifestPath,
+    JSON.stringify({ ...(rawManifest as Record<string, unknown>), buildId }, null, 2),
+    'utf8',
+  );
   writeFileSync(indexPath, indexSource, 'utf8');
   await db.knex('builds').insert({
     buildId,
@@ -846,7 +853,14 @@ app.post('/internal/deploy', async (request, reply) => {
   if (!existsSync(stagingDir)) mkdirSync(stagingDir, { recursive: true });
   const manifestPath = join(stagingDir, 'manifest.json');
   const indexPath = join(stagingDir, 'index.js');
-  writeFileSync(manifestPath, JSON.stringify(rawManifest, null, 2), 'utf8');
+  // UR-20261019-099 (W4) — the staged/deployed manifest carries the PLATFORM-ISSUED buildId, so the
+  // manifest, the `builds` row and the provenance sidecar agree on one identity. Any author-declared
+  // buildId in the uploaded manifest is superseded here.
+  writeFileSync(
+    manifestPath,
+    JSON.stringify({ ...(rawManifest as Record<string, unknown>), buildId }, null, 2),
+    'utf8',
+  );
   writeFileSync(indexPath, indexSource, 'utf8');
 
   await db.knex('builds').insert({

@@ -80,7 +80,11 @@ file). The specified field set, with its co-constraints:
 - **`devId`** (string, required) — the registered developer identifier (§15.6), required
   to equal the subject of the licence under which the module is submitted (§15.7).
 - **`buildId`** (string, required) — the identifier for this specific uploaded version
-  (§15.8); the registry validates the `devId`/`buildId` pair before load.
+  (§15.8), **issued by the platform** (Credential Service / Swastik / Power Engine) at
+  promotion, not authored by the module developer. The registry validates the
+  `devId`/`buildId` pair before load; the deployed manifest, the `builds` row and the
+  provenance sidecar carry this one issued value, so an artifact has a single identity
+  (UR-20261019-099).
 - **`marketplaceCategory`** (`audio` | `community` | `security` | `integrations` |
   `utility`, required when `tier === 'marketplace'`, forbidden otherwise) — a closed
   five-value enum; an unknown category fails validation rather than creating a sixth
