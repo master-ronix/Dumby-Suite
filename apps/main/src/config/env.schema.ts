@@ -164,6 +164,10 @@ const baseEnvSchema = z
     // present, a module with no `builds` row is accepted only if its on-disk hash matches the
     // manifest. Empty (default) means no baked modules: every module must have a `builds` row.
     BAKED_MODULES_MANIFEST: z.string().default(''),
+    // UR-20261018-093 / Option B — an EXPLICIT baked-less deploy. Unset (the default) means baked
+    // modules are expected, so an unset/unreadable manifest is a misconfiguration and promotion
+    // refuses. Set to 'none' only for a deploy that deliberately ships no baked modules.
+    BAKED_MODULES_MODE: z.enum(['', 'none']).default(''),
     // D-7.5.5 — the operator-authored security policy lockfile checked at Stage 11.
     SECURITY_POLICY_LOCKFILE: z.string().default('security-policy.lock.json'),
     // Appendix C #11 — the bundled OpenAPI contract, published at `/openapi.yaml`.
