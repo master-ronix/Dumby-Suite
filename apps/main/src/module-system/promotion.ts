@@ -181,7 +181,9 @@ export function promoteAtomically(input: {
   // DECLARED name too, case-insensitively.
   let declaredName = slug;
   try {
-    const staged = JSON.parse(readFileSync(join(input.stagingDir, 'manifest.json'), 'utf8')) as { name?: string };
+    const staged = JSON.parse(readFileSync(join(input.stagingDir, 'manifest.json'), 'utf8')) as {
+      name?: string;
+    };
     if (typeof staged.name === 'string' && staged.name !== '') declaredName = staged.name;
   } catch {
     // staged manifest unreadable — the slug check below still applies.
@@ -191,7 +193,9 @@ export function promoteAtomically(input: {
   );
   const bakedDir = existsSync(liveLink) && !lstatIsLink(liveLink);
   if (reserved || bakedDir) {
-    throw new Error(`reserved slug "${slug}" (name "${declaredName}"): a baked module owns it — promotion refused (Option B)`);
+    throw new Error(
+      `reserved slug "${slug}" (name "${declaredName}"): a baked module owns it — promotion refused (Option B)`,
+    );
   }
 
   let previousTarget: string | null = null;

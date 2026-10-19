@@ -1,4 +1,12 @@
-import { cpSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import type { Logger } from '../logging/logger.js';
 import { hashFile } from './build-signing.js';
@@ -32,6 +40,16 @@ export function seedBakedVolume(input: {
   const { modulesDir, manifestPath, logger } = input;
   const bakedRoot = input.bakedRoot ?? dirname(manifestPath);
   const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as Record<string, string>;
+
+  // An EMPTY manifest is a misconfiguration, not "there are no baked modules". Treating it as the
+  // latter would remove every slug listed in `.baked-seed.json` — data loss. Under Option B an empty
+  // or unreadable manifest aborts the seeder (the caller fails the boot). A deliberately baked-less
+  // deploy must be explicit (leave BAKED_MODULES_MANIFEST unset, so the seeder never runs).
+  if (Object.keys(manifest).length === 0) {
+    throw new Error(
+      `baked manifest is empty (${manifestPath}) — refusing to seed; would remove every previously-seeded slug`,
+    );
+  }
 
   // Never seed the image onto itself. If the target IS the baked root (e.g. the pre-flip state, while
   // MODULES_DIR still points at the image), there is nothing to reconcile — do nothing.
@@ -109,7 +127,10 @@ export function seedBakedVolume(input: {
     logger.warn('baked-seed-state-write-failed', { error: String(err) });
   }
   logger.info('baked-seed-complete', {
-    seeded: seeded.length, skipped: skipped.length, removed: removed.length, failed: failed.length,
+    seeded: seeded.length,
+    skipped: skipped.length,
+    removed: removed.length,
+    failed: failed.length,
   });
   return { seeded, skipped, removed, failed };
 }

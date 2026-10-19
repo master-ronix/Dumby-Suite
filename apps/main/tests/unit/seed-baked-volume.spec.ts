@@ -8,7 +8,16 @@ import type { Logger } from '../../src/logging/logger.js';
 
 function logger(): Logger {
   const n = (): void => undefined;
-  const l = { child: () => l, trace: n, debug: n, info: n, warn: n, error: n, fatal: n, setLevel: n };
+  const l = {
+    child: () => l,
+    trace: n,
+    debug: n,
+    info: n,
+    warn: n,
+    error: n,
+    fatal: n,
+    setLevel: n,
+  };
   return l as unknown as Logger;
 }
 
@@ -45,7 +54,10 @@ test('UR-100/B: a current copy is skipped; a stale copy is re-seeded', () => {
   let r = seedBakedVolume({ modulesDir: volume, manifestPath, logger: logger() });
   expect(r.skipped).toStrictEqual(['modules-core/hello-world']);
   // make the volume copy stale
-  writeFileSync(join(volume, 'modules-core/hello-world/index.js'), 'export const onLoad = () => 999;\n');
+  writeFileSync(
+    join(volume, 'modules-core/hello-world/index.js'),
+    'export const onLoad = () => 999;\n',
+  );
   r = seedBakedVolume({ modulesDir: volume, manifestPath, logger: logger() });
   expect(r.seeded).toStrictEqual(['modules-core/hello-world']);
   expect(readFileSync(join(volume, 'modules-core/hello-world/index.js'), 'utf8')).toContain('=> 1');
@@ -67,4 +79,15 @@ test('UR-100/B: a baked module removed from the image is removed from the volume
   const r = seedBakedVolume({ modulesDir: volume, manifestPath, logger: logger() });
   expect(r.removed).toStrictEqual(['modules-core/hello-world']);
   expect(existsSync(join(volume, 'modules-core/hello-world'))).toBe(false);
+});
+
+test('UR-100/B: an EMPTY manifest aborts the seeder (no mass removal)', () => {
+  const { volume, manifestPath } = fixture();
+  seedBakedVolume({ modulesDir: volume, manifestPath, logger: logger() }); // seed once
+  writeFileSync(manifestPath, JSON.stringify({})); // empty manifest = misconfiguration
+  expect(() => seedBakedVolume({ modulesDir: volume, manifestPath, logger: logger() })).toThrow(
+    /empty/,
+  );
+  // the previously seeded module must NOT be removed
+  expect(existsSync(join(volume, 'modules-core/hello-world/index.js'))).toBe(true);
 });

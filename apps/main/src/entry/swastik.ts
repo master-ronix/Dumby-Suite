@@ -593,7 +593,9 @@ function reservedBakedSlugs(): string[] {
   } catch (err) {
     // The manifest is expected but unreadable. Refuse promotion rather than degrade silently to a
     // directory check that cannot tell a baked copy from a promoted module under Option B.
-    throw new Error(`BAKED_MODULES_MANIFEST is set but unreadable (${path}): ${String(err)} — refusing promotion`);
+    throw new Error(
+      `BAKED_MODULES_MANIFEST is set but unreadable (${path}): ${String(err)} — refusing promotion`,
+    );
   }
 }
 
