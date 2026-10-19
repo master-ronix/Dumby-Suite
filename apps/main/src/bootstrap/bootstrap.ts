@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { Container } from '../di/container.js';
 import { CORE_TOKENS } from '../di/tokens.js';
 import { parseEnv, pickEnvKeys, ConfigValidationError } from '../config/env.schema.js';
@@ -143,6 +143,23 @@ import {
   RedisIdempotencyStore,
 } from '../interactions/interaction-registry.js';
 
+/**
+ * UR-20261018-093 — the image's baked-module build manifest (`<volume>/<slug>` -> artifact hash),
+ * written at image-build time and pointed to by BAKED_MODULES_MANIFEST — an EXPLICIT path that must be
+ * on the IMAGE (e.g. `/app/baked-modules/baked-manifest.json`), never derived from `MODULES_DIR`
+ * (Option B makes `MODULES_DIR` the writable volume, where the manifest would vouch for itself).
+ * Absent means no baked modules: every module must have a `builds` row. The expected hashes come from
+ * the image, never from the module's own directory.
+ */
+function loadBakedManifest(path: string): Record<string, string> | undefined {
+  if (path === '' || !existsSync(path)) return undefined;
+  try {
+    return JSON.parse(readFileSync(path, 'utf8')) as Record<string, string>;
+  } catch {
+    return undefined;
+  }
+}
+
 /** The resolver's `Rank` is the long form; the RBAC middleware's ladder is the short form. */
 const RANK_TO_RBAC: Record<string, 'RESTRICTED' | 'MEMBER' | 'HELPER' | 'MOD' | 'ADMIN' | 'OWNER'> =
   {
@@ -280,11 +297,16 @@ export async function bootstrapWorker(): Promise<void> {
       { error: provenance.error },
     );
   }
+  const bakedManifestOption = loadBakedManifest(config.get('BAKED_MODULES_MANIFEST'));
   await loadModulesFromTierVolumes({
     modulesDir: config.get('MODULES_DIR'),
     registry: moduleRegistry,
     logger,
-    ...(provenanceGuardArmed ? { buildStore, verifier } : {}),
+    // UR-20261018-093 (R1/W2) — the build store is supplied ALWAYS so the hash-bound floor runs
+    // without a signing key; the verifier (signature layer) is supplied only when the guard armed.
+    buildStore,
+    ...(provenanceGuardArmed ? { verifier } : {}),
+    ...(bakedManifestOption !== undefined ? { bakedManifest: bakedManifestOption } : {}),
   });
 
   progress.advanceTo('MODULE_VALIDATE');
@@ -1167,11 +1189,16 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
       { error: provenance.error },
     );
   }
+  const bakedManifestOption = loadBakedManifest(config.get('BAKED_MODULES_MANIFEST'));
   const discoveredModules = await loadModulesFromTierVolumes({
     modulesDir: config.get('MODULES_DIR'),
     registry: moduleRegistry,
     logger,
-    ...(provenanceGuardArmed ? { buildStore, verifier } : {}),
+    // UR-20261018-093 (R1/W2) — the build store is supplied ALWAYS so the hash-bound floor runs
+    // without a signing key; the verifier (signature layer) is supplied only when the guard armed.
+    buildStore,
+    ...(provenanceGuardArmed ? { verifier } : {}),
+    ...(bakedManifestOption !== undefined ? { bakedManifest: bakedManifestOption } : {}),
     // UR-C-07: the operator-configured quarantine directory for a module that fails verification
     // (the loader falls back to `<modulesDir>/quarantine` when it is unset).
     ...(config.get('SWASTIK_QUARANTINE_PATH') !== ''

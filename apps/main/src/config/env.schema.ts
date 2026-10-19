@@ -158,6 +158,12 @@ const baseEnvSchema = z
     CLAI_AUTHKEY_STORAGE_URL: z.string().default(''),
 
     MODULES_DIR: z.string().default('/mnt/modules'),
+    // UR-20261018-093 — the image's baked-module build manifest, at an explicit NON-MOUNTED image path
+    // (e.g. /app/baked-modules/baked-manifest.json), NOT derived from MODULES_DIR (which is the volume
+    // under Option B). When set and
+    // present, a module with no `builds` row is accepted only if its on-disk hash matches the
+    // manifest. Empty (default) means no baked modules: every module must have a `builds` row.
+    BAKED_MODULES_MANIFEST: z.string().default(''),
     // D-7.5.5 — the operator-authored security policy lockfile checked at Stage 11.
     SECURITY_POLICY_LOCKFILE: z.string().default('security-policy.lock.json'),
     // Appendix C #11 — the bundled OpenAPI contract, published at `/openapi.yaml`.
