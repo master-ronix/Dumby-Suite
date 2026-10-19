@@ -26,8 +26,13 @@ import {
 import type { BuildProvenanceRecord, BuildStore } from '../db/repositories/build.repository.js';
 
 export interface SwastikVolumeLoadResult {
-  loaded: readonly string[];
-  failed: readonly string[];
+  readonly loaded: readonly string[];
+  readonly failed: readonly string[];
+  /**
+   * UR-20261018-093 — modules quarantined because their provenance could not be verified (§15.9).
+   * A refused module is a deliberate, logged exclusion, not a half-broken boot.
+   */
+  readonly refused: readonly string[];
 }
 
 export interface SwastikVolumeLoaderOptions {
@@ -35,14 +40,27 @@ export interface SwastikVolumeLoaderOptions {
   registry: ModuleRegistry;
   logger: Logger;
   /**
-   * §15.9 load-time verification (§15.8 provenance). When `buildStore` and `verifier` are both
-   * supplied the loader verifies the on-disk artifact against its `builds` row before every import
-   * and refuses (quarantining the directory) on any mismatch. When they are absent the loader
-   * behaves as before and warns once that provenance was not verified — the production wiring of
-   * this guard lives with the bootstrap stage sequence, outside this slice's blast radius.
+   * §15.9 load-time verification (§15.8 provenance) — UR-20261018-093 / REC-025.
+   *
+   * Governance rule D-4.10 (`spec/governance/part-4-module-system-framework.md`) requires that,
+   * *where the signing subsystem is not yet present, hash-bound provenance verification against the
+   * build record is the enforced floor*. The guards are therefore SPLIT:
+   *   - the HASH guard is active whenever a `buildStore` is supplied — it needs no key;
+   *   - the SIGNATURE guard is additional, and active only when a `verifier` is supplied.
+   * When NO `buildStore` is supplied the loader FAILS CLOSED: a module that cannot be hash-verified
+   * is refused (quarantined) rather than imported unverified. Previously the two checks were gated
+   * together on the signing key, so with no key the floor ran NOTHING (fail-open).
    */
   buildStore?: BuildStore;
   verifier?: BuildSignatureVerifier;
+  /**
+   * UR-20261018-093 — the image's baked-module build manifest (`<volume>/<slug>` -> expected
+   * artifact hash), generated at image-build time by `stage-modules.mjs` and loaded from a
+   * NON-MOUNTED path. A module with no `builds` row is accepted ONLY when its volume/slug is in this
+   * manifest and its on-disk hash matches — the expected hash comes from the image, not the volume,
+   * so a writable volume cannot forge it. Absent for a mounted-volume deployment (no baked modules).
+   */
+  bakedManifest?: Readonly<Record<string, string>>;
   /** Root for refused modules (§15.9 `quarantine/{buildId}/`). Defaults to `<modulesDir>/quarantine`. */
   quarantineDir?: string;
 }
@@ -129,27 +147,48 @@ type ProvenanceVerdict =
       readonly actualArtifactHash: string | null;
     };
 
-function missingProvenanceColumn(record: BuildProvenanceRecord): string | null {
-  const required: readonly (keyof BuildProvenanceRecord)[] = [
-    'sourceArchiveHash',
-    'artifactHash',
-    'lockfileHash',
-    'gateResultsHash',
-    'signature',
-    'signatureKeyId',
-    'signedDescriptor',
-  ];
+/**
+ * UR-20261018-093 — the columns the HASH floor needs (no key) versus the columns the SIGNATURE
+ * layer additionally needs (a key). The hash floor is the D-4.10 minimum; it must be satisfiable
+ * without a signing subsystem.
+ */
+const HASH_PROVENANCE_COLUMNS: readonly (keyof BuildProvenanceRecord)[] = [
+  'sourceArchiveHash',
+  'artifactHash',
+  'lockfileHash',
+  'gateResultsHash',
+];
+
+const SIGNATURE_PROVENANCE_COLUMNS: readonly (keyof BuildProvenanceRecord)[] = [
+  'signature',
+  'signatureKeyId',
+  'signedDescriptor',
+];
+
+function missingProvenanceColumn(
+  record: BuildProvenanceRecord,
+  requireSignature: boolean,
+): string | null {
+  const required = requireSignature
+    ? [...HASH_PROVENANCE_COLUMNS, ...SIGNATURE_PROVENANCE_COLUMNS]
+    : HASH_PROVENANCE_COLUMNS;
   for (const column of required) {
     if (record[column] === null) return String(column);
   }
   return null;
 }
 
+/**
+ * UR-20261018-093 (R1) — the hash check is decoupled from the signing key: the artifact hash is
+ * always verified against the `builds` row when a store is present; the signature is verified only
+ * when a `verifier` is supplied. `verifier` being absent no longer disables the floor.
+ */
 function verifyBuildProvenance(input: {
   readonly moduleDir: string;
   readonly indexPath: string;
   readonly buildStore: BuildStore;
-  readonly verifier: BuildSignatureVerifier;
+  readonly verifier?: BuildSignatureVerifier;
+  readonly bakedExpectedHash?: string;
 }): Promise<ProvenanceVerdict> {
   const sidecar = readBuildProvenanceSidecar(input.moduleDir);
   if (sidecar === null) {
@@ -163,6 +202,24 @@ function verifyBuildProvenance(input: {
   }
   return input.buildStore.findByBuildId(sidecar.buildId).then((record) => {
     if (record === undefined) {
+      // UR-20261018-093 — a BAKED module (packed into the image, no `builds` row) is verified
+      // against the IMAGE's build manifest, never against a sidecar on the module's own directory:
+      // the expected hash comes from a non-mounted image path, so a writable volume cannot forge
+      // both the artifact and its proof, and a `baked` sidecar cannot downgrade a volume module.
+      const expected = input.bakedExpectedHash;
+      if (expected !== undefined) {
+        const actual = hashFile(input.indexPath);
+        if (actual === expected) {
+          return { ok: true as const, buildId: sidecar.buildId };
+        }
+        return {
+          ok: false as const,
+          reason: 'baked artifact hash does not match the image build manifest',
+          buildId: sidecar.buildId,
+          expectedArtifactHash: expected,
+          actualArtifactHash: actual,
+        };
+      }
       return {
         ok: false as const,
         reason: `no builds row for buildId "${sidecar.buildId}"`,
@@ -171,7 +228,8 @@ function verifyBuildProvenance(input: {
         actualArtifactHash: null,
       };
     }
-    const missing = missingProvenanceColumn(record);
+    const requireSignature = input.verifier !== undefined;
+    const missing = missingProvenanceColumn(record, requireSignature);
     if (missing !== null) {
       return {
         ok: false as const,
@@ -191,19 +249,21 @@ function verifyBuildProvenance(input: {
         actualArtifactHash,
       };
     }
-    const signedOk = input.verifier.verifyTuple(tupleFromSidecar(sidecar), {
-      signature: record.signature ?? '',
-      signatureKeyId: record.signatureKeyId ?? '',
-      signedDescriptor: record.signedDescriptor ?? '',
-    });
-    if (!signedOk) {
-      return {
-        ok: false as const,
-        reason: 'Ed25519 signature does not cover the deployed artifact bytes',
-        buildId: sidecar.buildId,
-        expectedArtifactHash: record.artifactHash,
-        actualArtifactHash,
-      };
+    if (input.verifier !== undefined) {
+      const signedOk = input.verifier.verifyTuple(tupleFromSidecar(sidecar), {
+        signature: record.signature ?? '',
+        signatureKeyId: record.signatureKeyId ?? '',
+        signedDescriptor: record.signedDescriptor ?? '',
+      });
+      if (!signedOk) {
+        return {
+          ok: false as const,
+          reason: 'Ed25519 signature does not cover the deployed artifact bytes',
+          buildId: sidecar.buildId,
+          expectedArtifactHash: record.artifactHash,
+          actualArtifactHash,
+        };
+      }
     }
     return { ok: true as const, buildId: sidecar.buildId };
   });
@@ -241,20 +301,31 @@ export async function loadModulesFromTierVolumes(
 
   if (!existsSync(modulesDir)) {
     logger.warn('module-volume-root-missing', { modulesDir });
-    return { loaded: [], failed: [] };
+    return { loaded: [], failed: [], refused: [] };
   }
 
   const modulesRoot = realpathSync(modulesDir);
   const loaded: string[] = [];
   const failed: string[] = [];
+  const refused: string[] = [];
 
-  const { buildStore, verifier } = options;
-  const guardActive = buildStore !== undefined && verifier !== undefined;
+  const { buildStore, verifier, bakedManifest } = options;
+  // UR-20261018-093 (R1/R2) — the guards are split. The hash floor is active whenever a build
+  // store is present (no key needed); the signature layer is active only with a verifier.
+  const hashGuardActive = buildStore !== undefined;
+  const signatureGuardActive = verifier !== undefined;
   const quarantineDir = options.quarantineDir ?? join(modulesDir, 'quarantine');
-  if (!guardActive) {
-    const reason =
-      'no buildStore/verifier supplied — modules are imported without §15.8/§15.9 load-time provenance verification';
-    logger.warn(`module-provenance-unverified: ${reason}`, { modulesDir, reason });
+  if (!hashGuardActive) {
+    logger.error(
+      'module-provenance-unverified: no buildStore supplied — every module will be refused ' +
+        '(§15.9 fail-closed; the D-4.10 hash-bound floor cannot run)',
+      { modulesDir },
+    );
+  } else if (!signatureGuardActive) {
+    logger.info(
+      'module-provenance-hash-only: signature guard disarmed (no verifier) — the D-4.10 hash-bound floor is enforced',
+      { modulesDir },
+    );
   }
 
   for (const volumeName of MODULE_VOLUME_NAMES) {
@@ -340,12 +411,15 @@ export async function loadModulesFromTierVolumes(
         }
 
         let buildId: string | null = null;
-        if (guardActive) {
+        if (hashGuardActive) {
+          // UR-20261018-093 (R1) — the hash floor runs regardless of whether a verifier exists.
+          const bakedExpectedHash = bakedManifest?.[`${volumeName}/${entry}`];
           const verdict = await verifyBuildProvenance({
             moduleDir,
             indexPath,
             buildStore,
-            verifier,
+            ...(signatureGuardActive ? { verifier } : {}),
+            ...(bakedExpectedHash !== undefined ? { bakedExpectedHash } : {}),
           });
           if (!verdict.ok) {
             const quarantinedTo = quarantineModuleDir({
@@ -368,6 +442,25 @@ export async function loadModulesFromTierVolumes(
             throw new ModuleProvenanceRefusedError(entry, verdict.reason);
           }
           buildId = verdict.buildId;
+        } else {
+          // UR-20261018-093 (R2) — fail closed. Without a build store the D-4.10 floor cannot run,
+          // so the module is quarantined rather than imported unverified (§15.9).
+          const reason = 'no build store supplied — the D-4.10 hash-bound floor cannot run';
+          const quarantinedTo = quarantineModuleDir({
+            moduleDir,
+            quarantineDir,
+            buildId: null,
+            entry,
+            logger,
+          });
+          logger.error('module-provenance-refused', {
+            module: entry,
+            volumeName,
+            path: moduleDir,
+            reason,
+            quarantinedTo,
+          });
+          throw new ModuleProvenanceRefusedError(entry, reason);
         }
 
         const pkg = (await import(
@@ -395,6 +488,12 @@ export async function loadModulesFromTierVolumes(
           buildId,
         });
       } catch (err) {
+        if (err instanceof ModuleProvenanceRefusedError) {
+          // §15.9 — a refused module is quarantined and the boot continues. It is a module that
+          // could not prove its provenance, not a half-broken deployment.
+          refused.push(`${volumeName}/${entry}`);
+          continue;
+        }
         failed.push(`${volumeName}/${entry}`);
         logger.error('module-volume-load-failed', {
           module: entry,
@@ -413,7 +512,7 @@ export async function loadModulesFromTierVolumes(
     );
   }
 
-  return { loaded, failed };
+  return { loaded, failed, refused };
 }
 
 export const loadModulesFromSwastikVolume = loadModulesFromTierVolumes;
