@@ -56,5 +56,9 @@ for (const slug of readdirSync(buildRoot).sort()) {
 }
 // The expected hashes for baked modules live at the root (a non-mounted path in the image), never
 // beside the artifact, so a writable volume cannot forge an artifact together with its proof.
-writeFileSync(join(destRoot, 'baked-manifest.json'), JSON.stringify(bakedManifest, null, 2), 'utf8');
+writeFileSync(
+  join(destRoot, 'baked-manifest.json'),
+  JSON.stringify(bakedManifest, null, 2),
+  'utf8',
+);
 console.log(`placed ${placed} first-party module(s) under ${destRoot} (+ baked-manifest.json)`);

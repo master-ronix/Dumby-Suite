@@ -136,8 +136,12 @@ async function main(): Promise<void> {
       const slug = entry.split('__')[0] ?? entry;
       let version = '0.0.0';
       try {
-        version = (JSON.parse(readFileSync(join(moduleDir, 'manifest.json'), 'utf8')) as { version?: string })
-          .version ?? version;
+        version =
+          (
+            JSON.parse(readFileSync(join(moduleDir, 'manifest.json'), 'utf8')) as {
+              version?: string;
+            }
+          ).version ?? version;
       } catch {
         /* a module with no readable manifest still gets a baseline record */
       }
@@ -156,7 +160,12 @@ async function main(): Promise<void> {
 
       if (expected !== undefined && expected !== artifactHash) {
         mismatched += 1;
-        logger.error('backfill-refused-hash-mismatch', { volumeName, entry, expected, actual: artifactHash });
+        logger.error('backfill-refused-hash-mismatch', {
+          volumeName,
+          entry,
+          expected,
+          actual: artifactHash,
+        });
         continue;
       }
       if (expected === undefined && !opts.force) {
@@ -194,7 +203,11 @@ async function main(): Promise<void> {
           signatureKeyId: '',
           signedDescriptor: '',
         };
-        writeFileSync(join(moduleDir, BUILD_PROVENANCE_SIDECAR), JSON.stringify(sidecar, null, 2), 'utf8');
+        writeFileSync(
+          join(moduleDir, BUILD_PROVENANCE_SIDECAR),
+          JSON.stringify(sidecar, null, 2),
+          'utf8',
+        );
         const now = new Date();
         await db
           .knex('builds')
@@ -217,7 +230,13 @@ async function main(): Promise<void> {
     }
   }
 
-  logger.info('backfill-complete', { dryRun: opts.dryRun, backfilled, skipped, unverified, mismatched });
+  logger.info('backfill-complete', {
+    dryRun: opts.dryRun,
+    backfilled,
+    skipped,
+    unverified,
+    mismatched,
+  });
   await db.knex.destroy();
   if (mismatched > 0) process.exit(1);
 }
