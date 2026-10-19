@@ -66,7 +66,8 @@
       "type": "string"
     },
     "buildId": {
-      "type": "string"
+      "type": "string",
+      "description": "Platform-issued identity for this specific uploaded version (UR-20261019-099). Written by Swastik at promotion; the deployed manifest, the builds row and the provenance sidecar carry this one value. An author-declared value is superseded."
     },
     "marketplaceCategory": {
       "enum": [
