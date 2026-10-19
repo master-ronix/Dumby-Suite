@@ -597,8 +597,10 @@ function reservedBakedSlugs(): string[] {
   try {
     const manifest = JSON.parse(readFileSync(path, 'utf8')) as Record<string, string>;
     return Object.keys(manifest).map((k) => k.split('/').pop() ?? k);
-  } catch {
-    return [];
+  } catch (err) {
+    // The manifest is expected but unreadable. Refuse promotion rather than degrade silently to a
+    // directory check that cannot tell a baked copy from a promoted module under Option B.
+    throw new Error(`BAKED_MODULES_MANIFEST is set but unreadable (${path}): ${String(err)} — refusing promotion`);
   }
 }
 
