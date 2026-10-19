@@ -154,6 +154,12 @@ export function promoteAtomically(input: {
    * loader's load-time verification reads (finding #22). The atomic-swap mechanics are unchanged.
    */
   readonly provenance?: BuildProvenanceSidecar;
+  /**
+   * UR-20261018-093 / Option B — the BAKED slugs (from the image manifest `BAKED_MODULES_MANIFEST`),
+   * lower-cased. Under Option B the volume holds seeded baked copies AND promoted modules, so a bare
+   * directory check cannot tell them apart; the manifest is the authoritative list of baked slugs.
+   */
+  readonly reservedSlugs?: readonly string[];
 }): PromotionOutcome {
   const slug = assertSafeSlug(input.moduleSlug);
   assertPathInside(input.stagingVolume, input.stagingDir);
@@ -165,6 +171,31 @@ export function promoteAtomically(input: {
   const incomingLink = safeJoin(input.liveVolume, `${slug}__incoming`);
   assertPathInside(input.liveVolume, incomingLink);
   const rollbackLink = safeJoin(input.liveVolume, `${slug}__rollback`);
+  // UR-20261018-093 / Option B — a BAKED slug is RESERVED. A promoted `<slug>__<version>` beside a
+  // baked `<slug>` gives the loader two modules with one manifest name, which aborts the boot and —
+  // on a persistent volume — would abort every restart. Reject it here, at promotion, not at load.
+  // The authoritative list is the image manifest (`reservedSlugs`); case is normalised so a
+  // `Hello-World` promotion cannot slip past a baked `hello-world`.
+  // The DIRECTORY slug can be spoofed: a promoted module may use a NEW slug but declare the manifest
+  // `name` of a baked module (the loader collides on the name, not the directory). So check the
+  // DECLARED name too, case-insensitively.
+  let declaredName = slug;
+  try {
+    const staged = JSON.parse(readFileSync(join(input.stagingDir, 'manifest.json'), 'utf8')) as {
+      name?: string;
+    };
+    if (typeof staged.name === 'string' && staged.name !== '') declaredName = staged.name;
+  } catch {
+    // staged manifest unreadable — the slug check below still applies.
+  }
+  const reserved = (input.reservedSlugs ?? []).some(
+    (s) => s.toLowerCase() === slug.toLowerCase() || s.toLowerCase() === declaredName.toLowerCase(),
+  );
+  if (reserved) {
+    throw new Error(
+      `reserved slug "${slug}" (name "${declaredName}"): a baked module owns it — promotion refused (Option B)`,
+    );
+  }
 
   let previousTarget: string | null = null;
   if (lstatIsLink(liveLink)) {
@@ -236,6 +267,8 @@ export async function promoteUnderLock(input: {
   readonly stagingDir: string;
   readonly lockTtlMs?: number;
   readonly provenance?: BuildProvenanceSidecar;
+  /** UR-20261018-093 / Option B — baked slugs (from the image manifest) that promotion must refuse. */
+  readonly reservedSlugs?: readonly string[];
 }): Promise<PromotionOutcome> {
   const slug = assertSafeSlug(input.moduleSlug);
   const lockKey = `${PROMOTION_LOCK_KEY_PREFIX}${slug}`;
@@ -250,6 +283,7 @@ export async function promoteUnderLock(input: {
       moduleSlug: slug,
       stagingDir: input.stagingDir,
       ...(input.provenance !== undefined ? { provenance: input.provenance } : {}),
+      ...(input.reservedSlugs !== undefined ? { reservedSlugs: input.reservedSlugs } : {}),
     });
   } finally {
     await input.lockStore.release(lockKey, lockOwner);
