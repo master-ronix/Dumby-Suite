@@ -10,7 +10,7 @@ import {
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { Logger } from '../logging/logger.js';
-import type { ModuleRegistry } from './registry.js';
+import { ModuleAlreadyRegisteredError, type ModuleRegistry } from './registry.js';
 import { parseManifest } from './manifest.schema.js';
 import { validateTierRules } from './tier-rules.js';
 import { ModuleValidationFailedError } from './loader.js';
@@ -488,6 +488,15 @@ export async function loadModulesFromTierVolumes(
           buildId,
         });
       } catch (err) {
+        if (err instanceof ModuleAlreadyRegisteredError) {
+          // A duplicate manifest name (e.g. a promoted `<slug>__<version>` beside a baked `<slug>`).
+          // Quarantine this one rather than abort the whole boot — promotion refuses baked slugs, but
+          // this limits the damage if that guard is ever bypassed.
+          const quarantinedTo = quarantineModuleDir({ moduleDir: entryPath, quarantineDir, buildId: null, entry, logger });
+          refused.push(`${volumeName}/${entry}`);
+          logger.error('module-slug-duplicate-refused', { module: entry, volumeName, path: entryPath, quarantinedTo });
+          continue;
+        }
         if (err instanceof ModuleProvenanceRefusedError) {
           // §15.9 — a refused module is quarantined and the boot continues. It is a module that
           // could not prove its provenance, not a half-broken deployment.
