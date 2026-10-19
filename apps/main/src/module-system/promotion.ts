@@ -154,6 +154,12 @@ export function promoteAtomically(input: {
    * loader's load-time verification reads (finding #22). The atomic-swap mechanics are unchanged.
    */
   readonly provenance?: BuildProvenanceSidecar;
+  /**
+   * UR-20261018-093 / Option B — the BAKED slugs (from the image manifest `BAKED_MODULES_MANIFEST`),
+   * lower-cased. Under Option B the volume holds seeded baked copies AND promoted modules, so a bare
+   * directory check cannot tell them apart; the manifest is the authoritative list of baked slugs.
+   */
+  readonly reservedSlugs?: readonly string[];
 }): PromotionOutcome {
   const slug = assertSafeSlug(input.moduleSlug);
   assertPathInside(input.stagingVolume, input.stagingDir);
@@ -168,10 +174,12 @@ export function promoteAtomically(input: {
   // UR-20261018-093 / Option B — a BAKED slug is RESERVED. A promoted `<slug>__<version>` beside a
   // baked `<slug>` gives the loader two modules with one manifest name, which aborts the boot and —
   // on a persistent volume — would abort every restart. Reject it here, at promotion, not at load.
-  if (existsSync(liveLink) && !lstatIsLink(liveLink)) {
-    throw new Error(
-      `reserved slug "${slug}": a baked module already occupies ${liveLink} — promotion refused (Option B)`,
-    );
+  // The authoritative list is the image manifest (`reservedSlugs`); case is normalised so a
+  // `Hello-World` promotion cannot slip past a baked `hello-world`.
+  const reserved = (input.reservedSlugs ?? []).some((s) => s.toLowerCase() === slug.toLowerCase());
+  const bakedDir = existsSync(liveLink) && !lstatIsLink(liveLink);
+  if (reserved || bakedDir) {
+    throw new Error(`reserved slug "${slug}": a baked module owns it — promotion refused (Option B)`);
   }
 
   let previousTarget: string | null = null;
@@ -244,6 +252,8 @@ export async function promoteUnderLock(input: {
   readonly stagingDir: string;
   readonly lockTtlMs?: number;
   readonly provenance?: BuildProvenanceSidecar;
+  /** UR-20261018-093 / Option B — baked slugs (from the image manifest) that promotion must refuse. */
+  readonly reservedSlugs?: readonly string[];
 }): Promise<PromotionOutcome> {
   const slug = assertSafeSlug(input.moduleSlug);
   const lockKey = `${PROMOTION_LOCK_KEY_PREFIX}${slug}`;
@@ -258,6 +268,7 @@ export async function promoteUnderLock(input: {
       moduleSlug: slug,
       stagingDir: input.stagingDir,
       ...(input.provenance !== undefined ? { provenance: input.provenance } : {}),
+      ...(input.reservedSlugs !== undefined ? { reservedSlugs: input.reservedSlugs } : {}),
     });
   } finally {
     await input.lockStore.release(lockKey, lockOwner);
