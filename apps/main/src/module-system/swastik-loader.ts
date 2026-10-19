@@ -492,9 +492,20 @@ export async function loadModulesFromTierVolumes(
           // A duplicate manifest name (e.g. a promoted `<slug>__<version>` beside a baked `<slug>`).
           // Quarantine this one rather than abort the whole boot — promotion refuses baked slugs, but
           // this limits the damage if that guard is ever bypassed.
-          const quarantinedTo = quarantineModuleDir({ moduleDir: entryPath, quarantineDir, buildId: null, entry, logger });
+          const quarantinedTo = quarantineModuleDir({
+            moduleDir: entryPath,
+            quarantineDir,
+            buildId: null,
+            entry,
+            logger,
+          });
           refused.push(`${volumeName}/${entry}`);
-          logger.error('module-slug-duplicate-refused', { module: entry, volumeName, path: entryPath, quarantinedTo });
+          logger.error('module-slug-duplicate-refused', {
+            module: entry,
+            volumeName,
+            path: entryPath,
+            quarantinedTo,
+          });
           continue;
         }
         if (err instanceof ModuleProvenanceRefusedError) {
