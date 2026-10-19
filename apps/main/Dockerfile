@@ -66,7 +66,9 @@ COPY --from=builder /app/packages/swastik ./packages/swastik
 COPY --from=builder /mnt/modules /mnt/modules
 COPY --from=builder /mnt/modules /app/baked-modules
 RUN chown -R node:node /app/baked-modules /mnt/modules
-ENV MODULES_DIR=/app/baked-modules
+ENV MODULES_DIR=/mnt/modules
+# UR-20261018-093 — the baked-module build manifest, on the IMAGE (the /mnt/modules volume shadows it).
+ENV BAKED_MODULES_MANIFEST=/app/baked-modules/baked-manifest.json
 COPY apps/main/package.json apps/main/tsconfig.json ./apps/main/
 EXPOSE 8080 8081 8082
 USER node
