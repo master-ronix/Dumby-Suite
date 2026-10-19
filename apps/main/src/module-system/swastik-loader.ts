@@ -20,7 +20,6 @@ import { assertPathInside, assertSafeSlug, assertSafeVersion } from '../shared/u
 import {
   hashFile,
   readBuildProvenanceSidecar,
-  tupleFromSidecar,
   type BuildSignatureVerifier,
 } from './build-signing.js';
 import type { BuildProvenanceRecord, BuildStore } from '../db/repositories/build.repository.js';
@@ -35,11 +34,10 @@ export interface SwastikVolumeLoaderOptions {
   registry: ModuleRegistry;
   logger: Logger;
   /**
-   * §15.9 load-time verification (§15.8 provenance). When `buildStore` and `verifier` are both
-   * supplied the loader verifies the on-disk artifact against its `builds` row before every import
-   * and refuses (quarantining the directory) on any mismatch. When they are absent the loader
-   * behaves as before and warns once that provenance was not verified — the production wiring of
-   * this guard lives with the bootstrap stage sequence, outside this slice's blast radius.
+   * §15.9 load-time verification (§15.8 provenance). When `buildStore` is supplied the loader checks
+   * the on-disk artifact against its `builds` row before every import and refuses (quarantining the
+   * directory) on a mismatch. UR-20261019-101: the loader TRUSTS the per-module buildId the deploy
+   * flow issued — no `BUILD_SIGNING_*` key is required. `verifier` is accepted but no longer needed.
    */
   buildStore?: BuildStore;
   verifier?: BuildSignatureVerifier;
@@ -135,9 +133,6 @@ function missingProvenanceColumn(record: BuildProvenanceRecord): string | null {
     'artifactHash',
     'lockfileHash',
     'gateResultsHash',
-    'signature',
-    'signatureKeyId',
-    'signedDescriptor',
   ];
   for (const column of required) {
     if (record[column] === null) return String(column);
@@ -149,7 +144,6 @@ function verifyBuildProvenance(input: {
   readonly moduleDir: string;
   readonly indexPath: string;
   readonly buildStore: BuildStore;
-  readonly verifier: BuildSignatureVerifier;
 }): Promise<ProvenanceVerdict> {
   const sidecar = readBuildProvenanceSidecar(input.moduleDir);
   if (sidecar === null) {
@@ -191,20 +185,9 @@ function verifyBuildProvenance(input: {
         actualArtifactHash,
       };
     }
-    const signedOk = input.verifier.verifyTuple(tupleFromSidecar(sidecar), {
-      signature: record.signature ?? '',
-      signatureKeyId: record.signatureKeyId ?? '',
-      signedDescriptor: record.signedDescriptor ?? '',
-    });
-    if (!signedOk) {
-      return {
-        ok: false as const,
-        reason: 'Ed25519 signature does not cover the deployed artifact bytes',
-        buildId: sidecar.buildId,
-        expectedArtifactHash: record.artifactHash,
-        actualArtifactHash,
-      };
-    }
+    // UR-20261019-101 — the loader TRUSTS the per-module buildId the deploy flow issued (the `builds`
+    // row), instead of a static BUILD_SIGNING_* key. No signing key is required to load a module. The
+    // artifact hash above still ties the on-disk bytes to the row.
     return { ok: true as const, buildId: sidecar.buildId };
   });
 }
@@ -248,12 +231,12 @@ export async function loadModulesFromTierVolumes(
   const loaded: string[] = [];
   const failed: string[] = [];
 
-  const { buildStore, verifier } = options;
-  const guardActive = buildStore !== undefined && verifier !== undefined;
+  const { buildStore } = options;
+  const guardActive = buildStore !== undefined;
   const quarantineDir = options.quarantineDir ?? join(modulesDir, 'quarantine');
   if (!guardActive) {
     const reason =
-      'no buildStore/verifier supplied — modules are imported without §15.8/§15.9 load-time provenance verification';
+      'no buildStore supplied — modules are imported without §15.8/§15.9 load-time provenance verification';
     logger.warn(`module-provenance-unverified: ${reason}`, { modulesDir, reason });
   }
 
@@ -345,7 +328,6 @@ export async function loadModulesFromTierVolumes(
             moduleDir,
             indexPath,
             buildStore,
-            verifier,
           });
           if (!verdict.ok) {
             const quarantinedTo = quarantineModuleDir({
