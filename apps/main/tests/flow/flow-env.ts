@@ -1,3 +1,4 @@
+import { generateKeyPairSync } from 'node:crypto';
 import { mkdtempSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -56,4 +57,14 @@ Object.assign(process.env, {
   API_PORT: String(API_PORT),
   HEALTH_PORT: String(HEALTH_PORT),
   METRICS_PORT: String(METRICS_PORT),
+  // UR-20261019-103 — the module-build signature layer (L2) is MANDATORY at boot, so bootstrap
+  // throws unless a verifier is armed. Arm it with an ephemeral Ed25519 keypair (single-line PEM with
+  // escaped newlines, the form normalizeSigningKey reads). The flow env's MODULES_DIR is empty, so no
+  // module is signed or verified with it — it exists only so the boot can complete.
+  BUILD_SIGNING_KEY_ID: 'build-signing-flow',
+  BUILD_SIGNING_PUBLIC_KEY: (
+    generateKeyPairSync('ed25519').publicKey.export({ type: 'spki', format: 'pem' }) as string
+  )
+    .trim()
+    .replace(/\n/g, '\\n'),
 });
