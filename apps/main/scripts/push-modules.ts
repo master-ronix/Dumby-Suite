@@ -4,7 +4,7 @@ import { INTERNAL_API_HEADER } from '../src/http/internal-auth.js';
 
 /**
  * UR-20261019-102 (Option A) — push the built module bundles into their tier volume mounts through the
- * Swastik deploy flow. Nothing is baked into the image; this is how modules reach the volumes after
+ * Swastik deploy flow. The image ships no modules; this is how modules reach the volumes after
  * the service is up. Run `pnpm build:modules` first, then `pnpm push:modules [swastik-url]`.
  */
 async function main(): Promise<void> {

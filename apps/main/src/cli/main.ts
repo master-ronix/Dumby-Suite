@@ -34,7 +34,7 @@ export async function runCli(
   return 1;
 }
 
-function listFirstPartyModules(dir: string): { slug: string; tier: string }[] {
+function listSourceModules(dir: string): { slug: string; tier: string }[] {
   if (!existsSync(dir)) return [];
   const out: { slug: string; tier: string }[] = [];
   for (const slug of readdirSync(dir)) {
@@ -53,7 +53,7 @@ function listFirstPartyModules(dir: string): { slug: string; tier: string }[] {
 async function main(): Promise<void> {
   const repoRoot = fileURLToPath(new URL('../../../../', import.meta.url));
   const deps: CliDeps = {
-    modules: { list: () => listFirstPartyModules(join(repoRoot, 'packages/modules')) },
+    modules: { list: () => listSourceModules(join(repoRoot, 'packages/modules')) },
     operational: {
       runbooks: () => {
         const dir = join(repoRoot, 'apps/main/docs/runbooks');
@@ -63,7 +63,7 @@ async function main(): Promise<void> {
               .sort()
           : [];
       },
-      status: () => ({ modules: listFirstPartyModules(join(repoRoot, 'packages/modules')) }),
+      status: () => ({ modules: listSourceModules(join(repoRoot, 'packages/modules')) }),
     },
   };
   process.exit(await runCli(process.argv.slice(2), deps));

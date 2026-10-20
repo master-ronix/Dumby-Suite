@@ -27,7 +27,7 @@ import {
  *   - `dumby_home`    — the Home control's bold white icon (item 2).
  *   - `dumby_discover`— the Discover control's bold white magnifier (item 2).
  *   - `dumby_refresh` — the health page's Refresh control's bold white circular arrow.
- *   - `dumby_<slug>`  — the first-party CORE module logo icons (item 1), shown beside each core
+ *   - `dumby_<slug>`  — the framework CORE module logo icons (item 1), shown beside each core
  *                       command on the dashboard main page.
  */
 const ICON_ASSETS: ReadonlyArray<readonly [string, string]> = [

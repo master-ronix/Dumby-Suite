@@ -1,10 +1,9 @@
 import { test, expect, describe, afterAll, beforeAll } from 'vitest';
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { Container } from '../../src/di/container.js';
-import { parseManifest } from '../../src/module-system/manifest.schema.js';
 import { ModuleLoader } from '../../src/module-system/loader.js';
 import { ModuleRegistry } from '../../src/module-system/registry.js';
 import { verifyStagedBuild } from '../../src/module-system/promotion.js';
@@ -16,15 +15,11 @@ import {
 } from '../../src/module-system/swastik-loader.js';
 import { validateTierRules } from '../../src/module-system/tier-rules.js';
 import type { Logger } from '../../src/logging/logger.js';
-import type { BuiltFirstPartyModule } from '../../scripts/build-modules.js';
 import {
-  buildFirstPartyModulePackage,
-  discoverFirstPartyModulePackages,
-  readBuiltFirstPartyModules,
+  buildModulePackage,
+  discoverModulePackages,
+  readBuiltModules,
 } from '../../scripts/build-modules.js';
-
-const APP_ROOT = resolve(import.meta.dirname, '..', '..');
-const SCRIPTS_DIR = join(APP_ROOT, 'scripts');
 
 const SEEDED_SLUGS = [
   'browse',
@@ -87,12 +82,12 @@ afterAll(() => {
   for (const dir of tempRoots) rmSync(dir, { recursive: true, force: true });
 });
 
-describe('first-party module packages', () => {
+describe('module packages', () => {
   // The manifest contract (spec/modules/module-anatomy-manifest.md) requires `devId`, `buildId`,
   // `visibility` and `releaseStatus` on every manifest — the re-seeded stubs used to omit the first
   // two, which is exactly what REC-021 flagged as a code-gap.
-  test('every removed first-party module is re-seeded as a manifest-valid package', () => {
-    const packages = discoverFirstPartyModulePackages();
+  test('every removed module is re-seeded as a manifest-valid package', () => {
+    const packages = discoverModulePackages();
     expect(packages.map((pkg) => pkg.slug).sort()).toStrictEqual([...SEEDED_SLUGS].sort());
     for (const pkg of packages) {
       expect(pkg.manifest.name).toBe(pkg.slug);
@@ -110,7 +105,7 @@ describe('first-party module packages', () => {
   });
 
   test('each package is authored for the tier volume it is promoted into', () => {
-    const packages = discoverFirstPartyModulePackages();
+    const packages = discoverModulePackages();
     const volumeFor = new Map(packages.map((pkg) => [pkg.slug, tierVolumeFor(pkg.tier)]));
     expect(volumeFor.get('health')).toBe('modules-core');
     expect(volumeFor.get('permit')).toBe('modules-core');
@@ -128,18 +123,18 @@ describe('promotion path', () => {
 
   beforeAll(async () => {
     builtRoot = tempDir('dumby-first-party-build-');
-    const packages = discoverFirstPartyModulePackages();
+    const packages = discoverModulePackages();
     for (const slug of ['health', 'hello-world']) {
       const pkg = packages.find((candidate) => candidate.slug === slug);
       if (pkg === undefined) throw new Error(`missing first-party package: ${slug}`);
-      const built = await buildFirstPartyModulePackage(pkg, builtRoot);
+      const built = await buildModulePackage(pkg, builtRoot);
       if (slug === 'health') healthBuildDir = built.buildDir;
       else helloBuildDir = built.buildDir;
     }
   });
 
   test('build artifacts are exactly what the promotion path verifies', () => {
-    const built = readBuiltFirstPartyModules(builtRoot);
+    const built = readBuiltModules(builtRoot);
     expect(built.map((pkg) => pkg.slug).sort()).toStrictEqual(['health', 'hello-world']);
     for (const pkg of built) {
       expect(pkg.indexBytes).toBeGreaterThan(0);
