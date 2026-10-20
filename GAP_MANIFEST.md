@@ -3,7 +3,7 @@
 **Generated:** 2026-10-06 · **Re-stated:** 2026-10-18
 **Protocol:** `docs/orchestration/master-prompt.md` §3 (Codebase State Detection & Audit Protocol)
 **Repository:** `master-ronix/Dumby-Suite`
-**Branch / ref:** `feature/dev` @ `416864b603616bd9b984b1bd7f6fc6c773f8ace6`
+**Branch / ref:** `feature/dev` @ `7a5877989081c62d7772e4522e1583a894b88c9c`
 **Codebase state:** State C — Enforcement (code present; migration work order closed)
 **Entry procedure followed:** `docs/prompts/entry.md` → `migration/migration-prompt.md` (migration mode)
 **Run mode:** State B — audit (§3) → state-of-record reconciliation (R12); the enforcement pass (§6) resumes when the work order is fully `DONE`.
@@ -11,7 +11,7 @@
 > **Supersession note (2026-10-10).** This manifest was generated 2026-10-06 as a **State C** run, when the work order was INACTIVE. The work order is now **ACTIVE** (request records present; `migration-ledger.md` carries open items M10/M14/M16), so the governing protocol is `migration/migration-prompt.md`. The classification table below is retained as the last full audit; its F4/F5 residuals remain open (see §2).
 
 > **Point-in-time notice (2026-10-11).** This manifest is a snapshot, not a live ledger. Its ref is
-> re-pointed to `feature/dev` @ `416864b`; request-record counts are **not** restated here (read them
+> re-pointed to `feature/dev` @ `7a58779`; request-record counts are **not** restated here (read them
 > from `docs/scripts/docs/check-ur.mjs`). `check-side-docs` holds this manifest's ref in step with
 > `docs/status/code-reconciliation.json`.
 
