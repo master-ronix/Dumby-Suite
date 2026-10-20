@@ -7,6 +7,8 @@ import type { Knex } from 'knex';
  */
 export interface BuildProvenanceRecord {
   readonly buildId: string;
+  /** UR-20261019-101 — the build's lifecycle status; `rejected` means revoked by an admin. */
+  readonly validationStatus?: string;
   readonly moduleSlug: string;
   readonly version: string;
   readonly devId: string;
@@ -27,6 +29,7 @@ export interface BuildStore {
 
 interface BuildRow {
   buildId: string;
+  validationStatus: string | null;
   moduleSlug: string;
   version: string;
   devId: string;
@@ -43,6 +46,7 @@ interface BuildRow {
 function fromRow(row: BuildRow): BuildProvenanceRecord {
   return {
     buildId: row.buildId,
+    ...(row.validationStatus !== null ? { validationStatus: row.validationStatus } : {}),
     moduleSlug: row.moduleSlug,
     version: row.version,
     devId: row.devId,
@@ -64,6 +68,7 @@ export class PostgresBuildStore implements BuildStore {
     const row = await this.knex('builds')
       .select(
         'buildId',
+        'validationStatus',
         'moduleSlug',
         'version',
         'devId',

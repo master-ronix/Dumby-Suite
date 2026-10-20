@@ -505,26 +505,29 @@ export function registerAdminRoutes(app: FastifyInstance, deps: AdminRoutesDeps)
     '/admin/power-engine/revokeModuleSignature',
     async (req: FastifyRequest, reply: FastifyReply) => {
       const body = extractRequest(req);
-      const { moduleSlug, keyId } = (req.body ?? {}) as {
+      const { moduleSlug, buildId } = (req.body ?? {}) as {
         moduleSlug?: string;
-        keyId?: string;
+        buildId?: string;
       };
+      // UR-20261019-101 — revoke a specific module BUILD (its buildId), not a signing key. A build's
+      // identity is (devId, buildId); rejecting its validationStatus is what makes the loader refuse
+      // it. The route is unchanged — only its target is corrected from a key to the build.
       const outcome = await deps.dispatcher.dispatch(
         'revokeModuleSignature',
         body,
         async () => {
           return deps.db
-            .knex('signing_keys')
-            .where({ keyId })
-            .update({ revokedAt: new Date(), updatedAt: new Date() });
+            .knex('builds')
+            .where({ buildId })
+            .update({ validationStatus: 'rejected', updatedAt: new Date() });
         },
-        { metadata: { moduleSlug: moduleSlug ?? null, keyId: keyId ?? null } },
+        { metadata: { moduleSlug: moduleSlug ?? null, buildId: buildId ?? null } },
       );
       if (outcome.ok && outcome.result === 0) {
         return reply.code(404).send({
           error: {
             code: 'DUMBY_NOT_FOUND',
-            message: `No signing key with keyId "${keyId}"`,
+            message: `No module build with buildId "${buildId}"`,
           },
         });
       }

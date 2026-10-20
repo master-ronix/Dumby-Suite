@@ -185,9 +185,19 @@ function verifyBuildProvenance(input: {
         actualArtifactHash,
       };
     }
-    // UR-20261019-101 — the loader TRUSTS the per-module buildId the deploy flow issued (the `builds`
-    // row), instead of a static BUILD_SIGNING_* key. No signing key is required to load a module. The
-    // artifact hash above still ties the on-disk bytes to the row.
+    // UR-20261019-101 — a build an admin REVOKED (`validationStatus = 'rejected'`) is refused, so the
+    // revoke route has a real effect on a specific (devId, buildId) identity.
+    if (record.validationStatus === 'rejected') {
+      return {
+        ok: false as const,
+        reason: `module build "${sidecar.buildId}" has been revoked (validationStatus=rejected)`,
+        buildId: sidecar.buildId,
+        expectedArtifactHash: record.artifactHash,
+        actualArtifactHash,
+      };
+    }
+    // The loader TRUSTS the per-module buildId the deploy flow issued (the `builds` row), instead of a
+    // static BUILD_SIGNING_* key. The artifact hash above still ties the on-disk bytes to the row.
     return { ok: true as const, buildId: sidecar.buildId };
   });
 }
