@@ -11,6 +11,8 @@ import { RedisLockStore } from '../cache/redis-lock-store.js';
 import { registerInternalAuth, shouldProtectSwastikRoute } from '../http/internal-auth.js';
 import { toErrorResponse } from '../http/error-boundary.js';
 import { parseManifest, type ModuleManifest } from '../module-system/manifest.schema.js';
+import { signProvenance } from '../module-system/sign-provenance.js';
+import { PostgresBuildStore } from '../db/repositories/build.repository.js';
 import {
   assertPathInside,
   assertSafeSlug,
@@ -603,13 +605,42 @@ app.post('/internal/reload', async (request, reply) => {
   }
   let promotion: PromotionOutcome | null = null;
   try {
+    const signed =
+      env.BUILD_SIGNING_KEY_ID !== '' && env.BUILD_SIGNING_PRIVATE_KEY !== ''
+        ? signProvenance({
+            stagingDir: verification.stagingDir,
+            moduleSlug: moduleName,
+            version: build.version,
+            devId: build.devId,
+            buildId: build.buildId,
+            keyId: env.BUILD_SIGNING_KEY_ID,
+            privateKey: env.BUILD_SIGNING_PRIVATE_KEY,
+          })
+        : undefined;
     promotion = await promoteUnderLock({
       lockStore: promotionLock,
       liveVolume: liveVolumeForTier(stagedManifest.tier),
       stagingVolume,
       moduleSlug: moduleName,
       stagingDir: verification.stagingDir,
+      ...(signed !== undefined ? { provenance: signed.sidecar } : {}),
     });
+    if (signed !== undefined) {
+      await new PostgresBuildStore(db.knex).setProvenance({
+        buildId: build.buildId,
+        moduleSlug: moduleName,
+        version: build.version,
+        devId: build.devId,
+        sourceArchiveHash: signed.sourceArchiveHash,
+        artifactHash: signed.artifactHash,
+        lockfileHash: signed.lockfileHash,
+        gateResultsHash: signed.gateResultsHash,
+        sbom: null,
+        signature: signed.sidecar.signature,
+        signatureKeyId: signed.sidecar.signatureKeyId,
+        signedDescriptor: signed.sidecar.signedDescriptor,
+      });
+    }
     await db
       .knex('builds')
       .where({ buildId: build.buildId })
@@ -841,13 +872,42 @@ app.post('/internal/deploy', async (request, reply) => {
 
   let promotion: PromotionOutcome | null = null;
   try {
+    const signed =
+      env.BUILD_SIGNING_KEY_ID !== '' && env.BUILD_SIGNING_PRIVATE_KEY !== ''
+        ? signProvenance({
+            stagingDir: verification.stagingDir,
+            moduleSlug: safeModuleSlug,
+            version: safeModuleVersion,
+            devId: providedDevId,
+            buildId: buildId,
+            keyId: env.BUILD_SIGNING_KEY_ID,
+            privateKey: env.BUILD_SIGNING_PRIVATE_KEY,
+          })
+        : undefined;
     promotion = await promoteUnderLock({
       lockStore: promotionLock,
       liveVolume: liveVolumeForTier(manifest.tier),
       stagingVolume,
       moduleSlug: safeModuleSlug,
       stagingDir: verification.stagingDir,
+      ...(signed !== undefined ? { provenance: signed.sidecar } : {}),
     });
+    if (signed !== undefined) {
+      await new PostgresBuildStore(db.knex).setProvenance({
+        buildId,
+        moduleSlug: safeModuleSlug,
+        version: safeModuleVersion,
+        devId: providedDevId,
+        sourceArchiveHash: signed.sourceArchiveHash,
+        artifactHash: signed.artifactHash,
+        lockfileHash: signed.lockfileHash,
+        gateResultsHash: signed.gateResultsHash,
+        sbom: null,
+        signature: signed.sidecar.signature,
+        signatureKeyId: signed.sidecar.signatureKeyId,
+        signedDescriptor: signed.sidecar.signedDescriptor,
+      });
+    }
     await db
       .knex('builds')
       .where({ buildId })

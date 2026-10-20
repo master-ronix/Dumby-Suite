@@ -268,8 +268,15 @@ export async function bootstrapWorker(): Promise<void> {
   );
   if (provenance.error !== undefined) {
     logger.warn(
-      `build-signing-key-invalid: ${provenance.error} — BUILD_SIGNING_PUBLIC_KEY must be a single-line PEM with escaped newlines; the signature layer stays OFF (the hash floor still runs) and boot continues`,
+      `build-signing-key-invalid: ${provenance.error} — BUILD_SIGNING_PUBLIC_KEY must be a single-line PEM with escaped newlines`,
       { error: provenance.error },
+    );
+  }
+  // UR-20261019-103 — the signature layer (L2) is MANDATORY: a verifier must be armed or no module can
+  // be verified and the bot would serve nothing. Fail the boot loudly instead of loading unverified.
+  if (!provenance.armed) {
+    throw new Error(
+      'BUILD_SIGNING_KEY_ID + BUILD_SIGNING_PUBLIC_KEY (or PRIVATE_KEY) are required — the module build signature is mandatory (UR-20261019-103)',
     );
   }
   await loadModulesFromTierVolumes({
@@ -1145,8 +1152,15 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   );
   if (provenance.error !== undefined) {
     logger.warn(
-      `build-signing-key-invalid: ${provenance.error} — BUILD_SIGNING_PUBLIC_KEY must be a single-line PEM with escaped newlines; the signature layer stays OFF (the hash floor still runs) and boot continues`,
+      `build-signing-key-invalid: ${provenance.error} — BUILD_SIGNING_PUBLIC_KEY must be a single-line PEM with escaped newlines`,
       { error: provenance.error },
+    );
+  }
+  // UR-20261019-103 — the signature layer (L2) is MANDATORY: a verifier must be armed or no module can
+  // be verified and the bot would serve nothing. Fail the boot loudly instead of loading unverified.
+  if (!provenance.armed) {
+    throw new Error(
+      'BUILD_SIGNING_KEY_ID + BUILD_SIGNING_PUBLIC_KEY (or PRIVATE_KEY) are required — the module build signature is mandatory (UR-20261019-103)',
     );
   }
   const discoveredModules = await loadModulesFromTierVolumes({

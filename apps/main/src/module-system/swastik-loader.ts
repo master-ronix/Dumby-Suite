@@ -150,11 +150,15 @@ function verifyBuildProvenance(input: {
 }): Promise<ProvenanceVerdict> {
   const sidecar = readBuildProvenanceSidecar(input.moduleDir);
   if (sidecar === null) {
-    // UR-20261019-101 — a module with NO provenance sidecar is LOADED, not refused: the loader listens
-    // to the volume mounts directly, and provenance (hash / signature / revocation) applies only where
-    // a sidecar exists. The original all-or-nothing guard REFUSED this case — and since no production
-    // path writes a sidecar, that would have refused EVERY module (the bot would boot with zero commands).
-    return Promise.resolve({ ok: true, buildId: null });
+    // UR-20261019-103 — the signature layer (L2) is MANDATORY: a module with no provenance sidecar is
+    // refused. Every build must be signed to load.
+    return Promise.resolve({
+      ok: false,
+      reason: 'no build-provenance sidecar — a signed build is required to load',
+      buildId: null,
+      expectedArtifactHash: null,
+      actualArtifactHash: null,
+    });
   }
   return input.buildStore.findByBuildId(sidecar.buildId).then((record) => {
     if (record === undefined) {
@@ -199,23 +203,30 @@ function verifyBuildProvenance(input: {
     }
     // The loader TRUSTS the per-module buildId the deploy flow issued (the `builds` row), instead of a
     // static BUILD_SIGNING_* key. The artifact hash above still ties the on-disk bytes to the row.
-    // OPTIONAL signature layer (L2): checked ONLY when a verifier is armed. The hash floor (L1)
-    // above always runs, so a key adds checking rather than gating the floor.
-    if (input.verifier !== undefined) {
-      const signedOk = input.verifier.verifyTuple(tupleFromSidecar(sidecar), {
-        signature: record.signature ?? '',
-        signatureKeyId: record.signatureKeyId ?? '',
-        signedDescriptor: record.signedDescriptor ?? '',
-      });
-      if (!signedOk) {
-        return {
-          ok: false as const,
-          reason: 'Ed25519 signature does not cover the deployed artifact bytes',
-          buildId: sidecar.buildId,
-          expectedArtifactHash: record.artifactHash,
-          actualArtifactHash,
-        };
-      }
+    // MANDATORY signature layer (L2). No armed verifier means the build cannot be verified, so the
+    // module is refused; an invalid signature is refused. The hash floor (L1) above always runs too.
+    if (input.verifier === undefined) {
+      return {
+        ok: false as const,
+        reason: 'no signing verifier armed — the build signature cannot be verified',
+        buildId: sidecar.buildId,
+        expectedArtifactHash: record.artifactHash,
+        actualArtifactHash,
+      };
+    }
+    const signedOk = input.verifier.verifyTuple(tupleFromSidecar(sidecar), {
+      signature: record.signature ?? '',
+      signatureKeyId: record.signatureKeyId ?? '',
+      signedDescriptor: record.signedDescriptor ?? '',
+    });
+    if (!signedOk) {
+      return {
+        ok: false as const,
+        reason: 'Ed25519 signature does not cover the deployed artifact bytes',
+        buildId: sidecar.buildId,
+        expectedArtifactHash: record.artifactHash,
+        actualArtifactHash,
+      };
     }
     return { ok: true as const, buildId: sidecar.buildId };
   });
