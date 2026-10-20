@@ -60,14 +60,25 @@ Skip this entirely if you only want the baked first-party modules.
 
 ---
 
-## Step 4 — Control-plane services (OPTIONAL)
-Each is the SAME GitHub repo added as a NEW Railway service, with a different
-Start Command (Deploy tab -> Start Command). Give each the same `DATABASE_URL`,
-`REDIS_URL`, `INTERNAL_API_KEY`.
+## Step 4 — Modules and the control plane
+
+**Modules.** Option A ships an image with **no** modules: they live on the tier volumes under
+`MODULES_DIR`, and the image's start command seeds them through the Swastik deploy flow on the first
+boot of an empty volume, then runs the bot. Nothing to do here — just deploy.
+
+> **Do NOT add Swastik as a separate Railway service to hold modules.** A Railway volume mounts to
+> exactly one service, and `MODULES_DIR` is mounted on `@workspace/dumby`. A separate Swastik service
+> has its own filesystem and **cannot** write the app's tier volumes — which is why the volumes come up
+> empty if you try. Swastik runs inside the app container during the boot seed (on loopback), so the
+> volume is written where it lives and every module carries real provenance.
+
+**Control-plane services (OPTIONAL).** Each is the SAME GitHub repo added as a NEW Railway service
+with a different Start Command. Give each the same `DATABASE_URL`, `REDIS_URL`, `INTERNAL_API_KEY`.
+These are for *operating* the platform (developer registration/approval, persona hosting, the console);
+they do not hold module storage.
 
 | Service | Start Command | Notes |
 |---|---|---|
-| swastik | `node dist/entry/swastik.js` | module upload/promotion |
 | credentials | `node dist/entry/credentials.js` | set `CREDENTIALS_SERVICE_URL` to its private domain |
 | power-engine | `node dist/entry/power-engine.js` | needs `POWER_ENGINE_OPERATOR_IDS` |
 | twill | `node dist/entry/twill.js` | persona host |
