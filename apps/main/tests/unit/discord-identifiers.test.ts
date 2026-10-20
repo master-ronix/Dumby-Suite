@@ -37,7 +37,7 @@ describe('Discord identifier shapes', () => {
   });
 
   test('a client secret is a single base64url run', () => {
-    expect(isClientSecret('PI1-1rawNAseEKe0W5M3lI-Avg9b4QT2')).toBe(true);
+    expect(isClientSecret('0123456789abcdef0123456789abcdef')).toBe(true);
     expect(isClientSecret('short')).toBe(false);
     expect(isClientSecret('has spaces in it')).toBe(false);
   });
@@ -56,7 +56,7 @@ describe('registration refuses malformed identifiers', () => {
     boundGuildId: '1062427177326497863',
     botToken: TOKEN,
     // UR-20261021-095 — the client secret is required, exactly as the bot token and the app id are.
-    oauthClientSecret: 'PI1-1rawNAseEKe0W5M3lI-Avg9b4QT2',
+    oauthClientSecret: '0123456789abcdef0123456789abcdef',
     registrarAuthority: '463269847023288331',
     ...over,
   });

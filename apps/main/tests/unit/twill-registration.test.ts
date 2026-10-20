@@ -23,7 +23,7 @@ const REGISTRAR_ID = '463269847023288331';
 const BOT_TOKEN = `${Buffer.from(APP_ID, 'utf8')
   .toString('base64')
   .replace(/=+$/, '')}.GpIvHE.${'a'.repeat(38)}`;
-const CLIENT_SECRET = 'PI1-1rawNAseEKe0W5M3lI-Avg9b4QT2';
+const CLIENT_SECRET = '0123456789abcdef0123456789abcdef';
 
 const body = {
   name: 'Nova',
