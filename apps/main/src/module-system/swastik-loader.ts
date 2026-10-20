@@ -119,7 +119,7 @@ export class ModuleProvenanceRefusedError extends Error {
 }
 
 type ProvenanceVerdict =
-  | { readonly ok: true; readonly buildId: string }
+  | { readonly ok: true; readonly buildId: string | null }
   | {
       readonly ok: false;
       readonly reason: string;
@@ -150,13 +150,11 @@ function verifyBuildProvenance(input: {
 }): Promise<ProvenanceVerdict> {
   const sidecar = readBuildProvenanceSidecar(input.moduleDir);
   if (sidecar === null) {
-    return Promise.resolve({
-      ok: false,
-      reason: 'no build-provenance sidecar ties this directory to a builds row',
-      buildId: null,
-      expectedArtifactHash: null,
-      actualArtifactHash: null,
-    });
+    // UR-20261019-101 — a module with NO provenance sidecar is LOADED, not refused: the loader listens
+    // to the volume mounts directly, and provenance (hash / signature / revocation) applies only where
+    // a sidecar exists. The original all-or-nothing guard REFUSED this case — and since no production
+    // path writes a sidecar, that would have refused EVERY module (the bot would boot with zero commands).
+    return Promise.resolve({ ok: true, buildId: null });
   }
   return input.buildStore.findByBuildId(sidecar.buildId).then((record) => {
     if (record === undefined) {
