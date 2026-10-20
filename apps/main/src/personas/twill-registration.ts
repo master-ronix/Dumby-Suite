@@ -10,7 +10,7 @@
  * the response shapes stay unit-testable without a process.
  */
 import type { FastifyInstance } from 'fastify';
-import type { EnvelopeRootKey, SealedEnvelope } from '../crypto/envelope.js';
+import type { EnvelopeRootKey } from '../crypto/envelope.js';
 import type { Logger } from '../logging/logger.js';
 import type { PersonaBindingStore, PersonaIdentityStore } from './persona.repository.js';
 import type { PersonaRegistrarStore } from './persona-registrar.repository.js';
@@ -44,7 +44,8 @@ export interface PersonaRegistrationBody {
   discordApplicationId?: unknown;
   boundGuildId?: unknown;
   botToken?: unknown;
-  /** UR-20261012-030 — optional. Without it the persona has no Route A authorization. */
+  /** UR-20261021-095 — required, exactly as the bot token and the application id are. Route A
+   * authorization needs it, so a registration that omits it is refused. */
   oauthClientSecret?: unknown;
   registrarAuthority?: unknown;
   dmBehavior?: unknown;
@@ -155,15 +156,18 @@ export function parsePersonaRegistration(
   // so every persona has a defined colour and a render never falls through to the framework amber.
   const accent = accentInput ?? DEFAULT_PERSONA_ACCENT;
 
+  // UR-20261021-095 — the client secret is REQUIRED, exactly as the bot token and the application id
+  // are: a persona without it can never authorize (Route A needs the secret), so a registration that
+  // omits it is refused rather than silently accepted.
   const secret = str(body.oauthClientSecret);
-  if (secret !== undefined && !isClientSecret(secret)) {
+  if (secret === undefined) return { ok: false, reason: 'oauthClientSecret is required' };
+  if (!isClientSecret(secret)) {
     return {
       ok: false,
       reason: 'oauthClientSecret is not a Discord client secret — from OAuth2 → Reset Secret',
     };
   }
-  let oauthClientSecretSealed: SealedEnvelope | undefined;
-  if (secret !== undefined) oauthClientSecretSealed = sealPersonaOAuthClientSecret(secret, rootKey);
+  const oauthClientSecretSealed = sealPersonaOAuthClientSecret(secret, rootKey);
 
   return {
     ok: true,
@@ -173,7 +177,7 @@ export function parsePersonaRegistration(
       boundGuildId,
       botTokenDigest: derivePersonaBotTokenDigest(botToken),
       botTokenSealed: sealPersonaBotToken(botToken, rootKey),
-      ...(oauthClientSecretSealed !== undefined ? { oauthClientSecretSealed } : {}),
+      oauthClientSecretSealed,
       registrarAuthority,
       dmBehavior: body.dmBehavior === 'allowed' ? 'allowed' : 'prohibited',
       ...(typeof body.shardAllocation === 'number'

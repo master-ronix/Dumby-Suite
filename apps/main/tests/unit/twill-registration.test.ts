@@ -30,6 +30,8 @@ const body = {
   discordApplicationId: APP_ID,
   boundGuildId: GUILD_ID,
   botToken: BOT_TOKEN,
+  // UR-20261021-095 — required now, exactly as the bot token and the application id are.
+  oauthClientSecret: CLIENT_SECRET,
   registrarAuthority: REGISTRAR_ID,
 };
 
@@ -41,8 +43,8 @@ describe('parsePersonaRegistration', () => {
     expect(parsed.input.name).toBe('Nova');
     expect(parsed.input.botTokenDigest).toMatch(/^[0-9a-f]{64}$/);
     expect(openSealedText(parsed.input.botTokenSealed, rootKey)).toBe(BOT_TOKEN);
-    // no client secret supplied => no Route A credential
-    expect(parsed.input.oauthClientSecretSealed).toBeUndefined();
+    // UR-20261021-095 — the client secret is required, so it is always sealed here.
+    expect(parsed.input.oauthClientSecretSealed).toBeDefined();
   });
 
   test('seals the OAuth client secret when one is supplied', () => {
@@ -59,6 +61,7 @@ describe('parsePersonaRegistration', () => {
       'discordApplicationId',
       'boundGuildId',
       'botToken',
+      'oauthClientSecret',
       'registrarAuthority',
     ]) {
       const partial: Record<string, unknown> = { ...body };
