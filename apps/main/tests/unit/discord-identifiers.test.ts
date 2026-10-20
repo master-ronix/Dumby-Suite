@@ -56,7 +56,7 @@ describe('registration refuses malformed identifiers', () => {
     boundGuildId: '1062427177326497863',
     botToken: TOKEN,
     // UR-20261021-095 — the client secret is required, exactly as the bot token and the app id are.
-    oauthClientSecret: '0123456789abcdef0123456789abcdef',
+    oauthClientSecret: '0123456789abcdef0123456789abcdef', // gitleaks:allow — synthetic test fixture
     registrarAuthority: '463269847023288331',
     ...over,
   });
