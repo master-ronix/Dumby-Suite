@@ -53,7 +53,6 @@ function fakeEnv(overrides: Partial<Env> = {}): Env {
     CLAI_BREAK_GLASS_SCRIPT_URL: '',
     MODULES_DIR: '/var/dumby/modules',
     SWASTIK_STAGING_VOLUME_PATH: '/var/dumby/swastik-staging',
-    SWASTIK_LIVE_VOLUME_PATH: '/var/dumby/swastik-live',
     MTP_BANDWIDTH_TOKEN_THRESHOLD_BYTES: 1048576,
     MTP_MEMORY_TOKEN_THRESHOLD_BYTES: 52428800,
     CORE_ADMIN_EVAL_ENABLED: false,

@@ -31,5 +31,4 @@ data:
   TRACE_SAMPLE_RATE: '0.1'
   MODULES_DIR: '/mnt/modules'
   SWASTIK_STAGING_VOLUME_PATH: '/mnt/modules/swastik-staging'
-  SWASTIK_LIVE_VOLUME_PATH: '/mnt/modules/modules-core'
   POWER_ENGINE_TRUSTED_SOURCES: 'internal'

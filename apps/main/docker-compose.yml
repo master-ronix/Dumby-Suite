@@ -42,7 +42,6 @@ services:
       QUEUE_REDIS_URL: redis://redis:6379/1
       MODULES_DIR: /mnt/modules
       SWASTIK_STAGING_VOLUME_PATH: /mnt/modules/swastik-staging
-      SWASTIK_LIVE_VOLUME_PATH: /mnt/modules/modules-core
       # The container is the trust boundary: it must bind the wildcard address
       # for the published ports to reach it. Host-side exposure is restricted
       # by the loopback port mappings below, and /admin/* is additionally gated
@@ -115,7 +114,6 @@ services:
       CREDENTIALS_SERVICE_URL: http://credentials:8086
       MODULES_DIR: /mnt/modules
       SWASTIK_STAGING_VOLUME_PATH: /mnt/modules/swastik-staging
-      SWASTIK_LIVE_VOLUME_PATH: /mnt/modules/modules-core
     ports:
       - '127.0.0.1:8085:8085'
     volumes:
