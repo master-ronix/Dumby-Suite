@@ -27,10 +27,7 @@ import {
   transitionLicense,
   type LicenseRecord,
 } from '../licensing/license-machine.js';
-import {
-  approveLicenseRecord,
-  PostgresLicenseStore,
-} from '../licensing/license-store.js';
+import { approveLicenseRecord, PostgresLicenseStore } from '../licensing/license-store.js';
 import {
   checkModuleDeployment,
   CompatibilityLedger,
