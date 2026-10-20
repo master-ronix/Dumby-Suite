@@ -384,11 +384,12 @@ builds table, the audit trail, and the control plane's deployment queries.
 - The Swastik entrypoint: `apps/main/src/entry/swastik.ts`.
 - The Swastik loader and promotion: `apps/main/src/module-system/swastik-loader.ts`,
   `src/module-system/promotion.ts`, `src/module-system/build-signing.ts`.
-- The build and seed scripts: `apps/main/scripts/build-first-party-modules.ts`,
-  `apps/main/scripts/seed-first-party-modules.ts`, `apps/main/scripts/swastik-deploy.ts`.
+- The build and push scripts: `apps/main/scripts/build-modules.ts`,
+  `apps/main/scripts/push-modules.ts`, `apps/main/scripts/swastik-deploy.ts`.
 - The module volume configuration: `apps/main/src/config/env.schema.ts`
-  (`MODULES_DIR`, `SWASTIK_STAGING_VOLUME_PATH`, `SWASTIK_LIVE_VOLUME_PATH`,
-  `SWASTIK_QUARANTINE_PATH`, `BUILD_SIGNING_KEY_ID`).
+  (`MODULES_DIR`, `SWASTIK_STAGING_VOLUME_PATH`, `SWASTIK_QUARANTINE_PATH`,
+  `BUILD_SIGNING_KEY_ID`). Tier routing comes from `MODULES_DIR`; the retired
+  `SWASTIK_LIVE_VOLUME_PATH` is no longer read.
 - The licensing state: `apps/main/src/licensing/license-machine.ts`.
 
 Where this section and the tree disagree, the disagreement is recorded in

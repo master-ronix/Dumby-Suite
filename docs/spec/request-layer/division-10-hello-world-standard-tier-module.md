@@ -46,7 +46,6 @@ export const manifest = {
   hardcoded: false,
   releaseStatus: 'public' as const,
   devId: 'qm-dev-001',
-  buildId: 'hello-world-1.0.0-001',
   marketplaceCategory: 'utility' as const,
   required: false,
   depends: [],

@@ -254,8 +254,8 @@ the same strict flags does not build.
 - A worked command: `packages/modules/hello-world/src/commands/hello.command.ts`.
 - A worked module entry: `packages/modules/hello-world/src/index.ts`.
 - The template layout: `packages/swastik/_template/`.
-- The build/seed flow: `apps/main/scripts/build-first-party-modules.ts`,
-  `apps/main/scripts/seed-first-party-modules.ts`.
+- The build/push flow: `apps/main/scripts/build-modules.ts`,
+  `apps/main/scripts/push-modules.ts`.
 
 ## Contract
 - `contracts/module-manifest.schema.json`

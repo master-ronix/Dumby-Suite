@@ -97,9 +97,9 @@ outline:
   (`admin` | `core` | `standard` | `marketplace`).
 - **Classification** — `devGuildOnly` (true only for Admin tier), `hardcoded` and
   `hardcodeGuildId` (a private, single-guild build), `visibility` and `releaseStatus`
-  (the publication state), `devId` and `buildId` (the developer and build identifiers),
-  `marketplaceCategory` (required for Marketplace tier), and `required` (whether a load
-  failure is fatal).
+  (the publication state), `devId` (the registered developer identifier — `buildId` is
+  platform-issued by Swastik, not a manifest field), `marketplaceCategory` (required for
+  Marketplace tier), and `required` (whether a load failure is fatal).
 - **Contract** — `provides` (the DI tokens you publish) and `depends` (the tokens you
   consume), `commands`, `events` and `eventsCatalog`, `services`, `repositories`, `jobs`,
   `tasks`, `routes`, `middleware`, `migrations`, `locales`, `config`, `dashboardSchema`,
@@ -114,11 +114,12 @@ manifest.json — the health module's, in full
   "description": "Displays comprehensive system health and diagnostic information.",
   "tier": "core",
   "hardcoded": false,
-  "releaseStatus": "stable",
-  "marketplaceCategory": "utility",
+  "visibility": "public",
+  "releaseStatus": "public",
+  "devId": "dev_first_party",
   "required": false,
   "depends": [], "provides": [], "intents": [], "partials": [],
-  "commands": [{ "name": "health", "description": "Displays comprehensive system health." }],
+  "commands": [{ "name": "health", "description": "Displays comprehensive system health and diagnostic information." }],
   "events": [], "services": [], "repositories": [], "jobs": [], "tasks": [],
   "routes": [], "middleware": [], "migrations": [], "locales": ["en-US"],
   "config": {}, "eventsCatalog": [], "crossModuleReads": []
@@ -132,14 +133,13 @@ rules:
 - `tier: 'marketplace'` ⇒ a `marketplaceCategory` must be present.
 - `tier: 'core'` ⇒ no command may declare an RBAC requirement (Core is RBAC-exempt).
 
-> **Code gap to be aware of.** The specification describes a richer manifest than the
-> runtime schema currently validates: `visibility` as a required field, `releaseStatus`
-> as `['private','public']`, `depends`/`provides`/`services` as arrays of structured
-> objects, `devId`/`buildId` as required, and `marketplaceCategory` as a closed enum. The
-> current `manifest.json` schema accepts the narrower shape shown above. Per the project's
-> standing rule the specification is the target; these are implementation gaps, listed in
-> `status/code-reconciliation.json`. Write to the specification, and expect the loader to
-> tighten to it.
+> **Reconciled with the code.** The runtime schema (`packages/swastik/src/manifest-schema.ts`)
+> now matches the specification: `visibility` is a required field, `releaseStatus` is
+> `['private','public']`, `depends`/`provides`/`services` are arrays of structured objects,
+> `devId` is required, and `marketplaceCategory` is a closed enum. `buildId` is the one
+> field that moved the other way — it is platform-issued by Swastik and is not an
+> author-declared manifest field (UR-20261019-103). The reconciliation is recorded in
+> `status/code-reconciliation.json`.
 
 ---
 

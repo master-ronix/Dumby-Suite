@@ -105,14 +105,14 @@ dumby-suite/
 │       │   │   └── README.md
 │       │   └── security/
 │       │       └── README.md
-│       ├── scripts/   ← migrate · seed · build/seed modules · smoke · verify
-│       │   ├── build-first-party-modules.ts
+│       ├── scripts/   ← migrate · seed · build/push modules · smoke · verify
+│       │   ├── build-modules.ts
 │       │   ├── chaos-test.ts
 │       │   ├── check-generated-syntax.ts
 │       │   ├── e2e-test.ts
 │       │   ├── load-test.ts
 │       │   ├── migrate.ts
-│       │   ├── seed-first-party-modules.ts
+│       │   ├── push-modules.ts
 │       │   ├── seed.ts
 │       │   ├── smoke-test.ts
 │       │   ├── swastik-deploy.ts

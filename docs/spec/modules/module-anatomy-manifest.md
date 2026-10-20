@@ -79,8 +79,10 @@ file). The specified field set, with its co-constraints:
   conflicting fields together**, not three independent errors.
 - **`devId`** (string, required) — the registered developer identifier (§15.6), required
   to equal the subject of the licence under which the module is submitted (§15.7).
-- **`buildId`** (string, required) — the identifier for this specific uploaded version
-  (§15.8); the registry validates the `devId`/`buildId` pair before load.
+- **`buildId`** (platform-issued — not a manifest field) — the identifier for this specific
+  uploaded version (§15.8) is issued by Swastik and carried on the build-provenance sidecar
+  and the `builds` row, never declared in the manifest; the loader validates the
+  `devId`/`buildId` binding before load (UR-20261019-103).
 - **`marketplaceCategory`** (`audio` | `community` | `security` | `integrations` |
   `utility`, required when `tier === 'marketplace'`, forbidden otherwise) — a closed
   five-value enum; an unknown category fails validation rather than creating a sixth
@@ -111,13 +113,15 @@ tier may; a Marketplace module MUST declare a `marketplaceCategory`; a Core modu
 commands MUST NOT declare an RBAC requirement (Core is RBAC-exempt); and a `hardcoded:
 true` module MUST be `private`.
 
-> **Divergence — spec is authority, code is the gap.** The runtime Zod schema currently
-> narrows several fields above (`releaseStatus` is `['alpha','beta','stable','deprecated']`
-> and optional; there is no `visibility` field; `devId`/`buildId` are optional; `required`
-> is mandatory; `marketplaceCategory` is a free string; `depends`/`provides`/`services`
-> are `z.array(z.string())`). Per the project's standing rule the specification is the
-> target state and these are implementation gaps, logged in
-> `status/code-reconciliation.json` (REC-001, REC-002, REC-005, REC-019…REC-022).
+> **Reconciled — the schema now expresses the contract.** The runtime Zod schema
+> (`packages/swastik/src/manifest-schema.ts`, shared by the loader) matches this field set:
+> `releaseStatus` is required and `['private','public']`; `visibility` is required
+> (`['public','unlisted','private']`); `devId` is required; `required` defaults to `false`;
+> `marketplaceCategory` is a closed five-value enum; and `depends`/`provides`/`services` are
+> arrays of structured objects. `buildId` is the one field that moved the other way: it is
+> platform-issued by Swastik (§15.8) and is no longer an author-declared manifest field. The
+> reconciliation is recorded in `status/code-reconciliation.json` (REC-001, REC-002, REC-005,
+> REC-019…REC-022).
 
 ### 11.3 Manifest vs. Database — What Lives Where
 
