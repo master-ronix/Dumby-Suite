@@ -61,7 +61,6 @@ let logger: Logger;
 let db: DbClient;
 let modulesDir: string;
 let stagingVolume: string;
-let liveVolume: string;
 let promotionLock: RedisLockStore;
 let lockRedis: Redis;
 let credentialClient: CredentialClient;
@@ -88,9 +87,7 @@ async function init(): Promise<void> {
   });
   modulesDir = env.MODULES_DIR;
   stagingVolume = env.SWASTIK_STAGING_VOLUME_PATH;
-  liveVolume = env.SWASTIK_LIVE_VOLUME_PATH;
   if (!existsSync(stagingVolume)) mkdirSync(stagingVolume, { recursive: true });
-  if (!existsSync(liveVolume)) mkdirSync(liveVolume, { recursive: true });
 }
 
 function liveVolumeForTier(tier: ModuleTier): string {
@@ -994,7 +991,6 @@ app.get('/swastik/status', async (_request, reply) => {
     developers: { total: Number(devCount?.count ?? 0), pending: Number(pendingDevs?.count ?? 0) },
     builds: { total: Number(buildCount?.count ?? 0), passed: Number(passedBuilds?.count ?? 0) },
     stagingVolume,
-    liveVolume,
     tierVolumes: { ...TIER_VOLUME_NAMES },
   });
 });
@@ -1024,7 +1020,6 @@ export async function startSwastik(): Promise<void> {
     port: env.SWASTIK_PORT,
     modulesDir,
     stagingVolume,
-    liveVolume,
     tierVolumes: { ...TIER_VOLUME_NAMES },
   });
 }

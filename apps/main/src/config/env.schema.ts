@@ -168,7 +168,6 @@ const baseEnvSchema = z
     // Appendix C #18 — the operational runbooks directory surfaced by the operational tooling.
     OPERATIONAL_RUNBOOKS_DIR: z.string().default('apps/main/docs/runbooks'),
     SWASTIK_STAGING_VOLUME_PATH: z.string().default('/mnt/modules/swastik-staging'),
-    SWASTIK_LIVE_VOLUME_PATH: z.string().default('/mnt/modules/modules-core'),
     // §15.8 build provenance — the OPTIONAL signature layer (L2). The loader ALWAYS enforces the hash
     // floor (L1) against the build row; when a key is configured it also verifies the signature. The
     // private key is never persisted; only the PUBLIC half is needed to verify.
