@@ -55,6 +55,8 @@ describe('registration refuses malformed identifiers', () => {
     discordApplicationId: APP_ID,
     boundGuildId: '1062427177326497863',
     botToken: TOKEN,
+    // UR-20261021-095 — the client secret is required, exactly as the bot token and the app id are.
+    oauthClientSecret: 'PI1-1rawNAseEKe0W5M3lI-Avg9b4QT2',
     registrarAuthority: '463269847023288331',
     ...over,
   });
