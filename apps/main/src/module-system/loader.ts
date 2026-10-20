@@ -170,7 +170,7 @@ export class ModuleLoader {
                   moduleId: mod.manifest.name,
                   identity: {
                     surface: `Dumby Suite | ${mod.manifest.name}`,
-                    buildId: mod.manifest.buildId,
+                    ...(mod.buildId !== undefined ? { buildId: mod.buildId } : {}),
                     devUsername:
                       mod.manifest.ui?.devUsername ??
                       resolveRegisteredDeveloper(mod.manifest.devId) ??

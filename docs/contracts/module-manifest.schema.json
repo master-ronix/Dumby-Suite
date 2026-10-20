@@ -11,7 +11,6 @@
     "tier",
     "hardcoded",
     "devId",
-    "buildId",
     "visibility",
     "releaseStatus"
   ],
@@ -63,9 +62,6 @@
       ]
     },
     "devId": {
-      "type": "string"
-    },
-    "buildId": {
       "type": "string"
     },
     "marketplaceCategory": {
@@ -341,7 +337,7 @@
   "x-code-gaps": [
     "releaseStatus: runtime ['alpha','beta','stable','deprecated'] optional (spec: ['private','public'], required)",
     "visibility: absent from the runtime schema (spec: required field)",
-    "devId / buildId: optional in the runtime schema (spec: required)",
+    "devId: optional in the runtime schema (spec: required); buildId is PLATFORM-ISSUED by Swastik, not author-declared",
     "required: mandatory boolean in the runtime schema (spec: default false)",
     "marketplaceCategory: free string in the runtime schema (spec: closed five-value enum)",
     "depends / provides / services: z.array(z.string()) in the runtime schema (spec: arrays of structured objects)"

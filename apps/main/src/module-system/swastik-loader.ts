@@ -406,7 +406,11 @@ export async function loadModulesFromTierVolumes(
         if (pkg.onUnload) loadedModule.onUnload = pkg.onUnload;
         // UR-20261012-066 — carry the module's directory, so the core can resolve an asset the
         // module declares in its own manifest instead of holding a copy of the path itself.
-        registry.register({ ...loadedModule, root: moduleDir });
+        registry.register({
+          ...loadedModule,
+          root: moduleDir,
+          ...(buildId !== null ? { buildId } : {}),
+        });
 
         loaded.push(manifest.name);
         logger.info('module-volume-loaded', {

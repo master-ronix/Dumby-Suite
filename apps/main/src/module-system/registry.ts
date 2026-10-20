@@ -26,6 +26,8 @@ export interface ModuleTaskDeclaration {
 
 export interface LoadedModule {
   manifest: ModuleManifest;
+  /** UR-20261019-103 — the PLATFORM-ISSUED buildId for this module (Swastik), for the identity band. */
+  buildId?: string;
   /**
    * UR-20261012-066 — the module's own directory inside the image.
    *
