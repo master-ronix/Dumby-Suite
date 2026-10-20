@@ -12,3 +12,7 @@ The five operational runbooks specified in `docs/spec/lifecycle/troubleshooting-
 | 43.5 | Slow Command | `slow-command.md` |
 
 §43.7 (Module Hot-Swap Failure) is additionally covered by the Swastik promotion rollback path.
+
+Beyond the incident runbooks, `module-deployment.md` documents the sanctioned end-to-end pathway by
+which a module reaches a running bot (register → approve → upload → deploy → reload), and the load-time
+provenance checks that refuse anything that did not go through it.
