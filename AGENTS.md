@@ -31,7 +31,9 @@ Run from the repo root. Verification chain (mirrors CI; run in this order before
 - `pnpm --filter @workspace/dumby lint` — ESLint `--max-warnings=0`; zero warnings allowed.
 - `pnpm --filter @workspace/dumby format` — `prettier --check` (read-only). `format:fix` rewrites.
 - `pnpm --filter @workspace/dumby test:coverage` — Vitest; includes only `tests/unit/**/*.test.ts`.
-  Global floors 70 stmt / 65 branch / 70 func / 70 line (no per-directory floors). No external services.
+  Per-layer floors (directive D-8.2, never a blended average): `src/commands/**` 75/65/75/75,
+  `src/queue/**` and `src/http/**` 70/65/70/70, `src/**` 70/65/70/70 as the ratchet baseline.
+  No external services.
 - `pnpm --filter @workspace/dumby test:integration` — needs live Postgres + Redis
   (`docker compose up` in `apps/main`); serial per file, 20s timeouts.
 
