@@ -5,18 +5,38 @@
  * script runs Swastik (the module deploy service) on loopback *in this container* — the only place the
  * module volume is mounted — seeds the first-party deployer identity, pushes the built bundles through
  * `POST /internal/deploy` (real provenance: sidecar + `builds` row + signature), and then starts the
- * bot. The bot is started **unconditionally**: if any seeding step fails, the outcome is the previous
- * behaviour (a bot with no modules), never a container that does not start.
+ * bot.
+ *
+ * Two deliberate properties:
+ *   - **Idempotent.** If the tier volumes already hold a module, the whole seed is skipped: a restart
+ *     must not redeploy modules or write new `builds` / `deployment_records` rows, and it must not
+ *     spend the healthcheck window re-pushing. The volume is the source of truth once populated.
+ *   - **Fail-safe.** The bot is started unconditionally. If any seeding step fails, the outcome is the
+ *     previous behaviour (a bot with no modules), never a container that does not start.
  *
  * Plain JS so it runs in the production runtime image (no tsx, no `src/`).
  */
 import { spawn, spawnSync } from 'node:child_process';
+import { existsSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { main as seedDeployer } from './seed-first-party-deployer.mjs';
 import { main as pushModules } from './push-modules-lite.mjs';
 
 const port = process.env.SWASTIK_PORT ?? '8085';
 const internalApiKey = process.env.INTERNAL_API_KEY ?? '';
+const modulesDir = process.env.MODULES_DIR ?? '/mnt/modules';
+const TIER_VOLUMES = ['modules-admin', 'modules-core', 'modules-standard', 'modules-marketplace'];
+
+/** True when any tier volume already holds a module directory (a non-hidden entry). */
+function volumesPopulated() {
+  for (const volume of TIER_VOLUMES) {
+    const dir = join(modulesDir, volume);
+    if (!existsSync(dir)) continue;
+    if (readdirSync(dir).some((entry) => !entry.startsWith('.'))) return true;
+  }
+  return false;
+}
 
 async function waitForSwastik() {
   for (let attempt = 0; attempt < 60; attempt += 1) {
@@ -33,30 +53,38 @@ async function waitForSwastik() {
   return false;
 }
 
-// 1. Migrations first, so the developer/licence tables exist for the seed. Idempotent; best-effort.
-try {
-  spawnSync('node', ['dist/entry/migrate.js', 'up'], { stdio: 'inherit' });
-} catch (err) {
-  console.error(`start-production: migrate step failed (continuing): ${String(err)}`);
-}
+let swastik;
 
-// 2. Swastik, on loopback, in this container (it owns no volume of its own, but this one is mounted).
-const swastik = spawn('node', ['dist/entry/swastik.js'], { stdio: 'inherit' });
-
-// 3. Seed the deployer identity, then push the built modules through the real deploy flow.
-if (await waitForSwastik()) {
-  try {
-    await seedDeployer();
-  } catch (err) {
-    console.error(`start-production: deployer seed failed (continuing): ${String(err)}`);
-  }
-  try {
-    await pushModules(`http://127.0.0.1:${port}`);
-  } catch (err) {
-    console.error(`start-production: module push failed (continuing): ${String(err)}`);
-  }
+if (volumesPopulated()) {
+  console.log(`start-production: ${modulesDir} already populated; skipping the module seed`);
 } else {
-  console.error('start-production: Swastik did not become ready; starting the bot without seeding');
+  // 1. Migrations first, so the developer/licence tables exist for the seed. Idempotent; best-effort.
+  try {
+    spawnSync('node', ['dist/entry/migrate.js', 'up'], { stdio: 'inherit' });
+  } catch (err) {
+    console.error(`start-production: migrate step failed (continuing): ${String(err)}`);
+  }
+
+  // 2. Swastik, on loopback, in this container (the module volume is mounted here).
+  swastik = spawn('node', ['dist/entry/swastik.js'], { stdio: 'inherit' });
+
+  // 3. Seed the deployer identity, then push the built modules through the real deploy flow.
+  if (await waitForSwastik()) {
+    try {
+      await seedDeployer();
+    } catch (err) {
+      console.error(`start-production: deployer seed failed (continuing): ${String(err)}`);
+    }
+    try {
+      await pushModules(`http://127.0.0.1:${port}`);
+    } catch (err) {
+      console.error(`start-production: module push failed (continuing): ${String(err)}`);
+    }
+  } else {
+    console.error(
+      'start-production: Swastik did not become ready; starting the bot without seeding',
+    );
+  }
 }
 
 // 4. The bot. Started unconditionally.
@@ -70,7 +98,7 @@ for (const signal of ['SIGTERM', 'SIGINT']) {
       /* already gone */
     }
     try {
-      swastik.kill(signal);
+      swastik?.kill(signal);
     } catch {
       /* already gone */
     }
@@ -79,7 +107,7 @@ for (const signal of ['SIGTERM', 'SIGINT']) {
 
 bot.on('exit', (code) => {
   try {
-    swastik.kill('SIGTERM');
+    swastik?.kill('SIGTERM');
   } catch {
     /* already gone */
   }
