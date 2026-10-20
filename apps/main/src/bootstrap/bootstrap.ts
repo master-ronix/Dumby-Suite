@@ -45,6 +45,7 @@ import { PostgresModuleInstallStore } from '../mdis/mdis.repository.js';
 import { OperationalService } from '../operational/operational.service.js';
 import { PowerEngineDispatcher } from '../http/power-engine-dispatcher.js';
 import { loadModulesFromTierVolumes } from '../module-system/swastik-loader.js';
+import { PostgresDeveloperRegistry } from '../module-system/developer-registry.js';
 import { PostgresBuildStore } from '../db/repositories/build.repository.js';
 import { armBuildProvenance, BuildSignatureVerifier } from '../module-system/build-signing.js';
 import { rootKeyFromBase64 } from '../crypto/envelope.js';
@@ -290,7 +291,13 @@ export async function bootstrapWorker(): Promise<void> {
   progress.advanceTo('MODULE_VALIDATE');
   const policyPath = config.get('SECURITY_POLICY_LOCKFILE');
   const securityPolicy = existsSync(policyPath) ? loadPolicyLockfile(policyPath) : undefined;
-  const moduleLoader = new ModuleLoader(moduleRegistry, moduleContainer, logger, securityPolicy);
+  const moduleLoader = new ModuleLoader(
+    moduleRegistry,
+    moduleContainer,
+    logger,
+    securityPolicy,
+    new PostgresDeveloperRegistry(db.knex),
+  );
   moduleLoader.validateAll();
 
   progress.advanceTo('MODULE_LOAD');
@@ -1184,7 +1191,13 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   progress.advanceTo('MODULE_VALIDATE');
   const policyPath = config.get('SECURITY_POLICY_LOCKFILE');
   const securityPolicy = existsSync(policyPath) ? loadPolicyLockfile(policyPath) : undefined;
-  const moduleLoader = new ModuleLoader(moduleRegistry, moduleContainer, logger, securityPolicy);
+  const moduleLoader = new ModuleLoader(
+    moduleRegistry,
+    moduleContainer,
+    logger,
+    securityPolicy,
+    new PostgresDeveloperRegistry(db.knex),
+  );
   moduleLoader.setModuleContextResolver(moduleContextResolver);
   // UR-20261012-072 — the config service is built before the loader, so the notifier is attached
   // here. A per-guild module config write now reaches the module's `onConfigChange` (§11.7).

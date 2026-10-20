@@ -1,7 +1,11 @@
 import type { Container } from '../di/container.js';
 import type { Logger } from '../logging/logger.js';
 import { topologicalLoadOrder, classifyLoadFailures, type ModuleNode } from './topo-sort.js';
-import { resolveRegisteredDeveloper } from './developer-registry.js';
+import {
+  resolveDeveloperNames,
+  resolveRegisteredDeveloper,
+  type DeveloperRegistry,
+} from './developer-registry.js';
 import { validateTierRules } from './tier-rules.js';
 import { checkModuleAgainstPolicy, type SecurityPolicy } from './policy-lockfile.js';
 import type { LoadedModule, ModuleRegistry } from './registry.js';
@@ -79,6 +83,8 @@ export class ModuleLoader {
     private readonly container: Container,
     private readonly logger: Logger,
     private readonly policy?: SecurityPolicy,
+    /** UR-20261021-095 — the DB-backed developer registry for attribution. Optional. */
+    private readonly developerRegistry?: DeveloperRegistry,
   ) {}
 
   /**
@@ -150,6 +156,12 @@ export class ModuleLoader {
   async loadAll(): Promise<ModuleLoadReport> {
     const nodes = this.nodes();
     const order = topologicalLoadOrder(nodes);
+    // UR-20261021-095 — resolve the developer attribution from the DB-backed registry once, for every
+    // module, rather than reading the frozen static map per command.
+    const devNames = await resolveDeveloperNames(
+      this.registry.all().map((m) => m.manifest.devId),
+      this.developerRegistry,
+    );
 
     const failed: string[] = [];
     for (const name of order) {
@@ -173,6 +185,7 @@ export class ModuleLoader {
                     ...(mod.buildId !== undefined ? { buildId: mod.buildId } : {}),
                     devUsername:
                       mod.manifest.ui?.devUsername ??
+                      devNames.get(mod.manifest.devId ?? '') ??
                       resolveRegisteredDeveloper(mod.manifest.devId) ??
                       mod.manifest.devId,
                     ...(mod.manifest.ui?.displayName !== undefined
