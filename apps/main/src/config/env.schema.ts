@@ -169,6 +169,12 @@ const baseEnvSchema = z
     OPERATIONAL_RUNBOOKS_DIR: z.string().default('apps/main/docs/runbooks'),
     SWASTIK_STAGING_VOLUME_PATH: z.string().default('/mnt/modules/swastik-staging'),
     SWASTIK_LIVE_VOLUME_PATH: z.string().default('/mnt/modules/modules-core'),
+    // §15.8 build provenance — the OPTIONAL signature layer (L2). The loader ALWAYS enforces the hash
+    // floor (L1) against the build row; when a key is configured it also verifies the signature. The
+    // private key is never persisted; only the PUBLIC half is needed to verify.
+    BUILD_SIGNING_KEY_ID: z.string().default(''),
+    BUILD_SIGNING_PRIVATE_KEY: z.string().default(''),
+    BUILD_SIGNING_PUBLIC_KEY: z.string().default(''),
     // §15.9 quarantine root for refused modules. Empty => `<MODULES_DIR>/quarantine`.
     SWASTIK_QUARANTINE_PATH: z.string().default(''),
 

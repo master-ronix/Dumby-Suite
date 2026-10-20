@@ -20,6 +20,7 @@ import { assertPathInside, assertSafeSlug, assertSafeVersion } from '../shared/u
 import {
   hashFile,
   readBuildProvenanceSidecar,
+  tupleFromSidecar,
   type BuildSignatureVerifier,
 } from './build-signing.js';
 import type { BuildProvenanceRecord, BuildStore } from '../db/repositories/build.repository.js';
@@ -144,6 +145,8 @@ function verifyBuildProvenance(input: {
   readonly moduleDir: string;
   readonly indexPath: string;
   readonly buildStore: BuildStore;
+  /** OPTIONAL signature layer (L2). When present, the signature is verified on top of the floor. */
+  readonly verifier?: BuildSignatureVerifier;
 }): Promise<ProvenanceVerdict> {
   const sidecar = readBuildProvenanceSidecar(input.moduleDir);
   if (sidecar === null) {
@@ -198,6 +201,24 @@ function verifyBuildProvenance(input: {
     }
     // The loader TRUSTS the per-module buildId the deploy flow issued (the `builds` row), instead of a
     // static BUILD_SIGNING_* key. The artifact hash above still ties the on-disk bytes to the row.
+    // OPTIONAL signature layer (L2): checked ONLY when a verifier is armed. The hash floor (L1)
+    // above always runs, so a key adds checking rather than gating the floor.
+    if (input.verifier !== undefined) {
+      const signedOk = input.verifier.verifyTuple(tupleFromSidecar(sidecar), {
+        signature: record.signature ?? '',
+        signatureKeyId: record.signatureKeyId ?? '',
+        signedDescriptor: record.signedDescriptor ?? '',
+      });
+      if (!signedOk) {
+        return {
+          ok: false as const,
+          reason: 'Ed25519 signature does not cover the deployed artifact bytes',
+          buildId: sidecar.buildId,
+          expectedArtifactHash: record.artifactHash,
+          actualArtifactHash,
+        };
+      }
+    }
     return { ok: true as const, buildId: sidecar.buildId };
   });
 }
@@ -241,7 +262,7 @@ export async function loadModulesFromTierVolumes(
   const loaded: string[] = [];
   const failed: string[] = [];
 
-  const { buildStore } = options;
+  const { buildStore, verifier } = options;
   const guardActive = buildStore !== undefined;
   const quarantineDir = options.quarantineDir ?? join(modulesDir, 'quarantine');
   if (!guardActive) {
@@ -338,6 +359,7 @@ export async function loadModulesFromTierVolumes(
             moduleDir,
             indexPath,
             buildStore,
+            ...(verifier !== undefined ? { verifier } : {}),
           });
           if (!verdict.ok) {
             const quarantinedTo = quarantineModuleDir({

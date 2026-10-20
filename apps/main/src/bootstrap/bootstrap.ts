@@ -46,6 +46,7 @@ import { OperationalService } from '../operational/operational.service.js';
 import { PowerEngineDispatcher } from '../http/power-engine-dispatcher.js';
 import { loadModulesFromTierVolumes } from '../module-system/swastik-loader.js';
 import { PostgresBuildStore } from '../db/repositories/build.repository.js';
+import { armBuildProvenance, BuildSignatureVerifier } from '../module-system/build-signing.js';
 import { rootKeyFromBase64 } from '../crypto/envelope.js';
 import { PostgresSealedCredentialStore } from '../db/repositories/sealed-credential.repository.js';
 import { SealedCredentialService } from '../credentials/sealed-credential.service.js';
@@ -255,13 +256,28 @@ export async function bootstrapWorker(): Promise<void> {
   workerQueueGate = (moduleId, guildId) =>
     workerEnablement.isModuleEnabledForGuild(guildId, moduleId);
   const buildStore = new PostgresBuildStore(db.knex);
-  // UR-20261019-101 — the loader trusts the per-module buildId the deploy flow issued (the `builds`
-  // row). No BUILD_SIGNING_* key is required, so no signing verifier is armed here.
+  // §15.8/§15.9 — the hash floor (L1) is ALWAYS enforced against the build row. The signature layer
+  // (L2) is OPTIONAL and COORDINATED: armed only when a BUILD_SIGNING_* key is configured, so it adds
+  // checking without gating the floor. A bad key degrades to a warning and boot continues.
+  const verifier = new BuildSignatureVerifier();
+  const provenance = armBuildProvenance(
+    verifier,
+    config.get('BUILD_SIGNING_KEY_ID'),
+    config.get('BUILD_SIGNING_PRIVATE_KEY'),
+    config.get('BUILD_SIGNING_PUBLIC_KEY'),
+  );
+  if (provenance.error !== undefined) {
+    logger.warn(
+      `build-signing-key-invalid: ${provenance.error} — BUILD_SIGNING_PUBLIC_KEY must be a single-line PEM with escaped newlines; the signature layer stays OFF (the hash floor still runs) and boot continues`,
+      { error: provenance.error },
+    );
+  }
   await loadModulesFromTierVolumes({
     modulesDir: config.get('MODULES_DIR'),
     registry: moduleRegistry,
     logger,
     buildStore,
+    ...(provenance.armed ? { verifier } : {}),
   });
 
   progress.advanceTo('MODULE_VALIDATE');
@@ -1117,15 +1133,28 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   const moduleContainer = container.createChild();
 
   progress.advanceTo('MODULE_DISCOVER');
-  // §15.8/§15.9 (finding #23): the loader's load-time provenance guard. UR-20261019-101 — it now
-  // trusts the per-module buildId the deploy flow issued (the `builds` row); no signing key is
-  // required, so no verifier is armed here.
+  // §15.8/§15.9 — the hash floor (L1) is ALWAYS enforced; the signature layer (L2) is OPTIONAL and
+  // COORDINATED: armed only when a BUILD_SIGNING_* key is configured.
   const buildStore = new PostgresBuildStore(db.knex);
+  const verifier = new BuildSignatureVerifier();
+  const provenance = armBuildProvenance(
+    verifier,
+    config.get('BUILD_SIGNING_KEY_ID'),
+    config.get('BUILD_SIGNING_PRIVATE_KEY'),
+    config.get('BUILD_SIGNING_PUBLIC_KEY'),
+  );
+  if (provenance.error !== undefined) {
+    logger.warn(
+      `build-signing-key-invalid: ${provenance.error} — BUILD_SIGNING_PUBLIC_KEY must be a single-line PEM with escaped newlines; the signature layer stays OFF (the hash floor still runs) and boot continues`,
+      { error: provenance.error },
+    );
+  }
   const discoveredModules = await loadModulesFromTierVolumes({
     modulesDir: config.get('MODULES_DIR'),
     registry: moduleRegistry,
     logger,
     buildStore,
+    ...(provenance.armed ? { verifier } : {}),
     // UR-C-07: the operator-configured quarantine directory for a module that fails verification
     // (the loader falls back to `<modulesDir>/quarantine` when it is unset).
     ...(config.get('SWASTIK_QUARANTINE_PATH') !== ''
