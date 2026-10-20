@@ -39,11 +39,11 @@ COPY apps/main/src ./apps/main/src
 COPY apps/main/scripts ./apps/main/scripts
 # Build the swastik SDK (the bot imports it), typecheck + compile the bot, build the
 # first-party module bundles, and place them on their tier volumes inside the image.
+# Option A — the image ships NO modules. Modules live on the tier volume mounts and are pushed into
+# them through the Swastik flow after the service is up (see scripts/push-modules.ts).
 RUN pnpm --filter @workspace/swastik build \
  && pnpm --filter @workspace/dumby typecheck \
- && pnpm --filter @workspace/dumby build \
- && pnpm --filter @workspace/dumby build:modules \
- && node apps/main/scripts/place-first-party-modules.mjs /mnt/modules
+ && pnpm --filter @workspace/dumby build
 
 # ── Stage: runtime ─────────────────────────────────────────────────────────────
 FROM base AS runtime
@@ -57,16 +57,10 @@ COPY apps/main/assets ./apps/main/assets
 # apps/main/node_modules/@workspace/swastik links to /app/packages/swastik, so the whole
 # SDK (package.json + compiled dist + its own node_modules for `zod`) must be present.
 COPY --from=builder /app/packages/swastik ./packages/swastik
-# The first-party modules are baked at image build time, so the bot boots with the Core
-# Command Surface and needs no external volume. They are placed at /app/baked-modules —
-# OUTSIDE any volume mount — and MODULES_DIR points there, because a Railway volume mounted
-# at /mnt/modules would shadow the baked tree and leave the bot with zero commands. A copy
-# is still placed at /mnt/modules for deployments that override MODULES_DIR to the
-# documented default. Both trees are chowned to `node` so promotion/quarantine can write.
-COPY --from=builder /mnt/modules /mnt/modules
-COPY --from=builder /mnt/modules /app/baked-modules
-RUN chown -R node:node /app/baked-modules /mnt/modules
-ENV MODULES_DIR=/app/baked-modules
+# Option A — the module root is the tier VOLUME MOUNTS. The image bakes no modules; MODULES_DIR
+# points at the mount, and modules are pushed into it through the Swastik flow after the service is
+# up (`pnpm push:modules`). The mount must be writable by the non-root `node` user (RAILWAY_RUN_UID=0).
+ENV MODULES_DIR=/mnt/modules
 COPY apps/main/package.json apps/main/tsconfig.json ./apps/main/
 EXPOSE 8080 8081 8082
 USER node
