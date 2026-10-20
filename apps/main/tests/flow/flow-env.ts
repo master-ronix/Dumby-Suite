@@ -19,6 +19,16 @@ export const FLOW_OWNER_ID = '111111111111111111';
 export const FLOW_GUILD_ID = '222222222222222222';
 export const DATABASE_URL = `postgres://dumby:dumby@localhost:${PG_PORT}/dumby`;
 
+// UR-20261019-103 — the ephemeral Ed25519 keypair that arms the mandatory build-signature layer and
+// signs any module a flow test seeds. Exported so a test can sign its own fixture with the private
+// key; the public half is what the armed verifier holds.
+export const FLOW_SIGNING_KEY_ID = 'build-signing-flow';
+const flowKeyPair = generateKeyPairSync('ed25519');
+export const FLOW_SIGNING_PRIVATE_KEY_PEM = flowKeyPair.privateKey
+  .export({ type: 'pkcs8', format: 'pem' })
+  .toString();
+const flowPublicPem = flowKeyPair.publicKey.export({ type: 'spki', format: 'pem' }).toString();
+
 const migrationsSrc = fileURLToPath(new URL('../../src/db/migrations/', import.meta.url));
 const migrationsOut = mkdtempSync(join(tmpdir(), 'dumby-migrations-'));
 await build({
@@ -59,12 +69,9 @@ Object.assign(process.env, {
   METRICS_PORT: String(METRICS_PORT),
   // UR-20261019-103 — the module-build signature layer (L2) is MANDATORY at boot, so bootstrap
   // throws unless a verifier is armed. Arm it with an ephemeral Ed25519 keypair (single-line PEM with
-  // escaped newlines, the form normalizeSigningKey reads). The flow env's MODULES_DIR is empty, so no
-  // module is signed or verified with it — it exists only so the boot can complete.
-  BUILD_SIGNING_KEY_ID: 'build-signing-flow',
-  BUILD_SIGNING_PUBLIC_KEY: (
-    generateKeyPairSync('ed25519').publicKey.export({ type: 'spki', format: 'pem' }) as string
-  )
-    .trim()
-    .replace(/\n/g, '\\n'),
+  // escaped newlines, the form normalizeSigningKey reads). A flow test that seeds a module signs it
+  // with the matching private key (exported below).
+  BUILD_SIGNING_KEY_ID: FLOW_SIGNING_KEY_ID,
+  BUILD_SIGNING_PUBLIC_KEY: flowPublicPem.trim().replace(/\n/g, '\\n'),
+  BUILD_SIGNING_PRIVATE_KEY: FLOW_SIGNING_PRIVATE_KEY_PEM.trim().replace(/\n/g, '\\n'),
 });

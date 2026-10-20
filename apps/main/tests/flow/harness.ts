@@ -3,6 +3,8 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import EmbeddedPostgres from 'embedded-postgres';
+import knexFactory, { type Knex } from 'knex';
+import knexConfig from '../../src/db/knexfile.js';
 import RedisMock from 'ioredis-mock';
 import type { Redis } from 'ioredis';
 import { bootstrap, type BootstrapHandle } from '../../src/bootstrap/bootstrap.js';
@@ -15,7 +17,17 @@ export interface FlowContext {
   teardown(): Promise<void>;
 }
 
-export async function startFlow(): Promise<FlowContext> {
+export interface FlowStartOptions {
+  /**
+   * UR-20261019-103 — run after the database exists and migrations are applied but BEFORE bootstrap,
+   * so a test can seed state that module discovery reads at boot (e.g. a signed `builds` row for a
+   * module on a tier volume). Bootstrap's own migration stage is idempotent, so running them here is
+   * safe.
+   */
+  beforeBootstrap?(knex: Knex): Promise<void>;
+}
+
+export async function startFlow(options: FlowStartOptions = {}): Promise<FlowContext> {
   const dataDir = mkdtempSync(join(tmpdir(), 'dumby-pg-'));
   const pg = new EmbeddedPostgres({
     databaseDir: dataDir,
@@ -27,6 +39,13 @@ export async function startFlow(): Promise<FlowContext> {
   await pg.initialise();
   await pg.start();
   await pg.createDatabase('dumby');
+
+  if (options.beforeBootstrap) {
+    const seedKnex = knexFactory(knexConfig.test as Knex.Config);
+    await seedKnex.migrate.latest();
+    await options.beforeBootstrap(seedKnex);
+    await seedKnex.destroy();
+  }
 
   const redis = new RedisMock() as unknown as Redis;
   const queueRedis = new RedisMock() as unknown as Redis;
