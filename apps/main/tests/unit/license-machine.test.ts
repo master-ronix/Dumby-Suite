@@ -194,6 +194,26 @@ test('devId-license binding: manifest devId must equal the license subject, fail
   expect(licenseMatchesManifestDevId(license, '')).toBe(false);
 });
 
+test('an admin-tier licence authorises the first-party modules (core + standard) — the boot-seed', () => {
+  // UR-20261021-095 — the production boot-seed registers the first-party deployer (dev_first_party)
+  // with an `admin`-tier licence, which must cover every first-party module tier. If it did not, the
+  // seed's `/internal/deploy` calls would be refused and the tier volumes would stay empty.
+  const admin = approvedLicenseWithTier('admin', 'dev_first_party');
+  expect(
+    licenseAuthorizesDeploy(admin, { manifestDevId: 'dev_first_party', moduleTier: 'core' }),
+  ).toStrictEqual([]);
+  expect(
+    licenseAuthorizesDeploy(admin, { manifestDevId: 'dev_first_party', moduleTier: 'standard' }),
+  ).toStrictEqual([]);
+  // A narrower licence does NOT cover the core tier — the guard is real, not a formality.
+  expect(
+    licenseAuthorizesDeploy(approvedLicenseWithTier('standard', 'dev_first_party'), {
+      manifestDevId: 'dev_first_party',
+      moduleTier: 'core',
+    }).length,
+  ).toBeGreaterThan(0);
+});
+
 test('licenseAuthorizesDeploy combines state, binding, and tier', () => {
   expect(
     licenseAuthorizesDeploy(approvedLicense(), {
