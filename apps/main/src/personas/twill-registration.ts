@@ -761,23 +761,29 @@ export function registerTwillPersonaRoutes(
   );
 
   /**
-   * Rotate a persona's credentials. At least one of `botToken` / `oauthClientSecret` is required.
+   * Rotate a persona's credentials. `oauthClientSecret` is required, exactly as it is at
+   * registration (UR-20261021-095) — a persona without it cannot authorize, so a rotation that omits
+   * it is refused rather than leaving the persona unable to authorize. `botToken` is optional.
    *
-   * Sending `"oauthClientSecret": null` CLEARS it, which drops the persona to the bot-token fallback
-   * (Route B). Sending a new one replaces it and invalidates the previous authorization, so the
-   * verification is re-earned on the next successful OAuth leg.
+   * A new secret replaces the previous one and invalidates the prior authorization, so verification
+   * is re-earned on the next successful OAuth leg.
    */
   app.post<{ Params: { personaId: string }; Body: PersonaCredentialBody }>(
     '/twill/personas/:personaId/credentials',
     async (request, reply) => {
       const body = request.body ?? {};
       const botToken = str(body.botToken);
-      const hasSecretKey = 'oauthClientSecret' in body;
       const secret = str(body.oauthClientSecret);
-      if (botToken === undefined && !hasSecretKey) {
+      if (secret === undefined) {
         return reply.code(400).send({
           error: 'Bad Request',
-          reason: 'at least one of botToken or oauthClientSecret is required',
+          reason: 'oauthClientSecret is required',
+        });
+      }
+      if (!isClientSecret(secret)) {
+        return reply.code(400).send({
+          error: 'Bad Request',
+          reason: 'oauthClientSecret is not a Discord client secret — from OAuth2 → Reset Secret',
         });
       }
       if (botToken !== undefined && !isBotToken(botToken)) {
@@ -785,12 +791,6 @@ export function registerTwillPersonaRoutes(
           error: 'Bad Request',
           reason:
             'botToken is not a Discord bot token — expected three dot-separated segments (from Bot → Reset Token)',
-        });
-      }
-      if (secret !== undefined && !isClientSecret(secret)) {
-        return reply.code(400).send({
-          error: 'Bad Request',
-          reason: 'oauthClientSecret is not a Discord client secret — from OAuth2 → Reset Secret',
         });
       }
       // UR-20261012-089 — the rotated token must belong to THIS persona's application, or the next
@@ -817,12 +817,7 @@ export function registerTwillPersonaRoutes(
                 botTokenSealed: sealPersonaBotToken(botToken, rootKey),
               }
             : {}),
-          ...(hasSecretKey
-            ? {
-                oauthClientSecretSealed:
-                  secret === undefined ? null : sealPersonaOAuthClientSecret(secret, rootKey),
-              }
-            : {}),
+          oauthClientSecretSealed: sealPersonaOAuthClientSecret(secret, rootKey),
         });
         // UR-20261012-085 — a new token means a new gateway login; reload so it is used now.
         await reload(persona.id);

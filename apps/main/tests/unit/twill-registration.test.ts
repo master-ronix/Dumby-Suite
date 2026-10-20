@@ -130,6 +130,20 @@ function buildRoutes(overrides: Record<string, unknown> = {}) {
     })),
     bindModuleToPersona: vi.fn(async (r: unknown) => r),
     unbindModule: vi.fn(async () => undefined),
+    rotatePersonaCredentials: vi.fn(async (id: string) => ({
+      id,
+      name: 'Nova',
+      discordApplicationId: APP_ID,
+      boundGuildId: GUILD_ID,
+      dmBehavior: 'prohibited',
+      shardAllocation: 1,
+      charter: 'free',
+      grandfathered: false,
+      status: 'active',
+      botTokenDigest: 'd',
+      botTokenSealed: { ciphertext: 'x' },
+      oauthClientSecretSealed: { ciphertext: 'y' },
+    })),
   };
   const identities = { findById: vi.fn(async () => undefined), list: vi.fn(async () => []) };
   const bindings = { findLive: vi.fn(async () => undefined) };
@@ -190,6 +204,29 @@ describe('twill persona routes', () => {
       payload: body,
     });
     expect(res.statusCode).toBe(409);
+  });
+
+  test('POST /credentials requires oauthClientSecret (UR-20261021-095)', async () => {
+    const { app, service } = buildRoutes();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/twill/personas/persona-1/credentials',
+      payload: { botToken: BOT_TOKEN },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().reason).toContain('oauthClientSecret');
+    expect(service.rotatePersonaCredentials).not.toHaveBeenCalled();
+  });
+
+  test('POST /credentials rotates when the secret is supplied', async () => {
+    const { app, service } = buildRoutes();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/twill/personas/persona-1/credentials',
+      payload: { oauthClientSecret: CLIENT_SECRET },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(service.rotatePersonaCredentials).toHaveBeenCalledTimes(1);
   });
 
   test('GET detail is 404 for an unknown persona and 200 for a known one', async () => {
