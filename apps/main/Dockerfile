@@ -43,7 +43,8 @@ COPY apps/main/scripts ./apps/main/scripts
 # them through the Swastik flow after the service is up (see scripts/push-modules.ts).
 RUN pnpm --filter @workspace/swastik build \
  && pnpm --filter @workspace/dumby typecheck \
- && pnpm --filter @workspace/dumby build
+ && pnpm --filter @workspace/dumby build \
+ && pnpm --filter @workspace/dumby build:modules
 
 # ── Stage: runtime ─────────────────────────────────────────────────────────────
 FROM base AS runtime
@@ -52,6 +53,10 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/main/node_modules ./apps/main/node_modules
 COPY --from=builder /app/apps/main/dist ./apps/main/dist
 COPY --from=builder /app/apps/main/scripts ./apps/main/scripts
+# UR-20261021-095 — the built module bundles. The image still ships no *live* modules (Option A); the
+# start script pushes these into the tier volumes through the sanctioned Swastik deploy flow, so the
+# volumes carry real provenance rather than hand-copied files.
+COPY --from=builder /app/apps/main/dist-modules ./apps/main/dist-modules
 # §11.5 - the banner asset the API surface serves at /assets/dumby-banner.png.
 COPY apps/main/assets ./apps/main/assets
 # apps/main/node_modules/@workspace/swastik links to /app/packages/swastik, so the whole
@@ -65,4 +70,6 @@ COPY apps/main/package.json apps/main/tsconfig.json ./apps/main/
 EXPOSE 8080 8081 8082
 USER node
 WORKDIR /app/apps/main
-CMD ["node", "dist/entry/main.js"]
+# UR-20261021-095 — seed the tier volumes through the Swastik flow, then run the bot. The bot starts
+# unconditionally, so a seeding failure degrades to the previous behaviour, never a dead container.
+CMD ["node", "scripts/start-production.mjs"]
