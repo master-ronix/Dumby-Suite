@@ -85,6 +85,7 @@ export function discoverModulePackages(
 export async function buildModulePackage(
   pkg: ModulePackage,
   outRoot: string = MODULES_BUILD_ROOT,
+  devIdOverride?: string,
 ): Promise<BuiltModule> {
   const buildDir = join(outRoot, pkg.slug);
   rmSync(buildDir, { recursive: true, force: true });
@@ -105,7 +106,13 @@ export async function buildModulePackage(
 
   const builtManifestPath = join(buildDir, MANIFEST_FILE);
   const builtIndexPath = join(buildDir, BUNDLE_FILE);
-  writeFileSync(builtManifestPath, readFileSync(pkg.manifestPath), 'utf8');
+  // Path B — the platform devId (issued by POST /swastik/developers/register) is stamped here, so the
+  // eight manifests are NOT hand-edited. Without an override the source manifest's devId is kept.
+  const builtManifest =
+    devIdOverride !== undefined && devIdOverride !== ''
+      ? { ...pkg.manifest, devId: devIdOverride }
+      : pkg.manifest;
+  writeFileSync(builtManifestPath, JSON.stringify(builtManifest, null, 2), 'utf8');
   // §30 — ship the module's locales so the promoted module satisfies the mandatory en-US.json.
   const localesSrc = join(pkg.packageDir, 'locales');
   if (existsSync(localesSrc)) {
@@ -129,11 +136,12 @@ export async function buildModulePackage(
 export async function buildAllModulePackages(
   packagesRoot: string = MODULES_SOURCE_ROOT,
   outRoot: string = MODULES_BUILD_ROOT,
+  devIdOverride?: string,
 ): Promise<BuiltModule[]> {
   rmSync(outRoot, { recursive: true, force: true });
   const built: BuiltModule[] = [];
   for (const pkg of discoverModulePackages(packagesRoot)) {
-    built.push(await buildModulePackage(pkg, outRoot));
+    built.push(await buildModulePackage(pkg, outRoot, devIdOverride));
   }
   if (built.length === 0) {
     throw new Error(`no module packages found under ${packagesRoot}`);
@@ -179,16 +187,25 @@ export function readBuiltModules(outRoot: string = MODULES_BUILD_ROOT): BuiltMod
 }
 
 async function main(): Promise<void> {
-  const built = await buildAllModulePackages();
-  process.stdout.write('module build artifacts:\n');
+  // Path B — `--dev-id <id>` (or MODULE_DEV_ID) stamps every built manifest with the platform devId
+  // returned by POST /swastik/developers/register, so no manifest is hand-edited.
+  const flagIndex = process.argv.indexOf('--dev-id');
+  const devIdOverride =
+    flagIndex !== -1 ? process.argv[flagIndex + 1] : (process.env['MODULE_DEV_ID'] ?? undefined);
+  const built = await buildAllModulePackages(
+    MODULES_SOURCE_ROOT,
+    MODULES_BUILD_ROOT,
+    devIdOverride,
+  );
+  process.stdout.write(
+    `module build artifacts${devIdOverride ? ` (devId=${devIdOverride})` : ''}:\n`,
+  );
   for (const pkg of built) {
     process.stdout.write(
       `  ${pkg.slug}@${pkg.version} tier=${pkg.tier} -> ${pkg.builtIndexPath} (${pkg.indexBytes} bytes)\n`,
     );
   }
-  process.stdout.write(
-    'artifacts are NOT live: promote them with `pnpm seed:modules --human-approved`\n',
-  );
+  process.stdout.write('artifacts are NOT live: push them with `pnpm push:modules`\n');
 }
 
 const invokedDirectly =
