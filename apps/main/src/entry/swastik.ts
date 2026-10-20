@@ -24,8 +24,13 @@ import type { ModuleTier } from '../module-system/tier-rules.js';
 import {
   createPendingLicense,
   licenseAuthorizesDeploy,
+  transitionLicense,
   type LicenseRecord,
 } from '../licensing/license-machine.js';
+import {
+  approveLicenseRecord,
+  PostgresLicenseStore,
+} from '../licensing/license-store.js';
 import {
   checkModuleDeployment,
   CompatibilityLedger,
@@ -972,6 +977,75 @@ app.post('/internal/deploy', async (request, reply) => {
     return reply.code(500).send({ error: `deploy failed: ${(err as Error).message}` });
   }
 });
+
+/**
+ * UR-20261021-095 — the owner approval gate. Registration creates a developer `pending` and a
+ * license `pending`, but nothing could APPROVE the developer or ACTIVATE the license, so a
+ * registered developer could never reach a deploy. These are owner-only, service-to-service routes:
+ * the `/internal/*` prefix is INTERNAL_API_KEY-gated by the Swastik route policy, and each writes an
+ * audit row. Approving a developer also activates their license (pending -> under-review ->
+ * approved); declining revokes it.
+ */
+app.post<{ Params: { devId: string } }>(
+  '/internal/developers/:devId/approve',
+  async (request, reply) => {
+    const { devId } = request.params;
+    const body = (request.body ?? {}) as Record<string, unknown>;
+    const actor = typeof body['approvedBy'] === 'string' ? body['approvedBy'] : 'operator';
+    const dev = await db.knex('developers').where({ devId }).first();
+    if (!dev) return reply.code(404).send({ error: 'no such developer' });
+
+    await db.knex('developers').where({ devId }).update({
+      approvalStatus: 'approved',
+      approvedBy: actor,
+      approvedAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const licenseStore = new PostgresLicenseStore(db.knex);
+    const license = await licenseStore.findBySubjectDevId(devId);
+    let licenseState: string | null = null;
+    if (license !== undefined) {
+      const next = approveLicenseRecord(license, actor, 'developer approved');
+      await licenseStore.save(next);
+      licenseState = next.state;
+    }
+
+    logger.info('swastik-developer-approved', { devId: redact(devId), licenseState });
+    await writeAudit('DEVELOPER_APPROVED', 'allowed', { devId: redact(devId), licenseState });
+    return reply.send({ devId, approvalStatus: 'approved', licenseState });
+  },
+);
+
+app.post<{ Params: { devId: string } }>(
+  '/internal/developers/:devId/decline',
+  async (request, reply) => {
+    const { devId } = request.params;
+    const body = (request.body ?? {}) as Record<string, unknown>;
+    const actor = typeof body['decidedBy'] === 'string' ? body['decidedBy'] : 'operator';
+    const reason = typeof body['reason'] === 'string' ? body['reason'] : 'declined by operator';
+    const dev = await db.knex('developers').where({ devId }).first();
+    if (!dev) return reply.code(404).send({ error: 'no such developer' });
+
+    await db.knex('developers').where({ devId }).update({
+      approvalStatus: 'declined',
+      updatedAt: new Date(),
+    });
+
+    const licenseStore = new PostgresLicenseStore(db.knex);
+    const license = await licenseStore.findBySubjectDevId(devId);
+    let licenseState: string | null = null;
+    if (license !== undefined && license.state !== 'revoked') {
+      const next = transitionLicense(license, 'revoked', { actor, reason });
+      await licenseStore.save(next);
+      licenseState = next.state;
+    }
+
+    logger.info('swastik-developer-declined', { devId: redact(devId), licenseState });
+    await writeAudit('DEVELOPER_DECLINED', 'rejected', { devId: redact(devId), reason });
+    return reply.send({ devId, approvalStatus: 'declined', licenseState });
+  },
+);
 
 app.get('/swastik/status', async (_request, reply) => {
   const devCount = await db.knex('developers').count<{ count: string }>('devId as count').first();
