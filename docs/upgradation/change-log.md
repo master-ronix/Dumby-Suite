@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.102
+version: 5.5.103
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -13,7 +13,7 @@ authority_scope: [history]
 # DUMBY Documentation — Unified Change Log
 
 > **One project. One continuous history.**
-> Last recorded: 2026-10-18
+> Last recorded: 2026-10-21
 
 ---
 
@@ -80,8 +80,8 @@ completed step's record is missing.
 
 ## 9. Record
 
-> **Population status:** §1–§5 are populated. §3 carries the version history through v5.5.102 and
-> the 2026-10-18 enforcement implementation. The corpus gate suite is **30 gates, all green** at HEAD.
+> **Population status:** §1–§5 are populated. §3 carries the version history through v5.5.103 and
+> the 2026-10-21 code-track reconciliation. The corpus gate suite is **30 gates, all green** at HEAD.
 
 ### 1. Scope & Method
 
@@ -145,7 +145,7 @@ migration prompt version) · `state` (Greenfield | Migration | Enforcement) · `
 | v5.4.0 — Dashboard MODULE_ERROR fix | 2026-10-08 | live log |
 | v5.5.0 — Dashboard controls / attribution / icons | 2026-10-08 | 25 gates green |
 | v5.5.1 — UR-005 build fix | 2026-10-08 | push |
-| v5.5.2 … v5.5.99 — the per-request patch series | 2026-10-11 … 2026-10-16 | change-log §3 (this file) |
+| v5.5.2 … v5.5.103 — the per-request patch series | 2026-10-11 … 2026-10-21 | change-log §3 (this file) |
 
 > §2 lists the **master / milestone tracks**. The per-request patch series after v5.5.1
 > (v5.5.2 … v5.5.99) is enumerated in §3; the front-matter `version` is the highest released
@@ -521,6 +521,23 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 - **R8 — audit age.** `status/audit-age.json` records the audit date, commit, scope and request; `README.md` names the current audit.
 - **Verification.** Corpus gate suite **27/27 green**. Application toolchain not run (Node 20.20.2; app requires Node ≥ 22; no deps) — app-side items are outside the corpus scope.
 - **Return.** `met` (corpus scope) — every AU finding closed; OI-1 (human attestation) and OI-3 (Docker/K8s) remain honest standing items, not defects.
+
+---
+
+### v5.5.103 — Corpus Reconciliation: Re-grounded at HEAD After the Provenance/Signing Code Track (UR-20261021-094) — 2026-10-21
+
+- 2026-10-21 · meta-prompt 5.2.0 · state=Enforcement · handoff=master-prompt:enforce · return=met
+- **Work order.** `upgradation/UR-20261021-094.md` — implements R1 … R10 and closes findings DOC-1 … DOC-11.
+- **Context.** The code track UR-20261019-101 … UR-20261019-104 landed on `feature/dev` after the corpus was last reconciled at `416864b`, leaving the corpus's code-grounding claim untrue: its `verified_commit` was 27 commits behind HEAD and its freshness guard (`check-code-reconciliation`) fails on a full checkout.
+- **R1 — provenance re-anchored.** `status/code-reconciliation.json` re-anchored to `feature/dev` @ `7a58779`, `verified_at` 2026-10-21; `status/audit-age.json`, `GAP_MANIFEST.md`, `README.md` and `migration/migration-prompt.md` re-pointed to the same commit.
+- **R2 — ledger rows reconciled.** REC-025 flipped `code-gap` → `match` (UR-20261019-103 enforces the D-4.10 floor: sidecar mandatory, artifact-hash floor always, signature layer mandatory); REC-005 / REC-021 corrected (the manifest requires `devId`; `buildId` is platform-issued, not author-declared); REC-012 corrected (`SWASTIK_LIVE_VOLUME_PATH` removed). Rows added: REC-026 (Option A — the image ships no modules), REC-027 (build-time `devId` injection), REC-028 (mandatory signature layer). 25 → 28 facts, 28 `match`.
+- **R3 — `buildId` reconciled across the corpus.** `spec/modules/module-anatomy-manifest.md` §11.2, `spec/modules/building-a-module-a-complete-worked-example.md`, `spec/request-layer/division-10-hello-world-standard-tier-module.md` and `documentation/guides/building-a-module.md` now state `buildId` is platform-issued and is not a manifest field; the two "code gap" asides (spec + guide) that described a schema the code has since matched are rewritten as reconciled.
+- **R4/R5 — records.** This entry; the UR-20261018-093 disposition moved to **Executed**; the stale live-count restatement removed from `upgradation/README.md`.
+- **R6/R7 — record + generated artefact.** `upgradation/UR-20261021-094.md` added; `_generated/tree.md` regenerated and the tree counts in `status/counts.json` refreshed.
+- **R8 — CI enforcement.** `.github/workflows/docs-gates.yml` now checks out with `fetch-depth: 0`, so the freshness/provenance guards in `check-code-reconciliation` and `check-side-docs` execute in CI instead of degrading to warnings.
+- **R9/R10 — hygiene.** `upgradation/README.md` records that record 043 is co-located in `UR-20261012-042.md`; `AGENTS.md`'s coverage-floors note corrected to the per-layer floors.
+- **Verification.** Corpus gate suite **30/30 green**. The application toolchain was **not** run (no installed dependencies; the app requires Node ≥ 22) — the app-side surfaces remain as recorded in `GAP_MANIFEST.md`.
+- **Return.** `met` (corpus scope) — every DOC finding closed. OI-1 (human attestation) and the K8s apply remain honest standing items, not defects.
 
 ---
 
@@ -2715,7 +2732,8 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 | UR-20261015-090 — corpus audit residual closure | Executed 2026-10-15 (see the `v5.5.95` entry above). Findings DA-1 … DA-12 closed; see §5.2. |
 | UR-20261016-091 — corpus audit + enforcement (gate-truth, provenance, version model, guard classes) | Executed 2026-10-16 (see the `v5.5.99` entry above). Findings AU-1 … AU-11 closed; see §5.2. |
 | UR-20261018-092 — corpus audit (generated-artefact & ledger freshness, provenance/branch truth, ungated ledgers) | **Executed 2026-10-18** (see the `v5.5.101` entry above). Findings DR-1 … DR-12 plus enforcement findings FD-1/FD-2 closed. |
-| UR-20261018-093 — module load provenance (enforce the D-4.10 hash-bound floor without a signing key) | **Raised 2026-10-18** — not yet implemented. Surfaced as REC-025 by the 2026-10-18 Railway runtime (`module-provenance-unverified`); a request precedes its implementation. |
+| UR-20261018-093 — module load provenance (enforce the D-4.10 hash-bound floor without a signing key) | **Executed 2026-10-19** (UR-20261019-101/103; recorded 2026-10-21 by UR-20261021-094). REC-025 flipped `code-gap` → `match`; the loader now requires the sidecar, always runs the artifact-hash floor, and requires an armed signature verifier. |
+| UR-20261021-094 — corpus reconciliation (re-ground at HEAD after the provenance/signing code track) | **Executed 2026-10-21** (see the `v5.5.103` entry). Findings DOC-1 … DOC-11 closed; the corpus is re-anchored at `feature/dev` @ `7a58779`. |
 
 ### 5.2 Residual dispositions (UR-20261015-090 R9)
 
