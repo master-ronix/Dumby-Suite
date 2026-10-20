@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.103
+version: 5.5.104
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -80,8 +80,8 @@ completed step's record is missing.
 
 ## 9. Record
 
-> **Population status:** §1–§5 are populated. §3 carries the version history through v5.5.103 and
-> the 2026-10-21 code-track reconciliation. The corpus gate suite is **30 gates, all green** at HEAD.
+> **Population status:** §1–§5 are populated. §3 carries the version history through v5.5.104 and
+> the 2026-10-21 production-readiness pass. The corpus gate suite is **30 gates, all green** at HEAD.
 
 ### 1. Scope & Method
 
@@ -145,7 +145,7 @@ migration prompt version) · `state` (Greenfield | Migration | Enforcement) · `
 | v5.4.0 — Dashboard MODULE_ERROR fix | 2026-10-08 | live log |
 | v5.5.0 — Dashboard controls / attribution / icons | 2026-10-08 | 25 gates green |
 | v5.5.1 — UR-005 build fix | 2026-10-08 | push |
-| v5.5.2 … v5.5.103 — the per-request patch series | 2026-10-11 … 2026-10-21 | change-log §3 (this file) |
+| v5.5.2 … v5.5.104 — the per-request patch series | 2026-10-11 … 2026-10-21 | change-log §3 (this file) |
 
 > §2 lists the **master / milestone tracks**. The per-request patch series after v5.5.1
 > (v5.5.2 … v5.5.99) is enumerated in §3; the front-matter `version` is the highest released
@@ -521,6 +521,21 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 - **R8 — audit age.** `status/audit-age.json` records the audit date, commit, scope and request; `README.md` names the current audit.
 - **Verification.** Corpus gate suite **27/27 green**. Application toolchain not run (Node 20.20.2; app requires Node ≥ 22; no deps) — app-side items are outside the corpus scope.
 - **Return.** `met` (corpus scope) — every AU finding closed; OI-1 (human attestation) and OI-3 (Docker/K8s) remain honest standing items, not defects.
+
+---
+
+### v5.5.104 — Production Readiness: CI Deploy-Blocker Cleared, Module-Deployment Approval API, Twill Client-Secret Required (UR-20261021-095) — 2026-10-21
+
+- 2026-10-21 · meta-prompt 5.2.0 · state=Enforcement · handoff=master-prompt:enforce · return=met
+- **Work order.** `upgradation/UR-20261021-095.md` — closes residuals PR-1 … PR-6.
+- **PR-1 — the CI deploy-blocker.** Production runs from `feature/dev` with `checkSuites: true`, so a red CI blocked every deploy since `416864b`. The fail-fast gates job died at **Gate 3b**: the K8s ConfigMap still declared `SWASTIK_LIVE_VOLUME_PATH`, which the schema stopped owning (UR-20261019-101). Removed it from the ConfigMap, `.env.example`, docker-compose and the Railway testing env; `check-configmap-keys` is green.
+- **PR-2 — the stale manifest fixtures.** UR-20261019-103 removed `buildId` from the manifest, but fixtures in 4 unit files, 3 modules spec files, the flow fixture and 3 more still carried it, so the `.strict()` schema rejected them. Removed the field everywhere; the schema checks that a declared `buildId` is rejected; the two quote-coupled specs are now quote-agnostic.
+- **PR-3 — the flow suite.** UR-20261019-103 made the build signature mandatory, so `bootstrap` threw with no key armed. `tests/flow/flow-env.ts` arms an ephemeral keypair; the harness gains a `beforeBootstrap` hook; `module.flow.test.ts` signs its fixture and seeds the `developers` + `builds` rows the loader reads.
+- **PR-4 — the approval gap.** Registration created a developer `pending` and a licence `pending`, but nothing could approve either. Added `POST /internal/developers/:devId/approve` (activates the licence `pending → under-review → approved`) and `POST /internal/developers/:devId/decline` (revokes it), both `INTERNAL_API_KEY`-gated and audited.
+- **PR-5 — the Twill client secret.** `parsePersonaRegistration` and the credential-rotation route now require `oauthClientSecret`, exactly as the bot token and the application id are required.
+- **PR-6 — the runbook.** `apps/main/docs/runbooks/module-deployment.md` documents the sanctioned pathway end-to-end and the load-time provenance checks.
+- **Verification.** Corpus gate suite **30/30 green**. The application gates run in CI; the corpus sandbox has no pnpm workspace / Node 22, so no local app run is claimed.
+- **Return.** `met` (corpus + code scope) — the branch is deployable again. The static `developer-registry.ts` → DB-backed resolver is recorded as a follow-up, not closed.
 
 ---
 
@@ -2734,6 +2749,7 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 | UR-20261018-092 — corpus audit (generated-artefact & ledger freshness, provenance/branch truth, ungated ledgers) | **Executed 2026-10-18** (see the `v5.5.101` entry above). Findings DR-1 … DR-12 plus enforcement findings FD-1/FD-2 closed. |
 | UR-20261018-093 — module load provenance (enforce the D-4.10 hash-bound floor without a signing key) | **Executed 2026-10-19** (UR-20261019-101/103; recorded 2026-10-21 by UR-20261021-094). REC-025 flipped `code-gap` → `match`; the loader now requires the sidecar, always runs the artifact-hash floor, and requires an armed signature verifier. |
 | UR-20261021-094 — corpus reconciliation (re-ground at HEAD after the provenance/signing code track) | **Executed 2026-10-21** (see the `v5.5.103` entry). Findings DOC-1 … DOC-11 closed; the corpus is re-anchored at `feature/dev` @ `7a58779`. |
+| UR-20261021-095 — production readiness (CI deploy-blocker, module-deployment approval API, Twill client-secret requirement) | **Executed 2026-10-21** (see the `v5.5.104` entry). Residuals PR-1 … PR-6 closed. |
 
 ### 5.2 Residual dispositions (UR-20261015-090 R9)
 
