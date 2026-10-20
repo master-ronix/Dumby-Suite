@@ -53,7 +53,6 @@ function fakeManifest(overrides: Partial<ModuleManifest> = {}): ModuleManifest {
     tier: 'standard',
     hardcoded: false,
     devId: 'dev_first_party',
-    buildId: 'build_test_1_0_0',
     visibility: 'public',
     releaseStatus: 'public',
     required: false,
@@ -124,7 +123,6 @@ test('loadModulesFromTierVolumes blindly discovers modules from all configured t
     hardcoded: false,
     devGuildOnly: true,
     devId: 'dev_first_party',
-    buildId: 'build_test_1_0_0',
     visibility: 'public',
     releaseStatus: 'public',
   });
@@ -133,9 +131,7 @@ test('loadModulesFromTierVolumes blindly discovers modules from all configured t
   writeVolumeModule(modulesDir, 'modules-marketplace', 'music', {
     tier: 'marketplace',
     hardcoded: false,
-    marketplaceCategory: 'utility',
     devId: 'dev_first_party',
-    buildId: 'build_test_1_0_0',
     visibility: 'public',
     releaseStatus: 'public',
     marketplaceCategory: 'audio',

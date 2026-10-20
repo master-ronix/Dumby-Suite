@@ -18,7 +18,6 @@ const validManifest = {
   tier: 'standard',
   hardcoded: false,
   devId: 'dev',
-  buildId: 'b',
   visibility: 'public',
   releaseStatus: 'public',
 };

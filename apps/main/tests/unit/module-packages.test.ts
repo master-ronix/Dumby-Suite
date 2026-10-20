@@ -83,9 +83,10 @@ afterAll(() => {
 });
 
 describe('module packages', () => {
-  // The manifest contract (spec/modules/module-anatomy-manifest.md) requires `devId`, `buildId`,
-  // `visibility` and `releaseStatus` on every manifest — the re-seeded stubs used to omit the first
-  // two, which is exactly what REC-021 flagged as a code-gap.
+  // The manifest contract (spec/modules/module-anatomy-manifest.md) requires `devId`, `visibility`
+  // and `releaseStatus` on every manifest; `buildId` is platform-issued and is NOT a manifest field
+  // (UR-20261019-103). The re-seeded stubs used to omit the identity fields, which is exactly what
+  // REC-021 flagged as a code-gap.
   test('every removed module is re-seeded as a manifest-valid package', () => {
     const packages = discoverModulePackages();
     expect(packages.map((pkg) => pkg.slug).sort()).toStrictEqual([...SEEDED_SLUGS].sort());
@@ -98,7 +99,7 @@ describe('module packages', () => {
       expect(pkg.manifest.hardcodeGuildId).toBeUndefined();
       // Required by the contract, so every first-party package must carry them.
       expect(pkg.manifest.devId).toBe('dev_first_party');
-      expect(pkg.manifest.buildId).toMatch(/^build_/);
+      expect('buildId' in pkg.manifest).toBe(false);
       expect(['public', 'unlisted', 'private']).toContain(pkg.manifest.visibility);
       expect(['private', 'public']).toContain(pkg.manifest.releaseStatus);
     }

@@ -15,7 +15,6 @@ const base = {
   tier: 'standard',
   hardcoded: false,
   devId: 'dev_first_party',
-  buildId: 'build_test_1_0_0',
   visibility: 'public',
   releaseStatus: 'public',
 };
@@ -70,7 +69,6 @@ describe('required fields (ACC-MOD-0011-3)', () => {
     'tier',
     'hardcoded',
     'devId',
-    'buildId',
     'visibility',
     'releaseStatus',
   ]) {
@@ -206,6 +204,10 @@ describe('rejected inputs', () => {
 
   test('a non-kebab-case name is rejected', () => {
     expect(() => parseManifest({ ...base, name: 'My_Module' })).toThrow();
+  });
+
+  test('an author-declared buildId is rejected (it is platform-issued, not a manifest field)', () => {
+    expect(() => parseManifest({ ...base, buildId: 'build_1_0_0' })).toThrow();
   });
 
   test('a non-semver version is rejected', () => {

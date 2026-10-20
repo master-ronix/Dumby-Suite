@@ -14,7 +14,6 @@ const base = {
   description: 'A module used to prove the tier co-constraints.',
   hardcoded: false,
   devId: 'dev_first_party',
-  buildId: 'build_tier_1_0_0',
   visibility: 'public',
   releaseStatus: 'public',
 };

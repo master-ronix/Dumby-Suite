@@ -25,7 +25,6 @@ beforeAll(async () => {
       visibility: 'public',
       releaseStatus: 'public',
       devId: 'dev_first_party',
-      buildId: 'build_flowmod_1_0_0',
       required: false,
       depends: [],
       provides: [],

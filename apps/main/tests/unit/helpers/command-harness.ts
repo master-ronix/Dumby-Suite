@@ -198,7 +198,6 @@ export function makeManifest(overrides: Partial<ModuleManifest> = {}): ModuleMan
     tier: 'core',
     hardcoded: false,
     devId: 'dev_first_party',
-    buildId: 'build_test_1_0_0',
     visibility: 'public',
     releaseStatus: 'public',
     required: true,

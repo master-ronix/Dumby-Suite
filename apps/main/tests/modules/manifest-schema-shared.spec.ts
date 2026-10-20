@@ -24,7 +24,6 @@ describe('ACC-MOD-0011-2 — one schema, two validators, no drift', () => {
       tier: 'core',
       hardcoded: false,
       devId: 'dev_first_party',
-      buildId: 'build_agree_1_0_0',
       visibility: 'public',
       releaseStatus: 'public',
     };

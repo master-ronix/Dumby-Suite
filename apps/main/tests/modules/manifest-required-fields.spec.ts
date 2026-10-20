@@ -5,7 +5,8 @@ import { validateManifest } from '@workspace/swastik/validate';
  * not start."
  *
  * Authority: docs/spec/modules/module-anatomy-manifest.md. The contract's `required` list is
- * name, version, description, tier, hardcoded, devId, buildId, visibility, releaseStatus.
+ * name, version, description, tier, hardcoded, devId, visibility, releaseStatus. (`buildId` is
+ * platform-issued by Swastik and is not an author-declared manifest field — UR-20261019-103.)
  */
 const valid = {
   name: 'required-mod',
@@ -14,7 +15,6 @@ const valid = {
   tier: 'core',
   hardcoded: false,
   devId: 'dev_first_party',
-  buildId: 'build_required_1_0_0',
   visibility: 'public',
   releaseStatus: 'public',
 };
@@ -26,7 +26,6 @@ const REQUIRED = [
   'tier',
   'hardcoded',
   'devId',
-  'buildId',
   'visibility',
   'releaseStatus',
 ] as const;
