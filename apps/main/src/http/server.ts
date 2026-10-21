@@ -23,6 +23,7 @@ import {
   registerTwillPersonaRoutes,
   type TwillPersonaRouteDeps,
 } from '../personas/twill-registration.js';
+import { registerModuleDeployRoutes, type DeployRoutesDeps } from './routes/deploy.routes.js';
 
 export interface BuildServerOptions {
   logger: Logger;
@@ -42,6 +43,12 @@ export interface BuildServerOptions {
    * surfaces.
    */
   twillPersonaDeps?: TwillPersonaRouteDeps | undefined;
+  /**
+   * UR-20261021-095 / Option 3 — the module deploy surface, mounted here only when the operator opts
+   * in (SWASTIK_DEPLOY_ON_API). It runs the same request handler the Swastik service runs, and stays
+   * behind the internal API key.
+   */
+  deployDeps?: DeployRoutesDeps | undefined;
 }
 
 const ADMIN_PATH_PREFIX = '/admin/';
@@ -75,7 +82,9 @@ export function buildApiServer(options: BuildServerOptions): FastifyInstance {
       request.url.startsWith(ADMIN_PATH_PREFIX) ||
       request.url.startsWith('/mdis/') ||
       request.url.startsWith('/operational/') ||
-      request.url.startsWith('/twill/'),
+      request.url.startsWith('/twill/') ||
+      // UR-20261021-095 — the module deploy surface (and any other /internal/* route) is privileged.
+      request.url.startsWith('/internal/'),
     audit: async (outcome, detail) => {
       if (outcome === 'rejected') {
         options.logger.warn('admin-auth-rejected', detail);
@@ -102,6 +111,9 @@ export function buildApiServer(options: BuildServerOptions): FastifyInstance {
   }
   if (options.twillPersonaDeps !== undefined) {
     registerTwillPersonaRoutes(app, options.twillPersonaDeps);
+  }
+  if (options.deployDeps !== undefined) {
+    registerModuleDeployRoutes(app, options.deployDeps);
   }
 
   app.get('/assets/dumby-banner.png', async (_req, reply) => {

@@ -97,6 +97,9 @@ const baseEnvSchema = z
     // service. OFF by default: the endpoint accepts bot tokens and client secrets, so the public
     // surface must not grow unless the operator asks for it. It stays behind the internal API key.
     TWILL_ROUTES_ON_API: envBool(false),
+    // UR-20261021-095 — mount the module deploy surface on the API (the upload/approve/deploy/reload
+    // pathway reachable without a second process). OFF by default; behind the internal API key.
+    SWASTIK_DEPLOY_ON_API: envBool(false),
     // UR-20261012-037 — the registrar registry's boot seed: comma-separated, each entry either a
     // bare authority (granted for ANY application) or `authority=applicationId`. Applied
     // idempotently at boot, so a fresh install is not chicken-and-egg.

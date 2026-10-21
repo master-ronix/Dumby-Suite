@@ -1,4 +1,7 @@
+import { randomUUID } from 'node:crypto';
 import 'dotenv/config';
+import { PostgresDeploymentRecordStore } from '../db/repositories/deployment-record.repository.js';
+import { buildDeploymentRecord } from '../licensing/deployment-records.js';
 import { existsSync } from 'node:fs';
 import { Container } from '../di/container.js';
 import { CORE_TOKENS } from '../di/tokens.js';
@@ -1887,6 +1890,66 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
             (await personaRuntimeRef?.reloadPersona(persona as never)) ?? undefined,
           logger,
           costSignals: { dedicatedInfrastructureRequired: false, perPersonaCostMeasurable: false },
+        }
+      : undefined,
+    // UR-20261021-095 / Option 3 — optionally serve the module deploy surface here, so the
+    // upload/approve/deploy/reload pathway is reachable without the boot seed. OFF by default; the
+    // `/internal/` prefix stays behind the internal API key either way.
+    deployDeps: config.get('SWASTIK_DEPLOY_ON_API')
+      ? {
+          knex: db.knex,
+          stagingVolume: config.get('SWASTIK_STAGING_VOLUME_PATH'),
+          modulesDir: config.get('MODULES_DIR'),
+          lockStore,
+          signingKeyId: config.get('BUILD_SIGNING_KEY_ID'),
+          signingPrivateKey: config.get('BUILD_SIGNING_PRIVATE_KEY'),
+          logger,
+          redact: (value: string) =>
+            value.length > 8 ? `${value.slice(0, 4)}...${value.slice(-4)}` : '***',
+          audit: async (
+            action: string,
+            outcome: 'allowed' | 'rejected',
+            detail: Record<string, unknown>,
+          ): Promise<void> => {
+            await db.knex('audit_logs').insert({
+              actorId: 'swastik',
+              source: 'SWASTIK',
+              reason: action,
+              action,
+              outcome,
+              rejectionReason: outcome === 'rejected' ? String(detail['error'] ?? 'unknown') : null,
+              metadata: JSON.stringify(detail),
+            });
+          },
+          recordDeployment: async (input: {
+            buildId: string;
+            module: string;
+            version: string;
+            devId: string;
+            promotionResult: 'promoted' | 'rolled-back' | 'not-attempted';
+          }): Promise<void> => {
+            try {
+              const store = new PostgresDeploymentRecordStore(db.knex);
+              await store.append(
+                buildDeploymentRecord({
+                  recordId: randomUUID(),
+                  triggeredBy: { type: 'operator', initiatedBy: input.devId },
+                  devId: input.devId,
+                  buildId: input.buildId,
+                  module: input.module,
+                  version: input.version,
+                  validationOutcome: 'passed',
+                  gateOutcomes: { promotion: 'passed' },
+                  promotionResult: input.promotionResult,
+                }),
+              );
+            } catch (err) {
+              logger.warn('deploy-record-failed', {
+                buildId: input.buildId,
+                error: String(err),
+              });
+            }
+          },
         }
       : undefined,
     // Appendix C #18 — the MDIS module-delivery and operational-tooling surfaces.
