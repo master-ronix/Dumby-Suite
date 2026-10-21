@@ -200,14 +200,16 @@ export function registerCoreFrameHandlers(deps: CoreFrameHandlerDeps): void {
       }
 
       if (action === 'nav') {
-        // item 6 — the dashboard's dial. The option's VALUE is the target PAGE (Home carries the
-        // reserved sentinel), so the handler needs no module→page mapping: the page is exactly what
-        // the select was built with. An unparseable value falls back to the main view rather than
-        // dispatching a page that does not exist.
+        // item 6 — the DIAL, on the dashboard and on /modules alike. The option's VALUE is the target
+        // PAGE (Home carries the reserved sentinel), so no module→page mapping is needed: the page is
+        // exactly what the select was built with. The customId names the surface, so one branch serves
+        // both dials — validated against the two surfaces that carry one, rather than dispatched
+        // verbatim, so a forged id cannot name an arbitrary command.
         const selected = interaction.values?.[0];
         const page =
           selected === undefined || selected === HOME_SELECT_VALUE ? 0 : Number(selected);
-        await router.dispatch(asPageInteraction(interaction, 'dashboard'), {
+        const surface = target === 'modules' ? 'modules' : 'dashboard';
+        await router.dispatch(asPageInteraction(interaction, surface), {
           page: Number.isFinite(page) ? page : 0,
         });
         return;

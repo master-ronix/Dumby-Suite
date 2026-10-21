@@ -636,6 +636,9 @@ export function createPageDataProvider(deps: PageDataDeps): (
       description: entry.manifest.description,
       page: index + 1,
       ...(entry.manifest.ui?.icon !== undefined ? { iconName: entry.manifest.ui.icon } : {}),
+      // The module's OWN accent, when it declares one: the module's page then renders in it, and
+      // falls back to the acting profile's accent (a persona's, or the neutral gray) when it does not.
+      ...(entry.manifest.ui?.accent !== undefined ? { accent: entry.manifest.ui.accent } : {}),
     }));
 
     if (page >= 1 && page <= standard.length) {
@@ -811,7 +814,26 @@ export function createPageDataProvider(deps: PageDataDeps): (
       icon: moduleIcon(entry.manifest.ui?.icon, applicationId),
     }));
     const lines = modules.map((m) => `${m.icon} ${m.name} (${m.tier}) — ${m.description}`);
-    return { title: 'Installed Modules', lines, modules, page: current, pageTotal, total };
+    // item 6 / item 17 — the DIAL's entries: EVERY installed module, not only this page's slice, each
+    // carrying the listing page it appears on. The dial centres the module you are looking at and
+    // wraps at both ends, so the whole inventory is one control away from any page.
+    const navigation = enabledModules.map((entry, index) => ({
+      id: entry.manifest.name,
+      name: entry.manifest.ui?.displayName ?? titleCaseId(entry.manifest.name),
+      description: entry.manifest.description,
+      page: Math.floor(index / MODULES_PAGE_SIZE),
+      ...(entry.manifest.ui?.icon !== undefined ? { iconName: entry.manifest.ui.icon } : {}),
+      ...(entry.manifest.ui?.accent !== undefined ? { accent: entry.manifest.ui.accent } : {}),
+    }));
+    return {
+      title: 'Installed Modules',
+      lines,
+      modules,
+      page: current,
+      pageTotal,
+      total,
+      navigation,
+    };
   }
 
   return async (

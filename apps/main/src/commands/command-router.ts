@@ -13,7 +13,6 @@ import {
   type ModeControl,
   type NavigationOption,
   type NoticeReasonCode,
-  type PageActionRow,
   type RenderDescriptor,
   type RenderIdentity,
   type RenderBlock,
@@ -27,7 +26,7 @@ import {
   MODULE_ICON_NAME,
 } from '../rendering/module-icons.js';
 import { healthBlocks } from '../rendering/health-blocks.js';
-import { dashboardNavSelect, type DialEntry } from '../rendering/dashboard-nav.js';
+import { dialNavSelect, type DialEntry } from '../rendering/dashboard-nav.js';
 import { modulesBlocks } from '../rendering/modules-blocks.js';
 import { personaBlocks } from '../rendering/persona-blocks.js';
 import {
@@ -235,6 +234,50 @@ export class CommandRouter {
    * its declared accent (falling back to the neutral persona gray in the renderer); the main bot is
    * `kind: 'main'` with no accent, so it falls back to the framework amber.
    */
+  /**
+   * item 6 — the dial's entries, built from the page data's `navigation`: one per module, with the
+   * module's DECLARED logo resolved for the acting application. A module that declares no logo gets no
+   * `icon`, and `dialNavSelect` applies the caller's fallback — so an option always shows a mark.
+   */
+  private dashboardNavEntries(
+    data: Readonly<Record<string, unknown>> | undefined,
+    scope: string,
+  ): readonly DialEntry[] {
+    const raw = data?.['navigation'];
+    if (!Array.isArray(raw)) return [];
+    return raw
+      .filter((e): e is Record<string, unknown> => typeof e === 'object' && e !== null)
+      .map((e) => {
+        const iconName = typeof e['iconName'] === 'string' ? e['iconName'] : undefined;
+        const icon = iconName !== undefined ? customEmojiParts(iconName, scope) : undefined;
+        const page = typeof e['page'] === 'number' ? e['page'] : 0;
+        return {
+          id: String(e['id'] ?? ''),
+          name: String(e['name'] ?? e['id'] ?? ''),
+          description: String(e['description'] ?? ''),
+          page,
+          ...(icon !== undefined ? { icon } : {}),
+          ...(typeof e['accent'] === 'string' ? { accent: e['accent'] } : {}),
+        };
+      });
+  }
+
+  /** The manifested accent of the module whose page is open, from the page data's navigation. */
+  private pageAccentOf(
+    data: Readonly<Record<string, unknown>> | undefined,
+    page: number | undefined,
+  ): string | undefined {
+    const raw = data?.['navigation'];
+    if (!Array.isArray(raw)) return undefined;
+    for (const entry of raw) {
+      if (typeof entry !== 'object' || entry === null) continue;
+      const record = entry as Record<string, unknown>;
+      if (record['page'] !== page) continue;
+      if (typeof record['accent'] === 'string') return record['accent'];
+    }
+    return undefined;
+  }
+
   private renderProfile(): RenderProfile {
     const id = this.options.residentPersonaId;
     if (id !== undefined) {
@@ -406,6 +449,12 @@ export class CommandRouter {
         typeof declaredPageData?.['pageModuleName'] === 'string'
           ? (declaredPageData['pageModuleName'] as string)
           : undefined;
+      // The module whose page this is may declare its OWN accent (`ui.accent`): its page then renders
+      // in that colour, and falls back to the acting profile's — a persona's own, or the neutral gray
+      // — when it does not. Read from the page data's navigation, because `def` here is the DASHBOARD's
+      // command definition, not the module whose page is being shown.
+      const pageModuleAccent =
+        pageModuleId !== undefined ? this.pageAccentOf(declaredPageData, options.page) : undefined;
       const render = this.renderer.normalizeHandlerResult(declaredResponse, {
         ...identity,
         ...(pageModuleName !== undefined ? { surface: pageModuleName } : {}),
@@ -414,6 +463,7 @@ export class CommandRouter {
         ...(pageModuleId === undefined && def.identity?.displayName !== undefined
           ? { displayName: def.identity.displayName }
           : {}),
+        ...(pageModuleAccent !== undefined ? { accent: pageModuleAccent } : {}),
         ...(pageModuleId === undefined && def.identity?.accent !== undefined
           ? { accent: def.identity.accent }
           : {}),
@@ -447,13 +497,25 @@ export class CommandRouter {
             : name === 'modules' && Array.isArray(declaredPageData?.['modules'])
               ? {
                   blocks: modulesBlocks(declaredPageData, interaction.user.id),
-                  actions: this.pageActions(
-                    name,
-                    declaredPageData,
-                    interaction.user.id,
-                    options.page,
-                    this.emojiScope(interaction),
-                  ),
+                  // item 6 / item 17 — /modules carries the SAME dial as the dashboard, below the
+                  // footer, over the installed modules rather than over module pages.
+                  interactive: [
+                    dialNavSelect({
+                      invokerId: interaction.user.id,
+                      command: 'modules',
+                      homeDescription: 'Return to the first page of the module list.',
+                      entries: this.dashboardNavEntries(
+                        declaredPageData,
+                        this.emojiScope(interaction),
+                      ),
+                      currentPage: options.page ?? 0,
+                      homeIcon: customEmojiParts('dumby_home', this.emojiScope(interaction)),
+                      fallbackIcon: customEmojiParts(
+                        MODULE_ICON_NAME,
+                        this.emojiScope(interaction),
+                      ),
+                    }),
+                  ],
                 }
               : name === 'persona' && Array.isArray(declaredPageData?.['tiers'])
                 ? {
@@ -470,8 +532,9 @@ export class CommandRouter {
                       // it as buttons: it is a page-wide control, and the footer closes the content
                       // above it. The zone grammar puts a select there regardless.
                       interactive: [
-                        dashboardNavSelect({
+                        dialNavSelect({
                           invokerId: interaction.user.id,
+                          command: 'dashboard',
                           entries: this.dashboardNavEntries(
                             declaredPageData,
                             this.emojiScope(interaction),
@@ -920,81 +983,6 @@ export class CommandRouter {
       hello: 'Hello World',
     };
     return titles[commandName] ?? this.surfaceName(commandName);
-  }
-
-  /**
-   * items 11/15/17 - the page-declared action controls. /modules and /dashboard carry the same
-   * navigation row (an icon-only Home plus Next / Previous page); /browse's controls live in its
-   * content blocks. Every customId is minted `dumby:act:<invoker>:<action>:<target>[:<page>]` or
-   * `dumby:nav:<invoker>:<role>:<n>` so the interaction registry's invoker re-check holds.
-   */
-  /**
-   * item 6 — the dial's entries, built from the page data's `navigation`: one per module page, with the
-   * module's DECLARED logo resolved for the acting application. A module that declares no logo gets no
-   * `icon`, and `dashboardNavSelect` applies the caller's fallback — so an option always shows a mark.
-   */
-  private dashboardNavEntries(
-    data: Readonly<Record<string, unknown>> | undefined,
-    scope: string,
-  ): readonly DialEntry[] {
-    const raw = data?.['navigation'];
-    if (!Array.isArray(raw)) return [];
-    return raw
-      .filter((e): e is Record<string, unknown> => typeof e === 'object' && e !== null)
-      .map((e) => {
-        const iconName = typeof e['iconName'] === 'string' ? e['iconName'] : undefined;
-        const icon = iconName !== undefined ? customEmojiParts(iconName, scope) : undefined;
-        const page = typeof e['page'] === 'number' ? e['page'] : 0;
-        return {
-          id: String(e['id'] ?? ''),
-          name: String(e['name'] ?? e['id'] ?? ''),
-          description: String(e['description'] ?? ''),
-          page,
-          ...(icon !== undefined ? { icon } : {}),
-        };
-      });
-  }
-
-  private pageActions(
-    commandName: string,
-    data: Readonly<Record<string, unknown>> | undefined,
-    invokerId: string,
-    page = 0,
-    /** UR-20261012-064 — the emoji scope for the acting application. */
-    scope: string,
-  ): readonly PageActionRow[] {
-    // UR-20261011-009/010 — /modules carries the SAME navigation row as the dashboard. Home
-    // returns to THIS page's main view (/modules page 0, resetting paging) — not the dashboard —
-    // exactly as Home on every other surface returns to that surface's own main view.
-    if (commandName === 'modules') {
-      const total = typeof data?.['pageTotal'] === 'number' ? (data['pageTotal'] as number) : 1;
-      const last = Math.max(total - 1, 0);
-      const paged = (action: string, n: number): string =>
-        `dumby:act:${invokerId}:${action}:modules:${n}`;
-      return [
-        [
-          {
-            customId: paged('home', 0),
-            label: '',
-            emoji: customEmojiParts('dumby_home', scope) ?? { name: '🏠' },
-            style: 2,
-          },
-          {
-            customId: paged('next', Math.min(page + 1, last)),
-            label: 'Next page',
-            style: 2,
-            disabled: page >= last,
-          },
-          {
-            customId: paged('prev', Math.max(page - 1, 0)),
-            label: 'Previous page',
-            style: 2,
-            disabled: page <= 0,
-          },
-        ],
-      ];
-    }
-    return [];
   }
 
   /**

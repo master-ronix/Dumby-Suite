@@ -27,6 +27,8 @@ export interface DialEntry {
   readonly page: number;
   /** The module's logo, already resolved to emoji parts. Absent → the caller's fallback applies. */
   readonly icon?: { readonly name: string; readonly id?: string } | undefined;
+  /** The module's manifested accent (`ui.accent`), when it declares one. */
+  readonly accent?: string | undefined;
 }
 
 export interface DialOption extends DialEntry {
@@ -60,8 +62,16 @@ export function dialWindow(
   return out;
 }
 
-export interface DashboardNavInput {
+export interface DialNavInput {
   readonly invokerId: string;
+  /**
+   * The command this dial navigates — `dashboard` or `modules`. It is the customId's target, so the
+   * handler knows which surface to re-dispatch without a second lookup.
+   */
+  readonly command: 'dashboard' | 'modules';
+  /** Home's own label and description — Home returns to THIS surface's main view, not another's. */
+  readonly homeLabel?: string | undefined;
+  readonly homeDescription?: string | undefined;
   /** Every module page, in installation order. */
   readonly entries: readonly DialEntry[];
   /** The page currently being shown: 0 for the main view, else a module's page. */
@@ -74,23 +84,24 @@ export interface DashboardNavInput {
 }
 
 /** The Home option: pinned above the window, and always the first slot. */
-function homeOption(icon: NavigationOption['emoji'] | undefined): NavigationOption {
+function homeOption(input: DialNavInput): NavigationOption {
   return {
-    label: 'Home',
+    label: input.homeLabel ?? 'Home',
     value: HOME_SELECT_VALUE,
-    description: 'The dashboard main view — every core command.',
-    ...(icon !== undefined ? { emoji: icon } : {}),
+    description: input.homeDescription ?? 'The dashboard main view — every core command.',
+    ...(input.homeIcon !== undefined ? { emoji: input.homeIcon } : {}),
   };
 }
 
 /**
- * The dashboard's navigation select — Home, then the dial window of module pages.
+ * The dial select — Home, then the dial window of module pages. One builder serves the dashboard and
+ * /modules: both page a set of modules, and both need the same centred, wrapping window.
  *
  * Each module option carries its own logo when it declares one, and the caller's fallback icon
  * otherwise, so the dropdown reads as a list of modules rather than of names. The module whose page
  * is open is marked `default`, which is what Discord renders as the selected option.
  */
-export function dashboardNavSelect(input: DashboardNavInput): RenderBlock {
+export function dialNavSelect(input: DialNavInput): RenderBlock {
   const current = input.currentPage >= 1 ? input.currentPage : 0;
   const centre = input.entries.findIndex((entry) => entry.page === current);
   const window = dialWindow(input.entries, centre < 0 ? 0 : centre);
@@ -109,10 +120,10 @@ export function dashboardNavSelect(input: DashboardNavInput): RenderBlock {
 
   return {
     kind: 'select',
-    customId: `dumby:act:${input.invokerId}:nav:dashboard`,
+    customId: `dumby:act:${input.invokerId}:nav:${input.command}`,
     placeholder:
       input.placeholder ??
-      (input.entries.length === 0 ? 'No module pages yet — Home' : 'Go to a module page…'),
-    options: [homeOption(input.homeIcon), ...moduleOptions].slice(0, INSTALL_DROPDOWN_CAP),
+      (input.entries.length === 0 ? 'Nothing to navigate yet — Home' : 'Go to a module…'),
+    options: [homeOption(input), ...moduleOptions].slice(0, INSTALL_DROPDOWN_CAP),
   };
 }

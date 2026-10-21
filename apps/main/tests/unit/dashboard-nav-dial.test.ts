@@ -1,5 +1,5 @@
 import { test, expect, describe } from 'vitest';
-import { DIAL_RADIUS, dashboardNavSelect, dialWindow } from '../../src/rendering/dashboard-nav.js';
+import { DIAL_RADIUS, dialNavSelect, dialWindow } from '../../src/rendering/dashboard-nav.js';
 import type { DialEntry } from '../../src/rendering/dashboard-nav.js';
 import { HOME_SELECT_VALUE, INSTALL_DROPDOWN_CAP } from '../../src/shared/constants/index.js';
 
@@ -79,13 +79,14 @@ describe('dialWindow', () => {
   });
 });
 
-describe('dashboardNavSelect', () => {
+describe('dialNavSelect', () => {
   const home = { name: 'dumby_home', id: '1' };
   const fallback = { name: 'dumby_module', id: '2' };
 
   test('Home is pinned first and always carries the reserved value', () => {
-    const block = dashboardNavSelect({
+    const block = dialNavSelect({
       invokerId: 'u1',
+      command: 'dashboard',
       entries: entries(3),
       currentPage: 0,
       homeIcon: home,
@@ -99,8 +100,9 @@ describe('dashboardNavSelect', () => {
   });
 
   test('the option for the page you are ON is marked selected', () => {
-    const block = dashboardNavSelect({
+    const block = dialNavSelect({
       invokerId: 'u1',
+      command: 'dashboard',
       entries: entries(3),
       currentPage: 2,
       homeIcon: home,
@@ -116,8 +118,9 @@ describe('dashboardNavSelect', () => {
       { id: 'a', name: 'A', description: 'a', page: 1, icon: { name: 'dumby_browse', id: '9' } },
       { id: 'b', name: 'B', description: 'b', page: 2 },
     ];
-    const block = dashboardNavSelect({
+    const block = dialNavSelect({
       invokerId: 'u1',
+      command: 'dashboard',
       entries: withIcon,
       currentPage: 1,
       homeIcon: home,
@@ -130,8 +133,9 @@ describe('dashboardNavSelect', () => {
   });
 
   test('the option value is the target page, and the customId is the dashboard nav', () => {
-    const block = dashboardNavSelect({
+    const block = dialNavSelect({
       invokerId: 'u1',
+      command: 'dashboard',
       entries: entries(3),
       currentPage: 0,
       homeIcon: home,
@@ -141,9 +145,25 @@ describe('dashboardNavSelect', () => {
     expect(block.customId).toBe('dumby:act:u1:nav:dashboard');
   });
 
-  test('40 modules still produce a legal option count, centred on the current page', () => {
-    const block = dashboardNavSelect({
+  test('the SAME builder serves /modules — only the customId target changes', () => {
+    const block = dialNavSelect({
       invokerId: 'u1',
+      command: 'modules',
+      homeDescription: 'Return to the first page of the module list.',
+      entries: entries(3),
+      currentPage: 1,
+      homeIcon: home,
+      fallbackIcon: fallback,
+    });
+    expect(block.customId).toBe('dumby:act:u1:nav:modules');
+    expect(block.options[0]?.description).toBe('Return to the first page of the module list.');
+    expect(block.options.filter((o) => o.default === true)[0]?.value).toBe('1');
+  });
+
+  test('40 modules still produce a legal option count, centred on the current page', () => {
+    const block = dialNavSelect({
+      invokerId: 'u1',
+      command: 'dashboard',
       entries: entries(40),
       currentPage: 20,
       homeIcon: home,
