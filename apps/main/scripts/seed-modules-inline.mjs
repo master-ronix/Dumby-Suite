@@ -40,6 +40,24 @@ const logger = {
  * Promote every bundle in `dist-modules/` into its tier volume, in this process.
  * Best-effort and idempotent per module: a refusal is reported and the next module is attempted.
  */
+/** Every file under `locales/` and `assets/`, as `{ relativePath: base64 }` (§30). */
+function collectFiles(dir) {
+  const out = {};
+  const walk = (abs, rel) => {
+    for (const entry of readdirSync(abs, { withFileTypes: true })) {
+      const childAbs = join(abs, entry.name);
+      const childRel = `${rel}/${entry.name}`;
+      if (entry.isDirectory()) walk(childAbs, childRel);
+      else if (entry.isFile()) out[childRel] = readFileSync(childAbs).toString('base64');
+    }
+  };
+  for (const sub of ['locales', 'assets']) {
+    const root = join(dir, sub);
+    if (existsSync(root)) walk(root, sub);
+  }
+  return out;
+}
+
 export async function main() {
   const buildRoot = resolve('dist-modules');
   if (!existsSync(buildRoot)) {
@@ -142,6 +160,7 @@ export async function main() {
       devId: manifest.devId ?? 'dev_first_party',
       manifest,
       indexSource: readFileSync(indexPath, 'utf8'),
+      files: collectFiles(dir),
       humanApproved,
     });
 

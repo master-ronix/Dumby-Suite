@@ -1,6 +1,13 @@
 import { test, expect } from 'vitest';
 import { generateKeyPairSync } from 'node:crypto';
-import { existsSync, mkdirSync, mkdtempSync, realpathSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -13,6 +20,7 @@ import {
   readBuildProvenanceSidecar,
 } from '../../src/module-system/build-signing.js';
 import { signProvenance } from '../../src/module-system/sign-provenance.js';
+import { stageModuleBundle } from '../../src/module-system/deploy-module.js';
 import {
   TIER_VOLUME_NAMES,
   loadModulesFromTierVolumes,
@@ -182,4 +190,46 @@ test('deploy path: an unsigned module on a tier volume is refused by the loader'
       verifier: new BuildSignatureVerifier(),
     }),
   ).rejects.toThrow(/discovery failed/);
+});
+
+/**
+ * §30 — the staging step must carry the module's OWN files, not just the manifest and index.
+ *
+ * This is the bug that took production down: the deploy path staged only `manifest.json` + `index.js`,
+ * so a promoted module had no `locales/en-US.json`, Stage 11 refused it, and the loader threw
+ * "refusing to start half-broken" — the bot did not start at all.
+ */
+test('staging carries the module locales, and refuses a path that escapes the staging dir', () => {
+  const root = mkdtempSync(join(tmpdir(), 'deployflow-stage-'));
+  const stagingDir = join(root, 'browse__1.0.0');
+  const locales = JSON.stringify({ hello: 'Hello' });
+
+  stageModuleBundle(stagingDir, {
+    rawManifest: MANIFEST,
+    indexSource: INDEX_SOURCE,
+    files: {
+      'locales/en-US.json': Buffer.from(locales, 'utf8').toString('base64'),
+      'assets/icon.png': Buffer.from([0x89, 0x50, 0x4e, 0x47]).toString('base64'),
+    },
+  });
+
+  // The mandatory locale is present with its exact bytes.
+  expect(existsSync(join(stagingDir, 'locales', 'en-US.json'))).toBe(true);
+  expect(readFileSync(join(stagingDir, 'locales', 'en-US.json'), 'utf8')).toBe(locales);
+  // A binary asset survives the base64 round-trip.
+  expect([...readFileSync(join(stagingDir, 'assets', 'icon.png'))]).toStrictEqual([
+    0x89, 0x50, 0x4e, 0x47,
+  ]);
+  // The manifest and index are still staged.
+  expect(existsSync(join(stagingDir, 'manifest.json'))).toBe(true);
+  expect(existsSync(join(stagingDir, 'index.js'))).toBe(true);
+
+  // A crafted path cannot escape the staging directory.
+  expect(() =>
+    stageModuleBundle(join(root, 'escape__1.0.0'), {
+      rawManifest: MANIFEST,
+      indexSource: INDEX_SOURCE,
+      files: { '../../pwned.json': Buffer.from('{}').toString('base64') },
+    }),
+  ).toThrow();
 });

@@ -7,6 +7,24 @@ import { INTERNAL_API_HEADER } from '../src/http/internal-auth.js';
  * Swastik deploy flow. The image ships no modules; this is how modules reach the volumes after
  * the service is up. Run `pnpm build:modules` first, then `pnpm push:modules [swastik-url]`.
  */
+/** Every file under `locales/` and `assets/`, as `{ relativePath: base64 }` (§30). */
+function collectFiles(dir: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  const walk = (abs: string, rel: string): void => {
+    for (const entry of readdirSync(abs, { withFileTypes: true })) {
+      const childAbs = join(abs, entry.name);
+      const childRel = `${rel}/${entry.name}`;
+      if (entry.isDirectory()) walk(childAbs, childRel);
+      else if (entry.isFile()) out[childRel] = readFileSync(childAbs).toString('base64');
+    }
+  };
+  for (const sub of ['locales', 'assets']) {
+    const root = join(dir, sub);
+    if (existsSync(root)) walk(root, sub);
+  }
+  return out;
+}
+
 async function main(): Promise<void> {
   const baseUrl = process.argv[2] ?? `http://127.0.0.1:${process.env.SWASTIK_PORT ?? '8085'}`;
   const internalApiKey = process.env['INTERNAL_API_KEY'] ?? '';
@@ -37,6 +55,7 @@ async function main(): Promise<void> {
         devId: manifest.devId ?? 'dumby-module-deployer',
         manifest,
         indexSource: readFileSync(indexPath, 'utf8'),
+        files: collectFiles(dir),
       }),
     });
     const out = (await response.json()) as { buildId?: string; error?: string };

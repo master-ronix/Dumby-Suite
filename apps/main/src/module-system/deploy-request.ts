@@ -117,10 +117,23 @@ export async function handleDeployRequest(
     manifest?: unknown;
     indexSource?: unknown;
   };
-  const { indexSource, humanApproved: humanApprovedRaw } = body as {
+  const {
+    indexSource,
+    humanApproved: humanApprovedRaw,
+    files: filesRaw,
+  } = body as {
     indexSource?: unknown;
     humanApproved?: unknown;
+    files?: unknown;
   };
+  // §30 — the module's own files (locales, assets), `{ relativePath: base64 }`. Only string values are
+  // accepted; anything else is dropped rather than trusted.
+  const files: Record<string, string> = {};
+  if (typeof filesRaw === 'object' && filesRaw !== null && !Array.isArray(filesRaw)) {
+    for (const [key, value] of Object.entries(filesRaw as Record<string, unknown>)) {
+      if (typeof value === 'string') files[key] = value;
+    }
+  }
   const humanApproved = humanApprovedRaw === true;
   if (!moduleSlug || !version || !providedDevId || !rawManifest) {
     return { code: 400, body: { error: 'moduleSlug, version, devId, and manifest are required' } };
@@ -229,6 +242,7 @@ export async function handleDeployRequest(
     rawManifest,
     manifest,
     indexSource,
+    files,
     humanApproved,
   });
   if (!result.ok) return { code: result.code, body: { error: result.error } };

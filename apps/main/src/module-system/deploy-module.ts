@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import type { Knex } from 'knex';
 import type { Logger } from '../logging/logger.js';
 import { PostgresBuildStore } from '../db/repositories/build.repository.js';
@@ -44,6 +44,13 @@ export interface DeployModuleInput {
   /** The parsed manifest (already validated by the caller). */
   readonly manifest: ModuleManifest;
   readonly indexSource: string;
+  /**
+   * The module's OWN files — `locales/`, `assets/` — as `{ relativePath: base64 }`, written into the
+   * staging directory before verification so the promoted module carries them. This is not optional in
+   * practice: `locales/en-US.json` is MANDATORY (spec §30) and Stage 11 fails without it, so a module
+   * promoted without its locales is refused at load time and the bot refuses to start half-broken.
+   */
+  readonly files?: Readonly<Record<string, string>>;
   readonly humanApproved: boolean;
 }
 
@@ -91,6 +98,34 @@ function liveVolumeForTier(deps: DeployModuleDeps, tier: ModuleTier): string {
   return target;
 }
 
+/**
+ * Write a module bundle into its staging directory: `manifest.json`, `index.js`, and the module's own
+ * files (`locales/`, `assets/`) from `{ relativePath: base64 }`.
+ *
+ * §30 — the module's own files are not optional: `locales/en-US.json` is MANDATORY and Stage 11 fails
+ * without it, so a bundle staged without its locales is promoted and then REFUSED at load time. Every
+ * path is path-guarded, so a crafted relative path cannot escape the staging directory.
+ */
+export function stageModuleBundle(
+  stagingDir: string,
+  input: { rawManifest: unknown; indexSource: string; files?: Readonly<Record<string, string>> },
+): void {
+  if (!existsSync(stagingDir)) mkdirSync(stagingDir, { recursive: true });
+  writeFileSync(
+    join(stagingDir, 'manifest.json'),
+    JSON.stringify(input.rawManifest, null, 2),
+    'utf8',
+  );
+  writeFileSync(join(stagingDir, 'index.js'), input.indexSource, 'utf8');
+  for (const [relativePath, base64] of Object.entries(input.files ?? {})) {
+    if (typeof base64 !== 'string') continue;
+    const target = safeJoin(stagingDir, relativePath);
+    assertPathInside(stagingDir, target);
+    mkdirSync(dirname(target), { recursive: true });
+    writeFileSync(target, Buffer.from(base64, 'base64'));
+  }
+}
+
 export async function deployModule(
   deps: DeployModuleDeps,
   input: DeployModuleInput,
@@ -102,13 +137,7 @@ export async function deployModule(
 
   const buildId = `build_${randomBytes(12).toString('hex')}`;
   const stagingDir = safeJoin(stagingVolume, `${safeModuleSlug}__${safeModuleVersion}`);
-  if (!existsSync(stagingDir)) mkdirSync(stagingDir, { recursive: true });
-  writeFileSync(
-    join(stagingDir, 'manifest.json'),
-    JSON.stringify(input.rawManifest, null, 2),
-    'utf8',
-  );
-  writeFileSync(join(stagingDir, 'index.js'), input.indexSource, 'utf8');
+  stageModuleBundle(stagingDir, input);
 
   await knex('builds').insert({
     buildId,
