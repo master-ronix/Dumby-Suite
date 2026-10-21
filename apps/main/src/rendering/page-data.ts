@@ -614,8 +614,9 @@ export function createPageDataProvider(deps: PageDataDeps): (
       if (entry !== undefined) {
         const effective = await resolveEffectiveCommandNames(db.knex, guildId);
         const statuses = await resolveCommandStatuses(db.knex, guildId);
-        // UR-20261011-009 — a module page's command list carries the neutral white-square
-        // DECORATION (not a module logo), so the list reads as "this module's commands".
+        // UR-20261011-009 — a module page's command list carries the squared marker (`dumby_modules`,
+        // the modules module's grid), NOT the module-logo fallback (`dumby_module`, a cube). The list
+        // reads as "this module's commands".
         const icon = commandDecorationIcon(applicationId);
         const lines = entry.manifest.commands.map((command) => {
           const current = effectiveCommandName(effective, command.name);

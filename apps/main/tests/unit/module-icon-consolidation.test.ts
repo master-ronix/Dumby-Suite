@@ -5,7 +5,9 @@ import { join } from 'node:path';
 import type { Client } from 'discord.js';
 import type { Logger } from '../../src/logging/logger.js';
 import {
+  COMMAND_DECORATION_ICON_NAME,
   FALLBACK_MODULE_ICON_NAME,
+  commandDecorationIcon,
   moduleIcon,
   registerModuleEmoji,
 } from '../../src/rendering/module-icons.js';
@@ -94,6 +96,29 @@ describe('the module marker is consolidated onto one emoji', () => {
     );
     // …and not put back: the upload set no longer contains it.
     expect(created).not.toContain(FALLBACK_MODULE_ICON_NAME);
+  });
+
+  test('the command marker is dumby_modules, NOT the cube named dumby_module', () => {
+    registerModuleEmoji(COMMAND_DECORATION_ICON_NAME, '333', APP);
+    registerModuleEmoji('dumby_module', '444', APP);
+
+    // The squared marker beside each command is the modules module's grid…
+    expect(commandDecorationIcon(APP)).toBe('<:dumby_modules:333>');
+    // …and the one-letter-apart cube is never what the command list renders.
+    expect(commandDecorationIcon(APP)).not.toContain('dumby_module:');
+  });
+
+  test('dumby_dashboard is retired too — the dashboard declares the shared home emoji', async () => {
+    const logger = makeLogger();
+    const { client, created, deleted } = makeClient([{ id: '666', name: 'dumby_dashboard' }]);
+
+    await ensureDefaultModuleEmoji(client, logger, APP, []);
+
+    expect(deleted).toStrictEqual(['666']);
+    expect(logger.info).toHaveBeenCalledWith(
+      expect.stringContaining('module-emoji-retired app=' + APP + ' name=dumby_dashboard'),
+    );
+    expect(created).not.toContain('dumby_dashboard');
   });
 
   test('retirement is idempotent — an absent name is a no-op, not an error', async () => {
