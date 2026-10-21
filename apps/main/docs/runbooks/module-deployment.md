@@ -138,3 +138,4 @@ Generate a keypair with `apps/main/scripts/gen-l2-key.sh`.
 | `403 no license is registered` / licence not `approved` | licence not activated | approve the developer (activates it) |
 | `on-disk artifact hash does not match the builds row` | the volume copy differs from the promoted build | re-deploy |
 | A module is absent after deploy | its tier volume is empty (Option A image ships none) | run `build:modules` + `push:modules` |
+| `EACCES: permission denied, mkdir '/mnt/modules/swastik-staging'` in the Swastik log, then `module-volume-root-missing` | the module root does not exist or is not writable by the non-root `node` user (no volume mounted) | the image creates and `chown`s `/mnt/modules`; attach a persistent disk for modules to survive a restart |

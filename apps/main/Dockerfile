@@ -67,6 +67,15 @@ COPY --from=builder /app/packages/swastik ./packages/swastik
 # up (`pnpm push:modules`). The mount must be writable by the non-root `node` user (RAILWAY_RUN_UID=0).
 ENV MODULES_DIR=/mnt/modules
 COPY apps/main/package.json apps/main/tsconfig.json ./apps/main/
+# The module root must EXIST and be writable by the non-root `node` user. Where a platform mounts a
+# volume at /mnt/modules the mount overlays this; where it does not — a free Render instance with no
+# persistent disk, for example — the directory must still exist and be writable, or Swastik's staging
+# mkdir fails with `EACCES: permission denied, mkdir '/mnt/modules/swastik-staging'`, the boot seed is
+# skipped, and the bot runs with zero modules.
+RUN mkdir -p /mnt/modules/swastik-staging \
+ && mkdir -p /mnt/modules/modules-admin /mnt/modules/modules-core \
+      /mnt/modules/modules-standard /mnt/modules/modules-marketplace \
+ && chown -R node:node /mnt/modules
 EXPOSE 8080 8081 8082
 USER node
 WORKDIR /app/apps/main
