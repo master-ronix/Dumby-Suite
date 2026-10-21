@@ -72,7 +72,14 @@ export interface PersonaRuntimeDeps {
   /** The module slugs bound to this persona in its guild. */
   modulesBoundTo: (personaId: string) => Promise<readonly string[]>;
   /** Builds a registry containing only those modules' commands. */
-  buildRegistry: (moduleSlugs: readonly string[]) => CommandRegistry;
+  /**
+   * Builds a registry containing ONLY those modules' commands.
+   *
+   * The profile is the persona's own, so the filtered registry is tagged for the application that
+   * will run it — a persona is not the main bot, and a registry built for one must not be reused by
+   * the other.
+   */
+  buildRegistry: (moduleSlugs: readonly string[], profile: CommandProfile) => CommandRegistry;
   /** Creates a client for a persona's token. */
   createClient: () => PersonaClient;
   /**
@@ -244,7 +251,14 @@ export class PersonaRuntime {
           continue;
         }
         const moduleSlugs = await this.deps.modulesBoundTo(persona.id);
-        const registry = this.deps.buildRegistry(moduleSlugs);
+        // The persona's OWN profile, and only the modules it holds: a module claimed by another
+        // profile in this guild contributes no commands here. Deploying them anyway registered
+        // commands the persona would then refuse — visible-but-dead, which reads as broken.
+        const registry = this.deps.buildRegistry(moduleSlugs, {
+          kind: 'persona',
+          id: persona.id,
+          applicationId: persona.discordApplicationId,
+        });
         // UR-20261012-050 — WHY a persona has no commands is now REPORTED, not silent.
         //
         // A persona deploys only its bound modules, and the deploy returns early on an empty payload,

@@ -90,6 +90,7 @@ import { PersonaOccupiedError } from '../personas/persona.js';
 import { PersonaCommandBindingService } from '../personas/persona-command-binding.service.js';
 import {
   PersonaRuntime,
+  filterRegistryForModules,
   deployPersonaCommands,
   splitPersonaPayloads,
 } from '../personas/persona-runtime.js';
@@ -1478,7 +1479,12 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
         // ownership, in the router (`assertPersonaOwnsCommand`), not by what it registers: registering
         // only the bound modules meant a persona with nothing bound registered NOTHING, so its commands
         // never existed and stale ones were never cleared. The guild binding is the restriction.
-        buildRegistry: () => commandRegistry,
+        // UR-20261012-050 — the persona's registry is FILTERED to the modules it holds. Returning the
+        // main registry here handed every persona all eight commands regardless of what it owned, so a
+        // module claimed by another profile was still registered on the persona and then refused at
+        // dispatch. `filterRegistryForModules` was written for exactly this and was never wired.
+        buildRegistry: (moduleSlugs, profile) =>
+          filterRegistryForModules(commandRegistry, new Set(moduleSlugs), profile),
         // The gateway intents/partials are computed for the main client in an earlier scope, so they
         // are derived again here from the same source of truth: the module manifests.
         createClient: () => {
