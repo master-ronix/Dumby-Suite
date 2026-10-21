@@ -198,6 +198,20 @@ export function registerCoreFrameHandlers(deps: CoreFrameHandlerDeps): void {
         );
         return;
       }
+
+      if (action === 'nav') {
+        // item 6 — the dashboard's dial. The option's VALUE is the target PAGE (Home carries the
+        // reserved sentinel), so the handler needs no module→page mapping: the page is exactly what
+        // the select was built with. An unparseable value falls back to the main view rather than
+        // dispatching a page that does not exist.
+        const selected = interaction.values?.[0];
+        const page =
+          selected === undefined || selected === HOME_SELECT_VALUE ? 0 : Number(selected);
+        await router.dispatch(asPageInteraction(interaction, 'dashboard'), {
+          page: Number.isFinite(page) ? page : 0,
+        });
+        return;
+      }
     },
   });
 

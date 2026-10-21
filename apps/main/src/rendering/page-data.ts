@@ -604,10 +604,39 @@ export function createPageDataProvider(deps: PageDataDeps): (
           mine: await ownedBy(guildId, entry.manifest.name, 'standard', actingProfileId),
         })),
     );
+    // item 6 — the DIAL's serial order: a module page is ordered by WHEN THE MODULE WAS INSTALLED in
+    // this guild, so a module keeps its place as others come and go. `guild_module_states.createdAt`
+    // is that moment; a module with no row (never explicitly installed) sorts last, deterministically.
+    const installedAt = new Map<string, number>();
+    if (guildId !== null) {
+      const rows = (await db
+        .knex('guild_module_states')
+        .select('moduleSlug', 'createdAt')
+        .where({ guildId })
+        .whereNull('deletedAt')) as unknown as { moduleSlug: string; createdAt: unknown }[];
+      for (const row of rows) {
+        const parsed = Date.parse(String(row.createdAt));
+        installedAt.set(row.moduleSlug, Number.isNaN(parsed) ? Number.MAX_SAFE_INTEGER : parsed);
+      }
+    }
+    const installRank = (slug: string): number => installedAt.get(slug) ?? Number.MAX_SAFE_INTEGER;
+
     const standard = dashboardEntries
       .filter((r) => r.mine && (enabledBySlug.get(r.entry.manifest.name) ?? true))
-      .map((r) => r.entry);
+      .map((r) => r.entry)
+      .sort((a, b) => installRank(a.manifest.name) - installRank(b.manifest.name));
     const pageTotal = 1 + standard.length;
+
+    // item 6 — the navigation entries, in that same order: one per module page, carrying the module's
+    // declared logo NAME (the router resolves it for the acting application) so the option can show
+    // the module's own icon, and the module's description verbatim.
+    const navigation = standard.map((entry, index) => ({
+      id: entry.manifest.name,
+      name: entry.manifest.ui?.displayName ?? titleCaseId(entry.manifest.name),
+      description: entry.manifest.description,
+      page: index + 1,
+      ...(entry.manifest.ui?.icon !== undefined ? { iconName: entry.manifest.ui.icon } : {}),
+    }));
 
     if (page >= 1 && page <= standard.length) {
       const entry = standard[page - 1];
@@ -630,6 +659,7 @@ export function createPageDataProvider(deps: PageDataDeps): (
           lines,
           pageTotal,
           page,
+          navigation,
           pageModuleId: entry.manifest.name,
           pageModuleName: entry.manifest.ui?.displayName ?? titleCaseId(entry.manifest.name),
         };
@@ -645,7 +675,7 @@ export function createPageDataProvider(deps: PageDataDeps): (
         lines.push(`${icon} \`/${command.name}\``);
       }
     }
-    return { lines, pageTotal, page: 0 };
+    return { lines, pageTotal, page: 0, navigation };
   }
 
   // items 1/5/6 — /browse is marketplace discovery. No in-content heading (the frame title already

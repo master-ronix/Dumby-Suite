@@ -21,8 +21,13 @@ import {
   type RenderProfile,
   derivePageSections,
 } from '../rendering/core-renderer.js';
-import { customEmojiParts, DEFAULT_EMOJI_SCOPE } from '../rendering/module-icons.js';
+import {
+  customEmojiParts,
+  DEFAULT_EMOJI_SCOPE,
+  MODULE_ICON_NAME,
+} from '../rendering/module-icons.js';
 import { healthBlocks } from '../rendering/health-blocks.js';
+import { dashboardNavSelect, type DialEntry } from '../rendering/dashboard-nav.js';
 import { modulesBlocks } from '../rendering/modules-blocks.js';
 import { personaBlocks } from '../rendering/persona-blocks.js';
 import {
@@ -461,13 +466,24 @@ export class CommandRouter {
                   }
                 : name === 'dashboard'
                   ? {
-                      actions: this.pageActions(
-                        name,
-                        declaredPageData,
-                        interaction.user.id,
-                        options.page,
-                        this.emojiScope(interaction),
-                      ),
+                      // item 6 — the dashboard's navigation sits BELOW the footer, as a DIAL, not above
+                      // it as buttons: it is a page-wide control, and the footer closes the content
+                      // above it. The zone grammar puts a select there regardless.
+                      interactive: [
+                        dashboardNavSelect({
+                          invokerId: interaction.user.id,
+                          entries: this.dashboardNavEntries(
+                            declaredPageData,
+                            this.emojiScope(interaction),
+                          ),
+                          currentPage: options.page ?? 0,
+                          homeIcon: customEmojiParts('dumby_home', this.emojiScope(interaction)),
+                          fallbackIcon: customEmojiParts(
+                            MODULE_ICON_NAME,
+                            this.emojiScope(interaction),
+                          ),
+                        }),
+                      ],
                     }
                   : {}),
       });
@@ -912,6 +928,33 @@ export class CommandRouter {
    * content blocks. Every customId is minted `dumby:act:<invoker>:<action>:<target>[:<page>]` or
    * `dumby:nav:<invoker>:<role>:<n>` so the interaction registry's invoker re-check holds.
    */
+  /**
+   * item 6 — the dial's entries, built from the page data's `navigation`: one per module page, with the
+   * module's DECLARED logo resolved for the acting application. A module that declares no logo gets no
+   * `icon`, and `dashboardNavSelect` applies the caller's fallback — so an option always shows a mark.
+   */
+  private dashboardNavEntries(
+    data: Readonly<Record<string, unknown>> | undefined,
+    scope: string,
+  ): readonly DialEntry[] {
+    const raw = data?.['navigation'];
+    if (!Array.isArray(raw)) return [];
+    return raw
+      .filter((e): e is Record<string, unknown> => typeof e === 'object' && e !== null)
+      .map((e) => {
+        const iconName = typeof e['iconName'] === 'string' ? e['iconName'] : undefined;
+        const icon = iconName !== undefined ? customEmojiParts(iconName, scope) : undefined;
+        const page = typeof e['page'] === 'number' ? e['page'] : 0;
+        return {
+          id: String(e['id'] ?? ''),
+          name: String(e['name'] ?? e['id'] ?? ''),
+          description: String(e['description'] ?? ''),
+          page,
+          ...(icon !== undefined ? { icon } : {}),
+        };
+      });
+  }
+
   private pageActions(
     commandName: string,
     data: Readonly<Record<string, unknown>> | undefined,
@@ -920,41 +963,6 @@ export class CommandRouter {
     /** UR-20261012-064 — the emoji scope for the acting application. */
     scope: string,
   ): readonly PageActionRow[] {
-    // UR-004 items 2/3 - the dashboard's navigation is Home (icon-only) / Next page / Previous
-    // page; Next/Previous move between the main page (page 0) and the standard module pages.
-    if (commandName === 'dashboard') {
-      const total = typeof data?.['pageTotal'] === 'number' ? (data['pageTotal'] as number) : 1;
-      const last = Math.max(total - 1, 0);
-      // F-5 — each control's customId must be unique within the message. Keying every button on
-      // its target page made Home and Previous collide on page 0 (both `...:page:0`), which Discord
-      // rejects as COMPONENT_CUSTOM_ID_DUPLICATED. The role now forms part of the id, and a control
-      // with no target (Previous on page 0, Next on the last page) is disabled instead of colliding.
-      const nav = (role: string, n: number): string => `dumby:nav:${invokerId}:${role}:${n}`;
-      return [
-        [
-          {
-            customId: nav('home', 0),
-            label: '',
-            emoji: customEmojiParts('dumby_home', scope) ?? { name: '🏠' },
-            style: 2,
-            disabled: page === 0,
-          },
-          {
-            customId: nav('next', Math.min(page + 1, last)),
-            label: 'Next page',
-            style: 2,
-            disabled: page >= last,
-          },
-          {
-            customId: nav('prev', Math.max(page - 1, 0)),
-            label: 'Previous page',
-            style: 2,
-            disabled: page <= 0,
-          },
-        ],
-      ];
-    }
-
     // UR-20261011-009/010 — /modules carries the SAME navigation row as the dashboard. Home
     // returns to THIS page's main view (/modules page 0, resetting paging) — not the dashboard —
     // exactly as Home on every other surface returns to that surface's own main view.
