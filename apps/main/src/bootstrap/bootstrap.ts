@@ -19,7 +19,11 @@ import { ensureMonthlyPartitions, dropExpiredPartitions } from '../db/audit-part
 import { InternalEventBus } from '../events/event-bus.js';
 import { EventRouter } from '../events/event-router.js';
 import { EventLoopLagMonitor } from '../events/event-loop-lag.js';
-import { ShardOwnershipManager, parseShardRange } from '../discord/shard-ownership.js';
+import {
+  claimShardsWithin,
+  ShardOwnershipManager,
+  parseShardRange,
+} from '../discord/shard-ownership.js';
 import { hostname } from 'node:os';
 import { Scheduler } from '../queue/scheduler.js';
 import { CacheManager } from '../cache/cache-manager.js';
@@ -1295,7 +1299,9 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     // Stage 15 forever (no crash, no bot online) when a shard lock is held by a stale instance.
     // Bound it so the boot always proceeds to the gateway login.
     logger.info('shard-ownership-claiming', { shards: configuredShards });
-    const ownedShards = await shardOwnership.claim(configuredShards, 30);
+    // Bounded AND deadlined. The attempt cap alone is not enough: it too requires Redis to answer, so
+    // an unreachable lock store stalls the boot before the port is ever bound. See claimShardsWithin.
+    const ownedShards = await claimShardsWithin(shardOwnership, configuredShards, logger);
     shardOwnership.startHeartbeat();
     logger.info('shard-ownership-claimed', { shards: ownedShards, configured: configuredShards });
     const modules = moduleRegistry.all();

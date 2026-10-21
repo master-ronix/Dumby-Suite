@@ -58,6 +58,47 @@ export interface ShardOwnershipDeps {
  * `SHARD_LOCK_RETRY_MS`. Discord invalidates a shard's prior session when a second connection for
  * the same shard ID identifies, so this lock is what makes a rolling update's handover safe.
  */
+/**
+ * §23.2 — claim this pod's shard locks, but NEVER let the claim block the boot.
+ *
+ * `claim()` retries until it owns the shard or its attempts run out. Both outcomes require Redis to
+ * ANSWER: when it is unreachable, ioredis holds the command in its offline queue and the promise never
+ * settles. The boot then stalls *before* the gateway login, the API server never binds its port, and
+ * the platform kills the deploy with "failed to detect open port 8080" — a timeout with no error to
+ * read. That is exactly what happened on Render: the seed pushed all 8 modules, then
+ * `shard-ownership-claiming` and fourteen minutes of silence.
+ *
+ * So the claim is raced against a deadline. A deadline is NOT silent: it logs a warning naming the
+ * lock store, the boot proceeds with no shards (the gateway still connects), and the port binds — so
+ * the platform keeps the service and a health check can report the real state instead of the deploy
+ * disappearing into a port-scan timeout.
+ */
+export async function claimShardsWithin(
+  manager: ShardOwnershipManager,
+  shardIds: readonly number[],
+  logger: Pick<Logger, 'warn'>,
+  deadlineMs = 30_000,
+): Promise<number[]> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      manager.claim(shardIds, 30),
+      new Promise<number[]>((resolve) => {
+        timer = setTimeout(() => {
+          logger.warn('shard-claim-deadline-exceeded', {
+            shards: shardIds,
+            deadlineMs,
+            reason: 'the shard lock store did not answer — proceeding without shard ownership',
+          });
+          resolve([]);
+        }, deadlineMs);
+      }),
+    ]);
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
+}
+
 export class ShardOwnershipManager {
   private readonly held = new Set<number>();
   private heartbeatHandle: unknown = null;
