@@ -13,6 +13,9 @@
  *     spend the healthcheck window re-pushing. The volume is the source of truth once populated.
  *   - **Fail-safe.** The bot is started unconditionally. If any seeding step fails, the outcome is the
  *     previous behaviour (a bot with no modules), never a container that does not start.
+ *   - **Fallback.** If Swastik cannot run — the single point of failure that left production with zero
+ *     modules — the seed falls back to `seed-modules-inline.mjs`, which runs the SAME deploy handler in
+ *     this process. Option A is unchanged: the tier volumes remain the target either way.
  *
  * Plain JS so it runs in the production runtime image (no tsx, no `src/`).
  */
@@ -22,6 +25,7 @@ import { join } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { main as seedDeployer } from './seed-first-party-deployer.mjs';
 import { main as pushModules } from './push-modules-lite.mjs';
+import { main as seedModulesInline } from './seed-modules-inline.mjs';
 
 const port = process.env.SWASTIK_PORT ?? '8085';
 const internalApiKey = process.env.INTERNAL_API_KEY ?? '';
@@ -81,9 +85,14 @@ if (volumesPopulated()) {
       console.error(`start-production: module push failed (continuing): ${String(err)}`);
     }
   } else {
-    console.error(
-      'start-production: Swastik did not become ready; starting the bot without seeding',
-    );
+    // FALLBACK — Swastik could not run, but the modules must still load. Run the SAME deploy handler in
+    // this process (no HTTP, no second service), so a Swastik failure no longer means zero modules.
+    console.warn('start-production: Swastik did not become ready; using the in-process seed');
+    try {
+      await seedModulesInline();
+    } catch (err) {
+      console.error(`start-production: in-process seed failed (continuing): ${String(err)}`);
+    }
   }
 }
 
