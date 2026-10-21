@@ -34,7 +34,6 @@ import {
  */
 const ICON_ASSETS: ReadonlyArray<readonly [string, string]> = [
   [COMMAND_DECORATION_ICON_NAME, '../../assets/default-module-icon.png'],
-  [FALLBACK_MODULE_ICON_NAME, '../../assets/module-fallback-icon.png'],
   [UNINSTALL_ICON_NAME, '../../assets/uninstall-icon.png'],
   ['dumby_home', '../../assets/home-icon.png'],
   ['dumby_discover', '../../assets/discover-icon.png'],
@@ -46,6 +45,13 @@ const ICON_ASSETS: ReadonlyArray<readonly [string, string]> = [
   [IDENTITY_ICON_NAME, '../../assets/identity-icon.png'],
   [PROFILE_ICON_NAME, '../../assets/profile-icon.png'],
 ];
+
+/**
+ * Emoji names the framework has RETIRED — registered by an earlier version and no longer uploaded.
+ * They are DELETED from every application at boot, so an unused registration does not sit beside the
+ * current set: the operator asked for one marker, on the main bot and on every persona alike.
+ */
+const RETIRED_EMOJI_NAMES: readonly string[] = [FALLBACK_MODULE_ICON_NAME];
 
 /**
  * Uploads the framework icon set as application emojis (once) and registers each id, so a module
@@ -161,6 +167,24 @@ export async function ensureDefaultModuleEmoji(
       );
     }
   }
+  // Retire what is no longer used. Deleting is idempotent — a name that is absent is a no-op — so this
+  // runs on every boot without churn, and a name is removed wherever it was left behind.
+  for (const name of RETIRED_EMOJI_NAMES) {
+    const found = existing.find((emoji) => emoji.name === name);
+    if (found === undefined) continue;
+    try {
+      await application.emojis.delete(found.id);
+      unregisterModuleEmoji(name, applicationId);
+      logger.info(
+        `module-emoji-retired app=${applicationId || 'main'} name=${name} id=${found.id}`,
+      );
+    } catch (err) {
+      logger.warn(
+        `module-emoji-retire-failed app=${applicationId || 'main'} name=${name} reason=${String(err)}`,
+      );
+    }
+  }
+
   await ledger?.save();
 }
 

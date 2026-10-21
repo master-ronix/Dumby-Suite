@@ -1,14 +1,19 @@
 /**
  * Project-wide module icons (UR-20261008-004; split for UR-20261011-009).
  *
- * A module's logo is a **custom Discord emoji**. The manifest's `ui.icon` names the emoji; a module
- * that names none falls back to the framework's **fallback logo** (`module-fallback-icon.png`),
- * uploaded once as an application emoji at bootstrap (see `module-emoji-upload.ts`).
+ * A module's logo is a **custom Discord emoji**. The manifest's `ui.icon` names the emoji. A module
+ * that names none — or whose declared emoji did not resolve — falls back to the framework's neutral
+ * module marker (`dumby_module`), the SAME marker the command lists use beside each command.
  *
- * The framework also bundles a **white-square decoration** (`default-module-icon.png`) that is NOT a
- * module logo: it is the neutral marker beside each command in a module's own command list on the
- * dashboard's module page. The two are distinct assets — the decoration is never used as a logo
- * fallback, and the fallback is never used as a decoration.
+ * These used to be two assets: a "command decoration" (`dumby_module`) and a separate "fallback logo"
+ * (`dumby_module_fallback`), documented as never interchangeable. They render the same motif, so the
+ * second was retired and the one marker now serves both roles — on the main bot and on every persona,
+ * which is what the operator asked for. `module-fallback-icon.png` is no longer uploaded, and an
+ * already-registered `dumby_module_fallback` is DELETED from each application at boot (see
+ * `RETIRED_EMOJI_NAMES` in `module-emoji-upload.ts`), so the old registration does not linger.
+ *
+ * The unicode fallback for the LOGO path stays the package glyph: when the emoji is unavailable, a
+ * package says more than a bare square.
  *
  * An emoji id is only known at runtime, so the registry below is populated when the bot uploads the
  * emojis. Until then — or if the upload failed — a unicode fallback is used, so a page never renders
@@ -18,6 +23,10 @@ export const COMMAND_DECORATION_ICON_NAME = 'dumby_module';
 /** Used only when the decoration emoji is unavailable (before the upload, or if it failed). */
 export const COMMAND_DECORATION_FALLBACK = '\u2b1c'; // white medium square
 
+/**
+ * RETIRED. Kept as a handle for the deletion, not as an upload: the logo fallback now resolves to
+ * `COMMAND_DECORATION_ICON_NAME`, and this emoji is removed from every application at boot.
+ */
 export const FALLBACK_MODULE_ICON_NAME = 'dumby_module_fallback';
 /** Used only when the fallback-logo emoji is unavailable (before the upload, or if it failed). */
 export const FALLBACK_MODULE_ICON = '\ud83d\udce6'; // package
@@ -134,7 +143,9 @@ export function moduleIcon(declared: string | undefined, applicationId: string):
     // printing the name as literal text beside the command.
     if (!/^[a-z0-9_]+$/i.test(declared)) return declared;
   }
-  return customEmojiRef(FALLBACK_MODULE_ICON_NAME, applicationId) ?? FALLBACK_MODULE_ICON;
+  // The marker is the SAME emoji the command lists use. FALLBACK_MODULE_ICON_NAME is kept only as a
+  // retirement handle: the name is no longer uploaded, and its emoji is deleted at boot.
+  return customEmojiRef(COMMAND_DECORATION_ICON_NAME, applicationId) ?? FALLBACK_MODULE_ICON;
 }
 
 /**
