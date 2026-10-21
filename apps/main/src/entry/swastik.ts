@@ -12,6 +12,7 @@ import { registerInternalAuth, shouldProtectSwastikRoute } from '../http/interna
 import { toErrorResponse } from '../http/error-boundary.js';
 import { parseManifest, type ModuleManifest } from '../module-system/manifest.schema.js';
 import { signProvenance } from '../module-system/sign-provenance.js';
+import { deployModule } from '../module-system/deploy-module.js';
 import { PostgresBuildStore } from '../db/repositories/build.repository.js';
 import {
   assertPathInside,
@@ -810,169 +811,40 @@ app.post('/internal/deploy', async (request, reply) => {
     });
   }
 
-  const buildId = `build_${randomBytes(12).toString('hex')}`;
-  const stagingDir = safeJoin(
-    stagingVolume,
-    safeModulePathSegment(safeModuleSlug, safeModuleVersion),
-  );
-  if (!existsSync(stagingDir)) mkdirSync(stagingDir, { recursive: true });
-  const manifestPath = join(stagingDir, 'manifest.json');
-  const indexPath = join(stagingDir, 'index.js');
-  writeFileSync(manifestPath, JSON.stringify(rawManifest, null, 2), 'utf8');
-  writeFileSync(indexPath, indexSource, 'utf8');
-
-  await db.knex('builds').insert({
-    buildId,
-    devId: providedDevId,
-    moduleSlug: safeModuleSlug,
-    version: safeModuleVersion,
-    validationStatus: 'pending',
-  });
-
-  const verification = verifyStagedBuild({
-    stagingVolume,
-    moduleSlug: safeModuleSlug,
-    version: safeModuleVersion,
-  });
-  if (!verification.ok || verification.stagingDir === undefined) {
-    await db
-      .knex('builds')
-      .where({ buildId })
-      .update({ validationStatus: 'rejected', updatedAt: new Date() });
-    await writeAudit('BUILD_LOAD_VERIFICATION_FAILED', 'rejected', {
-      moduleSlug: safeModuleSlug,
-      version: safeModuleVersion,
-      buildId,
-      error: verification.reason ?? 'staged build failed static verification',
-    });
-    return reply
-      .code(422)
-      .send({ error: verification.reason ?? 'staged build failed static verification' });
-  }
-  const priorPromotion = await db
-    .knex('builds')
-    .where({ moduleSlug: safeModuleSlug })
-    .whereNotNull('promotedAt')
-    .first();
-  const gate = decidePromotionGate({
-    isFirstPromotion: priorPromotion === undefined,
-    humanApproved,
-  });
-  if (!gate.allowed) {
-    await writeAudit('BUILD_PROMOTION_REFUSED', 'rejected', {
-      moduleSlug: safeModuleSlug,
-      version: safeModuleVersion,
-      buildId,
-      devId: redact(providedDevId),
-      error: gate.reason,
-    });
-    return reply.code(403).send({ error: gate.reason });
-  }
-
-  let promotion: PromotionOutcome | null = null;
-  try {
-    const signed =
-      env.BUILD_SIGNING_KEY_ID !== '' && env.BUILD_SIGNING_PRIVATE_KEY !== ''
-        ? signProvenance({
-            stagingDir: verification.stagingDir,
-            moduleSlug: safeModuleSlug,
-            version: safeModuleVersion,
-            devId: providedDevId,
-            buildId: buildId,
-            keyId: env.BUILD_SIGNING_KEY_ID,
-            privateKey: env.BUILD_SIGNING_PRIVATE_KEY,
-          })
-        : undefined;
-    promotion = await promoteUnderLock({
-      lockStore: promotionLock,
-      liveVolume: liveVolumeForTier(manifest.tier),
+  const result = await deployModule(
+    {
+      knex: db.knex,
       stagingVolume,
+      modulesDir,
+      lockStore: promotionLock,
+      signingKeyId: env.BUILD_SIGNING_KEY_ID,
+      signingPrivateKey: env.BUILD_SIGNING_PRIVATE_KEY,
+      logger,
+      redact,
+      audit: writeAudit,
+      recordDeployment,
+    },
+    {
       moduleSlug: safeModuleSlug,
-      stagingDir: verification.stagingDir,
-      ...(signed !== undefined ? { provenance: signed.sidecar } : {}),
-    });
-    if (signed !== undefined) {
-      await new PostgresBuildStore(db.knex).setProvenance({
-        buildId,
-        moduleSlug: safeModuleSlug,
-        version: safeModuleVersion,
-        devId: providedDevId,
-        sourceArchiveHash: signed.sourceArchiveHash,
-        artifactHash: signed.artifactHash,
-        lockfileHash: signed.lockfileHash,
-        gateResultsHash: signed.gateResultsHash,
-        sbom: null,
-        signature: signed.sidecar.signature,
-        signatureKeyId: signed.sidecar.signatureKeyId,
-        signedDescriptor: signed.sidecar.signedDescriptor,
-      });
-    }
-    await db
-      .knex('builds')
-      .where({ buildId })
-      .update({ validationStatus: 'passed', promotedAt: new Date(), updatedAt: new Date() });
-    logger.info('swastik-module-deployed', {
-      moduleSlug: safeModuleSlug,
-      version: safeModuleVersion,
-      buildId,
-      gate: gate.gate,
-      tier: manifest.tier,
-      liveVolume: TIER_VOLUME_NAMES[manifest.tier],
-    });
-    await writeAudit('MODULE_DEPLOYED', 'allowed', {
-      moduleSlug: safeModuleSlug,
-      version: safeModuleVersion,
-      buildId,
-      devId: redact(providedDevId),
-      gate: gate.gate,
-      tier: manifest.tier,
-    });
-    await recordDeployment({
-      buildId,
-      module: safeModuleSlug,
       version: safeModuleVersion,
       devId: providedDevId,
-      promotionResult: 'promoted',
-    });
-    return reply.code(201).send({
-      buildId,
-      status: 'promoted',
-      moduleSlug: safeModuleSlug,
-      version: safeModuleVersion,
-      gate: gate.gate,
-      tier: manifest.tier,
-      liveVolume: TIER_VOLUME_NAMES[manifest.tier],
-      manifest: rawManifest,
-    });
-  } catch (err) {
-    logger.error('swastik-deploy-failed', {
-      moduleSlug: safeModuleSlug,
-      version: safeModuleVersion,
-      error: String(err),
-    });
-    await writeAudit('MODULE_DEPLOY_FAILED', 'rejected', {
-      moduleSlug: safeModuleSlug,
-      version: safeModuleVersion,
-      error: String(err),
-    });
-    if (promotion !== null) {
-      try {
-        rollbackPromotion(promotion);
-        await db
-          .knex('builds')
-          .where({ buildId })
-          .update({ validationStatus: 'rejected', promotedAt: null, updatedAt: new Date() });
-      } catch {}
-    }
-    await recordDeployment({
-      buildId,
-      module: safeModuleSlug,
-      version: safeModuleVersion,
-      devId: providedDevId,
-      promotionResult: promotion !== null ? 'rolled-back' : 'not-attempted',
-    });
-    return reply.code(500).send({ error: `deploy failed: ${(err as Error).message}` });
-  }
+      rawManifest,
+      manifest,
+      indexSource,
+      humanApproved,
+    },
+  );
+  if (!result.ok) return reply.code(result.code).send({ error: result.error });
+  return reply.code(201).send({
+    buildId: result.buildId,
+    status: 'promoted',
+    moduleSlug: safeModuleSlug,
+    version: safeModuleVersion,
+    gate: result.gate,
+    tier: result.tier,
+    liveVolume: result.liveVolume,
+    manifest: result.manifest,
+  });
 });
 
 /**
