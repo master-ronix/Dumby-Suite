@@ -520,8 +520,12 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   // Without a domain - a local run - the banner slot is simply omitted rather than pointed at a URL
   // nothing serves.
   const publicDomain = resolvePublicDomain(process.env, config.get('PUBLIC_DOMAIN'));
-  const renderer = new CoreRenderer(
-    publicDomain !== ''
+  // §1.3 — the zone grammar is enforced inside the renderer; the logger is what makes a relocated
+  // block visible, so a module that declares a select among its content blocks is told rather than
+  // silently moved.
+  const renderer = new CoreRenderer({
+    logger,
+    ...(publicDomain !== ''
       ? {
           // item 3 — a `?v=` token busts any cached copy: Discord caches media-gallery images and the
           // asset route is served with a long max-age, so a URL that ever resolved differently would
@@ -530,8 +534,8 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
           bannerUrl: `https://${publicDomain}/assets/dumby-banner.png?v=2`,
           bannersByModule: { dashboard: `https://${publicDomain}/assets/dashboard-banner.png?v=2` },
         }
-      : {},
-  );
+      : {}),
+  });
   const interactionRegistry = new InteractionRegistry({
     // Appendix C #19 — shared idempotency, so a double-click is deduped across pods.
     idempotency: new RedisIdempotencyStore(redis),

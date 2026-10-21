@@ -23,6 +23,7 @@ import {
   type EntitySelectComponent,
 } from '../shared/utils/components-v2.js';
 import { pageSections } from './page-layouts.js';
+import type { Logger } from '../logging/logger.js';
 
 export const FOLLOWUP_ALARM_MS = 13 * 60 * 1000;
 
@@ -150,9 +151,10 @@ export type RenderBlock =
       readonly options: readonly NavigationOption[];
       readonly disabled?: boolean;
       /**
-       * UR-20261012-054 — render this block BELOW the footer instead of above it. The operator asked
-       * for the profile switcher to sit under the footer: a selector is a control for the whole page,
-       * and the footer closes the content above it.
+       * UR-20261012-054 — historically this asked for the block to render BELOW the footer. It is now
+       * IMPLIED and the flag does nothing: a select's canonical zone is below the footer whatever list
+       * it is declared in (see `blockZone`), so the grammar places it there without being asked. Kept
+       * on the type so an existing declaration does not have to change.
        */
       readonly placement?: 'trailing';
     }
@@ -241,13 +243,18 @@ export interface RenderDescriptor extends RenderIdentity {
    * are permitted here.
    */
   actions?: readonly PageActionRow[];
-  /** item 8 — richer content blocks (inline sections, selects) that replace the plain sections. */
+  /**
+   * item 8 — richer content blocks that replace the plain sections. Content and inline controls
+   * (text, thumbnail, section) render here, ABOVE the footer; a select declared here is relocated
+   * below it. See `blockZone`.
+   */
   blocks?: readonly RenderBlock[];
   /**
-   * item 6 — the INTERACTIVE ZONE: interactive components rendered BELOW the footer. It accepts ANY
-   * interactive component with no restriction on kind — buttons (an Action Row), the string/user/
-   * role/mentionable/channel select menus, and trailing selects — and imposes no limit on how many a
-   * page places here. Buttons are NOT excluded from this zone.
+   * item 6 — the INTERACTIVE ZONE, rendered BELOW the footer. Reserved for interactions and button
+   * actions: action-row buttons and every select kind, with no limit on how many a page places. It
+   * does NOT accept other content (text/section/thumbnail — those are relocated above the footer) and
+   * it does NOT accept an inline button, which is a section accessory and renders with its section
+   * above. See `blockZone` for the grammar.
    */
   interactive?: readonly RenderBlock[];
   /**
@@ -360,17 +367,55 @@ export class DirectInteractionResponseError extends Error {
   }
 }
 
+/**
+ * §1.3 — the ZONE GRAMMAR for a Mode D page, in Discord's Components v2 terms.
+ *
+ *   `above` — content and inline controls: text, thumbnails, and sections (whose single accessory is
+ *             the INLINE button or a thumbnail). A select NEVER appears above the footer.
+ *   `below` — the action zone: action-row buttons and every select kind (string, user, role,
+ *             mentionable, channel). Other content never appears below the footer, and neither does
+ *             an inline button — an inline button is a section accessory, so it travels with its
+ *             section, above the footer.
+ *   `both`  — an action row of buttons: the page's own action bar above the footer, and actions in
+ *             the interactive zone below it.
+ *
+ * The zone is a property of the BLOCK KIND, not of the list a page happened to declare it in, so a
+ * misplaced block is relocated rather than rendered where it does not belong.
+ */
+export function blockZone(block: RenderBlock): 'above' | 'below' | 'both' {
+  switch (block.kind) {
+    case 'text':
+    case 'thumbnail':
+    case 'section':
+      return 'above';
+    case 'select':
+    case 'entitySelect':
+      return 'below';
+    case 'row':
+      return 'both';
+  }
+}
+
 export class CoreRenderer {
   private readonly bannerUrl: string | undefined;
   private readonly bannersByModule: Readonly<Record<string, string>>;
+  /** §1.3 — logs a block relocated to its canonical zone. Optional, so the renderer stays pure. */
+  private readonly logger: Logger | undefined;
 
   /**
    * §1.3 / §11.5 - the Mode D banner. `bannersByModule` lets a specific module (the dashboard,
    * item 6) carry its own banner; every other module falls back to `bannerUrl` (the default).
    */
-  constructor(options: { bannerUrl?: string; bannersByModule?: Record<string, string> } = {}) {
+  constructor(
+    options: {
+      bannerUrl?: string;
+      bannersByModule?: Record<string, string>;
+      logger?: Logger | undefined;
+    } = {},
+  ) {
     this.bannerUrl = options.bannerUrl;
     this.bannersByModule = options.bannersByModule ?? {};
+    this.logger = options.logger;
   }
 
   createTraceId(): string {
@@ -458,20 +503,38 @@ export class CoreRenderer {
   render(input: RenderDescriptor): ComponentsV2Message {
     const mode = input.mode ?? 'D';
     const sections = input.sections ?? (input.summary ? [input.summary] : []);
-    // item 8 — a page may carry content as blocks (sections/select) instead of plain sections.
+    // item 8 — a page may carry content as blocks (sections/select) instead of plain sections, and a
+    // page whose only components are interactions is valid too: the interactive zone alone is a page.
     const hasBlocks = input.blocks !== undefined && input.blocks.length > 0;
-    if (sections.length === 0 && !hasBlocks) {
+    if (sections.length === 0 && !hasBlocks && (input.interactive?.length ?? 0) === 0) {
       throw new InvalidRenderDescriptorError();
     }
 
     const developer = input.developer ?? DEFAULT_DEVELOPER;
     const components: Component[] = [];
 
-    // UR-20261012-054 — blocks that declare themselves `trailing` render BELOW the footer, so the
-    // split is made once, here, rather than at each render site.
-    const trailingBlocks = (input.blocks ?? []).filter(
-      (b) => b.kind === 'select' && b.placement === 'trailing',
-    );
+    // §1.3 — the ZONE GRAMMAR, applied once here so every render site inherits it. Every declared
+    // block is placed in its CANONICAL zone (see `blockZone`), whichever list it was declared in; a
+    // misplaced block is relocated rather than rendered where it does not belong, and the relocation
+    // is logged when a logger is configured. Nothing is dropped.
+    const aboveBlocks: RenderBlock[] = [];
+    const belowBlocks: RenderBlock[] = [];
+    const placeBlock = (block: RenderBlock, declared: 'above' | 'below'): void => {
+      const zone = blockZone(block);
+      const target = zone === 'both' ? declared : zone;
+      if (target !== declared) {
+        this.logger?.warn('render-block-relocated', {
+          kind: block.kind,
+          from: declared,
+          to: target,
+          reason:
+            'Components v2 zone grammar — selects belong below the footer; content and inline controls above it',
+        });
+      }
+      (target === 'above' ? aboveBlocks : belowBlocks).push(block);
+    };
+    for (const block of input.blocks ?? []) placeBlock(block, 'above');
+    for (const block of input.interactive ?? []) placeBlock(block, 'below');
 
     // §1.2 / §1.3 / §1.4 - the banner slot opens the frame, and is present in Mode D only.
     // item 6 - a module's own banner wins; then the default. The dashboard carries its own.
@@ -496,15 +559,15 @@ export class CoreRenderer {
       components.push(textDisplay(this.oneLineRender(input.surface, sections[0] ?? input.surface)));
     } else if (mode === 'M') {
       components.push(textDisplay(this.condensedRender(sections)));
-    } else if (hasBlocks) {
-      // item 8 — richer blocks: a Section (text with an inline accessory), a text block, a thumbnail,
-      // or a Select. Interactive selects that declare `trailing` are deferred to the interactive zone.
-      (input.blocks ?? [])
-        .filter((b) => !(b.kind === 'select' && b.placement === 'trailing'))
-        .forEach((block) => {
-          const component = renderBlockComponent(block);
-          if (component !== undefined) components.push(component);
-        });
+    } else if (aboveBlocks.length > 0) {
+      // item 8 — the content blocks, in declaration order: a Section (text with an inline accessory),
+      // a text block, a thumbnail. Only blocks whose canonical zone is above the footer reach here; a
+      // select declared among them was relocated below, an action row stays where it was declared, and
+      // content declared in the interactive list was relocated UP into this zone.
+      aboveBlocks.forEach((block) => {
+        const component = renderBlockComponent(block);
+        if (component !== undefined) components.push(component);
+      });
     } else {
       sections.forEach((section, index) => {
         if (index > 0) components.push(separator());
@@ -536,15 +599,14 @@ export class CoreRenderer {
       components.push(textDisplay(footer));
     }
 
-    // item 6 — the INTERACTIVE ZONE, below the footer. It is reserved for interactive components and
-    // imposes NO restriction on which kind: buttons (an Action Row), select menus of every kind
-    // (string/user/role/mentionable/channel), and the trailing selects a page declares all belong
-    // here, and there is no limit on how many a page places. (The button zone above the footer is the
-    // page's own action bar; it does NOT exclude buttons from this zone.)
-    const interactiveBlocks: RenderBlock[] = [...(input.interactive ?? []), ...trailingBlocks];
-    if (interactiveBlocks.length > 0) {
+    // item 6 — the INTERACTIVE ZONE, below the footer. It is reserved for interactions and button
+    // ACTIONS: action-row buttons and select menus of every kind (string/user/role/mentionable/
+    // channel), with no limit on how many a page places. Other content is NOT rendered here — a text,
+    // section or thumbnail block belongs above the footer and was relocated there. An INLINE button is
+    // not rendered here either: it is a section accessory, so it travels with its section, above.
+    if (belowBlocks.length > 0) {
       components.push(separator());
-      for (const block of interactiveBlocks) {
+      for (const block of belowBlocks) {
         const component = renderBlockComponent(block);
         if (component !== undefined) components.push(component);
       }
