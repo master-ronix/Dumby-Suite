@@ -147,6 +147,10 @@ import { customEmojiParts, moduleIcon, UNINSTALL_ICON_NAME } from '../rendering/
 import { developerName } from '../rendering/developer-identity.js';
 import { ensureDefaultModuleEmoji } from '../rendering/module-emoji-upload.js';
 import {
+  openEmojiArtworkLedger,
+  type EmojiArtworkLedger,
+} from '../rendering/emoji-artwork-ledger.js';
+import {
   InteractionRegistry,
   RedisIdempotencyStore,
 } from '../interactions/interaction-registry.js';
@@ -1420,6 +1424,14 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   // runtime, so it is held here at function scope and assigned when the runtime is constructed.
   let personaRuntimeRef: PersonaRuntime | undefined;
 
+  // §11.5 / UR-20261012-057 — ONE artwork ledger for the whole boot, shared by the main bot and every
+  // persona. The recorded map is keyed by application, so both reconcile against the same evidence:
+  // an emoji whose asset changed is replaced rather than reused under its old artwork. Opened lazily
+  // and once — a boot that uploads nothing pays nothing.
+  let emojiLedgerPromise: Promise<EmojiArtworkLedger> | undefined;
+  const emojiLedger = (): Promise<EmojiArtworkLedger> =>
+    (emojiLedgerPromise ??= openEmojiArtworkLedger(db.knex));
+
   if (discordClient) {
     const applicationId = discordClient.application?.id ?? '';
     // item 9 - upload the framework's default white module icon as an application emoji (once).
@@ -1433,7 +1445,13 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     // a persona (which passes its own id on both sides) resolved all of them. The render is right; the
     // registration had to be brought into line with it.
     try {
-      await ensureDefaultModuleEmoji(discordClient, logger, applicationId, collectModuleIcons());
+      await ensureDefaultModuleEmoji(
+        discordClient,
+        logger,
+        applicationId,
+        collectModuleIcons(),
+        await emojiLedger(),
+      );
     } catch (err) {
       logger.warn('module-emoji-upload-failed', { error: String(err) });
     }
@@ -1517,6 +1535,7 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
             logger,
             persona.discordApplicationId,
             collectModuleIcons(),
+            await emojiLedger(),
           );
         },
         // UR-20261012-083 — clearing a persona's commands: the SAME split and the SAME put the deploy

@@ -1,4 +1,6 @@
+import { createHash } from 'node:crypto';
 import { readFile, readdir } from 'node:fs/promises';
+import type { EmojiArtworkLedger } from './emoji-artwork-ledger.js';
 import { join } from 'node:path';
 import type { Client } from 'discord.js';
 import type { Logger } from '../logging/logger.js';
@@ -75,6 +77,12 @@ export async function ensureDefaultModuleEmoji(
   applicationId: string = DEFAULT_EMOJI_SCOPE,
   /** UR-20261012-066 — the module logos, collected from the registry by the caller. */
   moduleIcons: readonly ModuleIconAsset[] = [],
+  /**
+   * The artwork ledger. With it, an emoji whose asset has CHANGED is replaced; without it, an emoji
+   * is reused by name and its artwork stays frozen at first creation — which is how two applications
+   * came to hold the same names with different artwork.
+   */
+  ledger?: EmojiArtworkLedger | undefined,
 ): Promise<void> {
   // discord.js types `client.application` as `Application | null` until the client is ready;
   // a missing application is a skip, not a failure, and the unicode fallback applies.
@@ -93,18 +101,59 @@ export async function ensureDefaultModuleEmoji(
   ];
   for (const [name, rel] of assets) {
     try {
+      // Read the asset ONCE: it is both the upload payload and the source of the ledger hash. A
+      // framework path is relative to this file; a module path is already absolute.
+      let bytes: Buffer | undefined;
+      let hash: string | undefined;
+      try {
+        bytes = await readFile(rel.startsWith('/') ? rel : new URL(rel, import.meta.url));
+        hash = createHash('sha256').update(bytes).digest('hex');
+      } catch {
+        bytes = undefined;
+      }
+
       const found = existing.find((emoji) => emoji.name === name);
+      const recorded = ledger?.get(applicationId, name);
+
       if (found !== undefined) {
-        registerModuleEmoji(name, found.id, applicationId);
+        // Reuse ONLY when the recorded hash proves the artwork still matches the asset on disk.
+        // Discord never lets us read an emoji's image back, so the ledger is the only evidence — and
+        // with no ledger at all there is no evidence to act on, so the previous reuse-by-name
+        // behaviour stands rather than refreshing on every boot.
+        if (
+          bytes === undefined ||
+          hash === undefined ||
+          ledger === undefined ||
+          recorded === hash
+        ) {
+          registerModuleEmoji(name, found.id, applicationId);
+          logger.info(
+            `module-emoji-ready app=${applicationId || 'main'} name=${name} id=${found.id}`,
+          );
+          continue;
+        }
+        // The asset changed — or was never recorded, so the artwork cannot be shown to match. The
+        // old emoji is removed and a new one created from the current file. If the create fails, the
+        // name is simply absent, and the next boot recreates it (found === undefined → create).
+        await application.emojis.delete(found.id);
+        const recreated = await application.emojis.create({ attachment: bytes, name });
+        registerModuleEmoji(name, recreated.id, applicationId);
+        ledger?.record(applicationId, name, hash);
         logger.info(
-          `module-emoji-ready app=${applicationId || 'main'} name=${name} id=${found.id}`,
+          `module-emoji-refreshed app=${applicationId || 'main'} name=${name} id=${recreated.id}`,
         );
         continue;
       }
-      // A framework path is relative to this file; a module path is already absolute.
-      const attachment = await readFile(rel.startsWith('/') ? rel : new URL(rel, import.meta.url));
-      const created = await application.emojis.create({ attachment, name });
+
+      if (bytes === undefined) {
+        logger.warn(
+          `module-emoji-upload-failed app=${applicationId || 'main'} name=${name} reason=asset-missing`,
+        );
+        continue;
+      }
+      const created = await application.emojis.create({ attachment: bytes, name });
       registerModuleEmoji(name, created.id, applicationId);
+      if (hash !== undefined) ledger?.record(applicationId, name, hash);
       logger.info('module-emoji-created', { name, id: created.id });
     } catch (err) {
       logger.warn(
@@ -112,6 +161,7 @@ export async function ensureDefaultModuleEmoji(
       );
     }
   }
+  await ledger?.save();
 }
 
 /** The image extensions a module's asset directory may hold for an emoji. */
