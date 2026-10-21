@@ -12,7 +12,12 @@ import { registerInternalAuth, shouldProtectSwastikRoute } from '../http/interna
 import { toErrorResponse } from '../http/error-boundary.js';
 import { parseManifest, type ModuleManifest } from '../module-system/manifest.schema.js';
 import { signProvenance } from '../module-system/sign-provenance.js';
-import { deployModule } from '../module-system/deploy-module.js';
+import {
+  deploymentGateOutcome,
+  handleDeployRequest,
+  resolveModuleOwnership,
+  runtimeLedger,
+} from '../module-system/deploy-request.js';
 import { PostgresBuildStore } from '../db/repositories/build.repository.js';
 import {
   assertPathInside,
@@ -26,17 +31,12 @@ import {
   createPendingLicense,
   licenseAuthorizesDeploy,
   transitionLicense,
-  type LicenseRecord,
 } from '../licensing/license-machine.js';
-import { approveLicenseRecord, PostgresLicenseStore } from '../licensing/license-store.js';
 import {
-  checkModuleDeployment,
-  CompatibilityLedger,
-  type GateOutcome,
-  type LedgerContractRecord,
-  type LedgerProvidesRecord,
-  type LedgerWindowEntry,
-} from '../licensing/compatibility-ledger.js';
+  approveLicenseRecord,
+  licenseFromRow,
+  PostgresLicenseStore,
+} from '../licensing/license-store.js';
 import {
   decidePromotionGate,
   promoteUnderLock,
@@ -47,10 +47,6 @@ import {
 import { buildDeploymentRecord, type PromotionResult } from '../licensing/deployment-records.js';
 import { PostgresDeploymentRecordStore } from '../db/repositories/deployment-record.repository.js';
 import { HttpCredentialClient, type CredentialClient } from '../credentials/credential-client.js';
-import {
-  decideModuleOwnership,
-  type ModuleOwnershipStore,
-} from '../module-system/module-ownership.js';
 import { PostgresModuleOwnershipStore } from '../db/repositories/module-ownership.repository.js';
 import { PostgresApprovalStore } from '../db/repositories/approval.repository.js';
 import { CredentialVerificationError } from '../credentials/developer-credential.service.js';
@@ -232,86 +228,6 @@ async function authenticateDeveloper(
   return { devId, keyId: presented.keyId, dev: dev as Record<string, unknown> };
 }
 
-const OPTIONAL_LICENSE_FIELDS = [
-  'approvedBy',
-  'approvedAt',
-  'suspendedBy',
-  'suspendedAt',
-  'suspensionReason',
-  'forceDisabled',
-  'restoredBy',
-  'restoredAt',
-  'revokedBy',
-  'revokedAt',
-  'revocationReason',
-  'verifiedFingerprint',
-] as const satisfies ReadonlyArray<keyof LicenseRecord>;
-
-function licenseFromRow(row: Record<string, unknown>): LicenseRecord {
-  const license: LicenseRecord = {
-    licenseId: String(row['licenseId']),
-    subjectDevId: String(row['subjectDevId']),
-    tierClass: row['tierClass'] as LicenseRecord['tierClass'],
-    state: row['state'] as LicenseRecord['state'],
-  };
-  for (const key of OPTIONAL_LICENSE_FIELDS) {
-    const value: unknown = row[key];
-    if (typeof value === 'string' || typeof value === 'boolean') {
-      (license as unknown as Record<string, string | boolean>)[key] = value;
-    }
-  }
-  return license;
-}
-
-async function runtimeLedger(): Promise<CompatibilityLedger> {
-  const contracts = (await db
-    .knex('compatibility_contracts')
-    .select('contractId', 'currentVersion')) as unknown as LedgerContractRecord[];
-  const windows = (await db
-    .knex('compatibility_windows')
-    .select(
-      'counterpart',
-      'contractId',
-      'minInclusive',
-      'maxExclusive',
-      'excluded',
-    )) as unknown as Array<
-    Omit<LedgerWindowEntry, 'window'> & {
-      minInclusive: string;
-      maxExclusive: string;
-      excluded: unknown;
-    }
-  >;
-  const provides = (await db
-    .knex('compatibility_provides')
-    .select('counterpart', 'contractId', 'version')) as unknown as LedgerProvidesRecord[];
-  return CompatibilityLedger.fromJSON({
-    formatVersion: 1,
-    contracts,
-    windows: windows.map((w): LedgerWindowEntry => ({
-      counterpart: w.counterpart,
-      contractId: w.contractId,
-      window: {
-        minInclusive: w.minInclusive,
-        maxExclusive: w.maxExclusive,
-        excluded: Array.isArray(w.excluded) ? (w.excluded as string[]) : [],
-      },
-    })),
-    provides,
-  });
-}
-
-function deploymentGateOutcome(ledger: CompatibilityLedger, moduleName: string): GateOutcome {
-  return checkModuleDeployment(ledger, {
-    moduleName,
-    declaredWindows: ledger.windowsHeldBy(moduleName).map((entry) => ({
-      contractId: entry.contractId,
-      window: entry.window,
-    })),
-    coDeployedModuleNames: [],
-  });
-}
-
 const app = Fastify({ logger: false });
 
 const PATH_GUARD_REJECTION = 'rejected: module identifier is malformed or escapes the module root';
@@ -376,18 +292,6 @@ app.get('/swastik/developers/me', async (request, reply) => {
     approvalStatus: principal.dev['approvalStatus'],
   });
 });
-
-async function resolveModuleOwnership(
-  store: ModuleOwnershipStore,
-  slug: string,
-  devId: string,
-): Promise<{ readonly allowed: boolean }> {
-  const existing = await store.findBySlug(slug);
-  const decision = decideModuleOwnership(existing, devId);
-  if (decision.kind === 'denied') return { allowed: false };
-  if (decision.kind === 'claim') await store.claim(slug, devId);
-  return { allowed: true };
-}
 
 app.post('/swastik/modules/upload', async (request, reply) => {
   const principal = await authenticateDeveloper(request.headers.authorization, reply, 'upload');
@@ -494,7 +398,7 @@ app.post('/swastik/modules/upload', async (request, reply) => {
     });
     return reply.code(403).send({ error: 'module is owned by another developer' });
   }
-  const uploadGate = deploymentGateOutcome(await runtimeLedger(), moduleSlug);
+  const uploadGate = deploymentGateOutcome(await runtimeLedger(db.knex), moduleSlug);
   if (!uploadGate.allowed) {
     await writeAudit('BUILD_UPLOAD_REJECTED', 'rejected', {
       moduleSlug,
@@ -703,115 +607,7 @@ app.post('/internal/reload', async (request, reply) => {
 });
 
 app.post('/internal/deploy', async (request, reply) => {
-  const body = request.body as Record<string, unknown>;
-  const {
-    moduleSlug,
-    version,
-    devId: providedDevId,
-    manifest: rawManifest,
-  } = body as {
-    moduleSlug?: string;
-    version?: string;
-    devId?: string;
-    manifest?: unknown;
-    indexSource?: unknown;
-  };
-  const { indexSource, humanApproved: humanApprovedRaw } = body as {
-    indexSource?: unknown;
-    humanApproved?: unknown;
-  };
-  const humanApproved = humanApprovedRaw === true;
-  if (!moduleSlug || !version || !providedDevId || !rawManifest) {
-    return reply.code(400).send({ error: 'moduleSlug, version, devId, and manifest are required' });
-  }
-  if (typeof indexSource !== 'string' || indexSource.trim().length === 0) {
-    return reply
-      .code(400)
-      .send({ error: 'indexSource is required and must contain the compiled module package' });
-  }
-
-  let manifest: ModuleManifest;
-  try {
-    manifest = parseManifest(rawManifest);
-  } catch (err) {
-    return reply.code(422).send({ error: `manifest validation failed: ${(err as Error).message}` });
-  }
-
-  const safeModuleSlug = assertSafeSlug(moduleSlug);
-  const safeModuleVersion = assertSafeVersion(version);
-
-  if (manifest.name !== safeModuleSlug) {
-    return reply.code(422).send({ error: `manifest name mismatch` });
-  }
-  if (manifest.version !== safeModuleVersion) {
-    return reply.code(422).send({ error: `manifest version mismatch` });
-  }
-  if (manifest.devId && manifest.devId !== providedDevId) {
-    return reply.code(422).send({ error: 'manifest devId does not match provided developer' });
-  }
-
-  const dev = await db.knex('developers').where({ devId: providedDevId }).first();
-  if (!dev) {
-    return reply.code(403).send({ error: 'developer is not registered for deployment' });
-  }
-  if (dev.approvalStatus !== 'approved') {
-    // §15.8: the attempt creates a pending approval request the owner reviews.
-    await new PostgresApprovalStore(db.knex).requestPending('developer', providedDevId);
-    await writeAudit('DEVELOPER_DEPLOY_DENIED', 'rejected', {
-      moduleSlug: safeModuleSlug,
-      version: safeModuleVersion,
-      devId: redact(providedDevId),
-    });
-    return reply
-      .code(403)
-      .send({ error: `developer not approved (status: ${dev.approvalStatus})` });
-  }
-
-  const licenseRow = await db.knex('licenses').where({ subjectDevId: providedDevId }).first();
-  if (!licenseRow) {
-    return reply.code(403).send({ error: 'no license is registered for this developer' });
-  }
-  const licenseViolations = licenseAuthorizesDeploy(licenseFromRow(licenseRow), {
-    manifestDevId: manifest.devId,
-    moduleTier: manifest.tier,
-  });
-  if (licenseViolations.length > 0) {
-    await writeAudit('MODULE_DEPLOY_REJECTED', 'rejected', {
-      moduleSlug: safeModuleSlug,
-      version: safeModuleVersion,
-      devId: redact(providedDevId),
-      error: licenseViolations.join('; '),
-    });
-    return reply.code(403).send({ error: `license gate refused: ${licenseViolations.join('; ')}` });
-  }
-  // UR-C-03 (§15.8): module ownership applies to deploy as well as upload.
-  const deployOwnership = await resolveModuleOwnership(
-    new PostgresModuleOwnershipStore(db.knex),
-    safeModuleSlug,
-    providedDevId,
-  );
-  if (!deployOwnership.allowed) {
-    await writeAudit('MODULE_DEPLOY_DENIED_NON_OWNER', 'rejected', {
-      moduleSlug: safeModuleSlug,
-      version: safeModuleVersion,
-      devId: redact(providedDevId),
-    });
-    return reply.code(403).send({ error: 'module is owned by another developer' });
-  }
-  const deployGate = deploymentGateOutcome(await runtimeLedger(), safeModuleSlug);
-  if (!deployGate.allowed) {
-    await writeAudit('MODULE_DEPLOY_REJECTED', 'rejected', {
-      moduleSlug: safeModuleSlug,
-      version: safeModuleVersion,
-      devId: redact(providedDevId),
-      error: deployGate.violations.join('; '),
-    });
-    return reply.code(409).send({
-      error: `Compatibility Ledger refused deployment: ${deployGate.violations.join('; ')}`,
-    });
-  }
-
-  const result = await deployModule(
+  const result = await handleDeployRequest(
     {
       knex: db.knex,
       stagingVolume,
@@ -824,27 +620,9 @@ app.post('/internal/deploy', async (request, reply) => {
       audit: writeAudit,
       recordDeployment,
     },
-    {
-      moduleSlug: safeModuleSlug,
-      version: safeModuleVersion,
-      devId: providedDevId,
-      rawManifest,
-      manifest,
-      indexSource,
-      humanApproved,
-    },
+    request.body,
   );
-  if (!result.ok) return reply.code(result.code).send({ error: result.error });
-  return reply.code(201).send({
-    buildId: result.buildId,
-    status: 'promoted',
-    moduleSlug: safeModuleSlug,
-    version: safeModuleVersion,
-    gate: result.gate,
-    tier: result.tier,
-    liveVolume: result.liveVolume,
-    manifest: result.manifest,
-  });
+  return reply.code(result.code).send(result.body);
 });
 
 /**
