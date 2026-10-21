@@ -6,7 +6,7 @@ import type { Logger } from '../logging/logger.js';
 import type { ModuleRegistry } from '../module-system/registry.js';
 import { MARKETPLACE_MODULE_CAP, MODULES_PAGE_SIZE } from '../shared/constants/index.js';
 import { defaultEnabledForTier } from '../module-system/tier-rules.js';
-import { commandDecorationIcon, moduleIcon } from './module-icons.js';
+import { commandMarkerIcon, moduleIcon } from './module-icons.js';
 import {
   effectiveCommandName,
   resolveCommandStatuses,
@@ -617,7 +617,7 @@ export function createPageDataProvider(deps: PageDataDeps): (
         // UR-20261011-009 — a module page's command list carries the squared marker (`dumby_modules`,
         // the modules module's grid), NOT the module-logo fallback (`dumby_module`, a cube). The list
         // reads as "this module's commands".
-        const icon = commandDecorationIcon(applicationId);
+        const icon = commandMarkerIcon(applicationId);
         const lines = entry.manifest.commands.map((command) => {
           const current = effectiveCommandName(effective, command.name);
           const status = statuses.get(command.name) ?? 'enabled';

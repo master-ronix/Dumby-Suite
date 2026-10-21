@@ -6,7 +6,7 @@ import type { Client } from 'discord.js';
 import type { Logger } from '../logging/logger.js';
 import {
   MODULE_FALLBACK_ICON_NAME,
-  FALLBACK_MODULE_ICON_NAME,
+  RETIRED_MODULE_FALLBACK_ICON_NAME,
   IDENTITY_ICON_NAME,
   INFO_ICON_NAME,
   PROFILE_ICON_NAME,
@@ -55,7 +55,7 @@ const ICON_ASSETS: ReadonlyArray<readonly [string, string]> = [
  */
 const RETIRED_EMOJI_NAMES: readonly string[] = [
   // A filled cube duplicating `dumby_module`, the module-logo fallback.
-  FALLBACK_MODULE_ICON_NAME,
+  RETIRED_MODULE_FALLBACK_ICON_NAME,
   // A house duplicating `dumby_home`: the dashboard module now declares `dumby_home` itself.
   'dumby_dashboard',
 ];

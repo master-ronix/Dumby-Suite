@@ -39,17 +39,18 @@ export const MODULE_FALLBACK_ICON_NAME = 'dumby_module';
  * The squared marker beside each command in a module's command list. It is the `modules` module's
  * declared logo — a 2x2 grid of squares. NOT the module-logo fallback, which is the cube above.
  */
-export const COMMAND_DECORATION_ICON_NAME = 'dumby_modules';
+export const COMMAND_MARKER_ICON_NAME = 'dumby_modules';
 /** Used only when the marker emoji is unavailable (before the upload, or if it failed). */
-export const COMMAND_DECORATION_FALLBACK = '\u2b1c'; // white medium square
+export const COMMAND_MARKER_FALLBACK = '\u2b1c'; // white medium square
 
 /**
- * RETIRED. Kept as a handle for the deletion, not as an upload: the logo fallback now resolves to
- * `COMMAND_DECORATION_ICON_NAME`, and this emoji is removed from every application at boot.
+ * RETIRED — a filled cube that duplicated the fallback above. Kept as a handle for the DELETION, not
+ * as an upload: `moduleIcon()` resolves through `MODULE_FALLBACK_ICON_NAME`, and this emoji is removed
+ * from every application at boot (see `RETIRED_EMOJI_NAMES` in `module-emoji-upload.ts`).
  */
-export const FALLBACK_MODULE_ICON_NAME = 'dumby_module_fallback';
+export const RETIRED_MODULE_FALLBACK_ICON_NAME = 'dumby_module_fallback';
 /** Used only when the fallback-logo emoji is unavailable (before the upload, or if it failed). */
-export const FALLBACK_MODULE_ICON = '\ud83d\udce6'; // package
+export const MODULE_FALLBACK_GLYPH = '\ud83d\udce6'; // package
 
 /** The uninstall / disable control's icon (the module-detail card's control). */
 export const UNINSTALL_ICON_NAME = 'dumby_uninstall';
@@ -163,15 +164,16 @@ export function moduleIcon(declared: string | undefined, applicationId: string):
     // printing the name as literal text beside the command.
     if (!/^[a-z0-9_]+$/i.test(declared)) return declared;
   }
-  // The module-logo FALLBACK: the cube `dumby_module`. `FALLBACK_MODULE_ICON_NAME` is kept only as a
+  // The module-logo FALLBACK: the cube `dumby_module`. `RETIRED_MODULE_FALLBACK_ICON_NAME` is only a
   // retirement handle — that name is no longer uploaded, and its emoji is deleted at boot.
-  return customEmojiRef(MODULE_FALLBACK_ICON_NAME, applicationId) ?? FALLBACK_MODULE_ICON;
+  return customEmojiRef(MODULE_FALLBACK_ICON_NAME, applicationId) ?? MODULE_FALLBACK_GLYPH;
 }
 
 /**
- * UR-20261011-009 — the neutral white-square decoration beside each command in a module's own
- * command list on the dashboard's module page (never a logo fallback).
+ * UR-20261011-009 — the squared MARKER beside each command in a module's own command list on the
+ * dashboard's module page. It is `dumby_modules` (the modules module's grid), never the module-logo
+ * fallback — the two names differ by one letter, which is exactly why this was once mis-named.
  */
-export function commandDecorationIcon(applicationId: string): string {
-  return customEmojiRef(COMMAND_DECORATION_ICON_NAME, applicationId) ?? COMMAND_DECORATION_FALLBACK;
+export function commandMarkerIcon(applicationId: string): string {
+  return customEmojiRef(COMMAND_MARKER_ICON_NAME, applicationId) ?? COMMAND_MARKER_FALLBACK;
 }
