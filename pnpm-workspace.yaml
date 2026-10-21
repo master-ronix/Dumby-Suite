@@ -66,7 +66,7 @@ catalog:
   tailwind-merge: ^3.7.0
   tailwindcss: ^4.1.14
   tsx: ^4.23.15
-  vite: ^7.3.2
+  vite: ^8.3.4
   wouter: ^3.3.5
   zod: ^3.25.76
 
