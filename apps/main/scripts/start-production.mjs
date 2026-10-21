@@ -32,6 +32,26 @@ const internalApiKey = process.env.INTERNAL_API_KEY ?? '';
 const modulesDir = process.env.MODULES_DIR ?? '/mnt/modules';
 const TIER_VOLUMES = ['modules-admin', 'modules-core', 'modules-standard', 'modules-marketplace'];
 
+/**
+ * Bounds for the seed phase. The start script's contract is that the bot starts UNCONDITIONALLY, so no
+ * step may be allowed to hang. An unbounded `fetch` or DB connect is exactly how a deploy stalls
+ * silently until the platform kills it — which is what happened on Render: the build succeeded,
+ * migrations ran, then 18 minutes of silence and "Timed Out" with no port ever bound. A timeout here
+ * abandons the step and lets the bot start.
+ */
+const SEED_STEP_TIMEOUT_MS = 45_000;
+const SEED_BUDGET_MS = 180_000;
+
+function withTimeout(label, promise, ms) {
+  let timer;
+  return Promise.race([
+    Promise.resolve(promise).finally(() => clearTimeout(timer)),
+    new Promise((_resolve, reject) => {
+      timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    }),
+  ]);
+}
+
 /** True when any tier volume already holds a module directory (a non-hidden entry). */
 function volumesPopulated() {
   for (const volume of TIER_VOLUMES) {
@@ -47,6 +67,8 @@ async function waitForSwastik() {
     try {
       const res = await fetch(`http://127.0.0.1:${port}/swastik/status`, {
         headers: { 'x-internal-api-key': internalApiKey },
+        // Bound the request itself: an unbounded fetch inside the poll loop would stall the loop.
+        signal: AbortSignal.timeout(3000),
       });
       if (res.status < 500) return true;
     } catch {
@@ -62,9 +84,21 @@ let swastik;
 if (volumesPopulated()) {
   console.log(`start-production: ${modulesDir} already populated; skipping the module seed`);
 } else {
+  const seedStartedAt = Date.now();
+  const remainingBudget = () => Math.max(5_000, SEED_BUDGET_MS - (Date.now() - seedStartedAt));
+
   // 1. Migrations first, so the developer/licence tables exist for the seed. Idempotent; best-effort.
+  //    `timeout` so a wedged migrate can never block the boot.
   try {
-    spawnSync('node', ['dist/entry/migrate.js', 'up'], { stdio: 'inherit' });
+    const migrated = spawnSync('node', ['dist/entry/migrate.js', 'up'], {
+      stdio: 'inherit',
+      timeout: 120_000,
+    });
+    if (migrated.error !== undefined) {
+      console.error(
+        `start-production: migrate step failed (continuing): ${String(migrated.error)}`,
+      );
+    }
   } catch (err) {
     console.error(`start-production: migrate step failed (continuing): ${String(err)}`);
   }
@@ -75,12 +109,12 @@ if (volumesPopulated()) {
   // 3. Seed the deployer identity, then push the built modules through the real deploy flow.
   if (await waitForSwastik()) {
     try {
-      await seedDeployer();
+      await withTimeout('deployer seed', seedDeployer(), remainingBudget());
     } catch (err) {
       console.error(`start-production: deployer seed failed (continuing): ${String(err)}`);
     }
     try {
-      await pushModules(`http://127.0.0.1:${port}`);
+      await withTimeout('module push', pushModules(`http://127.0.0.1:${port}`), remainingBudget());
     } catch (err) {
       console.error(`start-production: module push failed (continuing): ${String(err)}`);
     }
@@ -89,11 +123,12 @@ if (volumesPopulated()) {
     // this process (no HTTP, no second service), so a Swastik failure no longer means zero modules.
     console.warn('start-production: Swastik did not become ready; using the in-process seed');
     try {
-      await seedModulesInline();
+      await withTimeout('in-process seed', seedModulesInline(), remainingBudget());
     } catch (err) {
       console.error(`start-production: in-process seed failed (continuing): ${String(err)}`);
     }
   }
+  console.log(`start-production: seed phase finished in ${Date.now() - seedStartedAt}ms`);
 }
 
 // 3b. Swastik is only needed while seeding. Stop it now: it holds no long-lived state here, the API

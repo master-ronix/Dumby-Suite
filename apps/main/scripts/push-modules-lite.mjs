@@ -65,6 +65,8 @@ export async function main(baseUrl) {
     const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
     const response = await fetch(`${baseUrl}/internal/deploy`, {
       method: 'POST',
+      // Bound each module: an unbounded fetch here would stall the whole boot.
+      signal: AbortSignal.timeout(30_000),
       headers: { 'Content-Type': 'application/json', 'x-internal-api-key': internalApiKey },
       body: JSON.stringify({
         moduleSlug: manifest.name,

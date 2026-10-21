@@ -22,7 +22,12 @@ export async function main() {
     console.warn('seed-first-party-deployer: DATABASE_URL is not set; skipping');
     return;
   }
-  const client = new pg.Client({ connectionString: url });
+  // Bounded: a wedged connect or statement must not stall the boot (the caller also wraps this).
+  const client = new pg.Client({
+    connectionString: url,
+    connectionTimeoutMillis: 10_000,
+    statement_timeout: 15_000,
+  });
   await client.connect();
   try {
     await client.query(
