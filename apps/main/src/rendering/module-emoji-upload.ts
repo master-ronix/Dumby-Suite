@@ -5,8 +5,7 @@ import { join } from 'node:path';
 import type { Client } from 'discord.js';
 import type { Logger } from '../logging/logger.js';
 import {
-  MODULE_FALLBACK_ICON_NAME,
-  RETIRED_MODULE_FALLBACK_ICON_NAME,
+  MODULE_ICON_NAME,
   IDENTITY_ICON_NAME,
   INFO_ICON_NAME,
   PROFILE_ICON_NAME,
@@ -35,7 +34,7 @@ import {
 const ICON_ASSETS: ReadonlyArray<readonly [string, string]> = [
   // The cube, uploaded as `dumby_module` — the module-logo fallback. NOT as the command marker,
   // which is the modules module's own grid (`dumby_modules`) and is uploaded with that module.
-  [MODULE_FALLBACK_ICON_NAME, '../../assets/default-module-icon.png'],
+  [MODULE_ICON_NAME, '../../assets/default-module-icon.png'],
   [UNINSTALL_ICON_NAME, '../../assets/uninstall-icon.png'],
   ['dumby_home', '../../assets/home-icon.png'],
   ['dumby_discover', '../../assets/discover-icon.png'],
@@ -54,8 +53,8 @@ const ICON_ASSETS: ReadonlyArray<readonly [string, string]> = [
  * current set: the operator asked for one marker, on the main bot and on every persona alike.
  */
 const RETIRED_EMOJI_NAMES: readonly string[] = [
-  // A filled cube duplicating `dumby_module`, the module-logo fallback.
-  RETIRED_MODULE_FALLBACK_ICON_NAME,
+  // A filled cube duplicating `dumby_module`, the framework's module icon.
+  'dumby_module_fallback',
   // A house duplicating `dumby_home`: the dashboard module now declares `dumby_home` itself.
   'dumby_dashboard',
 ];

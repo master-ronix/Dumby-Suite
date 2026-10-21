@@ -18,7 +18,8 @@
  * Two assets were duplicates and are RETIRED — `dumby_module_fallback` (a filled cube, duplicating
  * `dumby_module`) and `dumby_dashboard` (a house, duplicating `dumby_home`). Neither is uploaded any
  * more, and an already-registered one is DELETED from every application at boot — the main bot and
- * every persona alike. See `RETIRED_EMOJI_NAMES` in `module-emoji-upload.ts`.
+ * every persona alike. The retired names are listed as literals in `RETIRED_EMOJI_NAMES`
+ * (`module-emoji-upload.ts`): a name that is no longer an icon has no business being a constant here.
  *
  * The unicode fallbacks differ by role on purpose: the logo path keeps the package glyph (a package
  * says more than a bare square), the command marker keeps the white square it depicts.
@@ -28,29 +29,25 @@
  * without an icon.
  */
 /**
- * The module-logo FALLBACK — the wireframe cube `dumby_module`, from the framework's own
- * `default-module-icon.png`. Used when a module declares no `ui.icon`, or its declared emoji did not
- * resolve. Named for its ROLE, because the emoji's own name (`dumby_module`) sits one letter from the
- * command marker's (`dumby_modules`) and the two were confused for exactly that reason.
+ * The framework's generic module icon — the wireframe cube `dumby_module`, from the framework's own
+ * `default-module-icon.png`. It is what a module's logo FALLS BACK to when the module declares no
+ * `ui.icon`, or its declared emoji did not resolve.
+ *
+ * Named to match every other icon in this file: `<THING>_ICON_NAME` is the emoji's name, and
+ * `<THING>_FALLBACK` is the unicode glyph used when that emoji is unavailable. The emoji's own name
+ * (`dumby_module`) sits one letter from the command marker's (`dumby_modules`), so each is stated once.
  */
-export const MODULE_FALLBACK_ICON_NAME = 'dumby_module';
+export const MODULE_ICON_NAME = 'dumby_module';
+/** Used only when the module-icon emoji is unavailable (before the upload, or if it failed). */
+export const MODULE_FALLBACK = '\u{1F4E6}'; // package
 
 /**
  * The squared marker beside each command in a module's command list. It is the `modules` module's
- * declared logo — a 2x2 grid of squares. NOT the module-logo fallback, which is the cube above.
+ * declared logo — a 2x2 grid of squares. NOT the module-icon fallback above.
  */
 export const COMMAND_MARKER_ICON_NAME = 'dumby_modules';
 /** Used only when the marker emoji is unavailable (before the upload, or if it failed). */
 export const COMMAND_MARKER_FALLBACK = '\u2b1c'; // white medium square
-
-/**
- * RETIRED — a filled cube that duplicated the fallback above. Kept as a handle for the DELETION, not
- * as an upload: `moduleIcon()` resolves through `MODULE_FALLBACK_ICON_NAME`, and this emoji is removed
- * from every application at boot (see `RETIRED_EMOJI_NAMES` in `module-emoji-upload.ts`).
- */
-export const RETIRED_MODULE_FALLBACK_ICON_NAME = 'dumby_module_fallback';
-/** Used only when the fallback-logo emoji is unavailable (before the upload, or if it failed). */
-export const MODULE_FALLBACK_GLYPH = '\ud83d\udce6'; // package
 
 /** The uninstall / disable control's icon (the module-detail card's control). */
 export const UNINSTALL_ICON_NAME = 'dumby_uninstall';
@@ -164,9 +161,9 @@ export function moduleIcon(declared: string | undefined, applicationId: string):
     // printing the name as literal text beside the command.
     if (!/^[a-z0-9_]+$/i.test(declared)) return declared;
   }
-  // The module-logo FALLBACK: the cube `dumby_module`. `RETIRED_MODULE_FALLBACK_ICON_NAME` is only a
-  // retirement handle — that name is no longer uploaded, and its emoji is deleted at boot.
-  return customEmojiRef(MODULE_FALLBACK_ICON_NAME, applicationId) ?? MODULE_FALLBACK_GLYPH;
+  // The framework's module icon — the cube `dumby_module`. It is a FALLBACK, not the marker beside a
+  // command: `dumby_module_fallback`, its old duplicate, is retired and deleted at boot.
+  return customEmojiRef(MODULE_ICON_NAME, applicationId) ?? MODULE_FALLBACK;
 }
 
 /**
