@@ -87,6 +87,18 @@ if (volumesPopulated()) {
   }
 }
 
+// 3b. Swastik is only needed while seeding. Stop it now: it holds no long-lived state here, the API
+// serves `/internal/deploy` itself when SWASTIK_DEPLOY_ON_API is on, and on a credit-limited plan an
+// idle second process is wasted memory. The bot is the only process that must outlive startup.
+if (swastik !== undefined) {
+  try {
+    swastik.kill('SIGTERM');
+  } catch {
+    /* already gone */
+  }
+  swastik = undefined;
+}
+
 // 4. The bot. Started unconditionally.
 const bot = spawn('node', ['dist/entry/main.js'], { stdio: 'inherit' });
 
