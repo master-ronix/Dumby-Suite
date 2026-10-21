@@ -7,6 +7,13 @@
  * atomic promote under lock → sign provenance → write the sidecar, the `builds` row and a
  * `deployment_records` row. Nothing is hand-copied; the loader's provenance gate is satisfied by the
  * deploy flow itself.
+ *
+ * **The first promotion of a module requires human approval (ADR-006).** That gate is real and is not
+ * bypassed here: a first promotion is submitted with `humanApproved` ONLY when the operator has
+ * explicitly set `MODULE_SEED_HUMAN_APPROVED=true`. Unset (the default), the promotion gate refuses
+ * every first promotion and this script reports it, exactly as it should. The operator sets the
+ * variable once to approve the first seed, then removes it — subsequent boots skip the seed entirely
+ * because the volume is already populated.
  */
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -17,10 +24,19 @@ export async function main(baseUrl) {
     console.warn('push-modules-lite: INTERNAL_API_KEY is not set; skipping');
     return;
   }
+  // An explicit operator decision, never an automatic one. Absent, the ADR-006 first-promotion gate
+  // stands and every first promotion is refused.
+  const humanApproved = process.env.MODULE_SEED_HUMAN_APPROVED === 'true';
   const buildRoot = resolve('dist-modules');
   if (!existsSync(buildRoot)) {
     console.warn(`push-modules-lite: no built modules at ${buildRoot}; skipping`);
     return;
+  }
+  if (!humanApproved) {
+    console.warn(
+      'push-modules-lite: MODULE_SEED_HUMAN_APPROVED is not "true" — a first promotion requires ' +
+        'human approval (ADR-006); submitting without it',
+    );
   }
   let pushed = 0;
   for (const slug of readdirSync(buildRoot).sort()) {
@@ -38,6 +54,7 @@ export async function main(baseUrl) {
         devId: manifest.devId ?? 'dev_first_party',
         manifest,
         indexSource: readFileSync(indexPath, 'utf8'),
+        ...(humanApproved ? { humanApproved: true } : {}),
       }),
     });
     const out = await response.json().catch(() => ({}));

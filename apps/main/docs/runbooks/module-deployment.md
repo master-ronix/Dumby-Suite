@@ -88,6 +88,11 @@ POST /internal/reload                    (x-internal-api-key)
 
 ### 6. First-party modules (Option A) — after the service is up
 
+> **First promotion needs a human.** ADR-006 requires explicit approval for a module's *first*
+> promotion. The production boot seed approves only when the operator sets `MODULE_SEED_HUMAN_APPROVED=true`
+> once (then removes it); without it, every first promotion is refused and nothing is pushed. The
+> in-container flow never self-approves.
+
 The image ships **no** modules (UR-20261019-102). First-party modules reach their tier volumes through
 the same flow:
 

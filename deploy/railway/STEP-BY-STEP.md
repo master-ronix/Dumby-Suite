@@ -64,7 +64,19 @@ Skip this entirely if you only want the baked first-party modules.
 
 **Modules.** Option A ships an image with **no** modules: they live on the tier volumes under
 `MODULES_DIR`, and the image's start command seeds them through the Swastik deploy flow on the first
-boot of an empty volume, then runs the bot. Nothing to do here — just deploy.
+boot of an empty volume, then runs the bot.
+
+**One-time approval (ADR-006).** The *first* promotion of a module requires explicit human approval.
+The boot seed will not approve on its own — set this variable once to give that approval, then deploy:
+
+```
+MODULE_SEED_HUMAN_APPROVED=true
+```
+
+Success = the deploy log shows `push-modules-lite: 8 module(s) pushed` (not "0 module(s)"). Once the
+tier volumes hold the modules, the seed is skipped on every later boot, and you can **remove** the
+variable. Without it, the seed reports `first promotion of this module requires human approval` for
+each module and pushes nothing — the gate is working, not failing.
 
 > **Do NOT add Swastik as a separate Railway service to hold modules.** A Railway volume mounts to
 > exactly one service, and `MODULES_DIR` is mounted on `@workspace/dumby`. A separate Swastik service
