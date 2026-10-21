@@ -31,6 +31,13 @@ export interface CommandDeployerDeps {
    * saw the old name, then the new one, then neither.
    */
   commandRenames?: (guildId: string) => Promise<ReadonlyMap<string, string>>;
+  /**
+   * The guilds the bot is currently in. The boot deploy clears and re-registers EVERY one of them, so a
+   * stale registration — left by an earlier deploy, or by a module that has since been disabled — is
+   * REMOVED rather than lingering beside the current set. Without it, only the guilds the scope
+   * resolver happens to return are ever touched, and a stale set survives indefinitely.
+   */
+  guildIds?: () => Promise<readonly string[]>;
 }
 
 const isGuildScopedTier = (tier: ModuleTier): boolean =>
@@ -50,8 +57,29 @@ export class CommandDeployer {
     const { registry, logger, config, rest } = this.deps;
     const commands = registry.all();
 
+    // Every guild the bot is in, plus the dev guild. The deploy clears and re-registers all of them.
+    const knownGuilds = new Set<string>(
+      this.deps.guildIds !== undefined ? await this.deps.guildIds() : [],
+    );
+    if (config.devGuildId !== '') knownGuilds.add(config.devGuildId);
+
     if (commands.length === 0) {
-      logger.info('command-deployer-skip', { reason: 'no commands registered' });
+      // An EMPTY registry is NOT a reason to skip. Leaving the previous registrations in place is
+      // exactly what produces duplicate entries — a stale global set beside a stale guild set — and
+      // commands the bot then answers with UNKNOWN_COMMAND. Clear the global set and every known
+      // guild, so what Discord offers matches what the bot can actually do.
+      logger.warn('command-deployer-empty', {
+        reason: 'no commands registered — clearing stale registrations',
+        guilds: knownGuilds.size,
+      });
+      if (rest) {
+        await rest.put(Routes.applicationCommands(config.applicationId), { body: [] });
+        for (const guildId of knownGuilds) {
+          await rest.put(Routes.applicationGuildCommands(config.applicationId, guildId), {
+            body: [],
+          });
+        }
+      }
       return;
     }
 
@@ -102,6 +130,11 @@ export class CommandDeployer {
         }
 
         const guilds = await this.computeGuildScopes({ admin, guildScoped });
+        // Clear and re-register EVERY known guild, not only the ones the resolver returned: a guild
+        // that no longer has an enabled module must still have its stale set removed.
+        for (const guildId of knownGuilds) {
+          if (!guilds.has(guildId)) guilds.set(guildId, []);
+        }
 
         for (const [guildId, guildCommands] of guilds) {
           const guildLabel = guildId === config.devGuildId ? 'dev' : 'guild';

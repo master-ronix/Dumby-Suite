@@ -1738,6 +1738,9 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
         nodeEnv: config.get('NODE_ENV'),
       },
       rest,
+      // UR-20261021-095 — the guilds the bot is in, so the deploy clears EVERY one of them and a stale
+      // registration cannot survive beside the current set.
+      guildIds: async () => [...(discordClient?.guilds?.cache?.keys() ?? [])],
       enabledGuildResolver: async (moduleSlug) => {
         const tier = moduleRegistry.get(moduleSlug)?.manifest.tier ?? 'marketplace';
         const explicit = await db

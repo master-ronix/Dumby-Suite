@@ -31,15 +31,23 @@ describe('CommandDeployer', () => {
     registry.registerModule(moduleId, tier);
   }
 
-  test('deploy() logs a skip message when no commands are registered', async () => {
+  test('deploy() CLEARS stale registrations when no commands are registered', async () => {
+    // An empty registry must not leave the previous registrations in place: that is what produces a
+    // stale global set beside a stale guild set (duplicate entries) and commands the bot answers with
+    // UNKNOWN_COMMAND. It clears the global set and every known guild instead of skipping.
     const registry = new CommandRegistry();
     const logger = makeLogger() as unknown as Logger;
-    const deployer = new CommandDeployer({ registry, logger, config });
+    const put = vi.fn().mockResolvedValue(undefined);
+    const deployer = new CommandDeployer({ registry, logger, config, rest: { put } });
     await deployer.deploy();
-    expect(logger.info).toHaveBeenCalledWith(
-      'command-deployer-skip',
-      expect.objectContaining({ reason: 'no commands registered' }),
+    expect(logger.warn).toHaveBeenCalledWith(
+      'command-deployer-empty',
+      expect.objectContaining({ reason: expect.stringContaining('clearing stale registrations') }),
     );
+    expect(put).toHaveBeenCalledWith('/applications/1234567890/commands', { body: [] });
+    expect(put).toHaveBeenCalledWith('/applications/1234567890/guilds/9876543210/commands', {
+      body: [],
+    });
   });
 
   test('deploy() logs start and complete when commands are registered', async () => {
@@ -117,6 +125,7 @@ describe('CommandDeployer', () => {
       rest: { put },
     });
     await deployer.deploy();
+    // No dev guild is configured, so only the global set is touched.
     expect(put).toHaveBeenCalledTimes(2);
     expect(put).toHaveBeenNthCalledWith(1, '/applications/1234567890/commands', { body: [] });
     expect(put).toHaveBeenNthCalledWith(2, '/applications/1234567890/commands', {
@@ -136,10 +145,14 @@ describe('CommandDeployer', () => {
     const put = vi.fn().mockResolvedValue(undefined);
     const deployer = new CommandDeployer({ registry, logger, config, rest: { put } });
     await deployer.deploy();
-    expect(put).toHaveBeenCalledTimes(2);
+    // 1) clear the global set  2) register core globally  3+4) clear the dev guild, which carries only
+    // admin-tier commands — there are none, so a stale admin set must not survive.
     expect(put).toHaveBeenNthCalledWith(1, '/applications/1234567890/commands', { body: [] });
     expect(put).toHaveBeenNthCalledWith(2, '/applications/1234567890/commands', {
       body: registry.toApiPayloads(),
+    });
+    expect(put).toHaveBeenCalledWith('/applications/1234567890/guilds/9876543210/commands', {
+      body: [],
     });
   });
 
@@ -228,13 +241,13 @@ describe('CommandDeployer', () => {
     });
   });
 
-  test('deploy() skips rest entirely when no commands are registered, even if rest is provided', async () => {
+  test('deploy() still uses rest when no commands are registered, to clear the stale set', async () => {
     const registry = new CommandRegistry();
     const logger = makeLogger() as unknown as Logger;
-    const put = vi.fn();
+    const put = vi.fn().mockResolvedValue(undefined);
     const deployer = new CommandDeployer({ registry, logger, config, rest: { put } });
     await deployer.deploy();
-    expect(put).not.toHaveBeenCalled();
+    expect(put).toHaveBeenCalledWith('/applications/1234567890/commands', { body: [] });
   });
 
   test('undeploy() clears global and guild commands when rest is provided', async () => {
