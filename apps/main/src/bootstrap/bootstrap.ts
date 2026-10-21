@@ -9,6 +9,7 @@ import { parseEnv, pickEnvKeys, ConfigValidationError } from '../config/env.sche
 import { ConfigurationError } from '../errors/taxonomy.js';
 import { ConfigService } from '../config/config.service.js';
 import { HttpCredentialClient } from '../credentials/credential-client.js';
+import { resolvePublicDomain } from '../shared/utils/public-domain.js';
 import { createLogger, type Logger } from '../logging/logger.js';
 import { I18nManager } from '../i18n/i18n-manager.js';
 import { MetricsRegistry } from '../metrics/registry.js';
@@ -505,12 +506,14 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   const permissionResolver = new PermissionResolver();
   const commandRegistry = new CommandRegistry();
   // §11.5 - the Mode D banner. The asset ships in the image and is served by this app's own API
-  // surface, so the URL is built from the deployment's public domain (Railway injects
-  // RAILWAY_PUBLIC_DOMAIN). Without a domain - a local run - the banner slot is simply omitted
-  // rather than pointed at a URL nothing serves.
-  const publicDomain = process.env['RAILWAY_PUBLIC_DOMAIN'];
+  // surface, so the URL is built from the deployment's public domain. Resolved platform-agnostically
+  // (PUBLIC_DOMAIN, then Railway's or Render's injected host): reading RAILWAY_PUBLIC_DOMAIN alone
+  // meant that on any other host the domain came back empty and EVERY page silently lost its banner.
+  // Without a domain - a local run - the banner slot is simply omitted rather than pointed at a URL
+  // nothing serves.
+  const publicDomain = resolvePublicDomain(process.env, config.get('PUBLIC_DOMAIN'));
   const renderer = new CoreRenderer(
-    publicDomain !== undefined && publicDomain !== ''
+    publicDomain !== ''
       ? {
           // item 3 — a `?v=` token busts any cached copy: Discord caches media-gallery images and the
           // asset route is served with a long max-age, so a URL that ever resolved differently would

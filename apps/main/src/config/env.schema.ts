@@ -100,6 +100,10 @@ const baseEnvSchema = z
     // UR-20261021-095 — mount the module deploy surface on the API (the upload/approve/deploy/reload
     // pathway reachable without a second process). OFF by default; behind the internal API key.
     SWASTIK_DEPLOY_ON_API: envBool(false),
+    // §11.5 — the public host this deployment's asset routes (/assets/*) are reachable at. Optional:
+    // when unset the platform's own injected host is used (Railway's RAILWAY_PUBLIC_DOMAIN, Render's
+    // RENDER_EXTERNAL_HOSTNAME / RENDER_EXTERNAL_URL). Set it to override, or where nothing injects one.
+    PUBLIC_DOMAIN: z.string().default(''),
     // UR-20261012-037 — the registrar registry's boot seed: comma-separated, each entry either a
     // bare authority (granted for ANY application) or `authority=applicationId`. Applied
     // idempotently at boot, so a fresh install is not chicken-and-egg.
