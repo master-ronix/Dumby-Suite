@@ -179,6 +179,23 @@ export async function deployPersonaCommands(
   return payloads.global.length + payloads.guild.length;
 }
 
+/**
+ * §13 — the modules a persona's registry is built from: the CORE modules, which every profile shares,
+ * plus the modules that persona holds.
+ *
+ * Both halves matter, and each was a failure on its own. The bindings ALONE left a persona with
+ * nothing bound registering nothing — not even `/dashboard` — so a persona that owned no standard
+ * module had no commands at all. The FULL registry left it registering modules claimed by another
+ * profile, which it then refused at dispatch: a control a member can see but cannot use. Core plus
+ * owned is the set that is both non-empty and entirely answerable.
+ */
+export function personaRegistryModules(
+  coreSlugs: readonly string[],
+  boundSlugs: readonly string[],
+): readonly string[] {
+  return [...new Set([...coreSlugs, ...boundSlugs])];
+}
+
 export function filterRegistryForModules(
   source: CommandRegistry,
   moduleIds: ReadonlySet<string>,

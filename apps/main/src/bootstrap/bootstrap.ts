@@ -91,6 +91,7 @@ import { PersonaCommandBindingService } from '../personas/persona-command-bindin
 import {
   PersonaRuntime,
   filterRegistryForModules,
+  personaRegistryModules,
   deployPersonaCommands,
   splitPersonaPayloads,
 } from '../personas/persona-runtime.js';
@@ -1468,6 +1469,12 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     // actually ONLINE in its bound guild rather than only listed. Off by default: each persona costs
     // one gateway connection, which is an operator decision.
     if (config.get('PERSONA_RUNTIME_ENABLED')) {
+      // §13 — core is shared by every profile, so a persona always carries the core commands. Only
+      // standard/marketplace is claimable, and only by the profile that claimed it.
+      const coreModuleSlugs = moduleRegistry
+        .all()
+        .filter((m) => m.manifest.tier === 'core')
+        .map((m) => m.manifest.name);
       const personaRuntime = new PersonaRuntime({
         listPersonas: () => personaIdentities.list(),
         openBotToken: (sealed) => openSealedText(sealed, personaRootKey),
@@ -1479,12 +1486,22 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
         // ownership, in the router (`assertPersonaOwnsCommand`), not by what it registers: registering
         // only the bound modules meant a persona with nothing bound registered NOTHING, so its commands
         // never existed and stale ones were never cleared. The guild binding is the restriction.
-        // UR-20261012-050 — the persona's registry is FILTERED to the modules it holds. Returning the
-        // main registry here handed every persona all eight commands regardless of what it owned, so a
-        // module claimed by another profile was still registered on the persona and then refused at
-        // dispatch. `filterRegistryForModules` was written for exactly this and was never wired.
+        // UR-20261012-050 — the persona's registry carries the CORE commands plus the modules it holds.
+        //
+        // Core is shared by every profile (§13), so it is always present; a standard/marketplace module
+        // appears only for the profile that claimed it. Filtering to the BINDINGS ALONE was the other
+        // failure: a persona with nothing bound registered NOTHING — not even `/dashboard` — which is
+        // what UR-20261012-054 was written about when it chose the full registry instead.
+        //
+        // UR-20261012-054's "the full registry" is superseded here. A persona that registers a command
+        // it will then refuse shows a member a control that cannot work, and the dashboard already
+        // omits those modules — so registered and answerable now agree, which neither extreme achieved.
         buildRegistry: (moduleSlugs, profile) =>
-          filterRegistryForModules(commandRegistry, new Set(moduleSlugs), profile),
+          filterRegistryForModules(
+            commandRegistry,
+            new Set(personaRegistryModules(coreModuleSlugs, moduleSlugs)),
+            profile,
+          ),
         // The gateway intents/partials are computed for the main client in an earlier scope, so they
         // are derived again here from the same source of truth: the module manifests.
         createClient: () => {

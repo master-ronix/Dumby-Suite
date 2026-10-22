@@ -2,6 +2,7 @@ import { describe, expect, test, vi } from 'vitest';
 import { CommandRegistry, type CommandDefinition } from '../../src/commands/command-registry.js';
 import {
   filterRegistryForModules,
+  personaRegistryModules,
   PersonaRuntime,
   type RuntimePersona,
   deployPersonaCommands,
@@ -437,5 +438,40 @@ describe('PersonaRuntime reload + start filter (UR-20261012-085)', () => {
     expect(result?.started).toBe(false);
     expect(result?.reason).toBe('not-active');
     expect(runtime.hostedCount()).toBe(0);
+  });
+});
+
+describe('personaRegistryModules — core plus owned, and nothing else', () => {
+  const core = ['dashboard', 'modules', 'persona'];
+
+  test('a persona with NOTHING bound still carries the core modules', () => {
+    // The regression: bindings alone left it registering nothing at all, not even /dashboard.
+    expect(personaRegistryModules(core, [])).toStrictEqual(core);
+  });
+
+  test('a held module joins core, and a module claimed elsewhere never appears', () => {
+    const held = personaRegistryModules(core, ['hello-world']);
+    expect(held).toContain('hello-world');
+    expect(held).toContain('dashboard');
+    // A module owned by another profile is simply absent — not registered-then-refused.
+    expect(held).not.toContain('browse');
+  });
+
+  test('a slug already in core is not duplicated', () => {
+    const held = personaRegistryModules(core, ['modules']);
+    expect(held.filter((s) => s === 'modules')).toHaveLength(1);
+  });
+
+  test('the filter then keeps exactly those, core included', () => {
+    const source = registryWith(
+      ['dashboard', 'dashboard', 'core'],
+      ['hello', 'hello-world', 'standard'],
+      ['browse', 'browse', 'core'],
+    );
+    const kept = filterRegistryForModules(
+      source,
+      new Set(personaRegistryModules(['dashboard'], ['hello-world'])),
+    );
+    expect(kept.all().map((d) => d.data.name)).toStrictEqual(['dashboard', 'hello']);
   });
 });

@@ -106,10 +106,12 @@ export function dialNavSelect(input: DialNavInput): RenderBlock {
   const centre = input.entries.findIndex((entry) => entry.page === current);
   const window = dialWindow(input.entries, centre < 0 ? 0 : centre);
 
+  // Every field is coerced and clamped here, not at the call site: the entries come from page data,
+  // and a malformed one must degrade to a plain option rather than throw out of the render.
   const moduleOptions: NavigationOption[] = window.map((entry) => ({
-    label: entry.name.slice(0, 100),
+    label: String(entry.name ?? '').slice(0, 100) || String(entry.id ?? ''),
     value: String(entry.page),
-    description: entry.description.slice(0, 100),
+    description: String(entry.description ?? '').slice(0, 100),
     ...(entry.icon !== undefined
       ? { emoji: entry.icon }
       : input.fallbackIcon !== undefined
