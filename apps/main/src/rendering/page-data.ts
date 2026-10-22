@@ -824,6 +824,8 @@ export function createPageDataProvider(deps: PageDataDeps): (
           tier,
           description: entry.manifest.description,
           icon: moduleIcon(entry.manifest.ui?.icon, applicationId),
+          // The option's EMOJI is built from this, so the module's own logo can label its option.
+          ...(entry.manifest.ui?.icon !== undefined ? { iconName: entry.manifest.ui.icon } : {}),
           ...(occupied
             ? { occupied: true, occupiedBy: heldByMain ? 'the main bot' : 'a persona' }
             : {}),

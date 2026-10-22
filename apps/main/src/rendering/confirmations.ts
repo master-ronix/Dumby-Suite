@@ -40,3 +40,29 @@ export function disableConfirmationDescriptor(
   const commandNames = manifest?.commands.map((command) => command.name) ?? [];
   return { surface: displayName, summary: disableConfirmationSummary(displayName, commandNames) };
 }
+
+/**
+ * The same shape for an ENABLE, so both halves of a module change read alike: a surface naming the
+ * module, a summary naming its commands. The install used to send a bare sentence, which is what made
+ * it look unlike every other confirmation in the framework.
+ */
+export function enableConfirmationSummary(
+  displayName: string,
+  commandNames: readonly string[],
+): string {
+  const commands =
+    commandNames.length === 0
+      ? 'its commands'
+      : commandNames.map((name) => `\`/${name}\``).join(', ');
+  return `✅ **${displayName}** enabled — ${commands} are registered for this server.`;
+}
+
+export function enableConfirmationDescriptor(
+  moduleId: string,
+  entry: ConfirmableEntry | undefined,
+): { surface: string; summary: string } {
+  const manifest = entry?.manifest;
+  const displayName = manifest?.ui?.displayName ?? manifest?.name ?? moduleId;
+  const commandNames = manifest?.commands.map((command) => command.name) ?? [];
+  return { surface: displayName, summary: enableConfirmationSummary(displayName, commandNames) };
+}

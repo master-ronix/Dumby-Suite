@@ -35,7 +35,8 @@ describe('modulesBlocks', () => {
     const sections = blocks.filter((block) => block.kind === 'section') as unknown as Any[];
     expect(sections.length).toBe(2);
     expect(String(sections[0]?.['content'])).toContain('health');
-    expect(String(sections[0]?.['content'])).toContain('Core');
+    // #3 — a page carries no tier; the status marks live in the dropdown's options.
+    expect(String(sections[0]?.['content'])).not.toContain('Core');
     expect(String(sections[0]?.['content'])).toContain('System health');
     const accessory = sections[0]?.['accessory'] as Any;
     expect(accessory['label']).toBe('Info');

@@ -72,18 +72,17 @@ import { installFatalHandlers } from '../shutdown/fatal-handler.js';
 import { Redis } from 'ioredis';
 import { CommandRegistry } from '../commands/command-registry.js';
 import { CommandRouter } from '../commands/command-router.js';
-import {
-  bccmScopeOf,
-  moduleConfirmationPayload,
-  moduleDisplayName,
-} from '../commands/module-confirmation.js';
+import { bccmScopeOf } from '../commands/module-confirmation.js';
 import { registerCoreFrameHandlers } from '../interactions/core-frame.handlers.js';
 import { createPageDataProvider } from '../rendering/page-data.js';
 import { registerKnownGuilds } from '../discord/guild-registry.js';
 import { createBccmEffectHandlers } from '../commands/bccm-effects.js';
 import { effectiveCommandName, resolveEffectiveCommandNames } from '../commands/command-renames.js';
 import { deleteGuildCommands, setGuildCommandPermissions } from '../commands/command-access.js';
-import { disableConfirmationDescriptor } from '../rendering/confirmations.js';
+import {
+  disableConfirmationDescriptor,
+  enableConfirmationDescriptor,
+} from '../rendering/confirmations.js';
 import {
   readDiscoverModalSubmission,
   toCommandInteraction,
@@ -972,10 +971,21 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   // UR-20261011-018 — the formal Compact (Mode C) confirmation shown after a module is disabled:
   // a single identity line plus the outcome, per the operator's request for a professional result
   // at Compact density.
+  // Both confirmations are PRIVATE, so both DECLARE it. `ephemeral` is not cosmetic: it is what makes
+  // the renderer apply the ephemeral grammar — one container, no accent, no footer. Omitting it while
+  // SENDING privately is exactly how a hidden card came to carry a public page's accent.
   const moduleDisableConfirmation = async (moduleId: string): Promise<unknown> => {
     return renderer.render({
       ...disableConfirmationDescriptor(moduleId, moduleRegistry.get(moduleId)),
       mode: 'C',
+      ephemeral: true,
+    });
+  };
+  const moduleEnableConfirmation = async (moduleId: string): Promise<unknown> => {
+    return renderer.render({
+      ...enableConfirmationDescriptor(moduleId, moduleRegistry.get(moduleId)),
+      mode: 'C',
+      ephemeral: true,
     });
   };
   // UR-20261011-010 — a module's commands are enqueued on the guild command change queue (BCCM,
@@ -1150,10 +1160,9 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
      * installs or disables a module gets told so, and the channel does not.
      */
     moduleConfirmation: (moduleId: string, action: 'installed' | 'disabled') =>
-      moduleConfirmationPayload({
-        name: moduleDisplayName(moduleRegistry.get(moduleId), moduleId),
-        action,
-      }),
+      action === 'installed'
+        ? moduleEnableConfirmation(moduleId)
+        : moduleDisableConfirmation(moduleId),
     registry: interactionRegistry,
     router: commandRouter,
     moduleInfo: (moduleId, guildId, invokerId, surface, applicationId) =>

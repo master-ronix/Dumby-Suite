@@ -6,17 +6,6 @@
  */
 import type { RenderBlock } from './core-renderer.js';
 
-const TIER_LABEL: Readonly<Record<string, string>> = {
-  admin: 'Admin',
-  core: 'Core',
-  standard: 'Standard',
-  marketplace: 'Marketplace',
-};
-
-function tierLabel(tier: unknown): string {
-  return typeof tier === 'string' ? (TIER_LABEL[tier] ?? tier) : '';
-}
-
 interface ModuleShape {
   readonly id: string;
   readonly name: unknown;
@@ -62,10 +51,11 @@ export function modulesBlocks(
 
   for (const m of modules) {
     const name = String(m.name ?? m.id);
-    const tier = tierLabel(m.tier);
     const description = String(m.description ?? '');
     const icon = typeof m.icon === 'string' ? m.icon : '';
-    const heading = `${icon} **${name}**${tier === '' ? '' : ` · ${tier}`}`;
+    // No tier here: a page is the reading surface, and tier/status marks belong in the selection
+    // dropdown's options, where a member chooses.
+    const heading = `${icon} **${name}**`;
     blocks.push({
       kind: 'section',
       content: description === '' ? heading : `${heading}\n-# ${description}`,

@@ -472,6 +472,11 @@ export class CommandRouter {
         pageModuleId !== undefined ? this.pageAccentOf(declaredPageData, options.page) : undefined;
       const render = this.renderer.normalizeHandlerResult(declaredResponse, {
         ...identity,
+        // §1.2 — the EPHEMERAL grammar is enforced HERE, from the command's own declaration, not left
+        // to whatever the module passed. A module that renders a public page and is then sent privately
+        // produced a hidden card carrying an accent and a footer; the render and the send must not be
+        // able to disagree.
+        ...(def.ephemeral === true ? { ephemeral: true } : {}),
         ...(pageModuleName !== undefined ? { surface: pageModuleName } : {}),
         moduleId: pageModuleId ?? def.moduleId,
         ...(def.identity?.developer !== undefined ? { developer: def.identity.developer } : {}),
@@ -1027,6 +1032,7 @@ export class CommandRouter {
               occupiedBy?: unknown;
               previouslyInstalled?: unknown;
               tier?: unknown;
+              iconName?: unknown;
             })
           : {},
       )
@@ -1042,6 +1048,7 @@ export class CommandRouter {
           occupiedBy?: unknown;
           previouslyInstalled?: unknown;
           tier?: unknown;
+          iconName?: unknown;
         } => typeof m.id === 'string',
       );
     const query = typeof data?.['query'] === 'string' ? (data['query'] as string) : '';
@@ -1100,23 +1107,23 @@ export class CommandRouter {
       const tier = CommandRouter.tierName(m.tier);
       // The OPTION carries the status mark as its EMOJI — the one place Discord renders an emoji in a
       // select — and a SHORT state line. It deliberately does not repeat the description above.
-      const statusName = occupied
-        ? OCCUPIED_ICON_NAME
-        : m.tier === 'marketplace'
-          ? TIER_MARKETPLACE_ICON_NAME
-          : TIER_STANDARD_ICON_NAME;
-      const status = customEmojiParts(statusName, scope);
+      // A select option's description is PLAIN TEXT: Discord renders it verbatim, so a custom emoji
+      // there shows as `<:name:id>` rather than an image. The status is therefore a UNICODE glyph —
+      // which is text, and does render — in the stated `<icon> | <text>` format. The module's own
+      // logo goes in the option's EMOJI field, which is the one place a custom emoji does render.
+      const statusGlyph = occupied ? '🔒' : m.tier === 'marketplace' ? '⬡' : '◆';
       const state = occupied
         ? `occupied by ${String(m.occupiedBy ?? 'another profile')}`
         : previouslyInstalled
           ? 'previously installed'
           : 'available';
+      const logo = typeof m.iconName === 'string' ? customEmojiParts(m.iconName, scope) : undefined;
       return {
         label: name.slice(0, 100),
         value: m.id,
-        description: `${tier} · ${state}`.slice(0, 100),
-        ...(status !== undefined
-          ? { emoji: status }
+        description: `${statusGlyph} | ${tier} · ${state}`.slice(0, 100),
+        ...(logo !== undefined
+          ? { emoji: logo }
           : defaultIcon !== undefined
             ? { emoji: defaultIcon }
             : {}),

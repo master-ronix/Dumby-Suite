@@ -86,10 +86,7 @@ export interface CoreFrameHandlerDeps {
    * name; the handler only decides WHEN. Returned as a Discord message payload, so the ephemeral flag
    * is the host's to set.
    */
-  moduleConfirmation?: (
-    moduleId: string,
-    action: 'installed' | 'disabled',
-  ) => Record<string, unknown> | undefined;
+  moduleConfirmation?: (moduleId: string, action: 'installed' | 'disabled') => Promise<unknown>;
   uninstallModule?: (
     moduleId: string,
     guildId: string | null,
@@ -235,7 +232,7 @@ export function registerCoreFrameHandlers(deps: CoreFrameHandlerDeps): void {
         // a change one member made is not an announcement to the channel.
         await dispatch(interaction, 'browse');
         if (installing && selected !== undefined && deps.moduleConfirmation !== undefined) {
-          const payload = deps.moduleConfirmation(selected, 'installed');
+          const payload = await deps.moduleConfirmation(selected, 'installed');
           if (payload !== undefined) await interaction.followUp?.(payload);
         }
       }
