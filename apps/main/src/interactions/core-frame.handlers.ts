@@ -52,6 +52,16 @@ function asPageInteraction(
 export interface CoreFrameHandlerDeps {
   registry: InteractionRegistry;
   router: CommandRouter;
+  /**
+   * The router for the application that owns an interaction.
+   *
+   * The main bot and every hosted persona have their OWN router — the profile, the accent and the
+   * command ownership all come from it. The component registry is SHARED, so a control pressed on a
+   * persona's page reached the MAIN router and re-rendered as the main bot: amber, with the main
+   * bot's module list. That is the reported "clicking Home turns the persona's page amber".
+   * Absent, everything falls back to `router`.
+   */
+  routerFor?: (applicationId: string) => CommandRouter | undefined;
   /** item 8 — builds the private (ephemeral) module-detail card for a module id. */
   moduleInfo?: (
     moduleId: string,
@@ -90,9 +100,27 @@ export interface CoreFrameHandlerDeps {
 }
 
 export function registerCoreFrameHandlers(deps: CoreFrameHandlerDeps): void {
-  const { registry, router, moduleInfo, installModule, uninstallModule, disableConfirmation } =
-    deps;
+  const { registry, moduleInfo, installModule, uninstallModule, disableConfirmation } = deps;
   const { personaSetup } = deps;
+
+  /**
+   * Re-enter the router for the ACTING application, not for the process.
+   *
+   * Every control on every page goes through here, so a persona's own controls render as that persona.
+   * Resolving per interaction — rather than once at registration — is what makes that possible: the
+   * registry is shared, the routers are not.
+   */
+  const dispatch = async (
+    interaction: ComponentInteraction,
+    commandName: string,
+    options?: { mode?: RenderMode; page?: number; query?: string },
+  ): Promise<void> => {
+    const router =
+      (interaction.applicationId !== undefined
+        ? deps.routerFor?.(interaction.applicationId)
+        : undefined) ?? deps.router;
+    await router.dispatch(asPageInteraction(interaction, commandName), options);
+  };
 
   registry.register({
     customIdPrefix: MODE_PREFIX,
@@ -103,7 +131,7 @@ export function registerCoreFrameHandlers(deps: CoreFrameHandlerDeps): void {
     execute: async (interaction, context) => {
       const { mode, page } = context as { mode?: string; page?: string };
       if (!isRenderMode(mode) || page === undefined) return;
-      await router.dispatch(asPageInteraction(interaction, page), { mode });
+      await dispatch(interaction, page, { mode });
     },
   });
 
@@ -140,7 +168,7 @@ export function registerCoreFrameHandlers(deps: CoreFrameHandlerDeps): void {
         // the query channel so a Refresh keeps the profile the member had chosen.
         const dispatchOptions =
           page === undefined ? undefined : Number.isFinite(n) ? { page: n } : { query: page };
-        await router.dispatch(asPageInteraction(interaction, target), dispatchOptions);
+        await dispatch(interaction, target, dispatchOptions);
         return;
       }
       if (action === 'uninstall') {
@@ -185,15 +213,16 @@ export function registerCoreFrameHandlers(deps: CoreFrameHandlerDeps): void {
             interaction.applicationId,
           );
         }
-        await router.dispatch(asPageInteraction(interaction, 'browse'));
+        await dispatch(interaction, 'browse');
       }
       if (action === 'profile') {
         // UR-20261012-026 — the /persona profile switcher: re-dispatch the page with the selected
         // persona id, so the board renders that profile's identity and command inventory. The id
         // travels on the page-data query channel (the same one /browse's search reuses).
         const selected = interaction.values?.[0];
-        await router.dispatch(
-          asPageInteraction(interaction, 'persona'),
+        await dispatch(
+          interaction,
+          'persona',
           selected !== undefined ? { query: selected } : undefined,
         );
         return;
@@ -213,9 +242,7 @@ export function registerCoreFrameHandlers(deps: CoreFrameHandlerDeps): void {
             ? 0
             : Number(selected.split(':')[0]);
         const surface = target === 'modules' ? 'modules' : 'dashboard';
-        await router.dispatch(asPageInteraction(interaction, surface), {
-          page: Number.isFinite(page) ? page : 0,
-        });
+        await dispatch(interaction, surface, { page: Number.isFinite(page) ? page : 0 });
         return;
       }
     },
@@ -300,12 +327,10 @@ export function registerCoreFrameHandlers(deps: CoreFrameHandlerDeps): void {
       // page index in the fourth segment; any other target is a page name from the dropdown.
       if (target === 'home' || target === 'next' || target === 'prev' || target === 'page') {
         const n = target === 'home' ? 0 : Number(page);
-        await router.dispatch(asPageInteraction(interaction, 'dashboard'), {
-          page: Number.isFinite(n) ? n : 0,
-        });
+        await dispatch(interaction, 'dashboard', { page: Number.isFinite(n) ? n : 0 });
         return;
       }
-      await router.dispatch(asPageInteraction(interaction, target));
+      await dispatch(interaction, target);
     },
   });
 }

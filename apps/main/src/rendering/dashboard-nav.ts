@@ -72,6 +72,12 @@ export interface DialNavInput {
   /** Home's own label and description — Home returns to THIS surface's main view, not another's. */
   readonly homeLabel?: string | undefined;
   readonly homeDescription?: string | undefined;
+  /**
+   * Whether to pin Home above the window. False on /modules, whose first PAGE is its main view: a Home
+   * option and Page 1 would show the same list, and a select that offers the same destination twice
+   * reads as a bug. The dashboard keeps Home — there, page 0 is a distinct main view.
+   */
+  readonly showHome?: boolean | undefined;
   /** Every module page, in installation order. */
   readonly entries: readonly DialEntry[];
   /** The page currently being shown: 0 for the main view, else a module's page. */
@@ -128,12 +134,14 @@ export function dialNavSelect(input: DialNavInput): RenderBlock {
     ...(entry.offset === 0 ? { default: true } : {}),
   }));
 
+  const options =
+    input.showHome === false ? [...moduleOptions] : [homeOption(input), ...moduleOptions];
   return {
     kind: 'select',
     customId: `dumby:act:${input.invokerId}:nav:${input.command}`,
     placeholder:
       input.placeholder ??
-      (input.entries.length === 0 ? 'Nothing to navigate yet — Home' : 'Go to a module…'),
-    options: [homeOption(input), ...moduleOptions].slice(0, INSTALL_DROPDOWN_CAP),
+      (input.entries.length === 0 ? 'Nothing to navigate yet' : 'Go to a page…'),
+    options: options.slice(0, INSTALL_DROPDOWN_CAP),
   };
 }

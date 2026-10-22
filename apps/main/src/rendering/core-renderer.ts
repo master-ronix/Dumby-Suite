@@ -593,7 +593,10 @@ export class CoreRenderer {
 
     // ADR-015 (amends ADR-013) — the module-page footer is `<name> [<id>]` and nothing else; the
     // developer attribution stays in the identity band above and is never repeated in the footer.
-    const footer = this.moduleFooter(input.displayName, input.moduleId);
+    // The ephemeral grammar excludes the footer along with the accent and the density control: an
+    // ephemeral card is a private answer, not a page. See `renderEphemeral`.
+    const footer =
+      input.ephemeral === true ? undefined : this.moduleFooter(input.displayName, input.moduleId);
     if (footer !== undefined) {
       components.push(separator());
       components.push(textDisplay(footer));
@@ -733,7 +736,12 @@ export class CoreRenderer {
     topLevel: Component[] = [],
     ephemeral = false,
   ): ComponentsV2Message {
-    return buildComponentsV2([container(components, accent), ...topLevel], { ephemeral });
+    // The ephemeral grammar: "NO accent / colour is enforced — the container carries no
+    // `accent_color`". Applying one anyway is the reported bypass — /modules' private Info card came
+    // back amber on a persona, so a private card announced a profile it did not belong to.
+    return buildComponentsV2([container(components, ephemeral ? undefined : accent), ...topLevel], {
+      ephemeral,
+    });
   }
 
   /**

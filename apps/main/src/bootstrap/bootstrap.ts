@@ -942,6 +942,10 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     return renderer.render({
       surface: displayName,
       mode: 'M',
+      // The detail card is a PRIVATE reply, so it follows the ephemeral grammar: one container, no
+      // accent, no footer. It was rendered as a page, which is why a persona's Info card came back
+      // amber — the colour of a profile the card does not belong to.
+      ephemeral: true,
       sections: [block],
       ...(showControl
         ? {
@@ -1123,7 +1127,12 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     logger.info('module-uninstalled', { moduleId, guildId, userId });
   };
 
+  // Each application has its own router, and the component registry is shared — so a control pressed
+  // on a persona's page must be re-dispatched through HER router, not the main bot's. The main bot's
+  // is the fallback; a hosted persona registers hers when her runtime starts.
+  const personaRouters = new Map<string, CommandRouter>();
   registerCoreFrameHandlers({
+    routerFor: (applicationId: string) => personaRouters.get(applicationId),
     registry: interactionRegistry,
     router: commandRouter,
     moduleInfo: (moduleId, guildId, invokerId, surface, applicationId) =>
@@ -1646,24 +1655,29 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
             },
           });
         },
-        createInteractionHandler: (persona, registry) =>
-          buildPersonaInteractionHandler({
-            registry: interactionRegistry,
-            createCommandRouter: () =>
-              new CommandRouter(
-                registry,
-                logger,
-                commandRouterOptions(
-                  persona.id,
-                  persona.boundGuildId,
-                  persona.name,
-                  persona.accent,
-                  // item 2 — the persona's own application id is her BCCM scope.
-                  persona.discordApplicationId,
-                ),
-              ),
+        createInteractionHandler: (persona, registry) => {
+          // Built ONCE per persona, then remembered: her controls arrive through the shared component
+          // registry, which finds her router by application id. Without this, a control on her page
+          // re-dispatched through the main bot's router and rendered as the main bot.
+          const personaRouter = new CommandRouter(
+            registry,
             logger,
-          }),
+            commandRouterOptions(
+              persona.id,
+              persona.boundGuildId,
+              persona.name,
+              persona.accent,
+              // item 2 — the persona's own application id is her BCCM scope.
+              persona.discordApplicationId,
+            ),
+          );
+          personaRouters.set(persona.discordApplicationId, personaRouter);
+          return buildPersonaInteractionHandler({
+            registry: interactionRegistry,
+            createCommandRouter: () => personaRouter,
+            logger,
+          });
+        },
         logger,
       });
       personaRuntimeRef = personaRuntime;
@@ -1847,8 +1861,24 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
           .where({ moduleSlug, enabled: true, state: 'active' })
           .whereNull('deletedAt');
 
+        /**
+         * §13 / UR-20261012-061 — OWNERSHIP decides too.
+         *
+         * A standard/marketplace module belongs to ONE profile in a guild: whoever claimed it first.
+         * This deployer is the MAIN bot's, so a guild where a persona holds the module is NOT one the
+         * main bot may register it in — otherwise two bots offer the same command and the member sees
+         * the one that will refuse. An unclaimed module answers 'main', which is this deployer's own
+         * identity, so it stays included.
+         */
+        const heldByAnother = async (guildId: string): Promise<boolean> => {
+          const owner = await personaBindingService.resolveCommandOwner(guildId, moduleSlug);
+          return owner !== undefined && owner !== 'main';
+        };
+
         if (!defaultEnabledForTier(tier)) {
-          return explicit.map((row) => row.guildId);
+          const candidates = explicit.map((row) => row.guildId);
+          const owned = await Promise.all(candidates.map(heldByAnother));
+          return candidates.filter((_, index) => owned[index] !== true);
         }
 
         const disabledRows = await db
@@ -1860,7 +1890,9 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
         const disabled = new Set(disabledRows.map((row) => row.guildId));
 
         const allRows = await db.knex('guilds').select<{ id: string }[]>('id');
-        return allRows.map((row) => row.id).filter((id) => !disabled.has(id));
+        const candidates = allRows.map((row) => row.id).filter((id) => !disabled.has(id));
+        const owned = await Promise.all(candidates.map(heldByAnother));
+        return candidates.filter((_, index) => owned[index] !== true);
       },
     });
     // Twelve tables foreign-key onto `guilds`, so every guild-scoped write needs the guild row to
