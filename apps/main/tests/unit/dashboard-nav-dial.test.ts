@@ -110,7 +110,7 @@ describe('dialNavSelect', () => {
     });
     const selected = block.options.filter((o) => o.default === true);
     expect(selected).toHaveLength(1);
-    expect(selected[0]?.value).toBe('2');
+    expect(selected[0]?.value).toBe('2:m1');
   });
 
   test('a module with no declared logo takes the caller fallback', () => {
@@ -141,7 +141,7 @@ describe('dialNavSelect', () => {
       homeIcon: home,
       fallbackIcon: fallback,
     });
-    expect(block.options.slice(1).map((o) => o.value)).toStrictEqual(['1', '2', '3']);
+    expect(block.options.slice(1).map((o) => o.value)).toStrictEqual(['1:m0', '2:m1', '3:m2']);
     expect(block.customId).toBe('dumby:act:u1:nav:dashboard');
   });
 
@@ -157,7 +157,7 @@ describe('dialNavSelect', () => {
     });
     expect(block.customId).toBe('dumby:act:u1:nav:modules');
     expect(block.options[0]?.description).toBe('Return to the first page of the module list.');
-    expect(block.options.filter((o) => o.default === true)[0]?.value).toBe('1');
+    expect(block.options.filter((o) => o.default === true)[0]?.value).toBe('1:m0');
   });
 
   test('40 modules still produce a legal option count, centred on the current page', () => {
@@ -171,6 +171,43 @@ describe('dialNavSelect', () => {
     });
     expect(block.options.length).toBe(DIAL_RADIUS * 2 + 2); // Home + the window
     expect(block.options[0]?.value).toBe(HOME_SELECT_VALUE);
-    expect(block.options.filter((o) => o.default === true)[0]?.value).toBe('20');
+    expect(block.options.filter((o) => o.default === true)[0]?.value).toBe('20:m19');
+  });
+});
+
+describe('the value a select will accept', () => {
+  /** /modules lists several modules on ONE page, which is where this went wrong in production. */
+  const sharing = (): DialEntry[] => [
+    { id: 'hello-world', name: 'Hello World', description: 'h', page: 0 },
+    { id: 'browse', name: 'Browse', description: 'b', page: 0 },
+    { id: 'health', name: 'Health', description: 'x', page: 0 },
+  ];
+
+  test('modules sharing a page still get DISTINCT option values', () => {
+    // The production failure: `options[2][COMPONENT_OPTION_VALUE_DUPLICATED]`, because the page alone
+    // was the value and three modules shared page 0.
+    const block = dialNavSelect({
+      invokerId: 'u1',
+      command: 'modules',
+      entries: sharing(),
+      currentPage: 0,
+      homeIcon: { name: 'dumby_home', id: '1' },
+      fallbackIcon: { name: 'dumby_module', id: '2' },
+    });
+    const values = block.options.map((o) => o.value);
+    expect(new Set(values).size).toBe(values.length);
+  });
+
+  test('exactly ONE option is default, even when several share the current page', () => {
+    // Discord permits a single default; `entry.page === current` marked all three.
+    const block = dialNavSelect({
+      invokerId: 'u1',
+      command: 'modules',
+      entries: sharing(),
+      currentPage: 0,
+      homeIcon: { name: 'dumby_home', id: '1' },
+      fallbackIcon: { name: 'dumby_module', id: '2' },
+    });
+    expect(block.options.filter((o) => o.default === true)).toHaveLength(1);
   });
 });

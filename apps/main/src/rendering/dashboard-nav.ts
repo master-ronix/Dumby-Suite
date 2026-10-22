@@ -108,16 +108,24 @@ export function dialNavSelect(input: DialNavInput): RenderBlock {
 
   // Every field is coerced and clamped here, not at the call site: the entries come from page data,
   // and a malformed one must degrade to a plain option rather than throw out of the render.
+  //
+  // The VALUE is `<page>:<id>`, not the page alone. A select rejects a repeated option value with
+  // COMPONENT_OPTION_VALUE_DUPLICATED, and on /modules several modules share one listing page — so
+  // the page is not unique per option. The page still leads, because the handler only needs the page.
+  //
+  // Exactly ONE option is marked `default`: the centred one. Discord allows a single default, and on
+  // /modules several entries can share the current page, so `entry.page === current` would mark them
+  // all.
   const moduleOptions: NavigationOption[] = window.map((entry) => ({
     label: String(entry.name ?? '').slice(0, 100) || String(entry.id ?? ''),
-    value: String(entry.page),
+    value: `${String(entry.page)}:${String(entry.id ?? '')}`.slice(0, 100),
     description: String(entry.description ?? '').slice(0, 100),
     ...(entry.icon !== undefined
       ? { emoji: entry.icon }
       : input.fallbackIcon !== undefined
         ? { emoji: input.fallbackIcon }
         : {}),
-    ...(entry.page === current ? { default: true } : {}),
+    ...(entry.offset === 0 ? { default: true } : {}),
   }));
 
   return {

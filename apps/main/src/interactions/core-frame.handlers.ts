@@ -206,8 +206,12 @@ export function registerCoreFrameHandlers(deps: CoreFrameHandlerDeps): void {
         // both dials — validated against the two surfaces that carry one, rather than dispatched
         // verbatim, so a forged id cannot name an arbitrary command.
         const selected = interaction.values?.[0];
+        // The value is `<page>:<id>` — the id keeps it unique (a select rejects a repeated value),
+        // and the page leads because that is all the handler needs.
         const page =
-          selected === undefined || selected === HOME_SELECT_VALUE ? 0 : Number(selected);
+          selected === undefined || selected === HOME_SELECT_VALUE
+            ? 0
+            : Number(selected.split(':')[0]);
         const surface = target === 'modules' ? 'modules' : 'dashboard';
         await router.dispatch(asPageInteraction(interaction, surface), {
           page: Number.isFinite(page) ? page : 0,
