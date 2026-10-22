@@ -16,6 +16,8 @@ export interface DbClientOptions {
   connectionString: string;
   poolMax: number;
   statementTimeoutMs: number;
+  /** Bounds the pg connect and the pool acquisition (see knexfile). */
+  connectTimeoutMs: number;
   slowQueryThresholdMs: number;
   criticalQueryThresholdMs: number;
   logger: Logger;
@@ -64,8 +66,16 @@ export class DbClient {
       connection: {
         connectionString,
         statement_timeout: this.options.statementTimeoutMs,
+        // See knexfile: pg defaults this to 0, and an unbounded connect is a boot that hangs rather
+        // than reports.
+        connectionTimeoutMillis: this.options.connectTimeoutMs,
       },
-      pool: { min: 2, max: this.options.poolMax },
+      // knex honours `acquireConnectionTimeout`, but its published PoolConfig type omits it.
+      pool: {
+        min: 2,
+        max: this.options.poolMax,
+        acquireConnectionTimeout: this.options.connectTimeoutMs,
+      } as Knex.PoolConfig & { acquireConnectionTimeout: number },
       ...(withMigrations
         ? {
             migrations: {

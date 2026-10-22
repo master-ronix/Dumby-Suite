@@ -116,6 +116,9 @@ const baseEnvSchema = z
     DATABASE_REPLICA_URLS: csvIds(),
     DATABASE_POOL_MAX: z.coerce.number().int().positive().default(10),
     DATABASE_STATEMENT_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
+    // Bounds BOTH the pg TCP connect and the wait for a free pool connection. pg's own default is 0
+    // (no timeout), which turns an unreachable database into a boot that never binds its port.
+    DATABASE_CONNECT_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
     DATABASE_REPLICA_MAX_LAG_MS: z.coerce.number().int().nonnegative().default(1000),
     DATABASE_SSL: envBool(false),
     SLOW_QUERY_THRESHOLD_MS: z.coerce.number().int().positive().default(500),

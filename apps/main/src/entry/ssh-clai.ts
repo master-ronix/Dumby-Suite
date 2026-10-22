@@ -15,6 +15,7 @@ const db = new DbClient({
   connectionString: env.DATABASE_URL,
   poolMax: env.DATABASE_POOL_MAX,
   statementTimeoutMs: env.DATABASE_STATEMENT_TIMEOUT_MS,
+  connectTimeoutMs: env.DATABASE_CONNECT_TIMEOUT_MS,
   slowQueryThresholdMs: env.SLOW_QUERY_THRESHOLD_MS,
   criticalQueryThresholdMs: env.CRITICAL_QUERY_THRESHOLD_MS,
   logger,

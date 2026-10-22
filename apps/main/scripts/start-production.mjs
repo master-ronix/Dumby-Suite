@@ -20,6 +20,7 @@
  * Plain JS so it runs in the production runtime image (no tsx, no `src/`).
  */
 import { spawn, spawnSync } from 'node:child_process';
+import { once } from 'node:events';
 import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
@@ -135,11 +136,20 @@ if (volumesPopulated()) {
 // serves `/internal/deploy` itself when SWASTIK_DEPLOY_ON_API is on, and on a credit-limited plan an
 // idle second process is wasted memory. The bot is the only process that must outlive startup.
 if (swastik !== undefined) {
+  const dying = swastik;
   try {
-    swastik.kill('SIGTERM');
+    dying.kill('SIGTERM');
   } catch {
     /* already gone */
   }
+  // WAIT for it to actually go. `kill` only requests; the bot was previously spawned while Swastik was
+  // still shutting down, so the two overlapped on the database — and a connection that cannot be
+  // handed out is a boot that hangs rather than reports. Bounded, so a Swastik that ignores SIGTERM
+  // delays startup by at most this long instead of forever.
+  await Promise.race([
+    once(dying, 'exit').catch(() => undefined),
+    new Promise((resolve) => setTimeout(resolve, 5_000)),
+  ]);
   swastik = undefined;
 }
 

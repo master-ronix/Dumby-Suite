@@ -46,7 +46,18 @@ export function shutdownStepNumber(step: ShutdownStep): number {
 export class BootstrapProgress {
   private currentStageIndex = -1;
   private requiredModulesHealthy = false;
+  private readonly startedAt = Date.now();
 
+  /**
+   * Announce every stage on the way through.
+   *
+   * `advanceTo` used to move a counter and say nothing, so a boot that stalled produced NO output at
+   * all: the host's port scan timed out fifteen minutes later and reported a deploy failure with no
+   * cause anywhere in the log. The last `bootstrap-stage` line now names exactly where a boot stopped.
+   *
+   * `console.log` rather than the logger on purpose — this must work from PROCESS_SETUP, before the
+   * logger is constructed.
+   */
   advanceTo(stage: BootstrapStage): void {
     const idx = BOOTSTRAP_STAGES.indexOf(stage);
     if (idx < this.currentStageIndex) {
@@ -55,6 +66,9 @@ export class BootstrapProgress {
       );
     }
     this.currentStageIndex = idx;
+    // `process.stdout.write`, not `console`: this file is under the `no-console` rule, and the write
+    // must work from PROCESS_SETUP, before the logger exists.
+    process.stdout.write(`bootstrap-stage: ${stage} (${Date.now() - this.startedAt}ms)\n`);
   }
 
   hasReached(stage: BootstrapStage): boolean {
