@@ -976,11 +976,22 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   // UR-20261011-010 — a module's commands are enqueued on the guild command change queue (BCCM,
   // §6.4/§17.7) so their Discord deregistration / re-registration is batched, while the state write
   // makes them non-dispatchable immediately through the router's guild enablement gate (§13.7).
+  /** The BCCM scope of an acting identity: '' for the main bot, the persona's application otherwise. */
+  const bccmScopeOf = (acting: { discordApplicationId: string } | undefined): string =>
+    acting?.discordApplicationId ?? '';
+
   const enqueueModuleCommandChanges = async (
     moduleId: string,
     guildId: string,
     userId: string,
     action: 'disable' | 'enable',
+    /**
+     * The BCCM scope of the identity that made the change: '' for the main bot, the persona's own
+     * application id for a persona. The column DEFAULTS to '' (the main bot), so omitting it queued
+     * every persona's change into the MAIN bot's queue — where the persona's own push, which is scoped
+     * to her application, would never see it, and her command was never deregistered.
+     */
+    applicationId: string,
   ): Promise<void> => {
     const entry = moduleRegistry.get(moduleId);
     if (entry === undefined || entry.manifest.commands.length === 0) return;
@@ -988,6 +999,7 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
       entry.manifest.commands.map((command) => ({
         guildId,
         commandKey: command.name,
+        applicationId,
         payload: { action, submittedBy: userId },
         status: 'pending',
       })),
@@ -1094,7 +1106,7 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
       .onConflict(db.knex.raw('("guildId", "moduleSlug") where "deletedAt" is null'))
       .merge({ enabled: true, state: 'active', updatedAt: db.knex.fn.now() });
     await setModuleCommandAccess?.(moduleId, guildId, true);
-    await enqueueModuleCommandChanges(moduleId, guildId, userId, 'enable');
+    await enqueueModuleCommandChanges(moduleId, guildId, userId, 'enable', bccmScopeOf(acting));
     // REGISTER it, don't just enable it. Enabling wrote the database and queued a rename push, but
     // nothing told Discord: registration happened only at boot — and that deploy is fire-and-forget,
     // on a host that hibernates — or when a guild joined. A module installed from /browse therefore
@@ -1111,16 +1123,23 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     moduleId: string,
     guildId: string | null,
     userId: string,
+    applicationId?: string,
   ): Promise<void> => {
     const entry = moduleRegistry.get(moduleId);
     if (guildId === null || entry === undefined || entry.manifest.tier === 'core') return;
+    // The ACTING identity, for the same reason the install resolves it: the BCCM queue and the
+    // command-permission override are both per-application, and this path was not told which one.
+    const acting =
+      applicationId === undefined
+        ? undefined
+        : await personaIdentities.findByApplicationId(applicationId);
     await db
       .knex('guild_module_states')
       .insert({ guildId, moduleSlug: moduleId, enabled: false, state: 'disabled' })
       .onConflict(db.knex.raw('("guildId", "moduleSlug") where "deletedAt" is null'))
       .merge({ enabled: false, state: 'disabled', updatedAt: db.knex.fn.now() });
     await setModuleCommandAccess?.(moduleId, guildId, false);
-    await enqueueModuleCommandChanges(moduleId, guildId, userId, 'disable');
+    await enqueueModuleCommandChanges(moduleId, guildId, userId, 'disable', bccmScopeOf(acting));
     // …and DEREGISTER it, for the same reason: a disabled module whose command stays registered is a
     // command the member can see and that the bot then refuses.
     await registerGuildCommands(guildId, `uninstall:${moduleId}`);

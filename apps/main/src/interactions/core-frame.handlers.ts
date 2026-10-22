@@ -81,7 +81,12 @@ export interface CoreFrameHandlerDeps {
     applicationId?: string,
   ) => Promise<void>;
   /** UR-20261011-009 — disables/uninstalls a module for the guild (the detail card's control). */
-  uninstallModule?: (moduleId: string, guildId: string | null, userId: string) => Promise<void>;
+  uninstallModule?: (
+    moduleId: string,
+    guildId: string | null,
+    userId: string,
+    applicationId?: string,
+  ) => Promise<void>;
   /**
    * UR-20261011-018 — the formal Compact (Mode C) confirmation shown after a module is disabled,
    * in place of the refreshed detail card.
@@ -176,7 +181,12 @@ export function registerCoreFrameHandlers(deps: CoreFrameHandlerDeps): void {
         // for the guild. UR-20261011-018 — replace the card with a formal Compact (Mode C)
         // confirmation, so the operator sees a definitive, professional result.
         if (uninstallModule !== undefined) {
-          await uninstallModule(target, interaction.guildId, interaction.user.id);
+          await uninstallModule(
+            target,
+            interaction.guildId,
+            interaction.user.id,
+            interaction.applicationId,
+          );
         }
         if (disableConfirmation !== undefined) {
           await interaction.editReply(
