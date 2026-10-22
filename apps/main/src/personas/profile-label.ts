@@ -26,16 +26,3 @@ export function profileLabel(
   if (profileId === undefined || profileId === MAIN_PROFILE_ID) return MAIN_PROFILE_LABEL;
   return personaName !== undefined && personaName.trim() !== '' ? personaName : 'another profile';
 }
-
-/** The same label from an error that carries an owner id, e.g. `PersonaOccupiedError`. */
-export function ownerLabelFromError(
-  error: unknown,
-  resolveName?: (personaId: string) => string | undefined,
-): string {
-  if (typeof error !== 'object' || error === null || !('personaId' in error)) {
-    return 'another profile';
-  }
-  const owner = (error as { personaId?: unknown }).personaId;
-  if (typeof owner !== 'string') return 'another profile';
-  return profileLabel(owner, resolveName?.(owner));
-}
