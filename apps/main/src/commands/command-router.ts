@@ -21,7 +21,6 @@ import {
   derivePageSections,
 } from '../rendering/core-renderer.js';
 import {
-  customEmojiRef,
   customEmojiParts,
   DEFAULT_EMOJI_SCOPE,
   MODULE_ICON_NAME,
@@ -244,6 +243,17 @@ export class CommandRouter {
    * module's DECLARED logo resolved for the acting application. A module that declares no logo gets no
    * `icon`, and `dialNavSelect` applies the caller's fallback — so an option always shows a mark.
    */
+  /** A module's tier as a member reads it. */
+  private static tierName(tier: unknown): string {
+    return tier === 'core'
+      ? 'Core'
+      : tier === 'marketplace'
+        ? 'Marketplace'
+        : tier === 'admin'
+          ? 'Admin'
+          : 'Standard';
+  }
+
   private dashboardNavEntries(
     data: Readonly<Record<string, unknown>> | undefined,
     scope: string,
@@ -1013,8 +1023,9 @@ export class CommandRouter {
               name?: unknown;
               description?: unknown;
               icon?: unknown;
-              note?: unknown;
               occupied?: unknown;
+              occupiedBy?: unknown;
+              previouslyInstalled?: unknown;
               tier?: unknown;
             })
           : {},
@@ -1027,8 +1038,9 @@ export class CommandRouter {
           name?: unknown;
           description?: unknown;
           icon?: unknown;
-          note?: unknown;
           occupied?: unknown;
+          occupiedBy?: unknown;
+          previouslyInstalled?: unknown;
           tier?: unknown;
         } => typeof m.id === 'string',
       );
@@ -1058,22 +1070,13 @@ export class CommandRouter {
       const name = String(m.name ?? m.id);
       const description = String(m.description ?? '');
       const icon = typeof m.icon === 'string' ? m.icon : '';
-      // UR-20261011-010 — a "Previously installed" module (a disabled standard module) carries a
-      // subtext note so the listing reads as a re-enable, not a fresh install.
-      const note = typeof m.note === 'string' && m.note !== '' ? `\n-# ${m.note}` : '';
-      // item 3 — a STATUS MARK, not a parenthetical: a padlock when the module is occupied, else the
-      // tier's own shape, then the description. `<icon> | <text>` is the stated format.
-      const statusName =
-        m.occupied === true
-          ? OCCUPIED_ICON_NAME
-          : m.tier === 'marketplace'
-            ? TIER_MARKETPLACE_ICON_NAME
-            : TIER_STANDARD_ICON_NAME;
-      const status = customEmojiRef(statusName, scope);
+      // The LISTING is the reading surface: the module's own logo, its name, its description. The
+      // status mark belongs on the OPTION — where a member picks — and the "previously installed" /
+      // "occupied" facts belong in the private notice they get when they act, not as subtext under
+      // every description.
       blocks.push({
         kind: 'section',
-        content:
-          `${icon} **${name}**\n${status !== undefined ? `${status} | ` : ''}${description}${note}`.trim(),
+        content: `${icon} **${name}**\n${description}`.trim(),
         accessory: { customId: `dumby:info:${invokerId}:browse:${m.id}`, label: 'Info', style: 2 },
       });
     }
@@ -1092,16 +1095,31 @@ export class CommandRouter {
     // single option, so the label and description carry the fact and the install refuses it.
     const moduleOptions: NavigationOption[] = modules.slice(0, MARKETPLACE_MODULE_CAP).map((m) => {
       const occupied = m.occupied === true;
+      const previouslyInstalled = m.previouslyInstalled === true;
       const name = String(m.name ?? m.id);
+      const tier = CommandRouter.tierName(m.tier);
+      // The OPTION carries the status mark as its EMOJI — the one place Discord renders an emoji in a
+      // select — and a SHORT state line. It deliberately does not repeat the description above.
+      const statusName = occupied
+        ? OCCUPIED_ICON_NAME
+        : m.tier === 'marketplace'
+          ? TIER_MARKETPLACE_ICON_NAME
+          : TIER_STANDARD_ICON_NAME;
+      const status = customEmojiParts(statusName, scope);
+      const state = occupied
+        ? `occupied by ${String(m.occupiedBy ?? 'another profile')}`
+        : previouslyInstalled
+          ? 'previously installed'
+          : 'available';
       return {
-        // The occupied state is a STATUS MARK in the listing above, not a suffix on the name.
         label: name.slice(0, 100),
         value: m.id,
-        description: (occupied
-          ? String(m.note ?? 'Occupied by another profile in this server.')
-          : String(m.description ?? '')
-        ).slice(0, 100),
-        ...(defaultIcon !== undefined ? { emoji: defaultIcon } : {}),
+        description: `${tier} · ${state}`.slice(0, 100),
+        ...(status !== undefined
+          ? { emoji: status }
+          : defaultIcon !== undefined
+            ? { emoji: defaultIcon }
+            : {}),
       };
     });
     blocks.push({

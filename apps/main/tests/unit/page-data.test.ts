@@ -435,12 +435,13 @@ describe('page-data provider', () => {
     statesKnex['raw'] = async (): Promise<unknown[]> => [{}];
     const provider = createPageDataProvider(makeDeps({ db: { knex: statesKnex } }));
     const data = await provider('browse', 'guild-1', 0, undefined, 'app-1', 'main');
-    const mods = data['modules'] as Array<{ id: string; note?: string }>;
+    const mods = data['modules'] as Array<{ id: string; previouslyInstalled?: boolean }>;
     expect(mods.map((m) => m.id)).toContain('hello-world');
-    expect(mods.find((m) => m.id === 'hello-world')?.note).toBeDefined();
+    // item 4 — a STATE, not subtext: the fact goes in the private notice, not under the description.
+    expect(mods.find((m) => m.id === 'hello-world')?.previouslyInstalled).toBe(true);
   });
 
-  test('marketplace caps the per-page listing at 24 (one dropdown slot reserved for Home)', async () => {
+  test('marketplace lists a SHORT main view — the rest is what Discover is for', async () => {
     const many = Array.from({ length: 30 }, (_, i) =>
       mod(`mp-${String(i).padStart(2, '0')}`, 'marketplace', ['x']),
     );
@@ -449,9 +450,9 @@ describe('page-data provider', () => {
     } as unknown as PageDataDeps['moduleRegistry'];
     const provider = createPageDataProvider(makeDeps({ moduleRegistry: bigRegistry }));
     const data = await provider('browse', null, 0, undefined, 'app-1', 'main');
-    // UR-20261011-006 — the install dropdown's permanent Home option takes one of the 25 slots,
-    // so the per-page module listing caps at 24; `total` still reports every match.
-    expect((data['modules'] as unknown[]).length).toBe(24);
+    // item 3 — the main view is for "the top few": 15. Everything else is reached through Discover,
+    // which is a search rather than a longer page. `total` still reports every match.
+    expect((data['modules'] as unknown[]).length).toBe(15);
     expect(data['total']).toBe(30);
   });
 
@@ -545,9 +546,9 @@ describe('page-data provider', () => {
       'browse',
       'guild-1',
     );
-    const mods = data['modules'] as Array<{ id: string; note?: string }>;
+    const mods = data['modules'] as Array<{ id: string; previouslyInstalled?: boolean }>;
     expect(mods.map((m) => m.id)).toContain('hello-world');
-    expect(mods.find((m) => m.id === 'hello-world')?.note).toContain('re-enable');
+    expect(mods.find((m) => m.id === 'hello-world')?.previouslyInstalled).toBe(true);
   });
 
   test('installedModules paginates the module list (UR-20261011-009)', async () => {
@@ -608,10 +609,14 @@ describe('module ownership is PER PROFILE (UR-20261012-061)', () => {
       }),
     );
     const asMain = await provider('browse', 'guild-1', 0, undefined, 'app-1', 'main');
-    const entries = asMain['modules'] as Array<{ id: string; occupied?: boolean; note?: string }>;
+    const entries = asMain['modules'] as Array<{
+      id: string;
+      occupied?: boolean;
+      occupiedBy?: string;
+    }>;
     const hello = entries.find((m) => m.id === 'hello-world');
     expect(hello?.occupied).toBe(true);
-    expect(String(hello?.note)).toContain('Occupied by a persona');
+    expect(hello?.occupiedBy).toBe('a persona');
   });
 
   test('UR-20261012-079 - a module the MAIN BOT enabled reads as the main bot\u2019s, not a persona\u2019s', async () => {
@@ -630,12 +635,13 @@ describe('module ownership is PER PROFILE (UR-20261012-061)', () => {
     const entries = asPersona['modules'] as Array<{
       id: string;
       occupied?: boolean;
-      note?: string;
+      occupiedBy?: string;
     }>;
     const hello = entries.find((m) => m.id === 'hello-world');
     expect(hello?.occupied).toBe(true);
-    expect(String(hello?.note)).toContain('Occupied by the main bot');
-    expect(String(hello?.note)).not.toContain('Occupied by a persona');
+    // item 4 — who holds it is a FIELD, stated in the option's short line and the private notice;
+    // the sentence that used to sit under every description is gone.
+    expect(hello?.occupiedBy).toBe('the main bot');
 
     // Seen from the MAIN BOT, its own module is NOT occupied.
     const asMain = await provider('browse', 'guild-1', 0, undefined, 'app-1', 'main');

@@ -88,12 +88,15 @@ export interface DialNavInput {
 }
 
 /** The Home option: pinned above the window, and always the first slot. */
-function homeOption(input: DialNavInput): NavigationOption {
+function homeOption(input: DialNavInput, selected: boolean): NavigationOption {
   return {
     label: input.homeLabel ?? 'Home',
     value: HOME_SELECT_VALUE,
     description: input.homeDescription ?? 'The dashboard main view — every core command.',
     ...(input.homeIcon !== undefined ? { emoji: input.homeIcon } : {}),
+    // Home IS the first page on a surface whose page 0 is its main view, so it is the selected
+    // option there — not a missing slide.
+    ...(selected ? { default: true } : {}),
   };
 }
 
@@ -129,10 +132,10 @@ export function dialNavSelect(input: DialNavInput): RenderBlock {
       : input.fallbackIcon !== undefined
         ? { emoji: input.fallbackIcon }
         : {}),
-    ...(entry.offset === 0 ? { default: true } : {}),
+    ...(entry.offset === 0 && current !== 0 ? { default: true } : {}),
   }));
 
-  const options = [homeOption(input), ...moduleOptions];
+  const options = [homeOption(input, current === 0), ...moduleOptions];
   return {
     kind: 'select',
     customId: `dumby:act:${input.invokerId}:nav:${input.command}`,

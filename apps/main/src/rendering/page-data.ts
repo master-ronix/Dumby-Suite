@@ -87,6 +87,9 @@ const titleCaseId = (id: string): string =>
  * form throughout (IIII rather than IV) on purpose: it is unambiguous to read at a glance, and the
  * numerals are a label, not arithmetic.
  */
+/** How many available modules the /browse MAIN view lists before Discover takes over. */
+export const BROWSE_MAIN_LIMIT = 15;
+
 export function romanNumeral(value: number): string {
   if (!Number.isFinite(value) || value < 1) return String(value);
   const table: Array<[number, string]> = [
@@ -119,12 +122,16 @@ export function modulePageNavigation(
   description: string;
   page: number;
 }[] {
-  return Array.from({ length: pageTotal }, (_, index) => {
+  // Page 0 is Home. The slides cover 1..pageTotal-1, numbered from I: numbering the first listing
+  // page as a slide made Home and "Slide I" the same destination with the same modules on it, which
+  // is the duplication reported twice.
+  return Array.from({ length: Math.max(0, pageTotal - 1) }, (_, offset) => {
+    const index = offset + 1;
     const first = index * pageSize + 1;
     const last = Math.min((index + 1) * pageSize, total);
     return {
       id: `page-${index + 1}`,
-      name: `Slide ${romanNumeral(index + 1)}`,
+      name: `Slide ${romanNumeral(offset + 1)}`,
       description: first === last ? `Module ${first}` : `Modules ${first}–${last}`,
       page: index,
     };
@@ -775,16 +782,25 @@ export function createPageDataProvider(deps: PageDataDeps): (
       // Enabled: offer it only when this profile does NOT hold it — i.e. when it is occupied.
       return ownedFlags[i] !== true;
     });
+    // item 5b — the Discover search matches what a member can actually type: the module's NAME (its
+    // id — the only handle a build publishes), its DISPLAY name, its developer, and its description.
     const q = (query ?? '').trim().toLowerCase();
     const matched =
       q === ''
         ? available
-        : available.filter(
-            (entry) =>
-              entry.manifest.name.toLowerCase().includes(q) ||
-              entry.manifest.description.toLowerCase().includes(q),
+        : available.filter((entry) =>
+            [
+              entry.manifest.name,
+              entry.manifest.ui?.displayName ?? '',
+              entry.manifest.devId,
+              entry.manifest.description,
+            ]
+              .join(' ')
+              .toLowerCase()
+              .includes(q),
           );
-    const shown = matched.slice(0, MARKETPLACE_MODULE_CAP);
+    // The main view is a SHORT list of what is available — the rest is what Discover is for.
+    const shown = matched.slice(0, q === '' ? BROWSE_MAIN_LIMIT : MARKETPLACE_MODULE_CAP);
     const modules = await Promise.all(
       shown.map(async (entry) => {
         const slug = entry.manifest.name;
@@ -799,24 +815,21 @@ export function createPageDataProvider(deps: PageDataDeps): (
         const heldByMain = holder === undefined || holder === MAIN_PROFILE_ID;
         // Occupied: enabled, and held by the OTHER profile. Stated plainly and NOT offered.
         const occupied = enabled && !(await ownedBy(guildId, slug, tier, actingProfileId));
+        // item 4 — NO note here. "Previously installed — select to re-enable" and "Occupied by …" as
+        // subtext under every description is what made the listing read as clutter; the fact belongs
+        // in the private notice the member gets when they act on it.
         return {
           id: slug,
-          name: slug,
+          name: entry.manifest.ui?.displayName ?? slug,
+          tier,
           description: entry.manifest.description,
           icon: moduleIcon(entry.manifest.ui?.icon, applicationId),
           ...(occupied
-            ? {
-                occupied: true,
-                occupiedBy: heldByMain ? 'the main bot' : 'a persona',
-                note: heldByMain
-                  ? 'Occupied by the main bot in this server — a persona cannot take it'
-                  : 'Occupied by a persona in this server — the main bot cannot take it',
-              }
+            ? { occupied: true, occupiedBy: heldByMain ? 'the main bot' : 'a persona' }
             : {}),
-          // A disabled STANDARD module is "Previously Installed": selecting it re-enables it.
-          ...(!occupied && tier === 'standard'
-            ? { note: 'Previously installed — select to re-enable' }
-            : {}),
+          // A disabled STANDARD module is "Previously Installed": selecting it re-enables it. Carried
+          // as a STATE, not as subtext — the listing stays clean and the private notice says it.
+          ...(!occupied && tier === 'standard' && !enabled ? { previouslyInstalled: true } : {}),
         };
       }),
     );

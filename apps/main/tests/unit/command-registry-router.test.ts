@@ -671,11 +671,14 @@ describe('/browse states module occupancy (UR-20261012-061)', () => {
 
     const rendered = JSON.stringify(await router.buildBrowseRender('u1', 'g1', ''));
 
-    // The status mark carries it in the listing, and the note explains it. The LABEL is the name
-    // alone: a suffix on the name was the thing this replaced.
-    expect(rendered).toContain('<:dumby_occupied:4242>');
+    // item 2 — the status mark is the OPTION's emoji (the one place Discord renders an emoji in a
+    // select), and the option states the state in a short line. The listing above carries neither:
+    // it is the reading surface, and subtext under every description is what made it clutter.
+    expect(rendered).toContain('dumby_occupied');
+    expect(rendered).toContain('Standard · occupied by the main bot');
     expect(rendered).not.toContain('hello-world — occupied');
-    expect(rendered).toContain('Occupied by the main bot');
+    // The description is not repeated in the option — that was the duplication.
+    expect(rendered.split('A hello module').length - 1).toBe(1);
     // The free module is offered normally.
     expect(rendered).toContain('free-mod');
   });
