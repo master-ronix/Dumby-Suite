@@ -66,3 +66,53 @@ export function enableConfirmationDescriptor(
   const commandNames = manifest?.commands.map((command) => command.name) ?? [];
   return { surface: displayName, summary: enableConfirmationSummary(displayName, commandNames) };
 }
+
+/**
+ * The notice a REFUSED module change gets — pure, so it is covered rather than sitting in
+ * `bootstrap.ts` (0% covered), where every branch counts against the global floor.
+ *
+ * A module another profile holds is offered in /browse so the operator is TOLD rather than shown a
+ * control that vanishes, and selecting it is refused by the install path. That refusal must be
+ * answered: it used to leave the interaction unanswered, so selecting an occupied module did nothing.
+ */
+export interface RefusableOccupancy {
+  /** The owning profile id, as `PersonaOccupiedError` carries it: 'main' or a persona id. */
+  readonly personaId: string;
+}
+
+export interface ModuleRefusalDescriptor {
+  readonly surface: string;
+  readonly heading: string;
+  readonly explanation: string;
+}
+
+export function moduleRefusalDescriptor(
+  moduleId: string,
+  entry: ConfirmableEntry | undefined,
+  error: unknown,
+): ModuleRefusalDescriptor {
+  const manifest = entry?.manifest;
+  const name = manifest?.ui?.displayName ?? manifest?.name ?? moduleId;
+  const occupied =
+    typeof error === 'object' && error !== null && 'personaId' in error
+      ? (error as RefusableOccupancy)
+      : undefined;
+  if (occupied === undefined) {
+    return {
+      surface: name,
+      heading: 'Could not install this module',
+      explanation:
+        'The install was refused before anything changed. Nothing was enabled, and no commands ' +
+        'were registered.',
+    };
+  }
+  const owner = occupied.personaId === 'main' ? 'the main bot' : 'another profile';
+  return {
+    surface: name,
+    heading: 'Already held by another profile',
+    explanation:
+      `**${name}** is held by ${owner} in this server. A standard-tier module belongs to one ` +
+      'profile per server, so it cannot be installed here until that profile releases it — disable ' +
+      'or uninstall it there, or ask its owner to.',
+  };
+}

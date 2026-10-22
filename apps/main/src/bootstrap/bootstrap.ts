@@ -82,6 +82,7 @@ import { deleteGuildCommands, setGuildCommandPermissions } from '../commands/com
 import {
   disableConfirmationDescriptor,
   enableConfirmationDescriptor,
+  moduleRefusalDescriptor,
 } from '../rendering/confirmations.js';
 import {
   readDiscoverModalSubmission,
@@ -90,6 +91,7 @@ import {
   type RawInteractionLike,
 } from '../interactions/interaction-adapters.js';
 import { join } from 'node:path';
+import { EPHEMERAL } from '../shared/utils/components-v2.js';
 import { PersonaOccupiedError } from '../personas/persona.js';
 import { PersonaCommandBindingService } from '../personas/persona-command-binding.service.js';
 import {
@@ -981,6 +983,26 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
       ephemeral: true,
     });
   };
+  /**
+   * The notice a REFUSED module change gets.
+   *
+   * A module another profile holds is offered in /browse so the operator is told rather than shown a
+   * control that vanishes — and selecting it is refused by the install path. That refusal must be
+   * ANSWERED. It used to propagate out of the frame handler, leaving the interaction unanswered, so
+   * selecting an occupied module did nothing at all. A refusal is for the member who tried, so this is
+   * ephemeral, and it is a formal notice rather than a sentence.
+   */
+  const moduleRefusalNotice = async (moduleId: string, error: unknown): Promise<unknown> => ({
+    ...renderer.renderNotice({
+      ...moduleRefusalDescriptor(moduleId, moduleRegistry.get(moduleId), error),
+      reason: 'FORBIDDEN',
+      traceId: renderer.createTraceId(),
+      ephemeral: true,
+    }),
+    // A follow-up carries its own flags; the descriptor's `ephemeral` governs the GRAMMAR.
+    flags: EPHEMERAL,
+  });
+
   const moduleEnableConfirmation = async (moduleId: string): Promise<unknown> => {
     return renderer.render({
       ...enableConfirmationDescriptor(moduleId, moduleRegistry.get(moduleId)),
@@ -1159,6 +1181,7 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
      * The private confirmation for a module change. EPHEMERAL (flags 64) on purpose: a member who
      * installs or disables a module gets told so, and the channel does not.
      */
+    moduleRefusal: (moduleId: string, error: unknown) => moduleRefusalNotice(moduleId, error),
     moduleConfirmation: (moduleId: string, action: 'installed' | 'disabled') =>
       action === 'installed'
         ? moduleEnableConfirmation(moduleId)

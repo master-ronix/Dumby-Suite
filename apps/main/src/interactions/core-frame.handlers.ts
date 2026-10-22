@@ -87,6 +87,12 @@ export interface CoreFrameHandlerDeps {
    * is the host's to set.
    */
   moduleConfirmation?: (moduleId: string, action: 'installed' | 'disabled') => Promise<unknown>;
+  /**
+   * The notice a REFUSED module change gets. Built by the host so it carries the module's name and the
+   * refusal's own facts; sent privately, because a refusal is for the member who tried, not the
+   * channel. Without this the error left the interaction unanswered and the member saw nothing happen.
+   */
+  moduleRefusal?: (moduleId: string, error: unknown) => Promise<unknown>;
   uninstallModule?: (
     moduleId: string,
     guildId: string | null,
@@ -219,19 +225,31 @@ export function registerCoreFrameHandlers(deps: CoreFrameHandlerDeps): void {
         // the browse main view (a search reset) and installs nothing.
         const installing =
           selected !== undefined && selected !== HOME_SELECT_VALUE && installModule !== undefined;
+        let refusal: unknown;
         if (installing && selected !== undefined) {
-          await installModule(
-            selected,
-            interaction.guildId,
-            interaction.user.id,
-            interaction.applicationId,
-          );
+          // A module another profile holds is OFFERED so the operator is told, not hidden — and
+          // selecting it is refused by the install path. That refusal must be ANSWERED: it used to
+          // propagate out of this handler, leaving the interaction unanswered, so selecting an
+          // occupied module did nothing at all.
+          try {
+            await installModule(
+              selected,
+              interaction.guildId,
+              interaction.user.id,
+              interaction.applicationId,
+            );
+          } catch (err) {
+            refusal = err;
+          }
         }
         // The page first: it is the interaction's one initial response, and the installed module drops
         // out of the available list there. Then the confirmation, as a FOLLOW-UP, so it is private —
         // a change one member made is not an announcement to the channel.
         await dispatch(interaction, 'browse');
-        if (installing && selected !== undefined && deps.moduleConfirmation !== undefined) {
+        if (selected !== undefined && refusal !== undefined && deps.moduleRefusal !== undefined) {
+          const payload = await deps.moduleRefusal(selected, refusal);
+          if (payload !== undefined) await interaction.followUp?.(payload);
+        } else if (installing && selected !== undefined && deps.moduleConfirmation !== undefined) {
           const payload = await deps.moduleConfirmation(selected, 'installed');
           if (payload !== undefined) await interaction.followUp?.(payload);
         }
