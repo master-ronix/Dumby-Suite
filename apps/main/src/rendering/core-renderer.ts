@@ -62,6 +62,17 @@ export type NoticeReasonCode =
 
 export interface RenderIdentity {
   surface: string;
+  /**
+   * The title's owner: "Dumby Suite" for the resident bot, a persona's own name for her. Defaulted
+   * in the title block, so the resident bot's pages are unchanged.
+   */
+  owner?: string;
+  /**
+   * The attribution line, WHOLE: "Developed by Quixotic Mnemonics" for the resident bot, "Powered by
+   * Dumby Suite" for a persona. Passed whole rather than assembled, because the two do not even share
+   * a verb.
+   */
+  attributionLine?: string;
   developer?: string;
   version?: string;
   /** ADR-013 — the owning module; the module-page footer is `<name> [<id>]`. */
@@ -477,7 +488,12 @@ export class CoreRenderer {
   renderBuffer(identity: RenderIdentity): ComponentsV2Message {
     return this.frame(
       [
-        createTitleBlock(identity.surface, identity.developer ?? DEFAULT_DEVELOPER),
+        createTitleBlock(identity.surface, identity.developer ?? DEFAULT_DEVELOPER, {
+          ...(identity.owner !== undefined ? { owner: identity.owner } : {}),
+          ...(identity.attributionLine !== undefined
+            ? { attributionLine: identity.attributionLine }
+            : {}),
+        }),
         separator(),
         textDisplay(`⏳ Preparing ${identity.surface}…`),
       ],
@@ -551,7 +567,12 @@ export class CoreRenderer {
     // band is "Developed by Quixotic Mnemonics", with no '@'. The registered value is the display
     // name, so it is rendered verbatim.
     const attribution = input.devUsername ?? developer;
-    components.push(createTitleBlock(input.surface, attribution));
+    components.push(
+      createTitleBlock(input.surface, attribution, {
+        ...(input.owner !== undefined ? { owner: input.owner } : {}),
+        ...(input.attributionLine !== undefined ? { attributionLine: input.attributionLine } : {}),
+      }),
+    );
     components.push(separator());
 
     // §1.2 / §1.4 - the content slot, rendered at the page's density.
@@ -655,7 +676,12 @@ export class CoreRenderer {
 
     return this.frame(
       [
-        createTitleBlock(input.surface, input.developer ?? DEFAULT_DEVELOPER),
+        createTitleBlock(input.surface, input.developer ?? DEFAULT_DEVELOPER, {
+          ...(input.owner !== undefined ? { owner: input.owner } : {}),
+          ...(input.attributionLine !== undefined
+            ? { attributionLine: input.attributionLine }
+            : {}),
+        }),
         separator(),
         textDisplay(
           [

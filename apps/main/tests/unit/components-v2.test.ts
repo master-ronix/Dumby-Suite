@@ -175,3 +175,27 @@ describe('components-v2 builders', () => {
     );
   });
 });
+
+describe('the identity band is per-profile', () => {
+  // The title and the attribution were constant: "Dumby Suite | <page>" over "Developed by Quixotic
+  // Mnemonics". A persona's page is HERS — her own name as the owner, and Dumby named as what powers
+  // it — while the resident bot's pages are unchanged, which is why the defaults are the old strings.
+  test('the resident bot is unchanged', () => {
+    const block = createTitleBlock('Health') as unknown as { content: string };
+    expect(block.content).toBe('**Dumby Suite | Health**\n-# Developed by Quixotic Mnemonics');
+  });
+
+  test("a persona's page carries her name and 'Powered by Dumby Suite'", () => {
+    const block = createTitleBlock('Health', 'Quixotic Mnemonics', {
+      owner: 'Magma',
+      attributionLine: 'Powered by Dumby Suite',
+    }) as unknown as { content: string };
+    expect(block.content).toBe('**Magma | Health**\n-# Powered by Dumby Suite');
+  });
+
+  test('a name passed as the developer still gets its "Developed by"', () => {
+    // The second parameter keeps its meaning; changing it silently dropped the verb at call sites.
+    const block = createTitleBlock('Health', 'Someone') as unknown as { content: string };
+    expect(block.content).toContain('Developed by Someone');
+  });
+});

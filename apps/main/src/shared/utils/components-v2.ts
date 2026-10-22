@@ -496,17 +496,31 @@ export function getDefaultBannerUrl(
   return `https://api.dumby.dev/banner?module=${encoded}&color=${accentColor.toString(16).padStart(6, '0')}`;
 }
 
+/**
+ * The identity band: `**<owner> | <page>**` over an attribution line.
+ *
+ * Both halves are arguments, because neither is constant across profiles. The resident bot is
+ * "Dumby Suite", "Developed by Quixotic Mnemonics"; a persona carries her OWN name as the owner and
+ * "Powered by Dumby Suite" as the attribution. The line is passed whole rather than assembled from a
+ * name, because the two profiles do not even use the same verb.
+ */
 export function createTitleBlock(
   pageName: string,
   developer = 'Quixotic Mnemonics',
+  options: { owner?: string; attributionLine?: string } = {},
 ): TextDisplayComponent {
-  return textDisplay(`**Dumby Suite | ${pageName}**\n-# Developed by ${developer}`);
+  // The second parameter stays the DEVELOPER NAME: changing its meaning would silently drop the
+  // "Developed by" verb at every call site that still passes a name.
+  const attribution = options.attributionLine ?? `Developed by ${developer}`;
+  return textDisplay(`**${options.owner ?? 'Dumby Suite'} | ${pageName}**\n-# ${attribution}`);
 }
 
 export function createMarketplaceTitleBlock(
   developer = 'Quixotic Mnemonics',
+  options: { owner?: string; attributionLine?: string } = {},
 ): TextDisplayComponent {
-  return textDisplay(`**Dumby Suite | Marketplace**\n-# Developed by ${developer}`);
+  const attribution = options.attributionLine ?? `Developed by ${developer}`;
+  return textDisplay(`**${options.owner ?? 'Dumby Suite'} | Marketplace**\n-# ${attribution}`);
 }
 
 export function createSectionHeader(emoji: string, title: string): TextDisplayComponent {

@@ -314,6 +314,7 @@ export class CommandRouter {
     const identity: RenderIdentity = {
       surface: this.pageTitle(name),
       profile: this.renderProfile(),
+      ...this.ownerIdentity(),
     };
 
     const traceId = this.renderer.createTraceId();
@@ -1003,6 +1004,19 @@ export class CommandRouter {
     if (normalized.includes('rate')) return 'RATE_LIMITED';
     if (normalized.includes('cooldown')) return 'COOLDOWN';
     return 'FORBIDDEN';
+  }
+
+  /**
+   * The title's owner and attribution, for the profile this router serves.
+   *
+   * The resident bot keeps "Dumby Suite" / "Developed by Quixotic Mnemonics" — the title block's own
+   * defaults — so nothing changes for it. A persona carries her OWN registered name as the owner and
+   * "Powered by Dumby Suite" as the attribution: her page is hers, and Dumby is what powers it.
+   */
+  private ownerIdentity(): { owner?: string; attributionLine?: string } {
+    const personaName = this.options.residentProfileName;
+    if (personaName === undefined || personaName.trim() === '') return {};
+    return { owner: personaName, attributionLine: 'Powered by Dumby Suite' };
   }
 
   /** §3-§10 — a page's title is its division's name, which is not always its command name. */

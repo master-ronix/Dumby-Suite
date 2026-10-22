@@ -181,7 +181,7 @@ export class ModuleLoader {
                 toCommandDefinition(declaration, {
                   moduleId: mod.manifest.name,
                   identity: {
-                    surface: `Dumby Suite | ${mod.manifest.name}`,
+                    surface: mod.manifest.name,
                     ...(mod.buildId !== undefined ? { buildId: mod.buildId } : {}),
                     devUsername:
                       mod.manifest.ui?.devUsername ??
