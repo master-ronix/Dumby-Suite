@@ -504,9 +504,10 @@ export class CommandRouter {
                     dialNavSelect({
                       invokerId: interaction.user.id,
                       command: 'modules',
-                      // No Home: this surface's first page IS its main view, so Home and Page 1 would
-                      // list the same modules.
-                      showHome: false,
+                      // Home is restored as the FIRST option, ahead of the page options. It was removed
+                      // on the reasoning that this surface's first page is its main view — but Home is
+                      // the navigation's own first page, and the pages follow it.
+                      homeDescription: 'Return to the first page of the module list.',
                       // The entries are pages and declare no icon, so every option takes this one —
                       // the page stack — giving the dial a single consistent label.
                       fallbackIcon: customEmojiParts(PAGE_ICON_NAME, this.emojiScope(interaction)),

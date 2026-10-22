@@ -81,6 +81,15 @@ export interface CoreFrameHandlerDeps {
     applicationId?: string,
   ) => Promise<void>;
   /** UR-20261011-009 — disables/uninstalls a module for the guild (the detail card's control). */
+  /**
+   * The private confirmation a module change sends. Built by the host, which has the module's display
+   * name; the handler only decides WHEN. Returned as a Discord message payload, so the ephemeral flag
+   * is the host's to set.
+   */
+  moduleConfirmation?: (
+    moduleId: string,
+    action: 'installed' | 'disabled',
+  ) => Record<string, unknown> | undefined;
   uninstallModule?: (
     moduleId: string,
     guildId: string | null,
@@ -211,11 +220,9 @@ export function registerCoreFrameHandlers(deps: CoreFrameHandlerDeps): void {
         const selected = interaction.values?.[0];
         // UR-20261011-006 — the dropdown's permanent first option is Home: selecting it returns to
         // the browse main view (a search reset) and installs nothing.
-        if (
-          selected !== undefined &&
-          selected !== HOME_SELECT_VALUE &&
-          installModule !== undefined
-        ) {
+        const installing =
+          selected !== undefined && selected !== HOME_SELECT_VALUE && installModule !== undefined;
+        if (installing && selected !== undefined) {
           await installModule(
             selected,
             interaction.guildId,
@@ -223,7 +230,14 @@ export function registerCoreFrameHandlers(deps: CoreFrameHandlerDeps): void {
             interaction.applicationId,
           );
         }
+        // The page first: it is the interaction's one initial response, and the installed module drops
+        // out of the available list there. Then the confirmation, as a FOLLOW-UP, so it is private —
+        // a change one member made is not an announcement to the channel.
         await dispatch(interaction, 'browse');
+        if (installing && selected !== undefined && deps.moduleConfirmation !== undefined) {
+          const payload = deps.moduleConfirmation(selected, 'installed');
+          if (payload !== undefined) await interaction.followUp?.(payload);
+        }
       }
       if (action === 'profile') {
         // UR-20261012-026 — the /persona profile switcher: re-dispatch the page with the selected

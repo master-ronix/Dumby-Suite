@@ -73,11 +73,9 @@ export interface DialNavInput {
   readonly homeLabel?: string | undefined;
   readonly homeDescription?: string | undefined;
   /**
-   * Whether to pin Home above the window. False on /modules, whose first PAGE is its main view: a Home
-   * option and Page 1 would show the same list, and a select that offers the same destination twice
-   * reads as a bug. The dashboard keeps Home — there, page 0 is a distinct main view.
+   * Home's own position. It is ALWAYS pinned first — it is the navigation's first page, and the page
+   * options follow it. There is deliberately no switch to hide it.
    */
-  readonly showHome?: boolean | undefined;
   /** Every module page, in installation order. */
   readonly entries: readonly DialEntry[];
   /** The page currently being shown: 0 for the main view, else a module's page. */
@@ -134,8 +132,7 @@ export function dialNavSelect(input: DialNavInput): RenderBlock {
     ...(entry.offset === 0 ? { default: true } : {}),
   }));
 
-  const options =
-    input.showHome === false ? [...moduleOptions] : [homeOption(input), ...moduleOptions];
+  const options = [homeOption(input), ...moduleOptions];
   return {
     kind: 'select',
     customId: `dumby:act:${input.invokerId}:nav:${input.command}`,

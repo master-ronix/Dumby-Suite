@@ -65,6 +65,7 @@ export interface RawInteractionLike {
   deferUpdate?(): Promise<unknown>;
   showModal?(modal: unknown): Promise<unknown>;
   update?(options: unknown): Promise<unknown>;
+  followUp?(options: unknown): Promise<unknown>;
 }
 
 function memberPermissions(member: RawInteractionLike['member']): readonly string[] | undefined {
@@ -137,6 +138,13 @@ export function toComponentInteraction(interaction: RawInteractionLike): Compone
     ...(interaction.deferUpdate !== undefined
       ? {
           deferUpdate: interaction.deferUpdate.bind(interaction) as unknown as () => Promise<void>,
+        }
+      : {}),
+    ...(interaction.followUp !== undefined
+      ? {
+          followUp: interaction.followUp.bind(interaction) as unknown as (
+            options: unknown,
+          ) => Promise<void>,
         }
       : {}),
     ...(interaction.values !== undefined ? { values: interaction.values } : {}),

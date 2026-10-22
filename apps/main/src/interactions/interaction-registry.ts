@@ -26,6 +26,13 @@ export interface ComponentInteraction {
   deferReply: (options?: { flags?: number | bigint }) => Promise<void>;
   deferUpdate?: () => Promise<void>;
   editReply: (options: unknown) => Promise<void>;
+  /**
+   * A FOLLOW-UP reply, which is the only way to say something private beside a public page refresh.
+   * An interaction gets ONE initial response — the page edit — so a confirmation that must not be
+   * broadcast has to come after it. The renderer still blocks this for module code; the frame's own
+   * controls are not module code.
+   */
+  followUp?: (options: unknown) => Promise<void>;
   /** item 5 — a control may open a modal (the Discover search text-input interface). */
   showModal?: (modal: unknown) => Promise<void>;
   /** §11.3 — the chosen option values, present only on a String Select Menu interaction. */

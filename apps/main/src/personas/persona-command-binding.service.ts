@@ -164,7 +164,28 @@ export class PersonaCommandBindingService {
    */
   async resolveCommandOwner(guildId: string, moduleSlug: string): Promise<string | undefined> {
     const binding = await this.bindings.findLive(guildId, moduleSlug);
-    if (binding !== undefined) return binding.personaId;
+    if (binding !== undefined) {
+      // A claim lasts only while the module is INSTALLED for that persona.
+      //
+      // It used to be permanent: she could disable the module and the binding survived, so the claim
+      // did too. The other profile's install was then refused as "occupied" forever, and — once the
+      // deployer began honouring ownership — NEITHER profile registered the command, because the
+      // claimant no longer had it installed and the other could not claim it. Reading the enablement
+      // makes the claim follow the install, which is what "owned" has to mean.
+      if (this.isModuleEnabled === undefined) return binding.personaId;
+      try {
+        if (await this.isModuleEnabled(guildId, moduleSlug)) return binding.personaId;
+      } catch (err) {
+        // A failed read must not silently hand the module to the other profile: keep the claim, and
+        // say why. The alternative is two profiles believing they own one module.
+        this.logger.warn('resolve-command-owner-binding-enabled-read-failed', {
+          guildId,
+          moduleSlug,
+          error: String(err),
+        });
+        return binding.personaId;
+      }
+    }
     // UR-20261012-080 — a SHARED tier is owned by nobody. The enablement read answers TRUE for core
     // (it is always enabled), which would otherwise make core modules look like the main bot's.
     if (this.tierOf?.(moduleSlug) === 'core' || this.tierOf?.(moduleSlug) === 'admin')

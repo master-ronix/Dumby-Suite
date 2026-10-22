@@ -1152,6 +1152,23 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   const personaRouters = new Map<string, CommandRouter>();
   registerCoreFrameHandlers({
     routerFor: (applicationId: string) => personaRouters.get(applicationId),
+    /**
+     * The private confirmation for a module change. EPHEMERAL (flags 64) on purpose: a member who
+     * installs or disables a module gets told so, and the channel does not.
+     */
+    moduleConfirmation: (moduleId: string, action: 'installed' | 'disabled') => {
+      const entry = moduleRegistry.get(moduleId);
+      const name = entry?.manifest.ui?.displayName ?? entry?.manifest.name ?? moduleId;
+      const verb = action === 'installed' ? 'installed' : 'disabled';
+      const effect =
+        action === 'installed'
+          ? 'Its commands are being registered for this server.'
+          : 'Its commands are being removed from this server.';
+      return {
+        content: `**${name}** ${verb} for this server.\n${effect}`,
+        flags: 64,
+      };
+    },
     registry: interactionRegistry,
     router: commandRouter,
     moduleInfo: (moduleId, guildId, invokerId, surface, applicationId) =>
