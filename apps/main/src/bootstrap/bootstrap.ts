@@ -91,7 +91,6 @@ import {
   type RawInteractionLike,
 } from '../interactions/interaction-adapters.js';
 import { join } from 'node:path';
-import { EPHEMERAL } from '../shared/utils/components-v2.js';
 import { PersonaOccupiedError } from '../personas/persona.js';
 import { PersonaCommandBindingService } from '../personas/persona-command-binding.service.js';
 import {
@@ -1007,16 +1006,16 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
         logger.warn('module-refusal-owner-name-unavailable', { ownerId, reason: String(err) });
       }
     }
-    return {
-      ...renderer.renderNotice({
-        ...moduleRefusalDescriptor(moduleId, moduleRegistry.get(moduleId), error, () => ownerName),
-        reason: 'FORBIDDEN',
-        traceId: renderer.createTraceId(),
-        ephemeral: true,
-      }),
-      // A follow-up carries its own flags; the descriptor's `ephemeral` governs the GRAMMAR.
-      flags: EPHEMERAL,
-    };
+    // The renderer ALREADY set `IS_COMPONENTS_V2 | EPHEMERAL` on this message. Do not overwrite
+    // `flags`: setting EPHEMERAL alone (64) drops the Components-v2 bit (32768) and Discord rejects
+    // the payload outright — which is why selecting an occupied module appeared to do nothing at all,
+    // even after the refusal was being answered.
+    return renderer.renderNotice({
+      ...moduleRefusalDescriptor(moduleId, moduleRegistry.get(moduleId), error, () => ownerName),
+      reason: 'FORBIDDEN',
+      traceId: renderer.createTraceId(),
+      ephemeral: true,
+    });
   };
 
   const moduleEnableConfirmation = async (moduleId: string): Promise<unknown> => {

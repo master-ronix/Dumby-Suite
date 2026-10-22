@@ -1,6 +1,10 @@
 import { test, expect, describe } from 'vitest';
 import { CoreRenderer } from '../../src/rendering/core-renderer.js';
-import { ComponentType } from '../../src/shared/utils/components-v2.js';
+import {
+  ComponentType,
+  EPHEMERAL,
+  IS_COMPONENTS_V2,
+} from '../../src/shared/utils/components-v2.js';
 
 /**
  * §1.2 / item 4-5 — the EPHEMERAL grammar.
@@ -18,6 +22,37 @@ const containerOf = (message: { components: unknown[] }) =>
 
 describe('the ephemeral grammar', () => {
   const renderer = new CoreRenderer();
+
+  test('an ephemeral message carries BOTH flags — Components-v2 AND Ephemeral', () => {
+    // A Components-v2 payload MUST carry IS_COMPONENTS_V2 (32768). Setting EPHEMERAL (64) alone drops
+    // the v2 bit and Discord rejects the payload outright, so the interaction appears to do NOTHING.
+    // That is exactly what the install refusal did: the renderer set the right flags and the caller
+    // overwrote them with 64. This pins the contract for both paths a caller can take.
+    const rendered = renderer.render({
+      surface: 'Module',
+      moduleId: 'hello-world',
+      ephemeral: true,
+      sections: ['A private card.'],
+    });
+    expect((rendered as { flags?: number }).flags).toBe(IS_COMPONENTS_V2 | EPHEMERAL);
+
+    const notice = renderer.renderNotice({
+      surface: 'Hello World',
+      reason: 'FORBIDDEN',
+      traceId: 'tr_test',
+      ephemeral: true,
+    });
+    expect((notice as { flags?: number }).flags).toBe(IS_COMPONENTS_V2 | EPHEMERAL);
+  });
+
+  test('a public message carries Components-v2 WITHOUT Ephemeral', () => {
+    const rendered = renderer.render({
+      surface: 'Module',
+      moduleId: 'hello-world',
+      sections: ['A public page.'],
+    });
+    expect((rendered as { flags?: number }).flags).toBe(IS_COMPONENTS_V2);
+  });
 
   test('an ephemeral render carries NO accent, even with a profile that has one', () => {
     const message = renderer.render({
