@@ -1017,6 +1017,37 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     return icons;
   };
 
+  /**
+   * Late-bound: the deployer is built far below, once the Discord client exists, while the install
+   * path is defined up here. A hook lets an install register a guild's commands without moving either.
+   * Undefined only before the bot is serving, when no interaction can reach this.
+   */
+  let deployGuildCommands: ((guildId: string) => Promise<void>) | undefined;
+
+  /**
+   * Re-register ONE guild's slash commands after a module's state changed.
+   *
+   * Deliberately awaited: the point is that the member sees the command after the interaction, not at
+   * some later boot. Never fatal — the state change is already committed, and a failed registration is
+   * a stale command list, not a broken install.
+   */
+  const registerGuildCommands = async (guildId: string, reason: string): Promise<void> => {
+    if (deployGuildCommands === undefined) {
+      logger.warn('module-command-registration-unavailable', { guildId, reason });
+      return;
+    }
+    try {
+      await deployGuildCommands(guildId);
+      logger.info('module-command-registration', { guildId, reason });
+    } catch (err) {
+      logger.error('module-command-registration-failed', {
+        guildId,
+        reason,
+        error: String(err),
+      });
+    }
+  };
+
   const installModule = async (
     moduleId: string,
     guildId: string | null,
@@ -1060,6 +1091,13 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
       .merge({ enabled: true, state: 'active', updatedAt: db.knex.fn.now() });
     await setModuleCommandAccess?.(moduleId, guildId, true);
     await enqueueModuleCommandChanges(moduleId, guildId, userId, 'enable');
+    // REGISTER it, don't just enable it. Enabling wrote the database and queued a rename push, but
+    // nothing told Discord: registration happened only at boot — and that deploy is fire-and-forget,
+    // on a host that hibernates — or when a guild joined. A module installed from /browse therefore
+    // had no command until some later boot, which reads as a command registry that does not work.
+    // `deployForGuild` re-registers this guild's whole scoped set, which is exactly what has to agree
+    // with the module list. A failure is logged, never fatal: the module IS installed either way.
+    await registerGuildCommands(guildId, `install:${moduleId}`);
     logger.info('marketplace-module-installed', { moduleId, guildId, userId });
   };
   // UR-20261011-010 — the detail card's uninstall/disable control disables the module for the guild
@@ -1079,6 +1117,9 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
       .merge({ enabled: false, state: 'disabled', updatedAt: db.knex.fn.now() });
     await setModuleCommandAccess?.(moduleId, guildId, false);
     await enqueueModuleCommandChanges(moduleId, guildId, userId, 'disable');
+    // …and DEREGISTER it, for the same reason: a disabled module whose command stays registered is a
+    // command the member can see and that the bot then refuses.
+    await registerGuildCommands(guildId, `uninstall:${moduleId}`);
     logger.info('module-uninstalled', { moduleId, guildId, userId });
   };
 
@@ -1833,6 +1874,8 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     // rate-limited (two bulk-overwrite calls per guild) and was blocking readiness for minutes on
     // every restart. The gateway connection is independent of command deployment, so the bot is
     // functional while its commands propagate; a failure is logged, never fatal.
+    // The install/uninstall paths, defined far above, register through this hook.
+    deployGuildCommands = (guildId: string) => commandDeployer.deployForGuild(guildId);
     void commandDeployer.deploy().catch((err: unknown) => {
       logger.error('command-deploy-failed', {
         error: String(err),

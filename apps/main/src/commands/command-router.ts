@@ -24,6 +24,7 @@ import {
   customEmojiParts,
   DEFAULT_EMOJI_SCOPE,
   MODULE_ICON_NAME,
+  PAGE_ICON_NAME,
 } from '../rendering/module-icons.js';
 import { healthBlocks } from '../rendering/health-blocks.js';
 import { dialNavSelect, type DialEntry } from '../rendering/dashboard-nav.js';
@@ -504,16 +505,15 @@ export class CommandRouter {
                       invokerId: interaction.user.id,
                       command: 'modules',
                       homeDescription: 'Return to the first page of the module list.',
+                      // The entries are pages and declare no icon, so every option takes this one —
+                      // the page stack — giving the dial a single consistent label.
+                      fallbackIcon: customEmojiParts(PAGE_ICON_NAME, this.emojiScope(interaction)),
                       entries: this.dashboardNavEntries(
                         declaredPageData,
                         this.emojiScope(interaction),
                       ),
                       currentPage: options.page ?? 0,
                       homeIcon: customEmojiParts('dumby_home', this.emojiScope(interaction)),
-                      fallbackIcon: customEmojiParts(
-                        MODULE_ICON_NAME,
-                        this.emojiScope(interaction),
-                      ),
                     }),
                   ],
                 }

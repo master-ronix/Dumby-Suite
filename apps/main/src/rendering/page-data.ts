@@ -72,6 +72,36 @@ const titleCaseId = (id: string): string =>
  * filled with a placeholder, because an invented number on a health page is worse than a missing
  * one.
  */
+/**
+ * item 6 / item 17 — the /modules dial's options: one per LISTING PAGE, naming the page and the range
+ * of modules on it.
+ *
+ * This surface pages the modules directly, so a member moves between page slides, not between module
+ * pages — an option per module would offer targets that do not exist. The range is what makes the
+ * label useful: "Page 3" alone says nothing about what is on it.
+ */
+export function modulePageNavigation(
+  pageTotal: number,
+  total: number,
+  pageSize: number,
+): readonly {
+  id: string;
+  name: string;
+  description: string;
+  page: number;
+}[] {
+  return Array.from({ length: pageTotal }, (_, index) => {
+    const first = index * pageSize + 1;
+    const last = Math.min((index + 1) * pageSize, total);
+    return {
+      id: `page-${index + 1}`,
+      name: `Page ${index + 1}`,
+      description: first === last ? `Module ${first}` : `Modules ${first}–${last}`,
+      page: index,
+    };
+  });
+}
+
 export function createPageDataProvider(deps: PageDataDeps): (
   moduleId: string,
   guildId: string | null,
@@ -814,17 +844,12 @@ export function createPageDataProvider(deps: PageDataDeps): (
       icon: moduleIcon(entry.manifest.ui?.icon, applicationId),
     }));
     const lines = modules.map((m) => `${m.icon} ${m.name} (${m.tier}) — ${m.description}`);
-    // item 6 / item 17 — the DIAL's entries: EVERY installed module, not only this page's slice, each
-    // carrying the listing page it appears on. The dial centres the module you are looking at and
-    // wraps at both ends, so the whole inventory is one control away from any page.
-    const navigation = enabledModules.map((entry, index) => ({
-      id: entry.manifest.name,
-      name: entry.manifest.ui?.displayName ?? titleCaseId(entry.manifest.name),
-      description: entry.manifest.description,
-      page: Math.floor(index / MODULES_PAGE_SIZE),
-      ...(entry.manifest.ui?.icon !== undefined ? { iconName: entry.manifest.ui.icon } : {}),
-      ...(entry.manifest.ui?.accent !== undefined ? { accent: entry.manifest.ui.accent } : {}),
-    }));
+    // item 6 / item 17 — the DIAL's entries are the PAGES, not the modules.
+    //
+    // This surface pages the modules directly, so a member moves between page slides, not between
+    // module pages: an option per module would offer targets that do not exist. Each option names its
+    // page and the range of modules on it, which is what the page actually shows.
+    const navigation = modulePageNavigation(pageTotal, total, MODULES_PAGE_SIZE);
     return {
       title: 'Installed Modules',
       lines,

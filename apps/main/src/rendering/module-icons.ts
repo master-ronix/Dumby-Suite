@@ -42,6 +42,13 @@ export const MODULE_ICON_NAME = 'dumby_module';
 export const MODULE_FALLBACK = '\u{1F4E6}'; // package
 
 /**
+ * The page icon — a stack of pages, from the framework's own `page-icon.png`. It labels the /modules
+ * dial, whose options are the LISTING PAGES rather than the modules: that surface pages the modules
+ * themselves, so a page is what a member moves between, and one consistent icon says so.
+ */
+export const PAGE_ICON_NAME = 'dumby_page';
+
+/**
  * The squared marker beside each command in a module's command list. It is the `modules` module's
  * declared logo — a 2x2 grid of squares. NOT the module-icon fallback above.
  */

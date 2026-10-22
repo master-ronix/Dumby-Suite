@@ -6,6 +6,7 @@ import type { Client } from 'discord.js';
 import type { Logger } from '../logging/logger.js';
 import {
   MODULE_ICON_NAME,
+  PAGE_ICON_NAME,
   IDENTITY_ICON_NAME,
   INFO_ICON_NAME,
   PROFILE_ICON_NAME,
@@ -35,6 +36,7 @@ const ICON_ASSETS: ReadonlyArray<readonly [string, string]> = [
   // The cube, uploaded as `dumby_module` — the module-logo fallback. NOT as the command marker,
   // which is the modules module's own grid (`dumby_modules`) and is uploaded with that module.
   [MODULE_ICON_NAME, '../../assets/default-module-icon.png'],
+  [PAGE_ICON_NAME, '../../assets/page-icon.png'],
   [UNINSTALL_ICON_NAME, '../../assets/uninstall-icon.png'],
   ['dumby_home', '../../assets/home-icon.png'],
   ['dumby_discover', '../../assets/discover-icon.png'],
