@@ -464,6 +464,49 @@ describe('page-data provider', () => {
     expect(mine?.occupied).not.toBe(true);
   });
 
+  test('an occupied module names the persona who holds it — "Magma", not "a persona"', async () => {
+    // The name comes from the Twill registration (`persona_identities.name`), read through knex. This
+    // path was never exercised: the shared fake has no `.first()`, so the read threw, the catch
+    // returned undefined, and every test saw the fallback.
+    const knexWithName = ((table: string) => ({
+      where: () => ({
+        whereNull: () => ({ orderBy: () => ({ select: async (): Promise<unknown[]> => [] }) }),
+        first: async (): Promise<unknown> =>
+          table === 'persona_identities' ? { name: 'Magma' } : undefined,
+      }),
+    })) as unknown as Dict;
+    knexWithName['raw'] = async (): Promise<unknown[]> => [{}];
+
+    const provider = createPageDataProvider(
+      makeDeps({
+        db: { knex: knexWithName },
+        resolveOwner: async (_guildId: string, slug: string) =>
+          slug === 'hello-world' ? 'p-1' : undefined,
+      }),
+    );
+    const asMain = await provider('browse', 'guild-1', 0, undefined, 'app-1', 'main');
+    const hello = (
+      asMain['modules'] as Array<{ id: string; occupied?: boolean; occupiedBy?: string }>
+    ).find((m) => m.id === 'hello-world');
+
+    expect(hello?.occupied).toBe(true);
+    expect(hello?.occupiedBy).toBe('Magma');
+  });
+
+  test('and if her name cannot be read, she is still a profile — never "a persona"', async () => {
+    const provider = createPageDataProvider(
+      makeDeps({
+        resolveOwner: async (_guildId: string, slug: string) =>
+          slug === 'hello-world' ? 'p-1' : undefined,
+      }),
+    );
+    const asMain = await provider('browse', 'guild-1', 0, undefined, 'app-1', 'main');
+    const hello = (asMain['modules'] as Array<{ id: string; occupiedBy?: string }>).find(
+      (m) => m.id === 'hello-world',
+    );
+    expect(hello?.occupiedBy).toBe('another profile');
+  });
+
   test('marketplace lists a SHORT main view — the rest is what Discover is for', async () => {
     const many = Array.from({ length: 30 }, (_, i) =>
       mod(`mp-${String(i).padStart(2, '0')}`, 'marketplace', ['x']),
