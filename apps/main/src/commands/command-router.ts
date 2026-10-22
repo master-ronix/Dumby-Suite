@@ -21,10 +21,14 @@ import {
   derivePageSections,
 } from '../rendering/core-renderer.js';
 import {
+  customEmojiRef,
   customEmojiParts,
   DEFAULT_EMOJI_SCOPE,
   MODULE_ICON_NAME,
+  OCCUPIED_ICON_NAME,
   PAGE_ICON_NAME,
+  TIER_MARKETPLACE_ICON_NAME,
+  TIER_STANDARD_ICON_NAME,
 } from '../rendering/module-icons.js';
 import { healthBlocks } from '../rendering/health-blocks.js';
 import { dialNavSelect, type DialEntry } from '../rendering/dashboard-nav.js';
@@ -1011,6 +1015,7 @@ export class CommandRouter {
               icon?: unknown;
               note?: unknown;
               occupied?: unknown;
+              tier?: unknown;
             })
           : {},
       )
@@ -1024,6 +1029,7 @@ export class CommandRouter {
           icon?: unknown;
           note?: unknown;
           occupied?: unknown;
+          tier?: unknown;
         } => typeof m.id === 'string',
       );
     const query = typeof data?.['query'] === 'string' ? (data['query'] as string) : '';
@@ -1055,9 +1061,19 @@ export class CommandRouter {
       // UR-20261011-010 — a "Previously installed" module (a disabled standard module) carries a
       // subtext note so the listing reads as a re-enable, not a fresh install.
       const note = typeof m.note === 'string' && m.note !== '' ? `\n-# ${m.note}` : '';
+      // item 3 — a STATUS MARK, not a parenthetical: a padlock when the module is occupied, else the
+      // tier's own shape, then the description. `<icon> | <text>` is the stated format.
+      const statusName =
+        m.occupied === true
+          ? OCCUPIED_ICON_NAME
+          : m.tier === 'marketplace'
+            ? TIER_MARKETPLACE_ICON_NAME
+            : TIER_STANDARD_ICON_NAME;
+      const status = customEmojiRef(statusName, scope);
       blocks.push({
         kind: 'section',
-        content: `${icon} **${name}** — ${description}${note}`.trim(),
+        content:
+          `${icon} **${name}**\n${status !== undefined ? `${status} | ` : ''}${description}${note}`.trim(),
         accessory: { customId: `dumby:info:${invokerId}:browse:${m.id}`, label: 'Info', style: 2 },
       });
     }
@@ -1078,7 +1094,8 @@ export class CommandRouter {
       const occupied = m.occupied === true;
       const name = String(m.name ?? m.id);
       return {
-        label: occupied ? `${name} — occupied`.slice(0, 100) : name,
+        // The occupied state is a STATUS MARK in the listing above, not a suffix on the name.
+        label: name.slice(0, 100),
         value: m.id,
         description: (occupied
           ? String(m.note ?? 'Occupied by another profile in this server.')

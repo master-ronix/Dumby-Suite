@@ -42,6 +42,21 @@ export const MODULE_ICON_NAME = 'dumby_module';
 export const MODULE_FALLBACK = '\u{1F4E6}'; // package
 
 /**
+ * The STATUS marks — what a module's state looks like in a listing, as one glyph beside the text.
+ *
+ *   `dumby_occupied`        a padlock: the module is claimed by another profile in this guild.
+ *   `dumby_tier_standard`   a diamond: standard tier.
+ *   `dumby_tier_marketplace` a hexagon: marketplace tier.
+ *
+ * Shapes, not pictures, for the tiers: the first marketplace mark I drew was a bag, which had the same
+ * silhouette as the padlock — a rounded rectangle with an arc on top — and the two would have been
+ * indistinguishable at emoji size.
+ */
+export const OCCUPIED_ICON_NAME = 'dumby_occupied';
+export const TIER_STANDARD_ICON_NAME = 'dumby_tier_standard';
+export const TIER_MARKETPLACE_ICON_NAME = 'dumby_tier_marketplace';
+
+/**
  * The page icon — a stack of pages, from the framework's own `page-icon.png`. It labels the /modules
  * dial, whose options are the LISTING PAGES rather than the modules: that surface pages the modules
  * themselves, so a page is what a member moves between, and one consistent icon says so.

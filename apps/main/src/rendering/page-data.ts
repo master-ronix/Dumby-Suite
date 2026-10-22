@@ -80,6 +80,35 @@ const titleCaseId = (id: string): string =>
  * pages — an option per module would offer targets that do not exist. The range is what makes the
  * label useful: "Page 3" alone says nothing about what is on it.
  */
+/**
+ * item 5 — a page position as a Roman numeral.
+ *
+ * A dial moves between POSITIONS, and `Slide II` says that where `Page 2` reads as a count. Additive
+ * form throughout (IIII rather than IV) on purpose: it is unambiguous to read at a glance, and the
+ * numerals are a label, not arithmetic.
+ */
+export function romanNumeral(value: number): string {
+  if (!Number.isFinite(value) || value < 1) return String(value);
+  const table: Array<[number, string]> = [
+    [1000, 'M'],
+    [500, 'D'],
+    [100, 'C'],
+    [50, 'L'],
+    [10, 'X'],
+    [5, 'V'],
+    [1, 'I'],
+  ];
+  let remaining = Math.floor(value);
+  let out = '';
+  for (const [size, glyph] of table) {
+    while (remaining >= size) {
+      out += glyph;
+      remaining -= size;
+    }
+  }
+  return out;
+}
+
 export function modulePageNavigation(
   pageTotal: number,
   total: number,
@@ -95,7 +124,7 @@ export function modulePageNavigation(
     const last = Math.min((index + 1) * pageSize, total);
     return {
       id: `page-${index + 1}`,
-      name: `Page ${index + 1}`,
+      name: `Slide ${romanNumeral(index + 1)}`,
       description: first === last ? `Module ${first}` : `Modules ${first}–${last}`,
       page: index,
     };

@@ -1,5 +1,5 @@
 import { test, expect, describe } from 'vitest';
-import { modulePageNavigation } from '../../src/rendering/page-data.js';
+import { modulePageNavigation, romanNumeral } from '../../src/rendering/page-data.js';
 
 /**
  * item 6 / item 17 — the /modules dial's options are PAGES, not modules.
@@ -11,7 +11,8 @@ import { modulePageNavigation } from '../../src/rendering/page-data.js';
 describe('the /modules dial offers pages', () => {
   test('one option per page, numbered from 1 and carrying the 0-based page', () => {
     const nav = modulePageNavigation(3, 12, 5);
-    expect(nav.map((n) => n.name)).toStrictEqual(['Page 1', 'Page 2', 'Page 3']);
+    // item 5 — a dial moves between POSITIONS, so the label reads as one: `Slide II`, not `Page 2`.
+    expect(nav.map((n) => n.name)).toStrictEqual(['Slide I', 'Slide II', 'Slide III']);
     expect(nav.map((n) => n.page)).toStrictEqual([0, 1, 2]);
     expect(nav.map((n) => n.id)).toStrictEqual(['page-1', 'page-2', 'page-3']);
   });
@@ -32,6 +33,16 @@ describe('the /modules dial offers pages', () => {
     const nav = modulePageNavigation(1, 4, 5);
     expect(nav).toHaveLength(1);
     expect(nav[0]?.description).toBe('Modules 1–4');
+  });
+
+  test('a page position reads as a Roman numeral', () => {
+    expect(romanNumeral(1)).toBe('I');
+    expect(romanNumeral(4)).toBe('IIII');
+    expect(romanNumeral(9)).toBe('VIIII');
+    expect(romanNumeral(14)).toBe('XIIII');
+    expect(romanNumeral(40)).toBe('XXXX');
+    // Not a number, not a numeral: leave it alone rather than print nonsense.
+    expect(romanNumeral(0)).toBe('0');
   });
 
   test('the values are unique, which a select requires', () => {

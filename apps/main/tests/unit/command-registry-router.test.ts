@@ -6,6 +6,7 @@ import { MiddlewarePipeline } from '../../src/middleware/middleware-pipeline.js'
 import { MiddlewareRejectError, type Middleware } from '../../src/middleware/base-middleware.js';
 import { PermissionResolver } from '../../src/permissions/resolver.js';
 import { IS_COMPONENTS_V2 } from '../../src/shared/utils/components-v2.js';
+import { registerModuleEmoji } from '../../src/rendering/module-icons.js';
 
 function textContents(payload: unknown): string[] {
   const msg = payload as { components?: Array<{ components?: unknown[] }> } | undefined;
@@ -642,7 +643,10 @@ describe('a persona is bound to ONE guild (UR-20261012-060)', () => {
 });
 
 describe('/browse states module occupancy (UR-20261012-061)', () => {
-  test('an occupied module is labelled and described as occupied, and a free one is not', async () => {
+  test('an occupied module carries a status MARK and a described note, and a free one does not', async () => {
+    // item 3 — occupancy is a status mark beside the description, not a "(occupied)" suffix on the
+    // name. Register the mark so the listing can be asserted to carry it.
+    registerModuleEmoji('dumby_occupied', '4242', '');
     const reg = new CommandRegistry();
     const logger = makeLogger() as unknown as Logger;
     const router = new CommandRouter(reg, logger, {
@@ -667,8 +671,10 @@ describe('/browse states module occupancy (UR-20261012-061)', () => {
 
     const rendered = JSON.stringify(await router.buildBrowseRender('u1', 'g1', ''));
 
-    // The occupied option carries the fact in its LABEL (a Discord select cannot disable one option).
-    expect(rendered).toContain('hello-world — occupied');
+    // The status mark carries it in the listing, and the note explains it. The LABEL is the name
+    // alone: a suffix on the name was the thing this replaced.
+    expect(rendered).toContain('<:dumby_occupied:4242>');
+    expect(rendered).not.toContain('hello-world — occupied');
     expect(rendered).toContain('Occupied by the main bot');
     // The free module is offered normally.
     expect(rendered).toContain('free-mod');

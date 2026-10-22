@@ -6,7 +6,10 @@ import type { Client } from 'discord.js';
 import type { Logger } from '../logging/logger.js';
 import {
   MODULE_ICON_NAME,
+  OCCUPIED_ICON_NAME,
   PAGE_ICON_NAME,
+  TIER_MARKETPLACE_ICON_NAME,
+  TIER_STANDARD_ICON_NAME,
   IDENTITY_ICON_NAME,
   INFO_ICON_NAME,
   PROFILE_ICON_NAME,
@@ -37,6 +40,9 @@ const ICON_ASSETS: ReadonlyArray<readonly [string, string]> = [
   // which is the modules module's own grid (`dumby_modules`) and is uploaded with that module.
   [MODULE_ICON_NAME, '../../assets/default-module-icon.png'],
   [PAGE_ICON_NAME, '../../assets/page-icon.png'],
+  [OCCUPIED_ICON_NAME, '../../assets/occupied-icon.png'],
+  [TIER_STANDARD_ICON_NAME, '../../assets/tier-standard-icon.png'],
+  [TIER_MARKETPLACE_ICON_NAME, '../../assets/tier-marketplace-icon.png'],
   [UNINSTALL_ICON_NAME, '../../assets/uninstall-icon.png'],
   ['dumby_home', '../../assets/home-icon.png'],
   ['dumby_discover', '../../assets/discover-icon.png'],

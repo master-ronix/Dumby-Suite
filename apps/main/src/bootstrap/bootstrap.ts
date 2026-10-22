@@ -1034,33 +1034,25 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   };
 
   /**
-   * Late-bound: the deployer is built far below, once the Discord client exists, while the install
-   * path is defined up here. A hook lets an install register a guild's commands without moving either.
-   * Undefined only before the bot is serving, when no interaction can reach this.
-   */
-  let deployGuildCommands: ((guildId: string) => Promise<void>) | undefined;
-
-  /**
-   * Re-register ONE guild's slash commands after a module's state changed.
+   * Run the BCCM batch push NOW for one identity.
    *
-   * Deliberately awaited: the point is that the member sees the command after the interaction, not at
-   * some later boot. Never fatal — the state change is already committed, and a failed registration is
-   * a stale command list, not a broken install.
+   * This is the designed mechanism for a module change: the state write and the queue entry are the
+   * record, and the push reconciles Discord's registered set with it — applying the `disable`/`enable`
+   * that was queued. It replaces a full bulk re-registration, which was a THIRD path: neither the
+   * instant Integrations override nor the batched BCCM, and one that raced both.
    */
-  const registerGuildCommands = async (guildId: string, reason: string): Promise<void> => {
-    if (deployGuildCommands === undefined) {
-      logger.warn('module-command-registration-unavailable', { guildId, reason });
+  let pushBccmNow: ((applicationId: string) => Promise<void>) | undefined;
+
+  const runBccmForModuleChange = async (applicationId: string, reason: string): Promise<void> => {
+    if (pushBccmNow === undefined) {
+      logger.warn('bccm-push-unavailable', { reason });
       return;
     }
     try {
-      await deployGuildCommands(guildId);
-      logger.info('module-command-registration', { guildId, reason });
+      await pushBccmNow(applicationId);
+      logger.info('bccm-push-on-demand', { reason });
     } catch (err) {
-      logger.error('module-command-registration-failed', {
-        guildId,
-        reason,
-        error: String(err),
-      });
+      logger.error('bccm-push-on-demand-failed', { reason, error: String(err) });
     }
   };
 
@@ -1113,7 +1105,7 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     // had no command until some later boot, which reads as a command registry that does not work.
     // `deployForGuild` re-registers this guild's whole scoped set, which is exactly what has to agree
     // with the module list. A failure is logged, never fatal: the module IS installed either way.
-    await registerGuildCommands(guildId, `install:${moduleId}`);
+    await runBccmForModuleChange(bccmScopeOf(acting), `install:${moduleId}`);
     logger.info('marketplace-module-installed', { moduleId, guildId, userId });
   };
   // UR-20261011-010 — the detail card's uninstall/disable control disables the module for the guild
@@ -1142,7 +1134,7 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     await enqueueModuleCommandChanges(moduleId, guildId, userId, 'disable', bccmScopeOf(acting));
     // …and DEREGISTER it, for the same reason: a disabled module whose command stays registered is a
     // command the member can see and that the bot then refuses.
-    await registerGuildCommands(guildId, `uninstall:${moduleId}`);
+    await runBccmForModuleChange(bccmScopeOf(acting), `uninstall:${moduleId}`);
     logger.info('module-uninstalled', { moduleId, guildId, userId });
   };
 
@@ -1847,15 +1839,20 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     // §17.7 — run the batch once shortly after boot: it converges any batch left pending by the
     // previous deploy, and in dry-run it makes the output visible without waiting for the 12h
     // cycle. Unref'd so it never holds the process open.
-    setTimeout(() => {
-      void runBccmBatchPush({
+    const pushNow = async (applicationId: string): Promise<void> => {
+      await runBccmBatchPush({
         store: bccmStore,
         logger,
         ceiling: commandCeiling,
         discord: bccmDiscordClient as BccmDiscordClient,
         dryRun: config.get('BCCM_BATCH_PUSH_DRY_RUN'),
-        applicationId: commandRegistry.profile.applicationId,
+        applicationId,
       });
+    };
+    // The install/uninstall paths, defined far above, reconcile through this.
+    pushBccmNow = pushNow;
+    setTimeout(() => {
+      void pushNow(commandRegistry.profile.applicationId);
     }, 30_000).unref();
     const commandDeployer = new CommandDeployer({
       // UR-20261012-063 — the applied renames, so a boot registers the RENAMED set instead of reverting
@@ -1946,8 +1943,6 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     // rate-limited (two bulk-overwrite calls per guild) and was blocking readiness for minutes on
     // every restart. The gateway connection is independent of command deployment, so the bot is
     // functional while its commands propagate; a failure is logged, never fatal.
-    // The install/uninstall paths, defined far above, register through this hook.
-    deployGuildCommands = (guildId: string) => commandDeployer.deployForGuild(guildId);
     void commandDeployer.deploy().catch((err: unknown) => {
       logger.error('command-deploy-failed', {
         error: String(err),
