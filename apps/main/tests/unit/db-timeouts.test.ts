@@ -1,4 +1,5 @@
 import { test, expect, describe } from 'vitest';
+import knexFactory from 'knex';
 import knexConfig from '../../src/db/knexfile.js';
 
 /**
@@ -15,7 +16,7 @@ import knexConfig from '../../src/db/knexfile.js';
 describe('the database pool is bounded', () => {
   const config = knexConfig.production as {
     connection: { connectionTimeoutMillis?: number };
-    pool: { acquireConnectionTimeout?: number; min?: number; max?: number };
+    pool: { acquireTimeoutMillis?: number; min?: number; max?: number };
   };
 
   test('the pg connect has a timeout', () => {
@@ -23,7 +24,7 @@ describe('the database pool is bounded', () => {
   });
 
   test('acquiring a connection from the pool has a timeout', () => {
-    expect(config.pool.acquireConnectionTimeout).toBeGreaterThan(0);
+    expect(config.pool.acquireTimeoutMillis).toBeGreaterThan(0);
   });
 
   test('the pool still has a real size', () => {
@@ -31,9 +32,16 @@ describe('the database pool is bounded', () => {
     expect(config.pool.max).toBeGreaterThanOrEqual(config.pool.min ?? 0);
   });
 
+  test("tarn ACCEPTS the pool config — the option name must be tarn's", () => {
+    // knex hands this object to tarn verbatim. A key tarn does not know throws
+    // "Tarn: unsupported option opt.<key>" when the pool is built — a compile-clean, runtime-fatal
+    // mistake that only showed up in the flow suite. Constructing the pool is what catches it.
+    expect(() => knexFactory(knexConfig.production as never)).not.toThrow();
+  });
+
   test('the bound is short enough to fail inside a host port scan', () => {
     // The host gives a boot a few minutes at most; a bound near the statement timeout is the point.
     expect(config.connection.connectionTimeoutMillis).toBeLessThanOrEqual(30_000);
-    expect(config.pool.acquireConnectionTimeout).toBeLessThanOrEqual(30_000);
+    expect(config.pool.acquireTimeoutMillis).toBeLessThanOrEqual(30_000);
   });
 });

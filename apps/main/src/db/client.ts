@@ -70,12 +70,13 @@ export class DbClient {
         // than reports.
         connectionTimeoutMillis: this.options.connectTimeoutMs,
       },
-      // knex honours `acquireConnectionTimeout`, but its published PoolConfig type omits it.
+      // `acquireTimeoutMillis` — tarn's own name. See knexfile: knex passes this object to tarn
+      // verbatim, and tarn rejects unknown keys.
       pool: {
         min: 2,
         max: this.options.poolMax,
-        acquireConnectionTimeout: this.options.connectTimeoutMs,
-      } as Knex.PoolConfig & { acquireConnectionTimeout: number },
+        acquireTimeoutMillis: this.options.connectTimeoutMs,
+      },
       ...(withMigrations
         ? {
             migrations: {

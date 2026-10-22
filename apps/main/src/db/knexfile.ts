@@ -27,12 +27,11 @@ function buildConfig(
     },
     // `statement_timeout` bounds a query once it is RUNNING; it does nothing while a query waits for a
     // connection. This bounds that wait, so a starved pool is an error rather than a hang.
-    // knex honours `acquireConnectionTimeout`, but its published PoolConfig type omits it.
-    pool: {
-      min: 2,
-      max: poolMax,
-      acquireConnectionTimeout: connectTimeoutMs,
-    } as Knex.PoolConfig & { acquireConnectionTimeout: number },
+    // `acquireTimeoutMillis`, not knex's documented `acquireConnectionTimeout`: knex hands this
+    // object to tarn VERBATIM, and tarn rejects a key it does not know with
+    // "Tarn: unsupported option opt.acquireConnectionTimeout". The type was right and a cast that
+    // silenced it turned a compile error into a runtime one.
+    pool: { min: 2, max: poolMax, acquireTimeoutMillis: connectTimeoutMs },
     migrations: {
       directory: migrationsDir,
       extension: migrationsExtension,
