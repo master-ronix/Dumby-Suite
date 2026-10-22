@@ -764,9 +764,11 @@ describe('a module can tell WHO it is running as (UR-20261012-067)', () => {
     expect(ctx.module['ownedByCaller']).toBe(true);
   });
 
-  test('the main bot is REFUSED a module a persona holds — and that is the standing it sees', async () => {
-    // The ownership rule, reached through the new context: a standard module belongs to ONE profile,
-    // so the other one is refused rather than silently allowed.
+  test('the main bot ANSWERS a module a persona holds — ownership gates the install, not the answer', async () => {
+    // "Go practical": a module that is on for the guild, whose command is REGISTERED for this
+    // application, is a module this profile may answer. Refusing here produced FORBIDDEN for a module
+    // the operator had installed and enabled, which reads as a permissions bug. The refusal lives at
+    // the INSTALL, where it already is.
     const reg = new CommandRegistry();
     reg.registerModule('hello-world', 'standard');
     const seen: { ctx?: unknown } = {};
@@ -778,8 +780,8 @@ describe('a module can tell WHO it is running as (UR-20261012-067)', () => {
 
     await router.dispatch({ ...makeInteraction('whoami'), applicationId: 'app-main' });
 
-    // Refused before the handler, so no context was handed over.
-    expect(seen.ctx).toBeUndefined();
+    // Answered, and the context says who it is running as.
+    expect(seen.ctx).toBeDefined();
   });
 });
 describe('a failing lookup refuses HONESTLY, it does not break the dispatch (UR-20261012-069)', () => {
@@ -1006,8 +1008,9 @@ describe('a persona may run SHARED commands (UR-20261012-080)', () => {
     expect(executed).toHaveBeenCalledTimes(1);
   });
 
-  test('a STANDARD module the main bot holds is still refused to a persona', async () => {
-    // The refusal itself must not have been weakened by the fix above.
+  test('a persona ANSWERS a standard module the main bot holds', async () => {
+    // Same rule from the other side. Registration is what keeps a guild from having two bots answer
+    // one command: the deployer registers a guild-scoped module only for the profile that holds it.
     const reg = new CommandRegistry();
     reg.registerModule('hello-world', 'standard');
     const executed = vi.fn(async () => ({ page: 'hello', data: {} }));
@@ -1025,6 +1028,6 @@ describe('a persona may run SHARED commands (UR-20261012-080)', () => {
     const interaction = { ...makeInteraction('hello'), applicationId: 'app-persona' };
     await router.dispatch(interaction);
 
-    expect(executed).not.toHaveBeenCalled();
+    expect(executed).toHaveBeenCalled();
   });
 });

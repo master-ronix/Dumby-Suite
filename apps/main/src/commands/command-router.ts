@@ -40,7 +40,6 @@ import {
 } from '../shared/constants/index.js';
 import type { ComponentsV2Message } from '../shared/utils/components-v2.js';
 import type { ExecutionIdentity, ModuleStanding } from '@workspace/swastik';
-import { PersonaOccupiedError } from '../personas/persona.js';
 
 /** Manage Guild (0x20) and Administrator (0x8), as the decimal strings Discord sends. */
 // UR-20261012-053 — NAMES, not bit values. These were '8' and '32' (the Discord bitfield values)
@@ -937,12 +936,18 @@ export class CommandRouter {
     // UR-20261012-078 — the actor's own id is 'main' for the main bot, whose residentPersonaId is
     // undefined. Comparing against `undefined` would make the main bot refuse its OWN module.
     if (owner === (this.options.residentPersonaId ?? 'main')) return;
-    // UR-20261012-077 — name the actor (this router's own identity).
-    throw new PersonaOccupiedError(
-      guildId,
-      command.moduleId,
-      owner,
-      this.options.residentPersonaId ?? 'main',
+
+    // "GO PRACTICAL" — a profile that legitimately holds the module is not refused for answering it.
+    //
+    // This used to throw PersonaOccupiedError here, which made the MAIN BOT refuse /hello in a guild
+    // where a persona held hello-world — even though the main had installed it, and even though
+    // `guild_module_states` says the module is ENABLED. A module that is on for the guild, and whose
+    // command is REGISTERED for this application (registration is where ownership is enforced, by the
+    // deployer's guild resolver), is a module this profile may answer. The refusal belongs at the
+    // INSTALL — where it already is — not at dispatch, where it produced "FORBIDDEN" for a working
+    // module and read as a permissions bug.
+    this.logger.info(
+      `command-scope-owned-elsewhere command=${command.data.name} module=${command.moduleId} guild=${guildId} owner=${owner} actor=${this.options.residentPersonaId ?? 'main'}`,
     );
   }
 

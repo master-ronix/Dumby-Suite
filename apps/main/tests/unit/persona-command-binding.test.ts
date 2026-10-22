@@ -99,9 +99,9 @@ describe('the ownership read answers for the main bot (UR-20261012-078)', () => 
 });
 
 describe('the main bot is not refused its own module (UR-20261012-078)', () => {
-  test('a persona is refused a module the main bot owns', async () => {
-    // The refusal itself is correct and unchanged; what changed is that the MAIN BOT is no longer
-    // refused alongside it, because its own id is 'main' and its residentPersonaId is undefined.
+  test('a persona ANSWERS a module the main bot owns', async () => {
+    // "Go practical": the refusal moved to the INSTALL. A module that is on for the guild, and whose
+    // command is registered for this application, is one this profile may answer.
     const reg = new CommandRegistry();
     reg.registerModule('hello-world', 'standard');
     const executed = vi.fn(async () => ({ page: 'hello', data: {} }));
@@ -132,6 +132,6 @@ describe('the main bot is not refused its own module (UR-20261012-078)', () => {
       deferred: false,
     };
     await router.dispatch(interaction as never);
-    expect(executed).not.toHaveBeenCalled();
+    expect(executed).toHaveBeenCalled();
   });
 });
