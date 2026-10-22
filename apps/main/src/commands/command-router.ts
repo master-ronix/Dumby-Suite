@@ -496,6 +496,14 @@ export class CommandRouter {
           : {}),
         ...(options.mode !== undefined ? { mode: options.mode } : {}),
         ...(declaredDensity !== undefined ? { mode: declaredDensity } : {}),
+        // §1.2 — the D/M/C control is offered only when the PAGE has NOT declared a density. When it
+        // has, that declaration wins (ADR-013), so the control could never change anything: a button
+        // that silently does nothing reads as broken, which is how it was reported. The builder had
+        // never been attached at all, so the control was absent everywhere — this attaches it where it
+        // can actually act.
+        ...(declaredDensity === undefined && def.ephemeral !== true
+          ? { modeControl: this.modeControl(options.mode ?? 'D', interaction.user.id) }
+          : {}),
         // items 8/9 — /browse, /modules and /persona render richer blocks (inline Info sections, the
         // install dropdown, the /modules listing, the persona control-plane board); the dashboard's
         // nav is Home/Next/Prev. Each block set attaches only when the page data carries its shape,
@@ -1107,23 +1115,26 @@ export class CommandRouter {
       const tier = CommandRouter.tierName(m.tier);
       // The OPTION carries the status mark as its EMOJI — the one place Discord renders an emoji in a
       // select — and a SHORT state line. It deliberately does not repeat the description above.
-      // A select option's description is PLAIN TEXT: Discord renders it verbatim, so a custom emoji
-      // there shows as `<:name:id>` rather than an image. The status is therefore a UNICODE glyph —
-      // which is text, and does render — in the stated `<icon> | <text>` format. The module's own
-      // logo goes in the option's EMOJI field, which is the one place a custom emoji does render.
-      const statusGlyph = occupied ? '🔒' : m.tier === 'marketplace' ? '⬡' : '◆';
+      // A select option's description is PLAIN TEXT — a custom emoji there shows as `<:name:id>` — so
+      // the status mark goes in the EMOJI field, the one place Discord renders one. The description
+      // states the tier and the state in words. The module's own logo labels it in the listing above.
+      const statusName = occupied
+        ? OCCUPIED_ICON_NAME
+        : m.tier === 'marketplace'
+          ? TIER_MARKETPLACE_ICON_NAME
+          : TIER_STANDARD_ICON_NAME;
+      const status = customEmojiParts(statusName, scope);
       const state = occupied
         ? `occupied by ${String(m.occupiedBy ?? 'another profile')}`
         : previouslyInstalled
           ? 'previously installed'
           : 'available';
-      const logo = typeof m.iconName === 'string' ? customEmojiParts(m.iconName, scope) : undefined;
       return {
         label: name.slice(0, 100),
         value: m.id,
-        description: `${statusGlyph} | ${tier} · ${state}`.slice(0, 100),
-        ...(logo !== undefined
-          ? { emoji: logo }
+        description: `${tier} · ${state}`.slice(0, 100),
+        ...(status !== undefined
+          ? { emoji: status }
           : defaultIcon !== undefined
             ? { emoji: defaultIcon }
             : {}),

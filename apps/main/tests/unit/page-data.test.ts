@@ -441,6 +441,29 @@ describe('page-data provider', () => {
     expect(mods.find((m) => m.id === 'hello-world')?.previouslyInstalled).toBe(true);
   });
 
+  test('a standard module is NOT enabled by default for a profile that did not get there first', async () => {
+    // Q2 — the guild admin adds one bot first; its standard tiers are enabled by default, and a
+    // profile added afterwards must not have them by default, standard tier or not, because they are
+    // already occupied. Seen from a PERSONA, a standard module the main holds reads as occupied.
+    const provider = createPageDataProvider(
+      makeDeps({
+        resolveOwner: async (_guildId: string, slug: string) =>
+          slug === 'hello-world' ? 'main' : undefined,
+      }),
+    );
+    const asPersona = await provider('browse', 'guild-1', 0, undefined, 'app-1', 'persona-1');
+    const entries = asPersona['modules'] as Array<{ id: string; occupied?: boolean }>;
+    const hello = entries.find((m) => m.id === 'hello-world');
+    expect(hello?.occupied).toBe(true);
+
+    // And from the MAIN BOT, its own standard module is NOT occupied — it got there first.
+    const asMain = await provider('browse', 'guild-1', 0, undefined, 'app-1', 'main');
+    const mine = (asMain['modules'] as Array<{ id: string; occupied?: boolean }>).find(
+      (m) => m.id === 'hello-world',
+    );
+    expect(mine?.occupied).not.toBe(true);
+  });
+
   test('marketplace lists a SHORT main view — the rest is what Discover is for', async () => {
     const many = Array.from({ length: 30 }, (_, i) =>
       mod(`mp-${String(i).padStart(2, '0')}`, 'marketplace', ['x']),

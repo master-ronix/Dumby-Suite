@@ -671,10 +671,10 @@ describe('/browse states module occupancy (UR-20261012-061)', () => {
 
     const rendered = JSON.stringify(await router.buildBrowseRender('u1', 'g1', ''));
 
-    // item 2 — the module's own logo is the OPTION's emoji, and the description carries the status in
-    // the stated `<icon> | <text>` format. A select description is plain text, so the status there is
-    // a UNICODE glyph: a custom emoji would render as literal `<:name:id>`.
-    expect(rendered).toContain('🔒 | Standard · occupied by the main bot');
+    // item 2 — the STATUS MARK is the option's emoji (the one place Discord renders a custom emoji in
+    // a select), and the description states the tier and the state in words.
+    expect(rendered).toContain('dumby_occupied');
+    expect(rendered).toContain('Standard · occupied by the main bot');
     expect(rendered).not.toContain('hello-world — occupied');
     // The description is not repeated in the option — that was the duplication.
     expect(rendered.split('A hello module').length - 1).toBe(1);

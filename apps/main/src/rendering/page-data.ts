@@ -752,6 +752,27 @@ export function createPageDataProvider(deps: PageDataDeps): (
   // with a search query (item 5b) it lists only the name/description matches. The listing caps at
   // MARKETPLACE_MODULE_CAP (UR-20261011-006): one dropdown slot is reserved for the permanent Home
   // entry, so the listing and the install dropdown stay in sync within Discord's 25-option ceiling.
+  /**
+   * Q2/§13.2 — the tier default, adjusted for OWNERSHIP.
+   *
+   * A standard module is enabled by default — but not for a profile that did not get there first. The
+   * guild's admin adds one bot first; its standard tiers are enabled by default, and a profile added
+   * afterwards must NOT have them enabled by default, standard tier or not, because they are already
+   * occupied. Core and Admin are shared and always on; marketplace never defaults on.
+   */
+  async function defaultEnabledForProfile(
+    tier: string,
+    slug: string,
+    guildId: string | null,
+    actingProfileId: string,
+  ): Promise<boolean> {
+    if (tier !== 'standard') return defaultEnabledForTier(tier as never);
+    const holder = await holderOf(guildId, slug);
+    // Nobody has claimed it: the resident main bot is the one that was there first. A persona is
+    // only first if she claimed it, which she does by installing it.
+    return holder === undefined ? actingProfileId === MAIN_PROFILE_ID : holder === actingProfileId;
+  }
+
   async function marketplace(
     query: string | undefined,
     guildId: string | null,
@@ -774,10 +795,21 @@ export function createPageDataProvider(deps: PageDataDeps): (
         ownedBy(guildId, entry.manifest.name, entry.manifest.tier, actingProfileId),
       ),
     );
+    // Resolve the ownership-aware defaults BEFORE filtering: the predicate is synchronous, and the
+    // standard tier's default now depends on who holds the module.
+    const tierDefault = await Promise.all(
+      candidates.map((entry) =>
+        defaultEnabledForProfile(
+          entry.manifest.tier,
+          entry.manifest.name,
+          guildId,
+          actingProfileId,
+        ),
+      ),
+    );
     const available = candidates.filter((entry, i) => {
-      const tier = entry.manifest.tier;
       const slug = entry.manifest.name;
-      const enabled = enabledBySlug.get(slug) ?? defaultEnabledForTier(tier);
+      const enabled = enabledBySlug.get(slug) ?? tierDefault[i] === true;
       if (!enabled) return true; // installable, or re-enableable
       // Enabled: offer it only when this profile does NOT hold it — i.e. when it is occupied.
       return ownedFlags[i] !== true;
@@ -805,7 +837,6 @@ export function createPageDataProvider(deps: PageDataDeps): (
       shown.map(async (entry) => {
         const slug = entry.manifest.name;
         const tier = entry.manifest.tier;
-        const enabled = enabledBySlug.get(slug) ?? defaultEnabledForTier(tier);
         const holder = await holderOf(guildId, slug);
         // UR-20261012-079 — `holder === undefined` used to be the proxy for "the main bot", because
         // an enabled-but-unbound module answered undefined. UR-078 made that read answer `'main'`
@@ -813,8 +844,14 @@ export function createPageDataProvider(deps: PageDataDeps): (
         // "Occupied by a persona — the main bot cannot take it", which is nonsense. Both spellings
         // mean the main bot.
         const heldByMain = holder === undefined || holder === MAIN_PROFILE_ID;
-        // Occupied: enabled, and held by the OTHER profile. Stated plainly and NOT offered.
-        const occupied = enabled && !(await ownedBy(guildId, slug, tier, actingProfileId));
+        // Occupied: held by ANOTHER profile AND live for the guild. Two different questions, and they
+        // must not be conflated:
+        //   * `enabled` (above) is the PER-PROFILE default — it decides whether this profile is offered
+        //     the module at all, and ownership makes it false for a module someone else holds.
+        //   * `guildEnabled` is the GUILD's own state — a row, or the tier default. A module the guild
+        //     has DISABLED is not occupied by anyone; it is available for anyone to re-enable.
+        const guildEnabled = enabledBySlug.get(slug) ?? defaultEnabledForTier(tier);
+        const occupied = !(await ownedBy(guildId, slug, tier, actingProfileId)) && guildEnabled;
         // item 4 — NO note here. "Previously installed — select to re-enable" and "Occupied by …" as
         // subtext under every description is what made the listing read as clutter; the fact belongs
         // in the private notice the member gets when they act on it.
@@ -831,7 +868,9 @@ export function createPageDataProvider(deps: PageDataDeps): (
             : {}),
           // A disabled STANDARD module is "Previously Installed": selecting it re-enables it. Carried
           // as a STATE, not as subtext — the listing stays clean and the private notice says it.
-          ...(!occupied && tier === 'standard' && !enabled ? { previouslyInstalled: true } : {}),
+          ...(!occupied && tier === 'standard' && !guildEnabled
+            ? { previouslyInstalled: true }
+            : {}),
         };
       }),
     );
