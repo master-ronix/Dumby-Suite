@@ -1872,7 +1872,11 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
          */
         const heldByAnother = async (guildId: string): Promise<boolean> => {
           const owner = await personaBindingService.resolveCommandOwner(guildId, moduleSlug);
-          return owner !== undefined && owner !== 'main';
+          // 'main' is this deployer's own identity; 'shared' is a core/admin module, which belongs to
+          // nobody in particular. Only a NAMED persona makes a guild someone else's. Core never reaches
+          // this resolver (it is global, not guild-scoped) — stated anyway, because the filter must not
+          // depend on that being true.
+          return owner !== undefined && owner !== 'main' && owner !== 'shared';
         };
 
         if (!defaultEnabledForTier(tier)) {
