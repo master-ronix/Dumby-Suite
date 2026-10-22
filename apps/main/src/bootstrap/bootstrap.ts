@@ -72,6 +72,11 @@ import { installFatalHandlers } from '../shutdown/fatal-handler.js';
 import { Redis } from 'ioredis';
 import { CommandRegistry } from '../commands/command-registry.js';
 import { CommandRouter } from '../commands/command-router.js';
+import {
+  bccmScopeOf,
+  moduleConfirmationPayload,
+  moduleDisplayName,
+} from '../commands/module-confirmation.js';
 import { registerCoreFrameHandlers } from '../interactions/core-frame.handlers.js';
 import { createPageDataProvider } from '../rendering/page-data.js';
 import { registerKnownGuilds } from '../discord/guild-registry.js';
@@ -976,10 +981,6 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   // UR-20261011-010 — a module's commands are enqueued on the guild command change queue (BCCM,
   // §6.4/§17.7) so their Discord deregistration / re-registration is batched, while the state write
   // makes them non-dispatchable immediately through the router's guild enablement gate (§13.7).
-  /** The BCCM scope of an acting identity: '' for the main bot, the persona's application otherwise. */
-  const bccmScopeOf = (acting: { discordApplicationId: string } | undefined): string =>
-    acting?.discordApplicationId ?? '';
-
   const enqueueModuleCommandChanges = async (
     moduleId: string,
     guildId: string,
@@ -1148,19 +1149,11 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
      * The private confirmation for a module change. EPHEMERAL (flags 64) on purpose: a member who
      * installs or disables a module gets told so, and the channel does not.
      */
-    moduleConfirmation: (moduleId: string, action: 'installed' | 'disabled') => {
-      const entry = moduleRegistry.get(moduleId);
-      const name = entry?.manifest.ui?.displayName ?? entry?.manifest.name ?? moduleId;
-      const verb = action === 'installed' ? 'installed' : 'disabled';
-      const effect =
-        action === 'installed'
-          ? 'Its commands are being registered for this server.'
-          : 'Its commands are being removed from this server.';
-      return {
-        content: `**${name}** ${verb} for this server.\n${effect}`,
-        flags: 64,
-      };
-    },
+    moduleConfirmation: (moduleId: string, action: 'installed' | 'disabled') =>
+      moduleConfirmationPayload({
+        name: moduleDisplayName(moduleRegistry.get(moduleId), moduleId),
+        action,
+      }),
     registry: interactionRegistry,
     router: commandRouter,
     moduleInfo: (moduleId, guildId, invokerId, surface, applicationId) =>

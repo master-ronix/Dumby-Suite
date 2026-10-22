@@ -132,6 +132,16 @@ describe('dialNavSelect', () => {
     expect(block.options[2]?.emoji).toStrictEqual(fallback);
   });
 
+  test('with no fallback icon either, an option simply carries no emoji', () => {
+    const block = dialNavSelect({
+      invokerId: 'u1',
+      command: 'modules',
+      entries: entries(3),
+      currentPage: 0,
+    });
+    expect(block.options[1]?.emoji).toBeUndefined();
+  });
+
   test('the option value is the target page, and the customId is the dashboard nav', () => {
     const block = dialNavSelect({
       invokerId: 'u1',

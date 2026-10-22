@@ -43,6 +43,7 @@ describe('the /modules dial offers pages', () => {
     expect(romanNumeral(40)).toBe('XXXX');
     // Not a number, not a numeral: leave it alone rather than print nonsense.
     expect(romanNumeral(0)).toBe('0');
+    expect(romanNumeral(Number.NaN)).toBe('NaN');
   });
 
   test('the values are unique, which a select requires', () => {

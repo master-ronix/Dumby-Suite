@@ -25,10 +25,10 @@
   "test_tiers": 4,
   "flow_threads": 6,
   "coverage_rows": 2246,
-  "tree_entries": 1592,
+  "tree_entries": 1594,
   "tree_dirs": 288,
-  "tree_files": 1304,
-  "code_ts_files": 582,
-  "code_src_ts_files": 256,
+  "tree_files": 1306,
+  "code_ts_files": 584,
+  "code_src_ts_files": 257,
   "code_migrations": 57
 }

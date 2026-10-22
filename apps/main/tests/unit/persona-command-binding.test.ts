@@ -71,6 +71,25 @@ describe('the ownership read answers for the main bot (UR-20261012-078)', () => 
     expect(await service.resolveCommandOwner('g1', 'hello-world')).toBeUndefined();
   });
 
+  test('a claim lasts only while the module is INSTALLED — disabling releases it', async () => {
+    // The permanent claim: she disabled the module, the binding survived, the other profile's install
+    // was refused as "occupied" forever, and NEITHER profile registered the command.
+    const service = serviceWith({ binding: { personaId: 'persona-1' }, enabled: false });
+    expect(await service.resolveCommandOwner('g1', 'hello-world')).toBeUndefined();
+  });
+
+  test('with no enablement read the claim STANDS — it is never guessed away', async () => {
+    const service = serviceWith({ binding: { personaId: 'persona-1' }, enabled: undefined });
+    expect(await service.resolveCommandOwner('g1', 'hello-world')).toBe('persona-1');
+  });
+
+  test('a FAILING enablement read keeps the claim, and says so', async () => {
+    // Handing the module to the other profile on a failed read would leave two profiles each
+    // believing they own it.
+    const service = serviceWith({ binding: { personaId: 'persona-1' }, throws: true });
+    expect(await service.resolveCommandOwner('g1', 'hello-world')).toBe('persona-1');
+  });
+
   test("'main' cannot collide with a persona id, which is a UUID", async () => {
     const service = serviceWith({ enabled: true });
     const owner = await service.resolveCommandOwner('g1', 'hello-world');

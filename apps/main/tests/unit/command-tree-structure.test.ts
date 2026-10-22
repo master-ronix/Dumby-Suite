@@ -43,6 +43,7 @@ describe('unified command tree', () => {
       'command-renames.ts',
       'command-router.ts',
       'module-command.ts',
+    'module-confirmation.ts',
     ]);
   });
 
