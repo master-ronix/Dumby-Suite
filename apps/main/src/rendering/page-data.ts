@@ -6,6 +6,7 @@ import type { Logger } from '../logging/logger.js';
 import type { ModuleRegistry } from '../module-system/registry.js';
 import { MARKETPLACE_MODULE_CAP, MODULES_PAGE_SIZE } from '../shared/constants/index.js';
 import { defaultEnabledForTier } from '../module-system/tier-rules.js';
+import { MAIN_PROFILE_ID, profileLabel } from '../personas/profile-label.js';
 import { commandMarkerIcon, moduleIcon } from './module-icons.js';
 import {
   effectiveCommandName,
@@ -295,9 +296,6 @@ export function createPageDataProvider(deps: PageDataDeps): (
     };
   }
 
-  /** The resident main bot's profile id on the /persona board. */
-  const MAIN_PROFILE_ID = 'main';
-
   /**
    * UR-20261012-061 — the ONE ownership rule, read once per page.
    *
@@ -321,6 +319,22 @@ export function createPageDataProvider(deps: PageDataDeps): (
     ownerCache.set(key, owner);
     return owner;
   };
+
+  /** The registered NAME of a persona id, for anything a member reads. Undefined when unknown. */
+  async function personaNameOf(personaId: string | undefined): Promise<string | undefined> {
+    if (personaId === undefined || personaId === MAIN_PROFILE_ID) return undefined;
+    try {
+      // Read directly: the page layer has the knex handle, not the persona repository.
+      const row = await db
+        .knex('persona_identities')
+        .where({ id: personaId })
+        .first<{ name?: unknown }>();
+      return typeof row?.name === 'string' && row.name !== '' ? row.name : undefined;
+    } catch (err) {
+      logger.warn('page-data-persona-name-unavailable', { personaId, reason: String(err) });
+      return undefined;
+    }
+  }
 
   /** True when `actingProfileId` holds this module in this guild. Core is held by everyone. */
   const ownedBy = async (
@@ -863,8 +877,15 @@ export function createPageDataProvider(deps: PageDataDeps): (
           icon: moduleIcon(entry.manifest.ui?.icon, applicationId),
           // The option's EMOJI is built from this, so the module's own logo can label its option.
           ...(entry.manifest.ui?.icon !== undefined ? { iconName: entry.manifest.ui.icon } : {}),
+          // A NAME, not a role: "Dumby Profile", or the persona's own registered name.
           ...(occupied
-            ? { occupied: true, occupiedBy: heldByMain ? 'the main bot' : 'a persona' }
+            ? {
+                occupied: true,
+                occupiedBy: profileLabel(
+                  heldByMain ? 'main' : ((await holderOf(guildId, slug)) ?? 'main'),
+                  heldByMain ? undefined : await personaNameOf(holder),
+                ),
+              }
             : {}),
           // A disabled STANDARD module is "Previously Installed": selecting it re-enables it. Carried
           // as a STATE, not as subtext — the listing stays clean and the private notice says it.

@@ -16,6 +16,7 @@ import {
   registerModuleEmoji,
   unregisterModuleEmoji,
   STATUS_OFFLINE_ICON_NAME,
+  STATUS_DEGRADED_ICON_NAME,
   STATUS_ONLINE_ICON_NAME,
   UNINSTALL_ICON_NAME,
   DEFAULT_EMOJI_SCOPE,
@@ -48,6 +49,7 @@ const ICON_ASSETS: ReadonlyArray<readonly [string, string]> = [
   ['dumby_discover', '../../assets/discover-icon.png'],
   ['dumby_refresh', '../../assets/refresh-icon.png'],
   // UR-20261012-026 — the /persona page's indicator set.
+  [STATUS_DEGRADED_ICON_NAME, '../../assets/status-degraded-icon.png'],
   [STATUS_ONLINE_ICON_NAME, '../../assets/status-online-icon.png'],
   [STATUS_OFFLINE_ICON_NAME, '../../assets/status-offline-icon.png'],
   [INFO_ICON_NAME, '../../assets/info-icon.png'],

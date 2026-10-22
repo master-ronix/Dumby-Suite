@@ -992,16 +992,32 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
    * selecting an occupied module did nothing at all. A refusal is for the member who tried, so this is
    * ephemeral, and it is a formal notice rather than a sentence.
    */
-  const moduleRefusalNotice = async (moduleId: string, error: unknown): Promise<unknown> => ({
-    ...renderer.renderNotice({
-      ...moduleRefusalDescriptor(moduleId, moduleRegistry.get(moduleId), error),
-      reason: 'FORBIDDEN',
-      traceId: renderer.createTraceId(),
-      ephemeral: true,
-    }),
-    // A follow-up carries its own flags; the descriptor's `ephemeral` governs the GRAMMAR.
-    flags: EPHEMERAL,
-  });
+  const moduleRefusalNotice = async (moduleId: string, error: unknown): Promise<unknown> => {
+    // Resolve the holder's NAME first: the descriptor is pure and takes a synchronous resolver, and
+    // the name comes from the Twill registration (`persona_identities.name`).
+    const ownerId =
+      typeof error === 'object' && error !== null && 'personaId' in error
+        ? (error as { personaId?: unknown }).personaId
+        : undefined;
+    let ownerName: string | undefined;
+    if (typeof ownerId === 'string' && ownerId !== 'main') {
+      try {
+        ownerName = (await personaIdentities.findById(ownerId))?.name;
+      } catch (err) {
+        logger.warn('module-refusal-owner-name-unavailable', { ownerId, reason: String(err) });
+      }
+    }
+    return {
+      ...renderer.renderNotice({
+        ...moduleRefusalDescriptor(moduleId, moduleRegistry.get(moduleId), error, () => ownerName),
+        reason: 'FORBIDDEN',
+        traceId: renderer.createTraceId(),
+        ephemeral: true,
+      }),
+      // A follow-up carries its own flags; the descriptor's `ephemeral` governs the GRAMMAR.
+      flags: EPHEMERAL,
+    };
+  };
 
   const moduleEnableConfirmation = async (moduleId: string): Promise<unknown> => {
     return renderer.render({

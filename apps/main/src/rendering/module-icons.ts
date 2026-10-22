@@ -80,6 +80,8 @@ export const UNINSTALL_ICON_NAME = 'dumby_uninstall';
  * as one designed surface. Each resolves through `customEmojiRef`; a unicode fallback applies until
  * the upload lands (or if it failed), so a page never renders without an indicator.
  */
+/** The three states a subsystem can be in, as one glyph each. */
+export const STATUS_DEGRADED_ICON_NAME = 'dumby_status_degraded';
 export const STATUS_ONLINE_ICON_NAME = 'dumby_status_online';
 export const STATUS_OFFLINE_ICON_NAME = 'dumby_status_offline';
 export const INFO_ICON_NAME = 'dumby_info';

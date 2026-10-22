@@ -639,7 +639,7 @@ describe('module ownership is PER PROFILE (UR-20261012-061)', () => {
     }>;
     const hello = entries.find((m) => m.id === 'hello-world');
     expect(hello?.occupied).toBe(true);
-    expect(hello?.occupiedBy).toBe('a persona');
+    expect(hello?.occupiedBy).toBe('another profile');
   });
 
   test('UR-20261012-079 - a module the MAIN BOT enabled reads as the main bot\u2019s, not a persona\u2019s', async () => {
@@ -664,7 +664,8 @@ describe('module ownership is PER PROFILE (UR-20261012-061)', () => {
     expect(hello?.occupied).toBe(true);
     // item 4 — who holds it is a FIELD, stated in the option's short line and the private notice;
     // the sentence that used to sit under every description is gone.
-    expect(hello?.occupiedBy).toBe('the main bot');
+    // A NAME, not a role.
+    expect(hello?.occupiedBy).toBe('Dumby Profile');
 
     // Seen from the MAIN BOT, its own module is NOT occupied.
     const asMain = await provider('browse', 'guild-1', 0, undefined, 'app-1', 'main');

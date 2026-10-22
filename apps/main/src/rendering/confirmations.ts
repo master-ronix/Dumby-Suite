@@ -80,6 +80,8 @@ export interface RefusableOccupancy {
   readonly personaId: string;
 }
 
+import { profileLabel } from '../personas/profile-label.js';
+
 export interface ModuleRefusalDescriptor {
   readonly surface: string;
   readonly heading: string;
@@ -90,6 +92,8 @@ export function moduleRefusalDescriptor(
   moduleId: string,
   entry: ConfirmableEntry | undefined,
   error: unknown,
+  /** Resolves a persona id to her registered name, so a refusal can name the holder. */
+  nameOf?: (personaId: string) => string | undefined,
 ): ModuleRefusalDescriptor {
   const manifest = entry?.manifest;
   const name = manifest?.ui?.displayName ?? manifest?.name ?? moduleId;
@@ -106,7 +110,8 @@ export function moduleRefusalDescriptor(
         'were registered.',
     };
   }
-  const owner = occupied.personaId === 'main' ? 'the main bot' : 'another profile';
+  // "Dumby Profile" or the persona's own name — never "the main bot", which is a role, not a name.
+  const owner = profileLabel(occupied.personaId, nameOf?.(occupied.personaId));
   return {
     surface: name,
     heading: 'Already held by another profile',

@@ -19,10 +19,24 @@ describe('a refused install is explained, not swallowed', () => {
     expect(d.explanation).toContain('one profile per server');
   });
 
-  test("the main bot is named as such, not as 'another profile'", () => {
+  test('the resident bot is named Dumby Profile, not "the main bot"', () => {
     const d = moduleRefusalDescriptor('hello-world', entry, { personaId: 'main' });
-    expect(d.explanation).toContain('the main bot');
+    expect(d.explanation).toContain('Dumby Profile');
+    expect(d.explanation).not.toContain('main bot');
+  });
+
+  test('a persona is named by HER name, from the Twill registration', () => {
+    const d = moduleRefusalDescriptor('hello-world', entry, { personaId: 'p-1' }, (id) =>
+      id === 'p-1' ? 'Magma' : undefined,
+    );
+    expect(d.explanation).toContain('Magma');
     expect(d.explanation).not.toContain('another profile');
+  });
+
+  test('and without her name it is still a profile, not a role', () => {
+    const d = moduleRefusalDescriptor('hello-world', entry, { personaId: 'p-1' });
+    expect(d.explanation).toContain('another profile');
+    expect(d.explanation).not.toContain('a persona');
   });
 
   test('any other failure says the install changed nothing', () => {

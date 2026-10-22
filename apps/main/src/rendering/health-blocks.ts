@@ -5,9 +5,32 @@
  * a degraded subsystem is marked in place.
  */
 import type { RenderBlock } from './core-renderer.js';
-import { customEmojiParts, DEFAULT_EMOJI_SCOPE } from './module-icons.js';
+import {
+  customEmojiParts,
+  customEmojiRef,
+  DEFAULT_EMOJI_SCOPE,
+  STATUS_DEGRADED_ICON_NAME,
+  STATUS_OFFLINE_ICON_NAME,
+  STATUS_ONLINE_ICON_NAME,
+} from './module-icons.js';
 
-const STATUS_DOT: Readonly<Record<string, string>> = {
+/**
+ * The registered status MARK for a subsystem's state.
+ *
+ * These were raw circles (🟢🟡🔴) — placeholders, and the only place in the framework still using
+ * them. The set has emojified marks for exactly these three states, so /health now matches every other
+ * surface. The unicode glyph is the fallback for an application whose upload has not landed yet, never
+ * the primary.
+ */
+const STATUS_MARK: Readonly<Record<string, string>> = {
+  ok: STATUS_ONLINE_ICON_NAME,
+  operational: STATUS_ONLINE_ICON_NAME,
+  warn: STATUS_DEGRADED_ICON_NAME,
+  degraded: STATUS_DEGRADED_ICON_NAME,
+  down: STATUS_OFFLINE_ICON_NAME,
+};
+
+const STATUS_GLYPH: Readonly<Record<string, string>> = {
   ok: '🟢',
   operational: '🟢',
   warn: '🟡',
@@ -15,8 +38,11 @@ const STATUS_DOT: Readonly<Record<string, string>> = {
   down: '🔴',
 };
 
-function dot(status: unknown): string {
-  return typeof status === 'string' ? (STATUS_DOT[status] ?? '⚪') : '⚪';
+function dot(status: unknown, scope: string): string {
+  if (typeof status !== 'string') return '⚪';
+  const name = STATUS_MARK[status];
+  if (name === undefined) return '⚪';
+  return customEmojiRef(name, scope) ?? STATUS_GLYPH[status] ?? '⚪';
 }
 
 interface GroupShape {
@@ -65,7 +91,7 @@ export function healthBlocks(
   const blocks: RenderBlock[] = [];
   // The status headline, with the Refresh control in-line — a Section renders its single accessory
   // on the right of the text line.
-  const headline = `${dot(status)} **${statusLabel}**`;
+  const headline = `${dot(status, emojiScope)} **${statusLabel}**`;
   blocks.push({
     kind: 'section',
     content: summary === '' ? headline : `${headline}\n-# ${summary}`,
@@ -81,7 +107,7 @@ export function healthBlocks(
     const metrics = group.rows.map(([label, value]) => `${label}: ${value}`).join(' · ');
     blocks.push({
       kind: 'text',
-      content: `${dot(group.status)} **${group.name}**${metrics === '' ? '' : `\n-# ${metrics}`}`,
+      content: `${dot(group.status, emojiScope)} **${group.name}**${metrics === '' ? '' : `\n-# ${metrics}`}`,
     });
   }
   return blocks;
