@@ -390,3 +390,42 @@ describe('a Twill unbind runs the WHOLE disable chain', () => {
     expect((service as unknown as { unbindModule: () => unknown }).unbindModule).toHaveBeenCalled();
   });
 });
+
+describe('GET /twill/guilds/:guildId/module-chain — the readout', () => {
+  test('it reports every module, raw', async () => {
+    const moduleChain = {
+      chainForGuild: vi.fn(async () => [
+        {
+          moduleId: 'hello-world',
+          displayName: 'Hello World',
+          tier: 'standard',
+          state: { enabled: true, state: 'active', enabledBy: 'persona-A' },
+          binding: { personaId: 'persona-B' },
+          owner: 'persona-C',
+          build: { buildId: 'b-1', version: '1.0.0', validationStatus: 'passed' },
+          ownerStatus: 'active',
+        },
+      ]),
+    };
+    const { app } = buildRoutes({ moduleChain });
+    const res = await app.inject({ method: 'GET', url: `/twill/guilds/${GUILD_ID}/module-chain` });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as { guildId: string; modules: Array<Record<string, unknown>> };
+    expect(body.guildId).toBe(GUILD_ID);
+    expect(body.modules).toHaveLength(1);
+    // The DISAGREEMENT is the point: the state names one profile, the binding another, the resolver a
+    // third — and all three are reported rather than reconciled into one tidy answer.
+    const entry = body.modules[0] as Record<string, unknown>;
+    expect((entry['state'] as Record<string, unknown>)['enabledBy']).toBe('persona-A');
+    expect((entry['binding'] as Record<string, unknown>)['personaId']).toBe('persona-B');
+    expect(entry['owner']).toBe('persona-C');
+    expect(moduleChain.chainForGuild).toHaveBeenCalledWith(GUILD_ID);
+  });
+
+  test('with no chain wired it says so, rather than pretending the guild has no modules', async () => {
+    const { app } = buildRoutes();
+    const res = await app.inject({ method: 'GET', url: `/twill/guilds/${GUILD_ID}/module-chain` });
+    expect(res.statusCode).toBe(501);
+  });
+});

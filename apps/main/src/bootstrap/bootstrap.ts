@@ -75,6 +75,7 @@ import { CommandRouter } from '../commands/command-router.js';
 import { bccmScopeOf } from '../commands/module-confirmation.js';
 import { registerCoreFrameHandlers } from '../interactions/core-frame.handlers.js';
 import { createPageDataProvider } from '../rendering/page-data.js';
+import { makeModuleChain } from '../module-system/module-chain.js';
 import { registerKnownGuilds } from '../discord/guild-registry.js';
 import { createBccmEffectHandlers } from '../commands/bccm-effects.js';
 import { effectiveCommandName, resolveEffectiveCommandNames } from '../commands/command-renames.js';
@@ -2204,6 +2205,18 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
           // and runtime reload — so a Twill unbind and an in-app uninstall cannot drift apart.
           uninstallModule: (moduleId, guildId, actorId, applicationId) =>
             uninstallModule(moduleId, guildId, actorId, applicationId),
+          // The full chain, raw — the readout that ends the guessing. It reads the SAME ownership
+          // resolver every surface uses, so what it reports is what the system decided, not a second
+          // opinion about it.
+          moduleChain: makeModuleChain({
+            knex: db.knex,
+            moduleRegistry,
+            resolveOwner: (guildId, moduleSlug) =>
+              personaBindingService.resolveCommandOwner(guildId, moduleSlug),
+            listPersonaStatus: async () =>
+              new Map((await personaIdentities.list()).map((p) => [p.id, p.status])),
+            logger,
+          }),
           // UR-20261012-083 — a revoke stops the running persona, so the delete takes effect NOW
           // rather than at the next restart.
           stopPersona: async (persona) =>

@@ -12,6 +12,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { EnvelopeRootKey } from '../crypto/envelope.js';
 import type { Logger } from '../logging/logger.js';
+import type { ModuleChain } from '../module-system/module-chain.js';
 import type { PersonaBindingStore, PersonaIdentityStore } from './persona.repository.js';
 import type { PersonaRegistrarStore } from './persona-registrar.repository.js';
 import { verifyApplicationOwnership } from './application-ownership.js';
@@ -231,6 +232,13 @@ export interface TwillPersonaRouteDeps {
    */
   isModuleEnabledInGuild?: (moduleId: string, guildId: string) => Promise<boolean>;
   /**
+   * The full chain that decides a module's standing in a guild — tier, state row, enabling profile,
+   * binding, resolved owner, build state and the holder's registration. Supplied by the host. This is
+   * the readout an operator uses when a module lands on the wrong profile: it reports the rows RAW, so
+   * the disagreement is visible instead of inferred.
+   */
+  moduleChain?: ModuleChain | undefined;
+  /**
    * The module DISABLE chain, whole: release the claim, write the state, de-register the owner's
    * commands, and reload the runtime that served them. Supplied by the host so this route runs the
    * SAME chain the in-app uninstall runs — two entry points, one implementation, no drift.
@@ -310,6 +318,7 @@ export function registerTwillPersonaRoutes(
     logger,
     costSignals,
     uninstallModule,
+    moduleChain,
   } = deps;
 
   /**
@@ -848,6 +857,26 @@ export function registerTwillPersonaRoutes(
           .code(statusFor(err))
           .send({ error: 'Credential rotation failed', reason: reasonOf(err) });
       }
+    },
+  );
+
+  /**
+   * The module chain for a guild — every module, every row, raw.
+   *
+   * This is the readout that ends the guessing. A module's standing is decided by several rows that
+   * can disagree, and when one lands on the wrong profile the answer is in the disagreement. It sits
+   * on the operator surface, behind the internal API key the other reads already use.
+   */
+  app.get<{ Params: { guildId: string } }>(
+    '/twill/guilds/:guildId/module-chain',
+    async (request, reply) => {
+      if (moduleChain === undefined) {
+        return reply
+          .code(501)
+          .send({ error: 'Not Implemented', reason: 'the module chain is not wired on this host' });
+      }
+      const entries = await moduleChain.chainForGuild(request.params.guildId);
+      return reply.code(200).send({ guildId: request.params.guildId, modules: entries });
     },
   );
 
