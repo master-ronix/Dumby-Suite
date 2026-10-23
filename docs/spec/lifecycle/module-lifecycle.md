@@ -17,6 +17,18 @@ review_state: pending-evidence
 
 **Status:** [SPEC]
 
+**The model in one line.** A module's state in a guild is **enable/disable** plus **occupancy** —
+*which* profile holds it — and both are decided by **overrides, priority and hierarchy** rather than by
+a single flag:
+
+- the **tier** is the outermost override: it decides the scope (global or guild) and the default;
+- the **guild's row** is the next: it overrides the tier default, and records *who* turned it on;
+- the **claim** is the innermost, and applies only to the guild-scoped tiers;
+- and the **hierarchy** is that a shared tier (core, admin) outranks all of it — it is nobody's, always.
+
+Changing an assignment is therefore a **backend state change**, and it costs a **command re-registration
+over REST — never a reconnect**. See §5.
+
 This is the current behaviour, read from the code rather than from intent. Where the two differ, the
 gap is named at the end rather than smoothed over.
 
@@ -103,7 +115,8 @@ then assume the internal profile, so a persona's own install came back as the in
 3. a **persona** installing an unclaimed module → **claim it** (write the binding).
 4. write the state: `enabled: true`, `state: 'active'`, **`enabledBy` = the acting profile**.
 5. `setModuleCommandAccess(..., true)` — the instant half, if a token exists for that application.
-6. enqueue the BCCM command change, push it, **then restart the profiles hosting that guild**.
+6. enqueue the BCCM command change, push it, then **refresh the commands** of the profiles whose hold
+   on this module changed — a REST call. **No reconnect**: the profile stays online.
 
 ### Disable / uninstall
 
@@ -113,7 +126,7 @@ then assume the internal profile, so a persona's own install came back as the in
 2. **release the claim** — `unbindModule`.
 3. `setModuleCommandAccess(..., false)`.
 4. enqueue the BCCM deregistration, push it.
-5. **restart the profiles hosting that guild.**
+5. **refresh the commands** of the profile that held it — a REST call, no reconnect.
 
 Steps 2 and 5 are both load-bearing. Without 2 the binding outlives the install and reads as live
 again the moment anything enables the module; without 5 the profile keeps serving the command set it
@@ -136,10 +149,13 @@ another, and **both bots answered it**.
 ### Termination
 
 - `stopPersona` — destroy the client, deregister nothing (the BCCM owns that).
-- `reloadPersona` — stop, rebuild the registry from `modulesBoundTo`, start.
-- A module change restarts every profile bound to that guild.
-- A credential rotation restarts the profile, because the runtime holds the **previous** token in a
-  live gateway connection.
+- `refreshCommands` — rebuild the registry from `modulesBoundTo`, push the new command set over REST,
+  swap the registry the dispatch path reads, re-attach the handler. **The client is never destroyed and
+  `login` is never called**, so the profile never goes offline. This is what a module assignment does.
+- `reloadPersona` — stop and start. Used only where a new connection is genuinely required: a
+  **registration** (there is no client yet) and a **credential rotation** (the live connection holds a
+  token that has been replaced).
+- `stopPersona` — destroy the client. The BCCM owns the command deregistration.
 
 ### The entry points, and how they agree
 
@@ -348,12 +364,11 @@ the holder can disable instantly. It **decides nothing** — the disagreement be
 
 ## 9. The gaps, stated rather than smoothed
 
-- **A profile going online and offline on a short loop — confirmed, and fixed.** The restart a module
-  change performs was restarting EVERY profile bound to the guild, on every change, including changes
-  to modules none of them held. A restart is a stop and a start, so the profile dropped offline and
-  reconnected each time. It is now scoped to the profiles whose ownership of the changed module
-  actually moved: the one that held it before, and the one that holds it now. The design is unchanged —
-  a profile must re-register when its set changes — only the blast radius was wrong.
+- **A profile going online and offline on a module change — fixed twice over.** It was wrong twice: a
+  restart for what is a backend state change, and a restart of EVERY profile in the guild rather than
+  the ones affected. A module assignment changes which commands a profile OFFERS; it does not change
+  who the profile is or how it connects. It now costs a **REST re-deploy** (`refreshCommands`), scoped
+  to the profiles whose ownership of that module moved. **Zero downtime.**
 - **A persona's instant disable needs a user OAuth2 token**, per application, minted through
   `/auth/authorize?app=<her application id>`. Until that is done for her, only the BCCM applies.
 - **`enabledBy` is a single column.** If a module's enablement is ever legitimately shared between
