@@ -603,6 +603,14 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     (guildId: string, moduleSlug: string) => enabledByForGuild(guildId, moduleSlug),
   );
 
+  // Is the INSTANT command-permissions half armed? It is inert without a token, and "is it set?" was
+  // answered by guessing. It must be the MAIN BOT's own token (BOT_TOKEN) — the endpoint is
+  // `applications/<app>/guilds/<guild>/commands/<id>/permissions`, authenticated as the application.
+  logger.info('command-access-instant-disable', {
+    armed: config.get('DISCORD_COMMAND_PERMISSIONS_TOKEN') !== '',
+    note: 'set DISCORD_COMMAND_PERMISSIONS_TOKEN to the main bot token to arm it; BCCM deregistration applies regardless',
+  });
+
   const guildConfigService = new GuildConfigService(
     new PostgresGuildConfigStore(db.knex),
     cache,
