@@ -168,9 +168,11 @@ export function healthBlocks(
   });
   // One compact line per subsystem: a status dot, the bold name, and its metrics as subtext.
   for (const group of groups) {
+    // One field per LINE. A ` · ` run of five metrics wraps mid-value and reads as a paragraph; a
+    // column of them reads as a board.
     const metrics = group.rows
       .map(([label, value]) => `${metricMark(label, group.name, emojiScope)}${label}: ${value}`)
-      .join(' · ');
+      .join('\n');
     blocks.push({
       kind: 'text',
       content: `${dot(group.status, emojiScope)} **${group.name}**${metrics === '' ? '' : `\n-# ${metrics}`}`,

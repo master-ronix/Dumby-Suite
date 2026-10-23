@@ -105,6 +105,26 @@ export const METRIC_LOADED_ICON_NAME = 'dumby_metric_loaded';
 export const TIER_CORE_ICON_NAME = 'dumby_tier_core';
 export const TIER_ADMIN_ICON_NAME = 'dumby_tier_admin';
 
+/**
+ * The ONE mark for a tier, used EVERYWHERE a tier is shown — the /health board, the /modules listing,
+ * the /browse listing. A tier that carries one mark in one place and a different one in another is
+ * two tiers as far as the reader is concerned.
+ */
+export function tierIconName(tier: string): string | undefined {
+  switch (tier) {
+    case 'core':
+      return TIER_CORE_ICON_NAME;
+    case 'admin':
+      return TIER_ADMIN_ICON_NAME;
+    case 'standard':
+      return TIER_STANDARD_ICON_NAME;
+    case 'marketplace':
+      return TIER_MARKETPLACE_ICON_NAME;
+    default:
+      return undefined;
+  }
+}
+
 export const STATUS_DEGRADED_ICON_NAME = 'dumby_status_degraded';
 export const STATUS_ONLINE_ICON_NAME = 'dumby_status_online';
 export const STATUS_OFFLINE_ICON_NAME = 'dumby_status_offline';

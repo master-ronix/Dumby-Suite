@@ -135,3 +135,65 @@ describe('the main bot is not refused its own module (UR-20261012-078)', () => {
     expect(executed).toHaveBeenCalled();
   });
 });
+
+describe('ownership is decided by WHO enabled it', () => {
+  const make = (enabledBy: string | undefined, enabled = true) =>
+    new PersonaCommandBindingService(
+      { list: async () => [], findByApplicationId: async () => undefined } as never,
+      {
+        findLive: async () => undefined,
+        listForPersona: async () => [],
+        unbind: async () => undefined,
+        listForGuild: async () => [],
+      } as never,
+      {
+        info: () => undefined,
+        warn: () => undefined,
+        error: () => undefined,
+        debug: () => undefined,
+      } as never,
+      undefined,
+      async () => enabled,
+      (slug: string) => (slug === 'hello-world' ? 'standard' : undefined),
+      async () => enabledBy,
+    );
+
+  test("a persona's install is HERS — not the main's", async () => {
+    // Before this, the read could only ask "is it enabled?" and then assume the main, so a module the
+    // persona had just installed appeared under the main's profile.
+    expect(await make('persona-9').resolveCommandOwner('g1', 'hello-world')).toBe('persona-9');
+  });
+
+  test("the main's install is the main's", async () => {
+    expect(await make('main').resolveCommandOwner('g1', 'hello-world')).toBe('main');
+  });
+
+  test('a DISABLED module is held by nobody, whatever else is on record', async () => {
+    expect(await make('persona-9', false).resolveCommandOwner('g1', 'hello-world')).toBeUndefined();
+  });
+
+  test('core and admin stay SHARED, never a profile', async () => {
+    const svc = make('persona-9');
+    const withTiers = new PersonaCommandBindingService(
+      { list: async () => [], findByApplicationId: async () => undefined } as never,
+      {
+        findLive: async () => undefined,
+        listForPersona: async () => [],
+        unbind: async () => undefined,
+        listForGuild: async () => [],
+      } as never,
+      {
+        info: () => undefined,
+        warn: () => undefined,
+        error: () => undefined,
+        debug: () => undefined,
+      } as never,
+      undefined,
+      async () => true,
+      () => 'core',
+      async () => 'persona-9',
+    );
+    expect(await withTiers.resolveCommandOwner('g1', 'browse')).toBe('shared');
+    expect(svc).toBeDefined();
+  });
+});

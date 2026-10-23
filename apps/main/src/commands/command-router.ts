@@ -547,7 +547,11 @@ export class CommandRouter {
               }
             : this.pageShape(declaredPageData) === 'modules'
               ? {
-                  blocks: modulesBlocks(declaredPageData, interaction.user.id),
+                  blocks: modulesBlocks(
+                    declaredPageData,
+                    interaction.user.id,
+                    this.emojiScope(interaction),
+                  ),
                   // item 6 / item 17 — /modules carries the SAME dial as the dashboard, below the
                   // footer, over the installed modules rather than over module pages.
                   interactive: [

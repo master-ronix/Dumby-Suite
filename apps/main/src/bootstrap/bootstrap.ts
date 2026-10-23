@@ -599,6 +599,8 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
         : moduleEnabledForOwnership(guildId, moduleSlug),
     // UR-20261012-080 — the tier, so a SHARED one is never reported as a profile's.
     (moduleSlug) => moduleRegistry.get(moduleSlug)?.manifest.tier,
+    // WHO enabled it, read from the state row. This is what tells the main's install from a persona's.
+    (guildId: string, moduleSlug: string) => enabledByForOwnership(guildId, moduleSlug),
   );
 
   const guildConfigService = new GuildConfigService(
@@ -852,6 +854,25 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   queueModuleGate = moduleEnabledGate;
   schedulerModuleGate = isModuleEnabledAnywhere;
   // UR-20261012-078 — now that the enablement read exists, arm the ownership read's gate.
+  /** The profile that ENABLED a module in a guild, or undefined when nobody holds it. */
+  const enabledByForOwnership = async (
+    guildId: string,
+    moduleSlug: string,
+  ): Promise<string | undefined> => {
+    try {
+      const row = await db
+        .knex('guild_module_states')
+        .where({ guildId, moduleSlug })
+        .whereNull('deletedAt')
+        .first<{ enabledBy?: string | null; enabled?: boolean }>('enabledBy', 'enabled');
+      if (row === undefined || row.enabled !== true) return undefined;
+      return typeof row.enabledBy === 'string' && row.enabledBy !== '' ? row.enabledBy : undefined;
+    } catch (err) {
+      logger.warn('enabled-by-read-failed', { guildId, moduleSlug, error: String(err) });
+      return undefined;
+    }
+  };
+
   moduleEnabledForOwnership = isModuleEnabledForGuild;
 
   // UR-20261012-070 — the module execution context, for the entry points that are not a command.
@@ -1139,6 +1160,14 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
       // UR-20261012-077 — name the actor. This is the refusal logged as occupied by "another persona", which read as if the persona had been refused her own module.
       throw new PersonaOccupiedError(guildId, moduleId, owner, acting?.id ?? 'main');
     }
+    logger.info('marketplace-install-decision', {
+      moduleId,
+      guildId,
+      owner: owner ?? 'none',
+      actor: acting?.id ?? 'main',
+      applicationId: applicationId ?? 'none',
+      claims: owner === undefined && acting !== undefined,
+    });
     // A PERSONA installing an unclaimed module CLAIMS it: the first profile to install owns it.
     if (owner === undefined && acting !== undefined) {
       await personaBindingService.bindModuleToPersona({
@@ -1153,9 +1182,21 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
 
     await db
       .knex('guild_module_states')
-      .insert({ guildId, moduleSlug: moduleId, enabled: true, state: 'active' })
+      .insert({
+        guildId,
+        moduleSlug: moduleId,
+        enabled: true,
+        state: 'active',
+        // WHO enabled it. Without this, ownership could not tell the main's install from a persona's.
+        enabledBy: acting?.id ?? 'main',
+      })
       .onConflict(db.knex.raw('("guildId", "moduleSlug") where "deletedAt" is null'))
-      .merge({ enabled: true, state: 'active', updatedAt: db.knex.fn.now() });
+      .merge({
+        enabled: true,
+        state: 'active',
+        enabledBy: acting?.id ?? 'main',
+        updatedAt: db.knex.fn.now(),
+      });
     await setModuleCommandAccess?.(moduleId, guildId, true);
     await enqueueModuleCommandChanges(moduleId, guildId, userId, 'enable', bccmScopeOf(acting));
     // REGISTER it, don't just enable it. Enabling wrote the database and queued a rename push, but
@@ -1186,9 +1227,9 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
         : await personaIdentities.findByApplicationId(applicationId);
     await db
       .knex('guild_module_states')
-      .insert({ guildId, moduleSlug: moduleId, enabled: false, state: 'disabled' })
+      .insert({ guildId, moduleSlug: moduleId, enabled: false, state: 'disabled', enabledBy: null })
       .onConflict(db.knex.raw('("guildId", "moduleSlug") where "deletedAt" is null'))
-      .merge({ enabled: false, state: 'disabled', updatedAt: db.knex.fn.now() });
+      .merge({ enabled: false, state: 'disabled', enabledBy: null, updatedAt: db.knex.fn.now() });
     // RELEASE THE CLAIM. A binding is a claim on the module, and it outlived the install: a persona
     // could uninstall, the module would read as available, the MAIN could then install it — and the
     // stale binding would read as live again the moment the module was enabled, so the module the main

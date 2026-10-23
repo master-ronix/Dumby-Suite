@@ -41,6 +41,14 @@ export class PersonaCommandBindingService {
     private readonly tierOf?: (
       moduleSlug: string,
     ) => 'admin' | 'core' | 'standard' | 'marketplace' | undefined,
+    /**
+     * WHO enabled the module in this guild. Optional, and absent for a row written before the column
+     * existed — the read then falls back to the binding, and only then to the main.
+     */
+    private readonly enabledByOf?: (
+      guildId: string,
+      moduleSlug: string,
+    ) => Promise<string | undefined>,
   ) {}
 
   async registerPersona(
@@ -163,7 +171,43 @@ export class PersonaCommandBindingService {
    * stated here once. `'main'` cannot collide with a persona id, which is a UUID.
    */
   async resolveCommandOwner(guildId: string, moduleSlug: string): Promise<string | undefined> {
+    // SHARED tiers first. The enablement read answers TRUE for core (it is always enabled), which
+    // would otherwise make a core module look like a profile's.
+    if (this.tierOf?.(moduleSlug) === 'core' || this.tierOf?.(moduleSlug) === 'admin')
+      return 'shared';
+
     const binding = await this.bindings.findLive(guildId, moduleSlug);
+    const enabled =
+      this.isModuleEnabled === undefined
+        ? undefined
+        : await this.isModuleEnabled(guildId, moduleSlug).catch((err: unknown) => {
+            this.logger.warn('resolve-command-owner-enabled-read-failed', {
+              guildId,
+              moduleSlug,
+              error: String(err),
+            });
+            return undefined;
+          });
+    // A module the guild has DISABLED is held by nobody, whatever a binding says.
+    if (enabled === false) return undefined;
+    // ENABLED — and now the question is WHO enabled it. The state records the enabling profile, so
+    // "the main's install" and "a persona's install" are told apart instead of assumed. Before this,
+    // a persona's install wrote the enabled state and the read answered 'main', so the module she had
+    // just installed appeared under the main's profile.
+    if (this.enabledByOf !== undefined) {
+      try {
+        const enabler = await this.enabledByOf(guildId, moduleSlug);
+        if (enabler !== undefined) return enabler;
+      } catch (err) {
+        this.logger.warn('resolve-command-owner-enabled-by-read-failed', {
+          guildId,
+          moduleSlug,
+          error: String(err),
+        });
+      }
+    }
+    // No enabler recorded — a row written before the column existed. The binding answers for it, and
+    // failing that, an enabled module nobody claimed is the main bot's.
     if (binding !== undefined) {
       // A claim lasts only while the module is INSTALLED for that persona.
       //
@@ -186,21 +230,8 @@ export class PersonaCommandBindingService {
         return binding.personaId;
       }
     }
-    // UR-20261012-080 — a SHARED tier is owned by nobody. The enablement read answers TRUE for core
-    // (it is always enabled), which would otherwise make core modules look like the main bot's.
-    if (this.tierOf?.(moduleSlug) === 'core' || this.tierOf?.(moduleSlug) === 'admin')
-      return 'shared';
-    if (this.isModuleEnabled === undefined) return undefined;
-    try {
-      return (await this.isModuleEnabled(guildId, moduleSlug)) ? 'main' : undefined;
-    } catch (err) {
-      this.logger.warn('resolve-command-owner-enabled-read-failed', {
-        guildId,
-        moduleSlug,
-        error: String(err),
-      });
-      return undefined;
-    }
+    if (binding !== undefined) return binding.personaId;
+    return enabled === true ? 'main' : undefined;
   }
 
   /**
