@@ -590,21 +590,35 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   let moduleEnabledForOwnership:
     ((guildId: string, moduleSlug: string) => Promise<boolean>) | undefined;
   /**
-   * A module change alters what a profile may OFFER, so the profiles hosting it must be RESTARTED.
+   * Restart ONLY the profiles whose hold on THIS module changed.
    *
-   * A profile registers its command set when its runtime starts. Nothing reloaded that runtime when a
-   * module was installed or disabled, so the profile went on serving the set it had registered at
-   * boot — which is how a module that had been disabled for a profile kept answering from it, and how
-   * the same module could appear to be held by two profiles at once. The runtime's own `reloadPersona`
-   * stops and restarts the profile with a freshly built registry; this calls it for everyone bound to
-   * the guild whose modules just changed.
+   * A profile registers its command set when its runtime STARTS, so a module change must restart the
+   * profiles it affects — otherwise a profile keeps serving a set it no longer holds, which is how two
+   * profiles came to answer one command.
+   *
+   * But restarting EVERY profile bound to the guild, on EVERY change, took the whole fleet offline and
+   * back for a module none of them had anything to do with. A restart is a stop and a start: the
+   * profile visibly drops offline and reconnects. The affected profiles are exactly those whose
+   * ownership of this module changed — the one that held it before, and the one that holds it now.
+   * The internal profile and the shared tiers are not hosted here, so they are never restarted.
    */
-  const reloadPersonasForGuild = async (guildId: string | null, reason: string): Promise<void> => {
+  const restartProfilesForModuleChange = async (
+    guildId: string | null,
+    previousOwner: string | undefined,
+    nextOwner: string | undefined,
+    reason: string,
+  ): Promise<void> => {
     if (guildId === null || guildId === '') return;
     const runtime = personaRuntimeRef;
     if (runtime === undefined) return;
+    const affected = new Set(
+      [previousOwner, nextOwner].filter(
+        (id): id is string => id !== undefined && id !== 'main' && id !== 'shared',
+      ),
+    );
+    if (affected.size === 0) return;
     for (const persona of await personaIdentities.list()) {
-      if (persona.boundGuildId !== guildId) continue;
+      if (persona.boundGuildId !== guildId || !affected.has(persona.id)) continue;
       await runtime.reloadPersona(persona as never);
       logger.info('persona-reloaded-after-module-change', {
         personaId: persona.id,
@@ -1218,7 +1232,12 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     // with the module list. A failure is logged, never fatal: the module IS installed either way.
     await runBccmForModuleChange(bccmScopeOf(acting), `install:${moduleId}`);
     // …and RESTART the profiles hosting this guild, so the set they offer matches what they now hold.
-    await reloadPersonasForGuild(guildId, `install:${moduleId}`);
+    await restartProfilesForModuleChange(
+      guildId,
+      owner,
+      acting?.id ?? 'main',
+      `install:${moduleId}`,
+    );
     logger.info('marketplace-module-installed', { moduleId, guildId, userId });
   };
   // UR-20261011-010 — the detail card's uninstall/disable control disables the module for the guild
@@ -1238,6 +1257,9 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
       applicationId === undefined
         ? undefined
         : await personaIdentities.findByApplicationId(applicationId);
+    // Who held it, read BEFORE the write below nulls the enabler — it is one of the two profiles
+    // whose command set this disable changes.
+    const ownerBefore = await personaBindingService.resolveCommandOwner(guildId, moduleId);
     await db
       .knex('guild_module_states')
       .insert({ guildId, moduleSlug: moduleId, enabled: false, state: 'disabled', enabledBy: null })
@@ -1255,7 +1277,7 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     await runBccmForModuleChange(bccmScopeOf(acting), `uninstall:${moduleId}`);
     // The half that was missing: without this the profile kept serving the module it had just given
     // up, until a process restart.
-    await reloadPersonasForGuild(guildId, `uninstall:${moduleId}`);
+    await restartProfilesForModuleChange(guildId, ownerBefore, undefined, `uninstall:${moduleId}`);
     logger.info('module-uninstalled', { moduleId, guildId, userId });
   };
 
