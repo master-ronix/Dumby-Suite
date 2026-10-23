@@ -197,3 +197,76 @@ describe('ownership is decided by WHO enabled it', () => {
     expect(svc).toBeDefined();
   });
 });
+
+describe('the ownership read survives every unreadable input', () => {
+  const log = {
+    info: () => undefined,
+    warn: () => undefined,
+    error: () => undefined,
+    debug: () => undefined,
+  };
+  const identities = { list: async () => [], findByApplicationId: async () => undefined };
+  const bindings = (live: unknown) => ({
+    findLive: async () => live,
+    listForPersona: async () => [],
+    unbind: async () => undefined,
+    listForGuild: async () => [],
+  });
+  const build = (opts: {
+    live?: unknown;
+    enabled?: () => Promise<boolean>;
+    enabledBy?: () => Promise<string | undefined>;
+    tier?: string;
+  }) =>
+    new PersonaCommandBindingService(
+      identities as never,
+      bindings(opts.live) as never,
+      log as never,
+      undefined,
+      opts.enabled,
+      () => (opts.tier as never) ?? undefined,
+      opts.enabledBy,
+    );
+
+  test('a row predating the column falls back to the BINDING', async () => {
+    // No enabler recorded — the binding is the only evidence, and it is honoured.
+    const svc = build({ live: { personaId: 'persona-9' }, enabled: async () => true });
+    expect(await svc.resolveCommandOwner('g1', 'hello-world')).toBe('persona-9');
+  });
+
+  test("and with no binding either, an enabled module is the MAIN's", async () => {
+    const svc = build({ enabled: async () => true });
+    expect(await svc.resolveCommandOwner('g1', 'hello-world')).toBe('main');
+  });
+
+  test('an unreadable enablement keeps the binding rather than handing the module over', async () => {
+    const svc = build({
+      live: { personaId: 'persona-9' },
+      enabled: async () => {
+        throw new Error('db down');
+      },
+    });
+    expect(await svc.resolveCommandOwner('g1', 'hello-world')).toBe('persona-9');
+  });
+
+  test('an unreadable ENABLER falls through rather than refusing', async () => {
+    const svc = build({
+      live: { personaId: 'persona-9' },
+      enabled: async () => true,
+      enabledBy: async () => {
+        throw new Error('db down');
+      },
+    });
+    expect(await svc.resolveCommandOwner('g1', 'hello-world')).toBe('persona-9');
+  });
+
+  test('with no enablement read wired at all, the binding still answers', async () => {
+    const svc = build({ live: { personaId: 'persona-9' } });
+    expect(await svc.resolveCommandOwner('g1', 'hello-world')).toBe('persona-9');
+  });
+
+  test('and with nothing wired, ownership is unanswered rather than guessed', async () => {
+    const svc = build({});
+    expect(await svc.resolveCommandOwner('g1', 'hello-world')).toBeUndefined();
+  });
+});

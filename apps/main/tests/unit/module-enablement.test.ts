@@ -150,3 +150,63 @@ function makeModuleEnabledRow(row: { enabled?: unknown; state?: unknown }, tier:
     logger: logger(),
   });
 }
+
+describe('enabledByForGuild — WHO holds the module', () => {
+  const make = (rows: Array<{ enabledBy?: unknown; enabled?: unknown }>, throwOnRead = false) =>
+    makeModuleEnablement({
+      knex: knexWith(rows as never, throwOnRead),
+      moduleRegistry: registryWith('standard'),
+      logger: logger(),
+    });
+
+  test('the enabling profile is returned', async () => {
+    // Ownership could not derive this: "is it enabled?" cannot tell the main's install from a
+    // persona's, which is why a persona's own install came back as the main's.
+    expect(
+      await make([{ enabled: true, enabledBy: 'persona-9' }]).enabledByForGuild('g1', 'm'),
+    ).toBe('persona-9');
+  });
+
+  test('the main is returned as the main', async () => {
+    expect(await make([{ enabled: true, enabledBy: 'main' }]).enabledByForGuild('g1', 'm')).toBe(
+      'main',
+    );
+  });
+
+  test('a DISABLED module is held by nobody, whatever the column still says', async () => {
+    expect(
+      await make([{ enabled: false, enabledBy: 'persona-9' }]).enabledByForGuild('g1', 'm'),
+    ).toBeUndefined();
+  });
+
+  test('no row at all is held by nobody', async () => {
+    expect(await make([]).enabledByForGuild('g1', 'm')).toBeUndefined();
+  });
+
+  test('a row predating the column answers undefined rather than guessing a profile', async () => {
+    expect(await make([{ enabled: true }]).enabledByForGuild('g1', 'm')).toBeUndefined();
+    expect(
+      await make([{ enabled: true, enabledBy: '' }]).enabledByForGuild('g1', 'm'),
+    ).toBeUndefined();
+    expect(
+      await make([{ enabled: true, enabledBy: 7 }]).enabledByForGuild('g1', 'm'),
+    ).toBeUndefined();
+  });
+
+  test('a null guild (a DM) is never held', async () => {
+    expect(
+      await make([{ enabled: true, enabledBy: 'persona-9' }]).enabledByForGuild(null, 'm'),
+    ).toBeUndefined();
+  });
+
+  test('a failed read answers undefined and says so', async () => {
+    const log = { warn: vi.fn() };
+    const e = makeModuleEnablement({
+      knex: knexWith([], true),
+      moduleRegistry: registryWith('standard'),
+      logger: log as never,
+    });
+    expect(await e.enabledByForGuild('g1', 'm')).toBeUndefined();
+    expect(log.warn).toHaveBeenCalled();
+  });
+});

@@ -41,6 +41,15 @@ export interface ModuleEnablement {
    * reading of "the module's schedule stops" is that it runs while some guild wants the module.
    */
   isModuleEnabledAnywhere(moduleId: string): Promise<boolean>;
+  /**
+   * WHICH PROFILE enabled `moduleId` in `guildId`, or undefined when nobody holds it.
+   *
+   * Ownership needs this and could not derive it: "is it enabled?" cannot tell the main bot's install
+   * from a persona's, so the read assumed the main and a persona's own install came back as the
+   * main's. The state records the enabler; this reads it. A row written before the column existed has
+   * none, and answers undefined rather than guessing a profile.
+   */
+  enabledByForGuild(guildId: string | null, moduleId: string): Promise<string | undefined>;
 }
 
 export function makeModuleEnablement(deps: EnablementDeps): ModuleEnablement {
@@ -90,5 +99,24 @@ export function makeModuleEnablement(deps: EnablementDeps): ModuleEnablement {
     }
   };
 
-  return { isModuleEnabledForGuild, isModuleEnabledAnywhere };
+  const enabledByForGuild = async (
+    guildId: string | null,
+    moduleId: string,
+  ): Promise<string | undefined> => {
+    if (guildId === null) return undefined;
+    try {
+      const row = await knex('guild_module_states')
+        .where({ guildId, moduleSlug: moduleId })
+        .whereNull('deletedAt')
+        .first<{ enabledBy?: unknown; enabled?: unknown }>();
+      // A DISABLED module is held by nobody, whatever the enabler column still says.
+      if (row === undefined || row === null || row.enabled !== true) return undefined;
+      return typeof row.enabledBy === 'string' && row.enabledBy !== '' ? row.enabledBy : undefined;
+    } catch (err) {
+      logger.warn('module-enabled-by-check-failed', { moduleId, guildId, error: String(err) });
+      return undefined;
+    }
+  };
+
+  return { isModuleEnabledForGuild, isModuleEnabledAnywhere, enabledByForGuild };
 }

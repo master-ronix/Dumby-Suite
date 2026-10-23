@@ -600,7 +600,7 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     // UR-20261012-080 — the tier, so a SHARED one is never reported as a profile's.
     (moduleSlug) => moduleRegistry.get(moduleSlug)?.manifest.tier,
     // WHO enabled it, read from the state row. This is what tells the main's install from a persona's.
-    (guildId: string, moduleSlug: string) => enabledByForOwnership(guildId, moduleSlug),
+    (guildId: string, moduleSlug: string) => enabledByForGuild(guildId, moduleSlug),
   );
 
   const guildConfigService = new GuildConfigService(
@@ -844,35 +844,17 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   // installed, or a standard module they have not disabled). Absent state reads as not-enabled.
   // UR-20261012-069 — the one enablement read, shared with the worker path. It was inline here and
   // duplicated there; a divergence between the two would be a gate that denies what another allows.
-  const { isModuleEnabledForGuild, isModuleEnabledAnywhere } = makeModuleEnablement({
-    knex: db.knex as never,
-    moduleRegistry,
-    logger,
-  });
+  const { isModuleEnabledForGuild, isModuleEnabledAnywhere, enabledByForGuild } =
+    makeModuleEnablement({
+      knex: db.knex as never,
+      moduleRegistry,
+      logger,
+    });
   // The event router's gate uses the (moduleId, guildId) order; so does the queue's.
   moduleEnabledGate = (moduleId, guildId) => isModuleEnabledForGuild(guildId, moduleId);
   queueModuleGate = moduleEnabledGate;
   schedulerModuleGate = isModuleEnabledAnywhere;
   // UR-20261012-078 — now that the enablement read exists, arm the ownership read's gate.
-  /** The profile that ENABLED a module in a guild, or undefined when nobody holds it. */
-  const enabledByForOwnership = async (
-    guildId: string,
-    moduleSlug: string,
-  ): Promise<string | undefined> => {
-    try {
-      const row = await db
-        .knex('guild_module_states')
-        .where({ guildId, moduleSlug })
-        .whereNull('deletedAt')
-        .first<{ enabledBy?: string | null; enabled?: boolean }>('enabledBy', 'enabled');
-      if (row === undefined || row.enabled !== true) return undefined;
-      return typeof row.enabledBy === 'string' && row.enabledBy !== '' ? row.enabledBy : undefined;
-    } catch (err) {
-      logger.warn('enabled-by-read-failed', { guildId, moduleSlug, error: String(err) });
-      return undefined;
-    }
-  };
-
   moduleEnabledForOwnership = isModuleEnabledForGuild;
 
   // UR-20261012-070 — the module execution context, for the entry points that are not a command.
