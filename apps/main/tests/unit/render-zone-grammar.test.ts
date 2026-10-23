@@ -289,3 +289,44 @@ describe('an invalid schema is INVALID, not rendered around (item 6)', () => {
     ).not.toThrow();
   });
 });
+
+describe('a separator is NOT a block — the renderer owns them (item 1)', () => {
+  const renderer = new CoreRenderer();
+
+  test('a module declaring a separator block is INVALID, not accommodated', () => {
+    // There is no `separator` kind, so a module cannot place one. The separators on /health are the
+    // renderer's own — inserted below media and between content blocks — which is why the page has
+    // them without any module asking.
+    expect(() =>
+      renderer.render({
+        surface: 'Page',
+        blocks: [{ kind: 'separator' } as never],
+      }),
+    ).toThrow();
+  });
+
+  test('and a separator among otherwise valid blocks is still refused', () => {
+    expect(() =>
+      renderer.render({
+        surface: 'Page',
+        blocks: [
+          { kind: 'text', content: 'one' },
+          { kind: 'separator' } as never,
+          { kind: 'text', content: 'two' },
+        ],
+      }),
+    ).toThrow();
+  });
+
+  test('the renderer inserts them itself, so a valid page still gets rules', () => {
+    const message = renderer.render({
+      surface: 'Page',
+      blocks: [
+        { kind: 'text', content: 'one' },
+        { kind: 'text', content: 'two' },
+      ],
+    });
+    const inner = (message.components[0] as { components: Array<{ type: number }> }).components;
+    expect(inner.some((c) => c.type === 14)).toBe(true);
+  });
+});

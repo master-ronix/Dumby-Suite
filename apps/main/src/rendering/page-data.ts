@@ -228,6 +228,24 @@ export function createPageDataProvider(deps: PageDataDeps): (
     return map;
   };
 
+  /** Sum the member counts a cache holds. A guild with no readable count contributes nothing — never NaN. */
+  function sumMembers(
+    cache:
+      | { reduce(fn: (sum: number, g: { memberCount: number }) => number, init: number): number }
+      | undefined,
+  ): number {
+    if (cache === undefined) return 0;
+    try {
+      const total = cache.reduce(
+        (sum, g) => sum + (typeof g.memberCount === 'number' ? g.memberCount : 0),
+        0,
+      );
+      return Number.isFinite(total) ? total : 0;
+    } catch {
+      return 0;
+    }
+  }
+
   async function health(applicationId: string): Promise<PageData> {
     // Q1-Q4 — the page is the ACTING profile's. Her client, her registry, her guilds, her uptime; the
     // host's own numbers are kept and LABELLED, because one process serves every profile and a
@@ -328,35 +346,30 @@ export function createPageDataProvider(deps: PageDataDeps): (
       // Q2 — FETCHED, not read from the cache. `guilds.cache.size` is a snapshot taken at login and
       // can lag real membership, which is how a bot in 3 guilds reported 4. The API is the authority;
       // the cache is the fallback for when the fetch fails, and the page says which it used.
+      // The GUILD COUNT and the MEMBER COUNT come from different places, because they are different
+      // facts. `guilds.fetch()` resolves OAuth2Guild objects, which carry no `memberCount` — summing
+      // them produced `NaN`, which is what the page showed. The API is the authority on membership;
+      // the cache is the only thing that knows member counts.
       let guildCount = client.guilds?.cache.size ?? 0;
-      let memberCount = client.guilds?.cache.reduce((sum, g) => sum + g.memberCount, 0) ?? 0;
+      let memberCount = sumMembers(client.guilds?.cache);
       let source = 'cache';
       try {
-        const fetched = (await client.guilds?.fetch?.()) as
-          | {
-              size?: number;
-              reduce?: (
-                fn: (sum: number, g: { memberCount: number }) => number,
-                init: number,
-              ) => number;
-            }
-          | undefined;
+        const fetched = (await client.guilds?.fetch?.()) as { size?: unknown } | undefined;
         if (fetched !== undefined && typeof fetched.size === 'number') {
           guildCount = fetched.size;
-          if (typeof fetched.reduce === 'function') {
-            memberCount = fetched.reduce((sum, g) => sum + g.memberCount, 0);
-          }
           source = 'live';
         }
       } catch (err) {
         logger.warn('page-data-guild-fetch-unavailable', { applicationId, error: String(err) });
       }
+      // A cache that has not filled yet is not a zero — say so rather than printing 0.
+      const membersKnown = client.guilds !== undefined && client.guilds.cache.size > 0;
       groups.push({
         name: 'Guilds & Users',
         status: 'ok',
         rows: [
           ['Total Guilds', String(guildCount)],
-          ['Total Users', String(memberCount)],
+          ['Total Users', membersKnown ? String(memberCount) : 'not yet cached'],
           ['Source', source === 'live' ? 'Discord API' : 'Cached snapshot'],
         ],
       });
@@ -373,18 +386,14 @@ export function createPageDataProvider(deps: PageDataDeps): (
     const statusLabel =
       status === 'operational' ? 'Operational' : status === 'degraded' ? 'Degraded' : 'Down';
 
-    const summaryParts = [
-      `up ${formatUptime(process.uptime())}`,
-      `Node ${process.version}`,
-      `${modules.length} modules`,
-    ];
-    if (client?.guilds !== undefined) summaryParts.push(`${client.guilds.cache.size} guilds`);
-
+    // The summary is the OUTCOME, not a second copy of the groups. It used to repeat the uptime, the
+    // Node version, the module count and the guild count — every one of which the groups below state
+    // in full, with their own status. A page that says everything twice reads as a mess.
     return {
       title: 'System Health',
       status,
       statusLabel,
-      summary: summaryParts.join(' · '),
+      summary: statusLabel,
       groups,
     };
   }

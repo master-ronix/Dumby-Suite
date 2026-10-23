@@ -766,6 +766,41 @@ describe('health reports the ACTING profile, not the host (Q1-Q4)', () => {
     expect(groups.map((g) => g.name)).toContain('Profile Runtime');
   });
 
+  test('a FETCHED guild carries no memberCount — the user total is never NaN', async () => {
+    // `guilds.fetch()` resolves OAuth2Guild objects, which have no `memberCount`. Summing them
+    // produced NaN, and the page printed it. The count comes from the cache; the guild COUNT comes
+    // from the API. They are different facts and must not be read from the same place.
+    const provider = createPageDataProvider(
+      makeDeps({
+        actingProfile: () => ({
+          client: {
+            isReady: () => true,
+            ws: { ping: 5 },
+            guilds: {
+              cache: {
+                size: 3,
+                reduce: (fn: (s: number, g: { memberCount: number }) => number, init: number) =>
+                  fn(fn(init, { memberCount: 10 }), { memberCount: 20 }),
+              },
+              // The API's objects carry a size and nothing else.
+              fetch: async () => ({ size: 3 }),
+            },
+          },
+          moduleSlugs: [],
+          startedAt: Date.now(),
+        }),
+      }),
+    );
+    const data = await provider('health', null, 0, undefined, 'app-x', 'p-1');
+    const groups = data['groups'] as Array<{ name: string; rows: Array<[string, string]> }>;
+    const rows = groups.find((g) => g.name === 'Guilds & Users')?.rows ?? [];
+    const users = rows.find(([k]) => k === 'Total Users')?.[1];
+    expect(users).toBe('30');
+    expect(users).not.toBe('NaN');
+    // And the guild count still comes from the API.
+    expect(rows.find(([k]) => k === 'Total Guilds')?.[1]).toBe('3');
+  });
+
   test('without a hosted runtime the page falls back to the host, and says nothing false', async () => {
     const provider = createPageDataProvider(makeDeps());
     const data = await provider('health', null, 0, undefined, 'app-unknown', 'p-1');
