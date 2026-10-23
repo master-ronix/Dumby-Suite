@@ -374,6 +374,132 @@ the holder can disable instantly. It **decides nothing** — the disagreement be
 - **`enabledBy` is a single column.** If a module's enablement is ever legitimately shared between
   profiles, this model does not express it — the model is one holder per guild-scoped module.
 
+## 10. Concurrency, partial failure and recovery
+
+An independent review of this specification asked four questions. Three are answerable from the code;
+the fourth was a defect, now fixed.
+
+### 10.1 Two profiles install the same unclaimed module at the same time
+
+**The one-holder invariant is enforced by the database, not by the read.** `guild_persona_bindings` has
+a composite primary key on `(guildId, moduleSlug)`, and the bind is an upsert against it:
+
+```
+.insert(row).onConflict(['guildId', 'moduleSlug']).merge({ personaId, deletedAt: null })
+```
+
+So at most one binding can exist for a guild-scoped module. The claim is written **before** the state,
+and the state records `enabledBy` — and `resolveCommandOwner` reads `enabledBy` **first**. Two racers
+therefore end with:
+
+| Interleaving | binding | `enabledBy` | resolved owner |
+| --- | --- | --- | --- |
+| A binds, B binds, A writes state, B writes state | B | B | **B** |
+| B binds, A binds, A writes state, B writes state | A | B | **B** |
+| A binds, A writes state, B binds, B writes state | B | B | **B** |
+
+The **owner is always the last state writer**, because the state is what the read consults first. The
+binding can lag behind it in one interleaving, which is precisely the disagreement §7.10 describes: it
+is visible in the readout, and the reconciliation releases it at the next read of bindings. A transient
+binding is not a second holder.
+
+**What is not guaranteed:** the two writes are not in one transaction, so between them the rows can
+disagree. Nothing reads the binding without going through the owner, so no surface acts on the
+disagreement — but an operator reading the raw rows at that instant will see it.
+
+### 10.2 The database write succeeds and the rest does not
+
+The **state row is the authority**; everything after it is derived and recoverable.
+
+| Step | If it fails | Recovery |
+| --- | --- | --- |
+| state write | nothing else ran | the operator retries; nothing is half-applied |
+| BCCM enqueue | the queue is BullMQ on Redis — the job is durable, with `attempts: 5` and exponential backoff | retried automatically |
+| BCCM push | the same job is retried; the push is idempotent (a set of command changes per guild) | retried automatically |
+| command refresh | the commands are re-deployed from the current state | the next refresh, or a restart, converges |
+| runtime restart (registration, rotation only) | the profile comes back on the next boot | boot |
+
+The one ordering that matters is that the state is written **before** the queue, so a crash between
+them loses the push, not the fact. A lost push is recoverable — the next module change, or the periodic
+batch push, re-derives the command set from the state.
+
+### 10.3 Core and admin cannot be disabled per guild
+
+Correct, and by design. They are **global**: `isModuleEnabledForGuild` returns true without reading a
+row, and `resolveCommandOwner` answers `'shared'` before anything else. A guild-level disable for them
+would need a **different mechanism**, because there is no per-guild row for the read to consult — and
+adding one would break the property that a shared module is nobody's.
+
+### 10.4 The restart loop
+
+Was a defect, twice over: a restart for what is a backend state change, and a restart of every profile
+in the guild rather than the ones affected. **Fixed.** A module assignment now re-registers commands
+over REST (`refreshCommands`) and **never reconnects**; the restart is reserved for a registration and
+a credential rotation, which genuinely need a new connection. See §5 and §9.
+
+## 10. Concurrency, partial failure and recovery
+
+An independent review of this specification asked four questions. Three are answerable from the code;
+the fourth was a defect, now fixed.
+
+### 10.1 Two profiles install the same unclaimed module at the same time
+
+**The one-holder invariant is enforced by the database, not by the read.** `guild_persona_bindings` has
+a composite primary key on `(guildId, moduleSlug)`, and the bind is an upsert against it:
+
+```
+.insert(row).onConflict(['guildId', 'moduleSlug']).merge({ personaId, deletedAt: null })
+```
+
+So at most one binding can exist for a guild-scoped module. The claim is written **before** the state,
+and the state records `enabledBy` — and `resolveCommandOwner` reads `enabledBy` **first**. Two racers
+therefore end with:
+
+| Interleaving | binding | `enabledBy` | resolved owner |
+| --- | --- | --- | --- |
+| A binds, B binds, A writes state, B writes state | B | B | **B** |
+| B binds, A binds, A writes state, B writes state | A | B | **B** |
+| A binds, A writes state, B binds, B writes state | B | B | **B** |
+
+The **owner is always the last state writer**, because the state is what the read consults first. The
+binding can lag behind it in one interleaving, which is precisely the disagreement §7.10 describes: it
+is visible in the readout, and the reconciliation releases it at the next read of bindings. A transient
+binding is not a second holder.
+
+**What is not guaranteed:** the two writes are not in one transaction, so between them the rows can
+disagree. Nothing reads the binding without going through the owner, so no surface acts on the
+disagreement — but an operator reading the raw rows at that instant will see it.
+
+### 10.2 The database write succeeds and the rest does not
+
+The **state row is the authority**; everything after it is derived and recoverable.
+
+| Step | If it fails | Recovery |
+| --- | --- | --- |
+| state write | nothing else ran | the operator retries; nothing is half-applied |
+| BCCM enqueue | the queue is BullMQ on Redis — the job is durable, with `attempts: 5` and exponential backoff | retried automatically |
+| BCCM push | the same job is retried; the push is idempotent (a set of command changes per guild) | retried automatically |
+| command refresh | the commands are re-deployed from the current state | the next refresh, or a restart, converges |
+| runtime restart (registration, rotation only) | the profile comes back on the next boot | boot |
+
+The one ordering that matters is that the state is written **before** the queue, so a crash between
+them loses the push, not the fact. A lost push is recoverable — the next module change, or the periodic
+batch push, re-derives the command set from the state.
+
+### 10.3 Core and admin cannot be disabled per guild
+
+Correct, and by design. They are **global**: `isModuleEnabledForGuild` returns true without reading a
+row, and `resolveCommandOwner` answers `'shared'` before anything else. A guild-level disable for them
+would need a **different mechanism**, because there is no per-guild row for the read to consult — and
+adding one would break the property that a shared module is nobody's.
+
+### 10.4 The restart loop
+
+Was a defect, twice over: a restart for what is a backend state change, and a restart of every profile
+in the guild rather than the ones affected. **Fixed.** A module assignment now re-registers commands
+over REST (`refreshCommands`) and **never reconnects**; the restart is reserved for a registration and
+a credential rotation, which genuinely need a new connection. See §5 and §9.
+
 ## Acceptance
 ```acceptance
 - id: ACC-LIFE-0044-1
