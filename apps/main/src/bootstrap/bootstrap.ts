@@ -1125,6 +1125,13 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
         : await personaIdentities.findByApplicationId(applicationId);
     // UR-20261012-078 — the actor is 'main' when no application identified it (the main bot's own
     // install), matching the ownership read's answer for an enabled-but-unbound module.
+    //
+    // The install is only reached when the ownership read says the module is AVAILABLE, so any binding
+    // still on record belongs to a claim that no longer holds. Clearing it here is what stops a stale
+    // one from reading as live the instant this install enables the module.
+    if (owner === undefined && guildId !== null) {
+      await personaBindingService.unbindModule(guildId, moduleId);
+    }
     if (owner !== undefined && (acting?.id ?? 'main') !== owner) {
       logger.warn(
         `marketplace-module-occupied module=${moduleId} guild=${guildId} owner=${owner} actor=${acting?.id ?? 'main'}`,
@@ -1182,6 +1189,11 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
       .insert({ guildId, moduleSlug: moduleId, enabled: false, state: 'disabled' })
       .onConflict(db.knex.raw('("guildId", "moduleSlug") where "deletedAt" is null'))
       .merge({ enabled: false, state: 'disabled', updatedAt: db.knex.fn.now() });
+    // RELEASE THE CLAIM. A binding is a claim on the module, and it outlived the install: a persona
+    // could uninstall, the module would read as available, the MAIN could then install it — and the
+    // stale binding would read as live again the moment the module was enabled, so the module the main
+    // had just installed appeared under HER profile and not its own.
+    await personaBindingService.unbindModule(guildId, moduleId);
     await setModuleCommandAccess?.(moduleId, guildId, false);
     await enqueueModuleCommandChanges(moduleId, guildId, userId, 'disable', bccmScopeOf(acting));
     // …and DEREGISTER it, for the same reason: a disabled module whose command stays registered is a

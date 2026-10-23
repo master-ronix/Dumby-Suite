@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { healthBlocks } from '../../src/rendering/health-blocks.js';
+import { registerModuleEmoji } from '../../src/rendering/module-icons.js';
 
 type Any = Record<string, unknown>;
 
@@ -121,5 +122,49 @@ describe('healthBlocks tolerates malformed group data', () => {
     const line = String((blocks[1] as Any)['content']);
     expect(line).toContain('a: b');
     expect(line).not.toContain('only-one');
+  });
+});
+
+describe('every health column carries its own mark', () => {
+  test('rows are marked by label, and the two uptimes are told apart by their GROUP', () => {
+    registerModuleEmoji('dumby_metric_uptime', '901', '');
+    registerModuleEmoji('dumby_metric_profile', '902', '');
+    registerModuleEmoji('dumby_metric_ping', '903', '');
+    registerModuleEmoji('dumby_metric_status', '904', '');
+
+    const blocks = healthBlocks(
+      {
+        status: 'operational',
+        groups: [
+          {
+            name: 'Discord API',
+            status: 'ok',
+            rows: [
+              ['Gateway Ping', '19ms'],
+              ['Gateway Status', 'Connected'],
+            ],
+          },
+          { name: 'Host Process (shared)', status: 'ok', rows: [['Host Uptime', '0d 0h 5m']] },
+          { name: 'Profile Runtime', status: 'ok', rows: [['Uptime', '0d 0h 3m']] },
+        ],
+      },
+      'u1',
+    );
+    const lines = blocks.slice(1).map((b) => String((b as Any)['content']));
+
+    // The label carries its mark, so the board is scannable rather than a wall of "Label: value".
+    expect(lines[0]).toContain('<:dumby_metric_ping:903>');
+    expect(lines[0]).toContain('<:dumby_metric_status:904>');
+    // Same word, different group: the host's uptime and the profile's must not share a mark.
+    expect(lines[1]).toContain('<:dumby_metric_uptime:901>');
+    expect(lines[2]).toContain('<:dumby_metric_profile:902>');
+  });
+
+  test('a row with no mark still renders — an unknown label is not an error', () => {
+    const blocks = healthBlocks(
+      { status: 'ok', groups: [{ name: 'Mystery', rows: [['Something New', '1']] }] },
+      'u1',
+    );
+    expect(String((blocks[1] as Any)['content'])).toContain('Something New: 1');
   });
 });

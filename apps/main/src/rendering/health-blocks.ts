@@ -9,9 +9,23 @@ import {
   customEmojiParts,
   customEmojiRef,
   DEFAULT_EMOJI_SCOPE,
+  METRIC_HEAP_ICON_NAME,
+  METRIC_LOADED_ICON_NAME,
+  METRIC_MEMORY_ICON_NAME,
+  METRIC_NODE_ICON_NAME,
+  METRIC_PING_ICON_NAME,
+  METRIC_PROFILE_ICON_NAME,
+  METRIC_SHARD_ICON_NAME,
+  METRIC_STATUS_ICON_NAME,
+  METRIC_TOTAL_ICON_NAME,
+  METRIC_UPTIME_ICON_NAME,
   STATUS_DEGRADED_ICON_NAME,
   STATUS_OFFLINE_ICON_NAME,
   STATUS_ONLINE_ICON_NAME,
+  TIER_ADMIN_ICON_NAME,
+  TIER_CORE_ICON_NAME,
+  TIER_MARKETPLACE_ICON_NAME,
+  TIER_STANDARD_ICON_NAME,
 } from './module-icons.js';
 
 /**
@@ -37,6 +51,46 @@ const STATUS_GLYPH: Readonly<Record<string, string>> = {
   degraded: '🟡',
   down: '🔴',
 };
+
+/**
+ * The METRIC mark for a health row, keyed by its label.
+ *
+ * A health line is a `Label: value` pair, and a board of them reads as a wall. One mark per column
+ * makes the page scannable: find the clock, find the uptime.
+ */
+const METRIC_MARK: Readonly<Record<string, string>> = {
+  'Gateway Ping': METRIC_PING_ICON_NAME,
+  'Gateway Status': METRIC_STATUS_ICON_NAME,
+  'PostgreSQL Status': METRIC_STATUS_ICON_NAME,
+  'Redis Status': METRIC_STATUS_ICON_NAME,
+  'Shard Count': METRIC_SHARD_ICON_NAME,
+  Uptime: METRIC_UPTIME_ICON_NAME,
+  'Host Uptime': METRIC_UPTIME_ICON_NAME,
+  'Node.js Version': METRIC_NODE_ICON_NAME,
+  'Memory Usage': METRIC_MEMORY_ICON_NAME,
+  'Heap Used': METRIC_HEAP_ICON_NAME,
+  'Heap Total': METRIC_HEAP_ICON_NAME,
+  'Total Guilds': METRIC_TOTAL_ICON_NAME,
+  'Total Users': METRIC_TOTAL_ICON_NAME,
+  'Total Loaded': METRIC_LOADED_ICON_NAME,
+  'Core-tier': TIER_CORE_ICON_NAME,
+  'Admin-tier': TIER_ADMIN_ICON_NAME,
+  'Standard-tier': TIER_STANDARD_ICON_NAME,
+  'Marketplace-tier': TIER_MARKETPLACE_ICON_NAME,
+};
+
+/** The mark for one row. Empty when the label has none — a row without a mark is not an error. */
+function metricMark(label: string, group: string, scope: string): string {
+  // The Profile Runtime group's uptime is the PROFILE's; the Host Process group's is the host's. The
+  // label is the same word, so the GROUP is what tells them apart.
+  const name =
+    group === 'Profile Runtime' && label === 'Uptime'
+      ? METRIC_PROFILE_ICON_NAME
+      : METRIC_MARK[label];
+  if (name === undefined) return '';
+  const ref = customEmojiRef(name, scope);
+  return ref !== undefined ? `${ref} ` : '';
+}
 
 function dot(status: unknown, scope: string): string {
   if (typeof status !== 'string') return '⚪';
@@ -104,7 +158,9 @@ export function healthBlocks(
   });
   // One compact line per subsystem: a status dot, the bold name, and its metrics as subtext.
   for (const group of groups) {
-    const metrics = group.rows.map(([label, value]) => `${label}: ${value}`).join(' · ');
+    const metrics = group.rows
+      .map(([label, value]) => `${metricMark(label, group.name, emojiScope)}${label}: ${value}`)
+      .join(' · ');
     blocks.push({
       kind: 'text',
       content: `${dot(group.status, emojiScope)} **${group.name}**${metrics === '' ? '' : `\n-# ${metrics}`}`,

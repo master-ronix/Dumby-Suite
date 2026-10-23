@@ -81,6 +81,23 @@ export const UNINSTALL_ICON_NAME = 'dumby_uninstall';
  * the upload lands (or if it failed), so a page never renders without an indicator.
  */
 /** The three states a subsystem can be in, as one glyph each. */
+/**
+ * The /health METRIC marks — one per column, so a health line is scannable rather than a wall of
+ * `Label: value`. Same set, same line art, same 256px, same stroke.
+ */
+export const METRIC_PING_ICON_NAME = 'dumby_metric_ping';
+export const METRIC_STATUS_ICON_NAME = 'dumby_metric_status';
+export const METRIC_SHARD_ICON_NAME = 'dumby_metric_shard';
+export const METRIC_UPTIME_ICON_NAME = 'dumby_metric_uptime';
+export const METRIC_NODE_ICON_NAME = 'dumby_metric_node';
+export const METRIC_MEMORY_ICON_NAME = 'dumby_metric_memory';
+export const METRIC_HEAP_ICON_NAME = 'dumby_metric_heap';
+export const METRIC_TOTAL_ICON_NAME = 'dumby_metric_total';
+export const METRIC_PROFILE_ICON_NAME = 'dumby_metric_profile';
+export const METRIC_LOADED_ICON_NAME = 'dumby_metric_loaded';
+export const TIER_CORE_ICON_NAME = 'dumby_tier_core';
+export const TIER_ADMIN_ICON_NAME = 'dumby_tier_admin';
+
 export const STATUS_DEGRADED_ICON_NAME = 'dumby_status_degraded';
 export const STATUS_ONLINE_ICON_NAME = 'dumby_status_online';
 export const STATUS_OFFLINE_ICON_NAME = 'dumby_status_offline';
