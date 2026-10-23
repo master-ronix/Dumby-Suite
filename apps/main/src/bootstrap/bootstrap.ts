@@ -750,6 +750,10 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   // getter closes over the client the live branch assigns later.
   let discordClient: Client | undefined;
   const pageDataProvider = createPageDataProvider({
+    // Q1-Q4 — /health reports the PROFILE that ran it: her client, her registry, her start time. The
+    // runtime is constructed far below this point, so the read is late-bound; before it exists, the
+    // host's own view is the honest answer rather than a guess.
+    actingProfile: (applicationId: string) => personaRuntimeRef?.runtimeFor(applicationId),
     // UR-20261012-061 — the ONE ownership read. /persona, /modules, /browse and /dashboard all
     // consult it, so they cannot disagree about which profile holds a module.
     resolveOwner: (guildId, moduleSlug) =>

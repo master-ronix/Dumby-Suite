@@ -53,6 +53,21 @@ export interface PersonaClient {
    * it; absent, a persona simply keeps Discord's default presence.
    */
   setPresence?(presence: { status: string; note?: string }): unknown;
+  /**
+   * The fields /health reports for THIS profile. Optional, because they are the discord.js surface and
+   * a test double need not carry it — but a real client has them, and the health page must read the
+   * profile's own gateway, not the host's.
+   */
+  isReady?(): boolean;
+  ws?: { ping: number };
+  guilds?: {
+    cache: {
+      size: number;
+      reduce(fn: (sum: number, guild: { memberCount: number }) => number, init: number): number;
+    };
+    /** The AUTHORITY on membership; the cache is a snapshot that can lag. */
+    fetch?(): Promise<unknown>;
+  };
 }
 
 /** The outcome for one persona, so a partial failure is reported rather than swallowed. */
@@ -220,8 +235,41 @@ export function filterRegistryForModules(
  */
 export class PersonaRuntime {
   private readonly clients = new Map<string, PersonaClient>();
+  /** What /health needs beyond the client: the registry she runs, and when she came up. */
+  private readonly moduleSlugsOf = new Map<string, readonly string[]>();
+  private readonly startedAt = new Map<string, number>();
+  private readonly applicationOf = new Map<string, string>();
 
   constructor(private readonly deps: PersonaRuntimeDeps) {}
+
+  /**
+   * The runtime serving `applicationId`: her client, her registry, and when she started.
+   *
+   * /health must report the PROFILE's own numbers — her gateway, her modules, her guilds — and the
+   * runtime is the only thing that holds them. Returns undefined for an application it does not host,
+   * which the caller reads as "fall back to the host's view" rather than as an error.
+   */
+  runtimeFor(applicationId: string):
+    | {
+        client?: PersonaClient;
+        moduleSlugs?: readonly string[];
+        startedAt?: number;
+      }
+    | undefined {
+    if (applicationId === '') return undefined;
+    for (const [personaId, applicationIdOf] of this.applicationOf) {
+      if (applicationIdOf !== applicationId) continue;
+      const client = this.clients.get(personaId);
+      const moduleSlugs = this.moduleSlugsOf.get(personaId);
+      const startedAt = this.startedAt.get(personaId);
+      return {
+        ...(client !== undefined ? { client } : {}),
+        ...(moduleSlugs !== undefined ? { moduleSlugs } : {}),
+        ...(startedAt !== undefined ? { startedAt } : {}),
+      };
+    }
+    return undefined;
+  }
 
   /**
    * UR-20261012-085 — hosts personas, optionally only those matching `only`.
@@ -335,6 +383,9 @@ export class PersonaRuntime {
           }
         }
         this.clients.set(persona.id, client);
+        this.moduleSlugsOf.set(persona.id, moduleSlugs);
+        this.startedAt.set(persona.id, Date.now());
+        this.applicationOf.set(persona.id, persona.discordApplicationId);
         results.push({
           personaId: persona.id,
           name: persona.name,
@@ -389,6 +440,9 @@ export class PersonaRuntime {
         this.deps.logger.warn(`persona-stop-failed id=${persona.id} reason=${String(err)}`);
       }
       this.clients.delete(persona.id);
+      this.moduleSlugsOf.delete(persona.id);
+      this.startedAt.delete(persona.id);
+      this.applicationOf.delete(persona.id);
     }
     if (this.deps.clearCommands !== undefined) {
       try {
@@ -451,6 +505,9 @@ export class PersonaRuntime {
       }
     }
     this.clients.clear();
+    this.moduleSlugsOf.clear();
+    this.startedAt.clear();
+    this.applicationOf.clear();
   }
 
   /** How many personas are currently hosted. */

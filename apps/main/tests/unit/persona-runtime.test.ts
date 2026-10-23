@@ -475,3 +475,32 @@ describe('personaRegistryModules — core plus owned, and nothing else', () => {
     expect(kept.all().map((d) => d.data.name)).toStrictEqual(['dashboard', 'hello']);
   });
 });
+
+describe('the runtime answers for the profile /health must report (Q1-Q4)', () => {
+  test('an application resolves to its own client, its own modules and its start time', async () => {
+    const { runtime } = makeRuntime([persona()]);
+    await runtime.start();
+    const found = runtime.runtimeFor('app-9');
+    expect(found).toBeDefined();
+    // Her MODULE slugs, not a command registry: only the module registry carries tiers.
+    expect(found?.moduleSlugs).toStrictEqual(['persona']);
+    expect(typeof found?.startedAt).toBe('number');
+    expect(found?.client).toBeDefined();
+  });
+
+  test('an application it does not host resolves to NOTHING, never to the host by accident', async () => {
+    // The empty application id is the host's own scope. Returning something for it would make a
+    // persona's page report the host while claiming to be per-profile.
+    const { runtime } = makeRuntime([persona()]);
+    await runtime.start();
+    expect(runtime.runtimeFor('app-other')).toBeUndefined();
+    expect(runtime.runtimeFor('')).toBeUndefined();
+  });
+
+  test('a stopped persona stops being resolvable', async () => {
+    const { runtime } = makeRuntime([persona()]);
+    await runtime.start();
+    await runtime.stopPersona(persona() as never);
+    expect(runtime.runtimeFor('app-9')).toBeUndefined();
+  });
+});

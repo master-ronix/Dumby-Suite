@@ -14,8 +14,45 @@ import {
   resolveEffectiveCommandNames,
 } from '../commands/command-renames.js';
 
+/**
+ * The Discord surface /health reads, structurally. The host's discord.js client and a persona's
+ * client slice both satisfy it, so one builder can report either.
+ */
+export interface HealthClient {
+  isReady?(): boolean;
+  ws?: { ping: number };
+  guilds?: {
+    cache: {
+      size: number;
+      reduce(fn: (sum: number, guild: { memberCount: number }) => number, init: number): number;
+    };
+    /** The AUTHORITY on membership; the cache is a snapshot taken at login and can lag. */
+    fetch?(): Promise<unknown>;
+  };
+}
+
+/** What the host knows about the runtime serving one application. */
+export interface ActingProfile {
+  readonly client?: HealthClient;
+  /**
+   * The module slugs she holds. The page filters the module registry by (core + these), because the
+   * runtime's own registry is a COMMAND registry — a different shape that cannot report tiers.
+   */
+  readonly moduleSlugs?: readonly string[];
+  /** When HER runtime came up. Absent for an application the host does not host. */
+  readonly startedAt?: number;
+}
+
 export interface PageDataDeps {
   getClient: () => Client | undefined;
+  /**
+   * Q1-Q4 — the runtime serving an application: her client, her registry, her start time.
+   *
+   * /health is the PROFILE's health. Without this the page reported the host's client and the host's
+   * registry, so both bots showed identical numbers — and a persona's page claimed the main bot's
+   * gateway, modules and guild count.
+   */
+  actingProfile?: ((applicationId: string) => ActingProfile | undefined) | undefined;
   /**
    * UR-20261012-029 — whether a bot is a member of a guild. A persona's active state is whether it
    * is actually present in its bound guild, which only the host can resolve. Absent, the page
@@ -152,6 +189,7 @@ export function createPageDataProvider(deps: PageDataDeps): (
 ) => Promise<PageData> {
   const {
     getClient,
+    actingProfile,
     moduleRegistry,
     db,
     redis,
@@ -190,9 +228,12 @@ export function createPageDataProvider(deps: PageDataDeps): (
     return map;
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- the scope is uniform across pages
   async function health(applicationId: string): Promise<PageData> {
-    const client = getClient();
+    // Q1-Q4 — the page is the ACTING profile's. Her client, her registry, her guilds, her uptime; the
+    // host's own numbers are kept and LABELLED, because one process serves every profile and a
+    // persona has no memory of her own to report.
+    const acting = actingProfile?.(applicationId);
+    const client = (acting?.client ?? getClient()) as HealthClient | undefined;
     const memory = process.memoryUsage();
 
     let dbStatus = 'Unavailable';
@@ -210,13 +251,24 @@ export function createPageDataProvider(deps: PageDataDeps): (
       logger.warn('page-data-redis-unavailable', { error: String(err) });
     }
 
-    const modules = moduleRegistry.all();
+    // HER modules: the core set, which every profile shares, plus exactly the modules she holds.
+    // Filtering the module registry rather than the command registry — only this one carries tiers.
+    const modules = moduleRegistry
+      .all()
+      .filter(
+        (entry) =>
+          entry.manifest.tier === 'core' ||
+          entry.manifest.tier === 'admin' ||
+          acting?.moduleSlugs?.includes(entry.manifest.name) === true,
+      );
     const byTier = (tier: string): number =>
       modules.filter((entry) => entry.manifest.tier === tier).length;
 
-    const gatewayReady = client?.isReady() === true;
+    const gatewayReady = client?.isReady?.() === true;
     const discordRows: Array<readonly [string, string]> = [];
-    if (client !== undefined) discordRows.push(['Gateway Ping', `${Math.round(client.ws.ping)}ms`]);
+    if (client?.ws !== undefined) {
+      discordRows.push(['Gateway Ping', `${Math.round(client.ws.ping)}ms`]);
+    }
     discordRows.push(['Gateway Status', gatewayReady ? 'Connected' : 'Disconnected']);
     discordRows.push(['Shard Count', String(config.get('SHARD_COUNT'))]);
 
@@ -225,16 +277,30 @@ export function createPageDataProvider(deps: PageDataDeps): (
     const groups: Group[] = [
       { name: 'Discord API', status: gatewayReady ? 'ok' : 'down', rows: discordRows },
       {
-        name: 'Bot Process',
+        // Q1 — SHARED, and named so. Memory, heap and the Node runtime belong to the one process that
+        // serves every profile; a persona has none of her own, and reporting them as hers would be a
+        // number that cannot mean what it says.
+        name: 'Host Process (shared)',
         status: 'ok',
         rows: [
-          ['Uptime', formatUptime(process.uptime())],
+          ['Host Uptime', formatUptime(process.uptime())],
           ['Node.js Version', process.version],
           ['Memory Usage', mb(memory.rss)],
           ['Heap Used', mb(memory.heapUsed)],
           ['Heap Total', mb(memory.heapTotal)],
         ],
       },
+      // Q4 — HER uptime, beside the host's, each labelled: a persona's runtime starts when she is
+      // hosted, which is not when the process started.
+      ...(acting?.startedAt !== undefined
+        ? [
+            {
+              name: 'Profile Runtime',
+              status: 'ok',
+              rows: [['Uptime', formatUptime((Date.now() - acting.startedAt) / 1000)] as const],
+            },
+          ]
+        : []),
       {
         name: 'Modules',
         status: 'ok',
@@ -259,12 +325,39 @@ export function createPageDataProvider(deps: PageDataDeps): (
     ];
 
     if (client !== undefined) {
+      // Q2 — FETCHED, not read from the cache. `guilds.cache.size` is a snapshot taken at login and
+      // can lag real membership, which is how a bot in 3 guilds reported 4. The API is the authority;
+      // the cache is the fallback for when the fetch fails, and the page says which it used.
+      let guildCount = client.guilds?.cache.size ?? 0;
+      let memberCount = client.guilds?.cache.reduce((sum, g) => sum + g.memberCount, 0) ?? 0;
+      let source = 'cache';
+      try {
+        const fetched = (await client.guilds?.fetch?.()) as
+          | {
+              size?: number;
+              reduce?: (
+                fn: (sum: number, g: { memberCount: number }) => number,
+                init: number,
+              ) => number;
+            }
+          | undefined;
+        if (fetched !== undefined && typeof fetched.size === 'number') {
+          guildCount = fetched.size;
+          if (typeof fetched.reduce === 'function') {
+            memberCount = fetched.reduce((sum, g) => sum + g.memberCount, 0);
+          }
+          source = 'live';
+        }
+      } catch (err) {
+        logger.warn('page-data-guild-fetch-unavailable', { applicationId, error: String(err) });
+      }
       groups.push({
         name: 'Guilds & Users',
         status: 'ok',
         rows: [
-          ['Total Guilds', String(client.guilds.cache.size)],
-          ['Total Users', String(client.guilds.cache.reduce((sum, g) => sum + g.memberCount, 0))],
+          ['Total Guilds', String(guildCount)],
+          ['Total Users', String(memberCount)],
+          ['Source', source === 'live' ? 'Discord API' : 'Cached snapshot'],
         ],
       });
     }
@@ -285,7 +378,7 @@ export function createPageDataProvider(deps: PageDataDeps): (
       `Node ${process.version}`,
       `${modules.length} modules`,
     ];
-    if (client !== undefined) summaryParts.push(`${client.guilds.cache.size} guilds`);
+    if (client?.guilds !== undefined) summaryParts.push(`${client.guilds.cache.size} guilds`);
 
     return {
       title: 'System Health',

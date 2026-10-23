@@ -93,7 +93,8 @@ describe('page-data provider', () => {
     expect(typeof data['statusLabel']).toBe('string');
     expect(typeof data['summary']).toBe('string');
     const groups = data['groups'] as Array<{ name: string; status?: string; rows: unknown[] }>;
-    expect(groups.map((group) => group.name)).toContain('Bot Process');
+    // Q1 — the process is ONE process serving every profile, and is named so.
+    expect(groups.map((group) => group.name)).toContain('Host Process (shared)');
     expect(groups.map((group) => group.name)).toContain('Database');
     expect(groups.map((group) => group.name)).toContain('Cache');
     // each subsystem carries a status for the at-a-glance layout
@@ -714,5 +715,63 @@ describe('module ownership is PER PROFILE (UR-20261012-061)', () => {
     const asMain = await provider('browse', 'guild-1', 0, undefined, 'app-1', 'main');
     const mainEntries = asMain['modules'] as Array<{ id: string; occupied?: boolean }>;
     expect(mainEntries.find((m) => m.id === 'hello-world')?.occupied).toBeUndefined();
+  });
+});
+
+describe('health reports the ACTING profile, not the host (Q1-Q4)', () => {
+  const personaClient = {
+    isReady: () => true,
+    ws: { ping: 7 },
+    guilds: {
+      // The CACHE says 4 — the number that was reported for a bot actually in 3 guilds.
+      cache: {
+        size: 4,
+        reduce: (fn: (s: number, g: { memberCount: number }) => number, init: number): number =>
+          fn(fn(fn(fn(init, { memberCount: 1 }), { memberCount: 1 }), { memberCount: 1 }), {
+            memberCount: 1,
+          }),
+      },
+      // The API is the authority: five guilds, and it says so.
+      fetch: async () => ({
+        size: 5,
+        reduce: (fn: (s: number, g: { memberCount: number }) => number, init: number): number =>
+          fn(init, { memberCount: 900 }),
+      }),
+    },
+  };
+
+  test("a persona's page reads HER gateway, HER guilds and HER uptime", async () => {
+    const provider = createPageDataProvider(
+      makeDeps({
+        actingProfile: () => ({
+          client: personaClient,
+          moduleSlugs: ['hello-world'],
+          startedAt: Date.now() - 60_000,
+        }),
+      }),
+    );
+    const data = await provider('health', null, 0, undefined, 'app-persona', 'p-1');
+    const groups = data['groups'] as Array<{ name: string; rows: Array<[string, string]> }>;
+    const rowsOf = (name: string): Array<[string, string]> =>
+      groups.find((g) => g.name === name)?.rows ?? [];
+
+    // Q2 — FETCHED, not the cache: 5, not 4.
+    expect(rowsOf('Guilds & Users').find(([k]) => k === 'Total Guilds')?.[1]).toBe('5');
+    expect(rowsOf('Guilds & Users').find(([k]) => k === 'Source')?.[1]).toBe('Discord API');
+
+    // Q1 — the shared process section is present AND labelled.
+    expect(groups.map((g) => g.name)).toContain('Host Process (shared)');
+
+    // Q4 — her own runtime uptime, beside the host's.
+    expect(groups.map((g) => g.name)).toContain('Profile Runtime');
+  });
+
+  test('without a hosted runtime the page falls back to the host, and says nothing false', async () => {
+    const provider = createPageDataProvider(makeDeps());
+    const data = await provider('health', null, 0, undefined, 'app-unknown', 'p-1');
+    const names = (data['groups'] as Array<{ name: string }>).map((g) => g.name);
+    // No profile runtime, so no per-profile uptime line is invented.
+    expect(names).not.toContain('Profile Runtime');
+    expect(names).toContain('Host Process (shared)');
   });
 });
