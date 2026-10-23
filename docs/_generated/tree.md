@@ -47,6 +47,7 @@
 - contracts/openapi.yaml
 - contracts/rbac.enums.json
 - contracts/ui-renderer.schema.json
+- deploy/credentials.md
 - deploy/railway.md
 - documentation/api/README.md
 - documentation/api/commands.md

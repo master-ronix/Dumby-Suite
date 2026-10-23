@@ -25,9 +25,9 @@
   "test_tiers": 4,
   "flow_threads": 6,
   "coverage_rows": 2246,
-  "tree_entries": 1617,
+  "tree_entries": 1618,
   "tree_dirs": 288,
-  "tree_files": 1329,
+  "tree_files": 1330,
   "code_ts_files": 587,
   "code_src_ts_files": 259,
   "code_migrations": 58
