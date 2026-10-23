@@ -336,3 +336,57 @@ describe('twill persona routes', () => {
     expect(service.unbindModule).toHaveBeenCalledWith(GUILD_ID, 'hello-world');
   });
 });
+
+describe('a Twill unbind runs the WHOLE disable chain', () => {
+  const personaRow = {
+    id: 'p-1',
+    name: 'Magma',
+    discordApplicationId: APP_ID,
+    boundGuildId: GUILD_ID,
+    botTokenSealed: { ciphertext: 'x' },
+    status: 'active',
+  };
+
+  test('it calls the HOST uninstall — state, claim, commands and runtime — not just the claim', async () => {
+    // Releasing the binding alone left the state enabled, her commands registered in the guild with
+    // her own token, and her runtime still serving them. The in-app uninstall runs the whole chain,
+    // so this route calls it rather than repeating it.
+    const uninstallModule = vi.fn(async () => undefined);
+    const { app, service } = buildRoutes({
+      uninstallModule,
+      identities: {
+        findById: vi.fn(async () => personaRow),
+        list: vi.fn(async () => [personaRow]),
+      },
+      bindings: { findLive: vi.fn(async () => ({ personaId: 'p-1', moduleSlug: 'hello-world' })) },
+    });
+
+    const res = await app.inject({
+      method: 'DELETE',
+      url: '/twill/personas/p-1/bindings/hello-world',
+    });
+
+    expect(res.statusCode).toBe(204);
+    expect(uninstallModule).toHaveBeenCalledWith('hello-world', GUILD_ID, 'twill', APP_ID);
+    // and it does NOT merely release the claim
+    expect(
+      (service as unknown as { unbindModule: () => unknown }).unbindModule,
+    ).not.toHaveBeenCalled();
+  });
+
+  test('with no host uninstall wired, it still releases the claim rather than doing nothing', async () => {
+    const { app, service } = buildRoutes({
+      identities: {
+        findById: vi.fn(async () => personaRow),
+        list: vi.fn(async () => [personaRow]),
+      },
+      bindings: { findLive: vi.fn(async () => ({ personaId: 'p-1', moduleSlug: 'hello-world' })) },
+    });
+    const res = await app.inject({
+      method: 'DELETE',
+      url: '/twill/personas/p-1/bindings/hello-world',
+    });
+    expect(res.statusCode).toBe(204);
+    expect((service as unknown as { unbindModule: () => unknown }).unbindModule).toHaveBeenCalled();
+  });
+});

@@ -2200,6 +2200,10 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
           // than waiting for the next restart.
           applyPersonaPresence: (personaId, presence) =>
             personaRuntimeRef?.applyPresence(personaId, presence) ?? false,
+          // The SAME disable chain the in-app uninstall runs — state, claim, command de-registration
+          // and runtime reload — so a Twill unbind and an in-app uninstall cannot drift apart.
+          uninstallModule: (moduleId, guildId, actorId, applicationId) =>
+            uninstallModule(moduleId, guildId, actorId, applicationId),
           // UR-20261012-083 — a revoke stops the running persona, so the delete takes effect NOW
           // rather than at the next restart.
           stopPersona: async (persona) =>

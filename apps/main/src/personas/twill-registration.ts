@@ -231,6 +231,17 @@ export interface TwillPersonaRouteDeps {
    */
   isModuleEnabledInGuild?: (moduleId: string, guildId: string) => Promise<boolean>;
   /**
+   * The module DISABLE chain, whole: release the claim, write the state, de-register the owner's
+   * commands, and reload the runtime that served them. Supplied by the host so this route runs the
+   * SAME chain the in-app uninstall runs — two entry points, one implementation, no drift.
+   *
+   * Without it a Twill unbind released the binding and stopped there, leaving her commands registered
+   * and her runtime serving them.
+   */
+  uninstallModule?:
+    | ((moduleId: string, guildId: string, actorId: string, applicationId: string) => Promise<void>)
+    | undefined;
+  /**
    * UR-20261012-082 — re-apply a persona's presence to its RUNNING client. Optional: without it an
    * update still writes the column, but the change lands at the next restart.
    */
@@ -290,7 +301,16 @@ export function registerTwillPersonaRoutes(
   app: FastifyInstance,
   deps: TwillPersonaRouteDeps,
 ): void {
-  const { service, identities, bindings, registrars, rootKey, logger, costSignals } = deps;
+  const {
+    service,
+    identities,
+    bindings,
+    registrars,
+    rootKey,
+    logger,
+    costSignals,
+    uninstallModule,
+  } = deps;
 
   /**
    * UR-20261012-085 — reload a persona so a write takes effect without a restart. Non-fatal: the write
@@ -842,10 +862,26 @@ export function registerTwillPersonaRoutes(
       if (live === undefined) {
         return reply.code(404).send({ error: 'Not Found', reason: 'no such binding' });
       }
-      await service.unbindModule(persona.boundGuildId, request.params.moduleSlug);
-      logger.info(
-        `persona-module-unbound guild=${persona.boundGuildId} module=${request.params.moduleSlug}`,
-      );
+      // THE WHOLE CHAIN, not just the claim. Releasing the binding is one step of a disable: the
+      // state still says enabled, her commands are still registered in the guild with her own token,
+      // and her runtime is still serving them. Doing only the first is how a module could appear
+      // held by two profiles at once. The in-app uninstall runs this same chain, so this calls it
+      // rather than repeating it.
+      if (uninstallModule !== undefined) {
+        await uninstallModule(
+          request.params.moduleSlug,
+          persona.boundGuildId,
+          'twill',
+          persona.discordApplicationId,
+        );
+      } else {
+        await service.unbindModule(persona.boundGuildId, request.params.moduleSlug);
+      }
+      logger.info('persona-module-unbound', {
+        guildId: persona.boundGuildId,
+        moduleSlug: request.params.moduleSlug,
+        full: uninstallModule !== undefined,
+      });
       return reply.code(204).send();
     },
   );

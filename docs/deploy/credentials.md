@@ -58,6 +58,34 @@ itself. It must be a **user OAuth2 token** the operator provisions per applicati
   deregistration is enqueued. Only the instant half is skipped, and the boot log reports it —
   `command-access-instant-disable { armed }`.
 
+### Minting one for a persona
+
+The platform holds what the flow needs, because Twill requires it at registration:
+
+| Needed | Where it comes from |
+| --- | --- |
+| client id | the persona's `discordApplicationId` — a Discord application id *is* its client id |
+| client secret | `oauthClientSecret`, required at registration and sealed at rest |
+| redirect URI | **one platform-wide callback**, `OAUTH_REDIRECT_URI` |
+
+Every persona must register **that same redirect URI** on her own Discord application
+(OAuth2 → Redirects), because Discord rejects a redirect that the application has not declared. One
+value, registered once per persona, is what makes the flow possible for all of them without a
+per-persona field.
+
+### A Twill unbind is a DISABLE, not just a release
+
+`DELETE /twill/personas/:personaId/bindings/:moduleSlug` runs the **whole** chain the in-app uninstall
+runs: release the claim, write the module state, de-register the owner's commands with the owner's own
+token, and reload the runtime that served them. Releasing the binding alone — which is what it used to
+do — left the state enabled, the commands registered in the guild, and the runtime still answering
+them, which is how one module could appear held by two profiles at once. Both entry points call one
+implementation so they cannot drift.
+
+The same applies to a credential rotation: it restarts the profile's runtime, because the runtime
+holds the **previous** token in a live gateway connection and would otherwise keep running on a
+credential that has been replaced.
+
 ## Rotation
 
 | Credential | Rotation |
