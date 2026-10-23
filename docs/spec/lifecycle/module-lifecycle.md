@@ -167,13 +167,186 @@ another, and **both bots answered it**.
 | 11 | No command-permission token for a profile | the instant hide/restrict is **inert**; the BCCM deregistration still applies |
 | 12 | A row written before `enabledBy` existed | falls back to the binding, then to `'main'` — never a guess |
 
-## 7. How to see it
+## 7. Worked examples
+
+Each example follows one change from the member's action to every surface that reacts. The reads and
+writes named are the ones in §4 and §5; nothing else happens.
+
+### 7.1 The internal profile is added to a guild first, then a persona joins
+
+**Setup.** Guild `G`. No module has been touched. The internal profile is added, then persona `P` is
+registered and bound to `G`.
+
+| Step | What happens | Why |
+| --- | --- | --- |
+| 1 | The internal profile boots and deploys its commands | `resolveCommandOwner(G, 'hello-world')` → no binding, no enabler, enabled by tier default → `'main'`. It registers the module |
+| 2 | `P` is registered through Twill | her bot token and OAuth client secret are sealed; `status: 'active'` |
+| 3 | `P`'s runtime starts and asks `modulesBoundTo(P)` | for `hello-world`: no binding of hers → nothing to keep. She registers only core |
+| 4 | `P` opens `/modules` | the listing filters `heldFlags[i] !== true` first, then enablement. `hello-world` is **not hers** → excluded, even though standard is on by default |
+
+**The point.** "Standard is enabled by default" is a statement about a guild's row, **not** about a
+profile's right to hold it. The default decides whether an untouched module is *on*, and an untouched
+enabled module is the **internal profile's** — so the persona neither lists it nor registers it, and
+cannot take it until it is released. Two different questions, and conflating them is what makes an
+operator expect a persona to hold a module the internal profile already has.
+
+### 7.2 The persona is added first, then the internal profile
+
+The mirror of 7.1, and the outcome is the mirror too. `P` disables nothing: she takes a module that is
+**unheld**, so `enabledBy` is her id and the binding is hers (§7.3, roles swapped). When the internal
+profile's deployer runs it asks `resolveCommandOwner` per module, is told `'main'` for everything
+except `hello-world`, and registers that set. `hello-world` is answered by `P` alone.
+
+Note what is **not** how this works: the internal profile does not get `hello-world` "because standard
+is enabled by default". A module a persona holds is not hers to take, and the default says nothing
+about that.
+
+### 7.3 A persona installs a standard module the internal profile has released
+
+**Setup.** Guild `G`. `hello-world` was enabled by default and is therefore the **internal profile's**
+(§7.1). The internal profile disables it, and `P` then selects it from `/browse`.
+
+| Step | Read / write | Value |
+| --- | --- | --- |
+| 0 | the internal profile disables it | `enabled: false`, `state: 'disabled'`, `enabledBy: null` |
+| 1 | `resolveCommandOwner(G, 'hello-world')` | **undefined** — disabled, so unheld |
+| 2 | clear any stale binding | none |
+| 3 | `bindModuleToPersona` | a binding: `(G, hello-world) → P` |
+| 4 | `guild_module_states` upsert | `enabled: true`, `state: 'active'`, **`enabledBy: P`** |
+| 5 | `setModuleCommandAccess(..., true)` | the instant hide/restrict, if `P`'s application has a token |
+| 6 | BCCM | the command change is queued, then pushed |
+| 7 | **restart the profiles hosting `G`** | `P`'s runtime rebuilds from `modulesBoundTo`, which now keeps `hello-world` |
+
+**Why step 0 is required, and this is the part that reads backwards at first.** An untouched standard
+module is enabled by the tier default, and an enabled module with no enabler recorded resolves to the
+**internal profile**. So a persona cannot take an untouched standard module — it is already the
+internal profile's, and her install is refused as occupied. That is the operator's own rule: *whichever
+profile is in the guild first holds the standard modules.* The module has to be **released** (disabled,
+which nulls the enabler and drops the claim) before another profile may take it.
+
+**And the converse holds too.** If the persona is added first and takes `hello-world` (§7.3 with the
+roles swapped), the internal profile's deployer asks `resolveCommandOwner` per module, is told `'main'`
+for everything except that one, and registers that set — it does **not** get a standard module a
+persona already holds, "default enabled" notwithstanding.
+
+### 7.4 A persona disables her own module
+
+**Setup.** `P` holds `hello-world` (§7.3) and opens the module card, then presses the trash control.
+
+| Step | Read / write | Value |
+| --- | --- | --- |
+| 1 | `guild_module_states` upsert | `enabled: false`, `state: 'disabled'`, **`enabledBy: null`** |
+| 2 | `unbindModule(G, hello-world)` | the binding is released — the claim does not outlive the install |
+| 3 | `setModuleCommandAccess(..., false)` | the instant hide, if a token exists |
+| 4 | BCCM | deregistration queued and pushed |
+| 5 | **restart the profiles hosting `G`** | `P` rebuilds without `hello-world`; she stops answering it |
+
+**After this.** `resolveCommandOwner(G, 'hello-world')` → the module is **disabled** → **nothing**. Held
+by nobody. `P`'s `/modules` no longer lists it, and the internal profile can install it.
+
+### 7.5 The internal profile installs what a persona just gave up
+
+Continuing 7.4: the internal profile selects `hello-world`.
+
+| Step | Value |
+| --- | --- |
+| `resolveCommandOwner` | `undefined` — disabled, so unheld |
+| clear a stale binding | **releases `P`'s binding if one somehow survived** — this is the guard that stops a stale claim from reading live the instant this install enables the module |
+| claim | not taken — the internal profile does not claim |
+| state upsert | `enabled: true`, `state: 'active'`, **`enabledBy: 'main'`** |
+| outcome | owner is `'main'`; `P`'s listing excludes it and her runtime does not register it |
+
+**This sequence is the one that was broken for three attempts.** The uninstall released the binding
+but the install did not clear one, so a stale binding became live again the moment the install enabled
+the module — and the module the internal profile had just installed appeared under the persona.
+
+### 7.6 A Twill unbind
+
+`DELETE /twill/personas/:id/bindings/hello-world`, called by the operator rather than through Discord.
+
+1. the persona is looked up; 404 if unknown;
+2. the live binding is looked up; 404 if none;
+3. **the same `uninstallModule` the in-app control calls** runs the whole of §7.4 — state, claim,
+   instant access, BCCM, restart.
+
+It used to release the binding and stop. The rest of the chain was missing, so her commands stayed
+registered and her runtime kept serving them.
+
+### 7.7 A credential rotation
+
+`POST /twill/personas/:id/credentials` with a new bot token.
+
+1. the new token is verified as belonging to **her** application, then sealed; a digest is stored;
+2. the old sealed value is replaced;
+3. **her runtime restarts.**
+
+Step 3 is not optional: the runtime holds the *previous* token in a live gateway connection. Without
+the restart she keeps running on a credential that has been replaced.
+
+### 7.8 A marketplace module
+
+Same shape as §7.3, with three differences: `defaultEnabledForTier('marketplace')` is **false**, so an
+untouched marketplace module reads *off*; the manifest must declare a `marketplaceCategory` or tier
+validation rejects it; and the marketplace side carries a `builds` row whose `validationStatus` is
+visible in the readout.
+
+### 7.9 A core module
+
+`browse`, `dashboard`, `health` and the rest. `resolveCommandOwner` answers **`'shared'` before
+anything else is read** — no binding, no row, no enabler changes that. It cannot be disabled (the row
+is never consulted for it), it is never a profile's, and it is registered globally rather than
+per-guild.
+
+### 7.10 A stale claim, and how it is healed
+
+**Setup.** A binding exists for `hello-world` but the module is disabled — the state left behind by
+the old uninstall, which released nothing.
+
+| Surface | What it does | Result |
+| --- | --- | --- |
+| `resolveCommandOwner` | disabled → **nothing** | the module is free |
+| `modulesBoundTo` at boot | for each of her bindings, ask the owner; if it is not her, **release it** and log `persona-binding-reconciled` | the stale binding is gone |
+| The module-chain readout | reports the state, the enabler, the binding and the resolved owner **raw** | the disagreement is visible before it is acted on |
+
+The reconciliation is why an operator does not have to repair the database by hand: a binding whose
+module is disabled is dropped at the one place bindings are read.
+
+### 7.11 No command-permission token for a profile
+
+**Setup.** `P` holds `hello-world`. No token was ever authorized for her application.
+
+1. the state is written, the binding is taken, the BCCM deregistration is queued and pushed — **all of
+   it happens**;
+2. only the **instant** hide/restrict is skipped, because it needs a user OAuth2 token for **her**
+   application and a bot token is rejected on that endpoint;
+3. the readout reports `commandPermissionToken: "missing"` for the module she holds, so the gap is
+   visible rather than inferred;
+4. the boot reports `command-access-instant-disable { envFallback, storedApplications }` — the
+   applications that *do* hold a token.
+
+### 7.12 Two profiles answering the same command
+
+The defect this document exists to make impossible to miss.
+
+**What was wrong.** The runtime built a profile's command set from the **raw bindings**, while the
+deployer, `/browse`, the install path and the ownership read all used `resolveCommandOwner`. Two
+sources for one fact: a module the ownership read had given to the internal profile was still
+registered by the persona, and **both bots answered it**.
+
+**What happens now.** `modulesBoundTo` asks `resolveCommandOwner` — the same read everything else
+asks. One holder per guild-scoped module, and every surface agrees on who that is.
+
+**How you would catch a recurrence.** `GET /twill/guilds/:guildId/module-chain`: the `owner` field is
+what the system decided, and `state.enabledBy` and `binding.personaId` are the raw inputs. If they
+disagree, the readout says so instead of one surface quietly winning.
+
+## 8. How to see it
 
 `GET /twill/guilds/:guildId/module-chain` reports every module's whole chain raw: tier, state row,
 enabling profile, binding, resolved owner, build state, the holder's registration status, and whether
 the holder can disable instantly. It **decides nothing** — the disagreement between rows is the answer.
 
-## 8. The gaps, stated rather than smoothed
+## 9. The gaps, stated rather than smoothed
 
 - **A profile going online and offline on a short loop.** The runtime has no timer, so something is
   restarting it. The strongest suspect is the restart a module change now performs, if a module change
