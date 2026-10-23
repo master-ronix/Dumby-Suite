@@ -588,6 +588,31 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   // `false`, which leaves ownership UNANSWERED rather than guessed — the previous behaviour.
   let moduleEnabledForOwnership:
     ((guildId: string, moduleSlug: string) => Promise<boolean>) | undefined;
+  /**
+   * A module change alters what a profile may OFFER, so the profiles hosting it must be RESTARTED.
+   *
+   * A profile registers its command set when its runtime starts. Nothing reloaded that runtime when a
+   * module was installed or disabled, so the profile went on serving the set it had registered at
+   * boot — which is how a module that had been disabled for a profile kept answering from it, and how
+   * the same module could appear to be held by two profiles at once. The runtime's own `reloadPersona`
+   * stops and restarts the profile with a freshly built registry; this calls it for everyone bound to
+   * the guild whose modules just changed.
+   */
+  const reloadPersonasForGuild = async (guildId: string | null, reason: string): Promise<void> => {
+    if (guildId === null || guildId === '') return;
+    const runtime = personaRuntimeRef;
+    if (runtime === undefined) return;
+    for (const persona of await personaIdentities.list()) {
+      if (persona.boundGuildId !== guildId) continue;
+      await runtime.reloadPersona(persona as never);
+      logger.info('persona-reloaded-after-module-change', {
+        personaId: persona.id,
+        guildId,
+        reason,
+      });
+    }
+  };
+
   const personaBindingService = new PersonaCommandBindingService(
     personaIdentities,
     personaBindings,
@@ -1196,6 +1221,8 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     // `deployForGuild` re-registers this guild's whole scoped set, which is exactly what has to agree
     // with the module list. A failure is logged, never fatal: the module IS installed either way.
     await runBccmForModuleChange(bccmScopeOf(acting), `install:${moduleId}`);
+    // …and RESTART the profiles hosting this guild, so the set they offer matches what they now hold.
+    await reloadPersonasForGuild(guildId, `install:${moduleId}`);
     logger.info('marketplace-module-installed', { moduleId, guildId, userId });
   };
   // UR-20261011-010 — the detail card's uninstall/disable control disables the module for the guild
@@ -1230,6 +1257,9 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     // …and DEREGISTER it, for the same reason: a disabled module whose command stays registered is a
     // command the member can see and that the bot then refuses.
     await runBccmForModuleChange(bccmScopeOf(acting), `uninstall:${moduleId}`);
+    // The half that was missing: without this the profile kept serving the module it had just given
+    // up, until a process restart.
+    await reloadPersonasForGuild(guildId, `uninstall:${moduleId}`);
     logger.info('module-uninstalled', { moduleId, guildId, userId });
   };
 
