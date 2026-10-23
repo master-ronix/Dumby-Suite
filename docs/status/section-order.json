@@ -97,7 +97,8 @@
       "ci-cd-pipeline.md",
       "infrastructure-deployment.md",
       "versioning-release-migration.md",
-      "troubleshooting-operational-runbooks.md"
+      "troubleshooting-operational-runbooks.md",
+      "module-lifecycle.md"
     ],
     "spec/modules": [
       "module-anatomy-manifest.md",

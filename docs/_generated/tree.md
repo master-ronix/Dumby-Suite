@@ -151,6 +151,7 @@
 - spec/lifecycle/developer-experience-tooling.md
 - spec/lifecycle/development-workflow.md
 - spec/lifecycle/infrastructure-deployment.md
+- spec/lifecycle/module-lifecycle.md
 - spec/lifecycle/testing-architecture-qa.md
 - spec/lifecycle/troubleshooting-operational-runbooks.md
 - spec/lifecycle/versioning-release-migration.md
