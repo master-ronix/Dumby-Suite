@@ -49,6 +49,11 @@ export interface PersonaClient {
    */
   on?(event: 'interactionCreate', handler: (interaction: unknown) => void): unknown;
   /**
+   * Detach a handler. Needed so a command REFRESH can re-attach the dispatch path to a freshly built
+   * registry without leaving the old handler listening — and without a reconnect.
+   */
+  off?(event: 'interactionCreate', handler: (interaction: unknown) => void): unknown;
+  /**
    * UR-20261012-081 — apply the bot's Discord presence. Optional so a test double need not implement
    * it; absent, a persona simply keeps Discord's default presence.
    */
@@ -237,6 +242,10 @@ export class PersonaRuntime {
   private readonly clients = new Map<string, PersonaClient>();
   /** What /health needs beyond the client: the registry she runs, and when she came up. */
   private readonly moduleSlugsOf = new Map<string, readonly string[]>();
+  /** The registry each profile is CURRENTLY dispatching against, swapped in place on a refresh. */
+  private readonly registries = new Map<string, CommandRegistry>();
+  /** The handler attached to each profile's client, kept so it can be detached on a refresh. */
+  private readonly handlers = new Map<string, (interaction: unknown) => void>();
   private readonly startedAt = new Map<string, number>();
   private readonly applicationOf = new Map<string, string>();
 
@@ -345,8 +354,11 @@ export class PersonaRuntime {
         const deployed = await this.deps.deployCommands(persona, token, registry);
         // UR-20261012-043 — attach the dispatch path BEFORE login so no early interaction is missed.
         if (this.deps.createInteractionHandler !== undefined && client.on !== undefined) {
-          client.on('interactionCreate', this.deps.createInteractionHandler(persona, registry));
+          const handler = this.deps.createInteractionHandler(persona, registry);
+          client.on('interactionCreate', handler);
+          this.handlers.set(persona.id, handler);
         }
+        this.registries.set(persona.id, registry);
         await client.login(token);
         // UR-20261012-057 — after login, register the framework icons on this persona's application.
         // Non-fatal: a failure leaves the unicode fallback in place rather than stopping the persona.
@@ -441,6 +453,8 @@ export class PersonaRuntime {
       }
       this.clients.delete(persona.id);
       this.moduleSlugsOf.delete(persona.id);
+      this.registries.delete(persona.id);
+      this.handlers.delete(persona.id);
       this.startedAt.delete(persona.id);
       this.applicationOf.delete(persona.id);
     }
@@ -479,6 +493,49 @@ export class PersonaRuntime {
    * Returns the start result, or `undefined` when the row no longer matches (for example she was
    * revoked between the write and the reload) — an absent answer rather than a fabricated one.
    */
+  /**
+   * Re-register a profile's commands WITHOUT touching its gateway connection.
+   *
+   * Assigning a module to a profile changes which commands it OFFERS. That is a backend state change:
+   * it does not change who the profile is, or how it connects, so it must not cost a reconnect. This
+   * rebuilds the registry, pushes the new command set over REST with the profile's own token, swaps the
+   * registry the dispatch path reads, and re-attaches the handler to it. `login` is never called and
+   * the client is never destroyed, so the profile stays online throughout.
+   *
+   * Returns undefined when the profile is not hosted here — there is nothing to refresh, and nothing
+   * to take offline either.
+   */
+  async refreshCommands(persona: RuntimePersona): Promise<{ commands: number } | undefined> {
+    const client = this.clients.get(persona.id);
+    if (client === undefined) return undefined;
+    const token = this.deps.openBotToken(persona.botTokenSealed);
+    const moduleSlugs = await this.deps.modulesBoundTo(persona.id);
+    const registry = this.deps.buildRegistry(moduleSlugs, {
+      kind: 'persona',
+      id: persona.id,
+      applicationId: persona.discordApplicationId,
+    });
+    const deployed = await this.deps.deployCommands(persona, token, registry);
+
+    // Detach the old handler BEFORE attaching the new one: two listeners would dispatch every
+    // interaction twice, once against a registry the profile no longer holds.
+    const previous = this.handlers.get(persona.id);
+    if (previous !== undefined && client.off !== undefined) {
+      client.off('interactionCreate', previous);
+    }
+    if (this.deps.createInteractionHandler !== undefined && client.on !== undefined) {
+      const handler = this.deps.createInteractionHandler(persona, registry);
+      client.on('interactionCreate', handler);
+      this.handlers.set(persona.id, handler);
+    }
+    this.registries.set(persona.id, registry);
+    this.moduleSlugsOf.set(persona.id, moduleSlugs);
+    this.deps.logger.info(
+      `persona-commands-refreshed id=${persona.id} commands=${deployed} modules=${moduleSlugs.length} — no reconnect`,
+    );
+    return { commands: deployed };
+  }
+
   async reloadPersona(persona: RuntimePersona): Promise<PersonaStartResult | undefined> {
     await this.stopPersona(persona);
     const results = await this.start((candidate) => candidate.id === persona.id);
@@ -506,6 +563,8 @@ export class PersonaRuntime {
     }
     this.clients.clear();
     this.moduleSlugsOf.clear();
+    this.registries.clear();
+    this.handlers.clear();
     this.startedAt.clear();
     this.applicationOf.clear();
   }

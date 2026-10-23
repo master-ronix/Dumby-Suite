@@ -72,6 +72,7 @@ function makeRuntime(personas: RuntimePersona[], over: Record<string, unknown> =
   const login = vi.fn(async () => 'ok');
   const destroy = vi.fn(async () => undefined);
   const on = vi.fn();
+  const off = vi.fn();
   const deployCommands = vi.fn(async () => 3);
   const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
   const runtime = new PersonaRuntime({
@@ -79,12 +80,12 @@ function makeRuntime(personas: RuntimePersona[], over: Record<string, unknown> =
     openBotToken: vi.fn(() => 'bot-token'),
     modulesBoundTo: vi.fn(async () => ['persona']),
     buildRegistry: vi.fn(() => registryWith(['persona', 'persona', 'core'])),
-    createClient: vi.fn(() => ({ login, destroy, on })),
+    createClient: vi.fn(() => ({ login, destroy, on, off })),
     deployCommands,
     logger: logger as never,
     ...over,
   } as never);
-  return { runtime, login, destroy, deployCommands, logger, on };
+  return { runtime, login, destroy, deployCommands, logger, on, off };
 }
 
 describe('PersonaRuntime.start', () => {
@@ -502,5 +503,40 @@ describe('the runtime answers for the profile /health must report (Q1-Q4)', () =
     await runtime.start();
     await runtime.stopPersona(persona() as never);
     expect(runtime.runtimeFor('app-9')).toBeUndefined();
+  });
+});
+
+describe('refreshCommands — a module change must NOT reconnect', () => {
+  test('it re-deploys and swaps the registry with no login and no destroy', async () => {
+    // Assigning a module changes which commands a profile OFFERS. It does not change who the profile
+    // is or how it connects, so it must cost a REST call — never a stop and a start.
+    const { runtime, login, destroy, deployCommands } = makeRuntime([persona()]);
+    await runtime.start();
+    const loginsBefore = login.mock.calls.length;
+    const destroysBefore = destroy.mock.calls.length;
+    const deploysBefore = deployCommands.mock.calls.length;
+
+    await runtime.refreshCommands(persona());
+
+    expect(login.mock.calls.length).toBe(loginsBefore); // the gateway is untouched
+    expect(destroy.mock.calls.length).toBe(destroysBefore); // the client is never dropped
+    expect(deployCommands.mock.calls.length).toBe(deploysBefore + 1); // the commands are re-pushed
+  });
+
+  test('it DETACHES the previous handler before attaching the new one', async () => {
+    // Two listeners would dispatch every interaction twice — once against a registry the profile no
+    // longer holds.
+    const { runtime, on, off } = makeRuntime([persona()], {
+      createInteractionHandler: vi.fn(() => vi.fn()),
+    });
+    await runtime.start();
+    await runtime.refreshCommands(persona());
+    expect(off).toHaveBeenCalledTimes(1);
+    expect(on.mock.calls.length).toBe(2); // start, then the refresh
+  });
+
+  test('a profile that is not hosted here has nothing to refresh, and nothing to take offline', async () => {
+    const { runtime } = makeRuntime([]);
+    expect(await runtime.refreshCommands(persona())).toBeUndefined();
   });
 });

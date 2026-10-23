@@ -590,19 +590,17 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   let moduleEnabledForOwnership:
     ((guildId: string, moduleSlug: string) => Promise<boolean>) | undefined;
   /**
-   * Restart ONLY the profiles whose hold on THIS module changed.
+   * Re-register the commands of the profiles whose hold on THIS module changed — WITHOUT a reconnect.
    *
-   * A profile registers its command set when its runtime STARTS, so a module change must restart the
-   * profiles it affects — otherwise a profile keeps serving a set it no longer holds, which is how two
-   * profiles came to answer one command.
+   * Assigning a module to a profile changes which commands it OFFERS. That is a backend state change:
+   * it does not change who the profile is, or how it connects. So it must cost a REST call, not a
+   * restart. A restart is a stop and a start — the profile visibly drops offline and reconnects — and
+   * doing that for a module assignment is indefensible.
    *
-   * But restarting EVERY profile bound to the guild, on EVERY change, took the whole fleet offline and
-   * back for a module none of them had anything to do with. A restart is a stop and a start: the
-   * profile visibly drops offline and reconnects. The affected profiles are exactly those whose
-   * ownership of this module changed — the one that held it before, and the one that holds it now.
-   * The internal profile and the shared tiers are not hosted here, so they are never restarted.
+   * Only the profiles whose ownership of this module moved are touched: the one that held it before,
+   * and the one that holds it now. The internal profile and the shared tiers are not hosted here.
    */
-  const restartProfilesForModuleChange = async (
+  const refreshCommandsForModuleChange = async (
     guildId: string | null,
     previousOwner: string | undefined,
     nextOwner: string | undefined,
@@ -619,8 +617,8 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     if (affected.size === 0) return;
     for (const persona of await personaIdentities.list()) {
       if (persona.boundGuildId !== guildId || !affected.has(persona.id)) continue;
-      await runtime.reloadPersona(persona as never);
-      logger.info('persona-reloaded-after-module-change', {
+      await runtime.refreshCommands(persona as never);
+      logger.info('persona-commands-refreshed-after-module-change', {
         personaId: persona.id,
         guildId,
         reason,
@@ -1232,7 +1230,7 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     // with the module list. A failure is logged, never fatal: the module IS installed either way.
     await runBccmForModuleChange(bccmScopeOf(acting), `install:${moduleId}`);
     // …and RESTART the profiles hosting this guild, so the set they offer matches what they now hold.
-    await restartProfilesForModuleChange(
+    await refreshCommandsForModuleChange(
       guildId,
       owner,
       acting?.id ?? 'main',
@@ -1277,7 +1275,7 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     await runBccmForModuleChange(bccmScopeOf(acting), `uninstall:${moduleId}`);
     // The half that was missing: without this the profile kept serving the module it had just given
     // up, until a process restart.
-    await restartProfilesForModuleChange(guildId, ownerBefore, undefined, `uninstall:${moduleId}`);
+    await refreshCommandsForModuleChange(guildId, ownerBefore, undefined, `uninstall:${moduleId}`);
     logger.info('module-uninstalled', { moduleId, guildId, userId });
   };
 
