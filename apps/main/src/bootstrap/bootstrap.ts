@@ -1614,8 +1614,32 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
       const personaRuntime = new PersonaRuntime({
         listPersonas: () => personaIdentities.list(),
         openBotToken: (sealed) => openSealedText(sealed, personaRootKey),
-        modulesBoundTo: async (personaId) =>
-          (await personaBindings.listForPersona(personaId)).map((binding) => binding.moduleSlug),
+        // RECONCILE THE CLAIM. A binding is a claim on a module, and a claim can outlive its install:
+        // any path that disabled the module without releasing it left the binding on record, and this
+        // read reported it as live — so the module was taken away from the profile entitled to install
+        // it and handed to a profile that no longer held it. A module the guild has DISABLED is held by
+        // nobody, which is the operator's own rule; the stale claim is dropped HERE, at the one place
+        // that reads bindings, and the module is genuinely free again.
+        modulesBoundTo: async (personaId) => {
+          const bound = await personaBindings.listForPersona(personaId);
+          const guildId =
+            (await personaIdentities.list()).find((p) => p.id === personaId)?.boundGuildId ?? '';
+          const live: string[] = [];
+          for (const binding of bound) {
+            if (guildId !== '' && (await isModuleEnabledForGuild(guildId, binding.moduleSlug))) {
+              live.push(binding.moduleSlug);
+            } else {
+              await personaBindingService.unbindModule(guildId, binding.moduleSlug);
+              logger.warn('persona-binding-reconciled', {
+                personaId,
+                guildId,
+                moduleSlug: binding.moduleSlug,
+                reason: 'bound but not enabled — the claim had outlived its install',
+              });
+            }
+          }
+          return live;
+        },
         // UR-20261012-054 — the FULL registry, not a filtered one.
         //
         // A persona registers the SAME command set as the main bot. What it may ANSWER is decided by

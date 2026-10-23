@@ -9,15 +9,20 @@ import {
   customEmojiParts,
   customEmojiRef,
   DEFAULT_EMOJI_SCOPE,
-  METRIC_HEAP_ICON_NAME,
+  METRIC_CACHE_ICON_NAME,
+  METRIC_DATABASE_ICON_NAME,
+  METRIC_GUILD_ICON_NAME,
+  METRIC_HEAP_TOTAL_ICON_NAME,
+  METRIC_HEAP_USED_ICON_NAME,
   METRIC_LOADED_ICON_NAME,
   METRIC_MEMORY_ICON_NAME,
   METRIC_NODE_ICON_NAME,
   METRIC_PING_ICON_NAME,
+  METRIC_SOURCE_ICON_NAME,
+  METRIC_USERS_ICON_NAME,
   METRIC_PROFILE_ICON_NAME,
   METRIC_SHARD_ICON_NAME,
   METRIC_STATUS_ICON_NAME,
-  METRIC_TOTAL_ICON_NAME,
   METRIC_UPTIME_ICON_NAME,
   STATUS_DEGRADED_ICON_NAME,
   STATUS_OFFLINE_ICON_NAME,
@@ -59,20 +64,22 @@ const STATUS_GLYPH: Readonly<Record<string, string>> = {
  * makes the page scannable: find the clock, find the uptime.
  */
 const METRIC_MARK: Readonly<Record<string, string>> = {
+  // One mark per FIELD, not one per shape: two rows that carry the same mark read as the same row.
   'Gateway Ping': METRIC_PING_ICON_NAME,
   'Gateway Status': METRIC_STATUS_ICON_NAME,
-  'PostgreSQL Status': METRIC_STATUS_ICON_NAME,
-  'Redis Status': METRIC_STATUS_ICON_NAME,
   'Shard Count': METRIC_SHARD_ICON_NAME,
   Uptime: METRIC_UPTIME_ICON_NAME,
   'Host Uptime': METRIC_UPTIME_ICON_NAME,
   'Node.js Version': METRIC_NODE_ICON_NAME,
   'Memory Usage': METRIC_MEMORY_ICON_NAME,
-  'Heap Used': METRIC_HEAP_ICON_NAME,
-  'Heap Total': METRIC_HEAP_ICON_NAME,
-  'Total Guilds': METRIC_TOTAL_ICON_NAME,
-  'Total Users': METRIC_TOTAL_ICON_NAME,
+  'Heap Used': METRIC_HEAP_USED_ICON_NAME,
+  'Heap Total': METRIC_HEAP_TOTAL_ICON_NAME,
+  'Total Guilds': METRIC_GUILD_ICON_NAME,
+  'Total Users': METRIC_USERS_ICON_NAME,
   'Total Loaded': METRIC_LOADED_ICON_NAME,
+  Source: METRIC_SOURCE_ICON_NAME,
+  'PostgreSQL Status': METRIC_DATABASE_ICON_NAME,
+  'Redis Status': METRIC_CACHE_ICON_NAME,
   'Core-tier': TIER_CORE_ICON_NAME,
   'Admin-tier': TIER_ADMIN_ICON_NAME,
   'Standard-tier': TIER_STANDARD_ICON_NAME,
@@ -146,9 +153,12 @@ export function healthBlocks(
   // The status headline, with the Refresh control in-line — a Section renders its single accessory
   // on the right of the text line.
   const headline = `${dot(status, emojiScope)} **${statusLabel}**`;
+  // The headline IS the outcome. The summary is the same fact in the same words — the page-data
+  // sets it from the status label so M and C have an outcome line — so rendering it here as well
+  // printed "Operational" twice. A page that says everything twice reads as a mess.
   blocks.push({
     kind: 'section',
-    content: summary === '' ? headline : `${headline}\n-# ${summary}`,
+    content: summary === '' || summary === statusLabel ? headline : `${headline}\n-# ${summary}`,
     accessory: {
       customId: `dumby:act:${invokerId}:refresh:health`,
       label: 'Refresh',
