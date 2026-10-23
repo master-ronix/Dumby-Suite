@@ -632,11 +632,6 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   // Is the INSTANT command-permissions half armed? It is inert without a token, and "is it set?" was
   // answered by guessing. It must be the MAIN BOT's own token (BOT_TOKEN) — the endpoint is
   // `applications/<app>/guilds/<guild>/commands/<id>/permissions`, authenticated as the application.
-  logger.info('command-access-instant-disable', {
-    armed: config.get('DISCORD_COMMAND_PERMISSIONS_TOKEN') !== '',
-    note: 'set DISCORD_COMMAND_PERMISSIONS_TOKEN to the main bot token to arm it; BCCM deregistration applies regardless',
-  });
-
   const guildConfigService = new GuildConfigService(
     new PostgresGuildConfigStore(db.knex),
     cache,
@@ -1340,6 +1335,21 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     refresher: oauth2Client,
     logger,
   });
+
+  // The instant command hide/restrict needs a USER OAuth2 token per APPLICATION. Two sources: the
+  // dashboard-authorized store (any application) and one env value (the internal profile only). The
+  // env alone says nothing about the fleet, so report BOTH rather than calling the mechanism armed or
+  // not on the strength of one variable.
+  try {
+    const stored = await commandPermissionTokens.listStoredApplications();
+    logger.info('command-access-instant-disable', {
+      envFallback: config.get('DISCORD_COMMAND_PERMISSIONS_TOKEN') !== '',
+      storedApplications: stored,
+      note: 'a profile can hide a command instantly only where it has a stored token; BCCM deregistration applies regardless',
+    });
+  } catch (err) {
+    logger.warn('command-access-instant-disable-unreadable', { error: String(err) });
+  }
   scheduler.register({
     name: 'command-permission-token-refresh',
     cron: '0 */6 * * *',
@@ -2214,7 +2224,16 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
             resolveOwner: (guildId, moduleSlug) =>
               personaBindingService.resolveCommandOwner(guildId, moduleSlug),
             listPersonaStatus: async () =>
-              new Map((await personaIdentities.list()).map((p) => [p.id, p.status])),
+              new Map(
+                (await personaIdentities.list()).map((p) => [
+                  p.id,
+                  { status: p.status, applicationId: p.discordApplicationId },
+                ]),
+              ),
+            // The instant disable is a token per APPLICATION and per GUILD. Asking the store is the
+            // only honest answer: the env fallback covers one application, not the fleet.
+            hasCommandPermissionToken: async (applicationId, guildId) =>
+              (await commandPermissionTokens.status(applicationId, guildId)) === 'active',
             logger,
           }),
           // UR-20261012-083 — a revoke stops the running persona, so the delete takes effect NOW

@@ -73,6 +73,35 @@ Every persona must register **that same redirect URI** on her own Discord applic
 value, registered once per persona, is what makes the flow possible for all of them without a
 per-persona field.
 
+### Runbook — minting one for a profile
+
+Do this once per profile whose commands must be hideable instantly. It is the only per-profile step
+that cannot be automated, because it is a consent.
+
+1. **Register the redirect on HER application.** Discord developer portal → her application → OAuth2 →
+   Redirects → add the value of `OAUTH_REDIRECT_URI`. Discord refuses a redirect the application has
+   not declared, so this must be exact. It is the same value for every profile.
+2. **Open the authorize URL** as a user who may edit that application's commands:
+
+   ```
+   /auth/authorize?app=<her discordApplicationId>&guild=<the guild to authorize for>
+   ```
+
+   `app` names the application; the flow resolves HER client from the sealed `oauthClientSecret`, so
+   the consent is granted on her application, not the platform's. It asks for
+   `applications.commands.permissions.update` and nothing else.
+3. **Complete consent.** The callback exchanges the code and stores the token, sealed, with its refresh
+   credential. From then on the store refreshes it before expiry without anyone intervening.
+4. **Check it took.** Either:
+   - the boot log's `command-access-instant-disable { storedApplications }` — the list of applications
+     that hold a token; or
+   - `GET /twill/guilds/:guildId/module-chain` — the module she holds reports
+     `commandPermissionToken: "available"`.
+
+If it reports `missing`, step 1 was skipped, the redirect does not match, or the consent was never
+granted. If it reports `unknown`, no reader is wired on that host — which is not the same as absent,
+and the chain says so rather than assuming.
+
 ### A Twill unbind is a DISABLE, not just a release
 
 `DELETE /twill/personas/:personaId/bindings/:moduleSlug` runs the **whole** chain the in-app uninstall

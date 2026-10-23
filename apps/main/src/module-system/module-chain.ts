@@ -32,8 +32,19 @@ export interface ModuleChainDeps {
   moduleRegistry: ModuleRegistry;
   /** The ONE ownership read — the answer every surface is supposed to give. */
   resolveOwner: (guildId: string, moduleSlug: string) => Promise<string | undefined>;
-  /** Profile id → its registration status, so a held module can name the holder's standing. */
-  listPersonaStatus: () => Promise<ReadonlyMap<string, string>>;
+  /**
+   * Profile id → its registration status AND its application id. The application id is needed because
+   * the instant command-permissions disable is a token per APPLICATION, not per profile.
+   */
+  listPersonaStatus: () => Promise<
+    ReadonlyMap<string, { readonly status: string; readonly applicationId: string }>
+  >;
+  /**
+   * Whether an application can hide a command INSTANTLY in this guild — i.e. a command-permission
+   * token is stored for it. Absent, the field reads 'unknown' rather than guessing.
+   */
+  hasCommandPermissionToken?:
+    ((applicationId: string, guildId: string) => Promise<boolean>) | undefined;
   logger: Logger;
 }
 
@@ -63,6 +74,11 @@ export interface ModuleChainEntry {
   readonly build: ModuleBuildRow | null;
   /** The registration status of the profile that holds it, when the holder is a profile. */
   readonly ownerStatus: string | undefined;
+  /**
+   * Whether the holder can hide this module's commands INSTANTLY in this guild. 'n/a' for a shared
+   * tier, 'unknown' when no reader is wired — so the answer is never silently assumed.
+   */
+  readonly commandPermissionToken: 'available' | 'missing' | 'n/a' | 'unknown';
 }
 
 export interface ModuleChain {
@@ -71,7 +87,14 @@ export interface ModuleChain {
 }
 
 export function makeModuleChain(deps: ModuleChainDeps): ModuleChain {
-  const { knex, moduleRegistry, resolveOwner, listPersonaStatus, logger } = deps;
+  const {
+    knex,
+    moduleRegistry,
+    resolveOwner,
+    listPersonaStatus,
+    hasCommandPermissionToken,
+    logger,
+  } = deps;
 
   const chainForGuild = async (guildId: string): Promise<readonly ModuleChainEntry[]> => {
     // One read per table, not one per module: a diagnostic that runs N queries per module is a
@@ -90,7 +113,7 @@ export function makeModuleChain(deps: ModuleChainDeps): ModuleChain {
       validationStatus?: unknown;
       promotedAt?: unknown;
     }> = [];
-    let statuses: ReadonlyMap<string, string> = new Map();
+    let statuses: ReadonlyMap<string, { status: string; applicationId: string }> = new Map();
 
     try {
       states = await knex('guild_module_states')
@@ -161,6 +184,19 @@ export function makeModuleChain(deps: ModuleChainDeps): ModuleChain {
       const moduleId = module.manifest.name;
       const owner = (await resolveOwner(guildId, moduleId)) ?? 'main';
       const personaId = bindingOf.get(moduleId);
+      // The instant disable is per APPLICATION and per GUILD, so the answer depends on who holds it.
+      const holder = statuses.get(owner);
+      let commandPermissionToken: ModuleChainEntry['commandPermissionToken'] = 'n/a';
+      if (owner !== 'main' && owner !== 'shared') {
+        commandPermissionToken =
+          hasCommandPermissionToken === undefined || holder === undefined
+            ? 'unknown'
+            : (await hasCommandPermissionToken(holder.applicationId, guildId))
+              ? 'available'
+              : 'missing';
+      } else if (owner === 'main' && hasCommandPermissionToken !== undefined) {
+        commandPermissionToken = 'unknown';
+      }
       entries.push({
         moduleId,
         displayName: module.manifest.ui?.displayName ?? moduleId,
@@ -170,7 +206,8 @@ export function makeModuleChain(deps: ModuleChainDeps): ModuleChain {
         owner,
         build: buildOf.get(moduleId) ?? null,
         // Only meaningful when a PROFILE holds it: 'main' is not a row in the identity table.
-        ownerStatus: owner === 'main' || owner === 'shared' ? undefined : statuses.get(owner),
+        ownerStatus: holder?.status,
+        commandPermissionToken,
       });
     }
     return entries;

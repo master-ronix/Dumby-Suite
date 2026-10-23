@@ -180,6 +180,18 @@ export class CommandPermissionTokenService {
     return record.status;
   }
 
+  /**
+   * The applications that currently hold a token.
+   *
+   * The instant command hide/restrict is a token per APPLICATION, so "is this profile able to do it?"
+   * is a question about a specific application — not about one environment variable. This answers it
+   * for the boot report and the module-chain readout.
+   */
+  async listStoredApplications(): Promise<readonly string[]> {
+    const records = await this.store.listRefreshable();
+    return [...new Set(records.map((record) => record.applicationId))].sort();
+  }
+
   /** Refresh every active token nearing expiry. Returns how many were refreshed / revoked. */
   async refreshDue(): Promise<{ refreshed: number; revoked: number }> {
     const records = await this.store.listRefreshable();

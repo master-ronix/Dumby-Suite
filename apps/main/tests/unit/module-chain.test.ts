@@ -67,7 +67,8 @@ describe('module chain — the whole decision, raw', () => {
         guild_persona_bindings: [{ moduleSlug: 'hello-world', personaId: 'persona-B' }],
       }),
       resolveOwner: async () => 'persona-C',
-      listPersonaStatus: async () => new Map([['persona-C', 'active']]),
+      listPersonaStatus: async () =>
+        new Map([['persona-C', { status: 'active', applicationId: 'app-C' }]]),
     });
     const [entry] = await chain.chainForGuild('g1');
     expect(entry?.state?.enabledBy).toBe('persona-A');
@@ -135,5 +136,45 @@ describe('module chain — the whole decision, raw', () => {
     });
     const [entry] = await chain.chainForGuild('g1');
     expect(entry?.displayName).toBe('Hello World');
+  });
+});
+
+describe('the chain says whether the holder can disable INSTANTLY', () => {
+  const withHolder = (token: boolean | undefined, applicationId = 'app-A') =>
+    build({
+      knex: knexWith({
+        guild_module_states: [
+          { moduleSlug: 'hello-world', enabled: true, state: 'active', enabledBy: 'persona-A' },
+        ],
+      }),
+      resolveOwner: async () => 'persona-A',
+      listPersonaStatus: async () => new Map([['persona-A', { status: 'active', applicationId }]]),
+      ...(token === undefined
+        ? {}
+        : { hasCommandPermissionToken: async (app: string) => app === applicationId && token }),
+    });
+
+  test('available when the holder has a stored token for this guild', async () => {
+    const [entry] = await withHolder(true).chainForGuild('g1');
+    expect(entry?.commandPermissionToken).toBe('available');
+  });
+
+  test('missing when it does not — the instant half is inert, and the chain says so', async () => {
+    const [entry] = await withHolder(false).chainForGuild('g1');
+    expect(entry?.commandPermissionToken).toBe('missing');
+  });
+
+  test('unknown, never assumed, when no reader is wired', async () => {
+    const [entry] = await withHolder(undefined).chainForGuild('g1');
+    expect(entry?.commandPermissionToken).toBe('unknown');
+  });
+
+  test('a shared tier is not a profile, so the question does not apply', async () => {
+    const chain = build({
+      moduleRegistry: registryWith([{ name: 'browse', tier: 'core' }]),
+      resolveOwner: async () => 'shared',
+    });
+    const [entry] = await chain.chainForGuild('g1');
+    expect(entry?.commandPermissionToken).toBe('n/a');
   });
 });
