@@ -348,9 +348,12 @@ the holder can disable instantly. It **decides nothing** — the disagreement be
 
 ## 9. The gaps, stated rather than smoothed
 
-- **A profile going online and offline on a short loop.** The runtime has no timer, so something is
-  restarting it. The strongest suspect is the restart a module change now performs, if a module change
-  is itself being triggered repeatedly. Not yet confirmed — it needs the runtime log.
+- **A profile going online and offline on a short loop — confirmed, and fixed.** The restart a module
+  change performs was restarting EVERY profile bound to the guild, on every change, including changes
+  to modules none of them held. A restart is a stop and a start, so the profile dropped offline and
+  reconnected each time. It is now scoped to the profiles whose ownership of the changed module
+  actually moved: the one that held it before, and the one that holds it now. The design is unchanged —
+  a profile must re-register when its set changes — only the blast radius was wrong.
 - **A persona's instant disable needs a user OAuth2 token**, per application, minted through
   `/auth/authorize?app=<her application id>`. Until that is done for her, only the BCCM applies.
 - **`enabledBy` is a single column.** If a module's enablement is ever legitimately shared between
