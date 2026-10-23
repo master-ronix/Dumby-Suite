@@ -253,6 +253,29 @@ export class CommandRouter {
           : 'Standard';
   }
 
+  /**
+   * A page's SHAPE, read from its data — never from the command that produced it.
+   *
+   * The router used to dispatch on `name === 'browse' | 'health' | 'modules' | 'persona' |
+   * 'dashboard'`, which made five modules special cases inside the renderer's own caller: a sixth
+   * module could not join without editing this file, and a module could not describe its own page at
+   * all. The grammar is global, so the DATA decides.
+   *
+   * The shapes are distinct by construction: health carries `groups`, persona carries `tiers`, the
+   * listing pages carry `pageTotal` (and their `modules`), the marketplace carries `modules` without
+   * one, and the dashboard carries `navigation` over module pages and no `modules` at all.
+   */
+  private pageShape(data: Readonly<Record<string, unknown>> | undefined): string | undefined {
+    if (data === undefined) return undefined;
+    if (Array.isArray(data['groups'])) return 'health';
+    if (Array.isArray(data['tiers'])) return 'persona';
+    if (Array.isArray(data['modules'])) {
+      return typeof data['pageTotal'] === 'number' ? 'modules' : 'browse';
+    }
+    if (Array.isArray(data['navigation'])) return 'dashboard';
+    return undefined;
+  }
+
   private dashboardNavEntries(
     data: Readonly<Record<string, unknown>> | undefined,
     scope: string,
@@ -508,7 +531,7 @@ export class CommandRouter {
         // install dropdown, the /modules listing, the persona control-plane board); the dashboard's
         // nav is Home/Next/Prev. Each block set attaches only when the page data carries its shape,
         // so a command that returns a plain render is left untouched.
-        ...(name === 'browse'
+        ...(this.pageShape(declaredPageData) === 'browse'
           ? {
               blocks: this.browseBlocks(
                 declaredPageData,
@@ -516,13 +539,13 @@ export class CommandRouter {
                 this.emojiScope(interaction),
               ),
             }
-          : name === 'health' && Array.isArray(declaredPageData?.['groups'])
+          : this.pageShape(declaredPageData) === 'health'
             ? {
                 blocks: healthBlocks(declaredPageData, interaction.user.id, {
                   applicationId: this.emojiScope(interaction),
                 }),
               }
-            : name === 'modules' && Array.isArray(declaredPageData?.['modules'])
+            : this.pageShape(declaredPageData) === 'modules'
               ? {
                   blocks: modulesBlocks(declaredPageData, interaction.user.id),
                   // item 6 / item 17 — /modules carries the SAME dial as the dashboard, below the
@@ -547,7 +570,7 @@ export class CommandRouter {
                     }),
                   ],
                 }
-              : name === 'persona' && Array.isArray(declaredPageData?.['tiers'])
+              : this.pageShape(declaredPageData) === 'persona'
                 ? {
                     // UR-20261012-029 — the persona setup control is offered ONLY to a guild admin.
                     blocks: personaBlocks(declaredPageData, interaction.user.id, {
@@ -556,7 +579,7 @@ export class CommandRouter {
                       applicationId: this.emojiScope(interaction),
                     }),
                   }
-                : name === 'dashboard'
+                : this.pageShape(declaredPageData) === 'dashboard'
                   ? {
                       // item 6 — the dashboard's navigation sits BELOW the footer, as a DIAL, not above
                       // it as buttons: it is a page-wide control, and the footer closes the content

@@ -202,3 +202,90 @@ describe('Mode D zone grammar', () => {
     expect(buttonRowIndex(inner)).toBe(-1);
   });
 });
+
+describe('the renderer owns the separators (item 1)', () => {
+  const renderer = new CoreRenderer();
+  const kinds = (message: { components: unknown[] }): string[] =>
+    (message.components[0] as { components: Array<{ type: number }> }).components.map((c) =>
+      c.type === 14 ? 'rule' : 'block',
+    );
+
+  test('a rule is inserted below media, so the next block never sits against it', () => {
+    const message = renderer.render({
+      surface: 'Page',
+      blocks: [
+        { kind: 'thumbnail', url: 'https://x/y.png' },
+        { kind: 'text', content: 'after the media' },
+      ],
+    });
+    // thumbnail → rule → text
+    expect(kinds(message).filter((k) => k === 'rule').length).toBeGreaterThanOrEqual(1);
+  });
+
+  test('separators are NEVER doubled', () => {
+    const message = renderer.render({
+      surface: 'Page',
+      blocks: [
+        { kind: 'text', content: 'one' },
+        { kind: 'thumbnail', url: 'https://x/y.png' },
+        { kind: 'text', content: 'two' },
+      ],
+    });
+    const k = kinds(message);
+    for (let i = 1; i < k.length; i += 1) {
+      expect(`${k[i - 1]},${k[i]}`).not.toBe('rule,rule');
+    }
+  });
+
+  test('blocks render in DECLARATION order', () => {
+    const message = renderer.render({
+      surface: 'Page',
+      blocks: [
+        { kind: 'text', content: 'first' },
+        { kind: 'text', content: 'second' },
+        { kind: 'text', content: 'third' },
+      ],
+    });
+    const texts = JSON.stringify(message);
+    expect(texts.indexOf('first')).toBeLessThan(texts.indexOf('second'));
+    expect(texts.indexOf('second')).toBeLessThan(texts.indexOf('third'));
+  });
+});
+
+describe('an invalid schema is INVALID, not rendered around (item 6)', () => {
+  const renderer = new CoreRenderer();
+  test('an unknown block kind is refused', () => {
+    expect(() =>
+      renderer.render({
+        surface: 'Page',
+        blocks: [{ kind: 'not-a-kind', content: 'x' } as never],
+      }),
+    ).toThrow();
+  });
+
+  test('a select with no options is refused', () => {
+    expect(() =>
+      renderer.render({
+        surface: 'Page',
+        blocks: [{ kind: 'select', customId: 'c', options: [], placeholder: 'pick' } as never],
+      }),
+    ).toThrow();
+  });
+
+  test('a well-formed page still renders', () => {
+    expect(() =>
+      renderer.render({
+        surface: 'Page',
+        blocks: [
+          { kind: 'text', content: 'fine' },
+          {
+            kind: 'select',
+            customId: 'c',
+            placeholder: 'pick',
+            options: [{ label: 'A', value: 'a' }],
+          },
+        ],
+      }),
+    ).not.toThrow();
+  });
+});

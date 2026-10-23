@@ -113,7 +113,9 @@ describe('CoreRenderer grammar', () => {
     expect(contents.some((content) => content.includes('Developed by'))).toBe(true);
   });
 
-  test('Mode M collapses long listings to the first section and a count', () => {
+  test('Mode M is a condensed PAGE — nothing is dropped', () => {
+    // The old form kept the FIRST section and appended "+N more", which threw the content away. A
+    // density loses resolution, never content.
     const message = renderer.render({
       surface: 'Modules',
       mode: 'M',
@@ -121,12 +123,31 @@ describe('CoreRenderer grammar', () => {
     });
 
     const contents = textContents(message);
-    expect(contents).toContain('first\n+2 more');
-    expect(contents).not.toContain('second');
+    const body = contents.find((content) => content.includes('first'));
+    expect(body).toContain('second');
+    expect(body).toContain('third');
     expect(contents.some((content) => content.includes('Developed by'))).toBe(true);
   });
 
-  test('Mode C renders a single condensed status line', () => {
+  test('Mode M keeps BLOCKS too, one compact line each', () => {
+    // M used to read `sections` alone, which a block-built page leaves empty — so /health, /browse
+    // and /modules collapsed to their surface name at M.
+    const message = renderer.render({
+      surface: 'Health',
+      mode: 'M',
+      blocks: [
+        { kind: 'text', content: '**Operational**' },
+        { kind: 'text', content: '**Discord API**\n-# Ping: 19ms' },
+      ],
+    });
+
+    const body = textContents(message).find((content) => content.includes('Operational'));
+    expect(body).toBeDefined();
+    expect(body).toContain('Discord API');
+    expect(body).toContain('Ping: 19ms');
+  });
+
+  test("Mode C is an OUTCOME — the module's own summary", () => {
     const message = renderer.render({
       surface: 'Health',
       mode: 'C',
@@ -134,10 +155,24 @@ describe('CoreRenderer grammar', () => {
     });
 
     const contents = textContents(message);
-    expect(contents.some((content) => content.startsWith('Health: all systems nominal'))).toBe(
-      true,
-    );
+    expect(contents).toContain('all systems nominal');
     expect(contents.some((content) => content.includes('Developed by'))).toBe(true);
+  });
+
+  test('Mode C adds at most ONE detail line — a result, not a page', () => {
+    const message = renderer.render({
+      surface: 'Health',
+      mode: 'C',
+      summary: 'Operational',
+      blocks: [
+        { kind: 'text', content: '**Discord API**\n-# Ping: 19ms' },
+        { kind: 'text', content: '**Cache**\n-# Connected' },
+      ],
+    });
+
+    const body = textContents(message).find((content) => content.includes('Operational'));
+    expect(body).toContain('Discord API');
+    expect(body).not.toContain('Cache');
   });
 
   test('mode changes density, never the reported surface', () => {

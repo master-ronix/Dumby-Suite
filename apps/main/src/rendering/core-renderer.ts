@@ -1,4 +1,7 @@
 import {
+  ComponentType,
+  DEFAULT_ACCENT_COLOR,
+  DEFAULT_PERSONA_ACCENT,
   actionRow,
   buildComponentsV2,
   button,
@@ -6,8 +9,6 @@ import {
   container,
   createBannerMediaGallery,
   createTitleBlock,
-  DEFAULT_ACCENT_COLOR,
-  DEFAULT_PERSONA_ACCENT,
   linkButton,
   mentionableSelect,
   roleSelect,
@@ -16,11 +17,11 @@ import {
   stringSelect,
   textDisplay,
   thumbnail,
-  userSelect,
   type ButtonComponent,
   type Component,
   type ComponentsV2Message,
   type EntitySelectComponent,
+  userSelect,
 } from '../shared/utils/components-v2.js';
 import { pageSections } from './page-layouts.js';
 import type { Logger } from '../logging/logger.js';
@@ -525,6 +526,14 @@ export class CoreRenderer {
     if (sections.length === 0 && !hasBlocks && (input.interactive?.length ?? 0) === 0) {
       throw new InvalidRenderDescriptorError();
     }
+    // §1.2 — a declared block that is not a block is a LOGICALLY INVALID descriptor, not something to
+    // render around. Without this, `render()` called directly with a malformed block dropped it and
+    // produced a page that looked as though the module had asked for exactly that — the grammar
+    // bypassed by the shape of the input rather than by intent.
+    const declaredBlocks = [...(input.blocks ?? []), ...(input.interactive ?? [])];
+    if (declaredBlocks.some((block) => !this.isRenderBlock(block))) {
+      throw new InvalidRenderDescriptorError();
+    }
 
     const developer = input.developer ?? DEFAULT_DEVELOPER;
     const components: Component[] = [];
@@ -576,19 +585,45 @@ export class CoreRenderer {
     components.push(separator());
 
     // §1.2 / §1.4 - the content slot, rendered at the page's density.
+    //
+    // M and C are built from the BLOCKS, not from `sections` alone. They used to read `sections`,
+    // which a block-built page (/health, /browse, /modules) leaves empty — so the whole page collapsed
+    // to its surface name. A density must lose RESOLUTION, never content.
     if (mode === 'C') {
-      components.push(textDisplay(this.oneLineRender(input.surface, sections[0] ?? input.surface)));
+      components.push(textDisplay(this.outcomeRender(input, aboveBlocks, sections)));
     } else if (mode === 'M') {
-      components.push(textDisplay(this.condensedRender(sections)));
+      const condensed = this.condensedRender(
+        input,
+        aboveBlocks,
+        belowBlocks,
+        input.actions,
+        sections,
+      );
+      components.push(textDisplay(condensed.join('\n')));
     } else if (aboveBlocks.length > 0) {
       // item 8 — the content blocks, in declaration order: a Section (text with an inline accessory),
       // a text block, a thumbnail. Only blocks whose canonical zone is above the footer reach here; a
       // select declared among them was relocated below, an action row stays where it was declared, and
       // content declared in the interactive list was relocated UP into this zone.
-      aboveBlocks.forEach((block) => {
+      //
+      // §1.4 — the renderer OWNS the separators. One is inserted below every media/thumbnail and
+      // between top-level content blocks, idempotently: never doubled, and never adjacent to the
+      // frame's own separators (the identity band's, the button zone's, the footer's).
+      aboveBlocks.forEach((block, index) => {
         const component = renderBlockComponent(block);
-        if (component !== undefined) components.push(component);
+        if (component === undefined) return;
+        const previous = aboveBlocks[index - 1];
+        const needsRule =
+          index > 0 && (previous?.kind === 'thumbnail' || block.kind !== 'thumbnail');
+        if (needsRule) this.pushSeparator(components);
+        components.push(component);
+        // A media block is always closed by a rule, so the next block never sits against it.
+        if (block.kind === 'thumbnail') this.pendingRule = true;
       });
+      if (this.pendingRule) {
+        this.pushSeparator(components);
+        this.pendingRule = false;
+      }
     } else {
       sections.forEach((section, index) => {
         if (index > 0) components.push(separator());
@@ -783,15 +818,110 @@ export class CoreRenderer {
     return `-# ${name} [${moduleId}]`;
   }
 
-  private oneLineRender(surface: string, first: string): string {
-    const line = first.split('\n').find((part) => part.trim().length > 0) ?? first;
-    return `${surface}: ${line}`;
+  /** Set when a media block has just been rendered and owes a closing rule. */
+  private pendingRule = false;
+
+  /** Append a separator unless the previous component already is one. Separators are never doubled. */
+  private pushSeparator(components: Component[]): void {
+    const last = components[components.length - 1];
+    if (last !== undefined && last.type === ComponentType.SEPARATOR) return;
+    components.push(separator());
   }
 
-  private condensedRender(sections: readonly string[]): string {
-    const first = sections[0] ?? '';
-    const remainder = sections.length - 1;
-    return remainder > 0 ? `${first}\n+${remainder} more` : first;
+  /** The first line of a string that carries anything. Markdown headings keep their markers. */
+  private firstLine(content: string): string {
+    return content.split('\n').find((part) => part.trim().length > 0) ?? content;
+  }
+
+  /** A block's content as ONE line: its headline, then its subtext joined in — never the subtext lost. */
+  private compactLineOf(content: string): string {
+    const parts = content
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line !== '');
+    if (parts.length === 0) return content;
+    const headline = parts[0] ?? content;
+    const rest = parts.slice(1);
+    const detail = rest.map((line) => line.replace(/^-#\s*/, '')).join(' · ');
+    return detail === '' ? headline : `${headline} — ${detail}`;
+  }
+
+  /**
+   * C — the OUTCOME. The module's own summary when it declares one, else the first content line, plus
+   * at most ONE detail line. This is the density for confirmations, refusals and alerts: a result, not
+   * a page.
+   */
+  private outcomeRender(
+    input: RenderDescriptor,
+    aboveBlocks: readonly RenderBlock[],
+    sections: readonly string[],
+  ): string {
+    const lines = this.compactLines(input, aboveBlocks, [], undefined, sections);
+    const outcome = input.summary ?? lines[0] ?? input.surface;
+    const detail = lines[0] !== outcome ? lines[0] : lines[1];
+    return detail === undefined ? outcome : `${outcome}\n-# ${detail}`;
+  }
+
+  /**
+   * M — a condensed PAGE. Every block, one compact line each: the whole content at a lower
+   * resolution, with nothing dropped. The old form kept the first section and counted the rest.
+   */
+  private condensedRender(
+    input: RenderDescriptor,
+    aboveBlocks: readonly RenderBlock[],
+    belowBlocks: readonly RenderBlock[],
+    actions: readonly PageActionRow[] | undefined,
+    sections: readonly string[],
+  ): readonly string[] {
+    return this.compactLines(input, aboveBlocks, belowBlocks, actions, sections);
+  }
+
+  /** One compact line per block, in declaration order — the shared body of M and C. */
+  private compactLines(
+    input: RenderDescriptor,
+    aboveBlocks: readonly RenderBlock[],
+    belowBlocks: readonly RenderBlock[],
+    actions: readonly PageActionRow[] | undefined,
+    sections: readonly string[],
+  ): readonly string[] {
+    const lines: string[] = [];
+    for (const block of [...aboveBlocks, ...belowBlocks]) {
+      const line = this.blockCompactLine(block);
+      if (line !== undefined && line.trim() !== '') lines.push(line);
+    }
+    if (actions !== undefined && actions.length > 0) {
+      const labels = actions.flat().map((action) => action.label);
+      if (labels.length > 0) lines.push(`**Actions** ${labels.join(' · ')}`);
+    }
+    if (lines.length === 0) {
+      // A plain page: its sections are the content.
+      for (const section of sections) lines.push(this.firstLine(section));
+      if (lines.length === 0 && input.summary !== undefined) lines.push(input.summary);
+    }
+    return lines;
+  }
+
+  /** A block as ONE line. Nothing is invented and nothing is dropped silently. */
+  private blockCompactLine(block: RenderBlock): string | undefined {
+    switch (block.kind) {
+      case 'text':
+      case 'section':
+        // The headline AND its subtext, on one line: `-# Ping: 19ms` is the DATA, and a condensed page
+        // that drops it is not condensed, it is gutted.
+        return this.compactLineOf(block.content);
+      case 'thumbnail':
+        return block.description !== undefined && block.description !== ''
+          ? `**Media** ${block.description}`
+          : undefined;
+      case 'select':
+        return block.placeholder !== '' ? `**Select** ${block.placeholder}` : undefined;
+      case 'entitySelect':
+        return '**Select** — a Discord entity';
+      case 'row': {
+        const labels = block.buttons.map((button) => button.label);
+        return labels.length > 0 ? `**Actions** ${labels.join(' · ')}` : undefined;
+      }
+    }
   }
 
   private isRenderDescriptor(value: unknown): value is RenderDescriptor {
@@ -806,7 +936,86 @@ export class CoreRenderer {
       candidate.mode === 'D' ||
       candidate.mode === 'M' ||
       candidate.mode === 'C';
-    return typeof candidate.surface === 'string' && hasContent && validMode;
+    // §1.2 — the BLOCKS and ACTIONS are part of the schema. An unknown kind, a malformed block, or a
+    // select with no options is a LOGICALLY INVALID descriptor, not something to render around: a
+    // module cannot bypass the grammar by declaring a shape the renderer does not have. Left
+    // unvalidated, a bad block was silently dropped and the page rendered as if it had been asked for.
+    const blocks = [...(candidate.blocks ?? []), ...(candidate.interactive ?? [])];
+    const blocksValid = blocks.every((block) => this.isRenderBlock(block));
+    const actionsValid =
+      candidate.actions === undefined ||
+      (Array.isArray(candidate.actions) &&
+        candidate.actions.every(
+          (row) => Array.isArray(row) && row.every((action) => this.isPageAction(action)),
+        ));
+    return (
+      typeof candidate.surface === 'string' &&
+      hasContent &&
+      validMode &&
+      blocksValid &&
+      actionsValid
+    );
+  }
+
+  /** The block kinds the grammar has. Anything else is not a block. */
+  private isRenderBlock(value: unknown): value is RenderBlock {
+    if (typeof value !== 'object' || value === null) return false;
+    const block = value as { kind?: unknown };
+    switch (block.kind) {
+      case 'text':
+        return typeof (value as { content?: unknown }).content === 'string';
+      case 'section': {
+        const section = value as { content?: unknown; accessory?: unknown };
+        if (typeof section.content !== 'string') return false;
+        if (typeof section.accessory !== 'object' || section.accessory === null) return false;
+        // The accessory is a BUTTON (label + customId) or a THUMBNAIL (a url) — nothing else is one.
+        const accessory = section.accessory as {
+          thumbnail?: unknown;
+          label?: unknown;
+          customId?: unknown;
+        };
+        return (
+          typeof accessory.thumbnail === 'string' ||
+          (typeof accessory.label === 'string' && typeof accessory.customId === 'string')
+        );
+      }
+      case 'thumbnail':
+        return typeof (value as { url?: unknown }).url === 'string';
+      case 'select': {
+        const select = value as { options?: unknown; placeholder?: unknown };
+        return (
+          Array.isArray(select.options) &&
+          select.options.length > 0 &&
+          typeof select.placeholder === 'string'
+        );
+      }
+      case 'entitySelect': {
+        const entity = value as { selectType?: unknown; customId?: unknown };
+        return (
+          typeof entity.customId === 'string' &&
+          (entity.selectType === 'user' ||
+            entity.selectType === 'role' ||
+            entity.selectType === 'mentionable' ||
+            entity.selectType === 'channel')
+        );
+      }
+      case 'row':
+        return Array.isArray((value as { buttons?: unknown }).buttons);
+      default:
+        return false;
+    }
+  }
+
+  /** A page action is a button with a label and a customId — the only thing the button zone accepts. */
+  private isPageAction(value: unknown): boolean {
+    if (typeof value !== 'object' || value === null) return false;
+    const action = value as { label?: unknown; customId?: unknown; kind?: unknown };
+    const kind = action.kind;
+    return (
+      typeof action.label === 'string' &&
+      (kind === undefined || kind === 'button' || kind === 'link') &&
+      (kind === 'link' || typeof action.customId === 'string')
+    );
   }
 
   private defaultNoticeHeading(reason: NoticeReasonCode): string {
