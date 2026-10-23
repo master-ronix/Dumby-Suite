@@ -5,7 +5,6 @@
  * card — the uninstall/disable control lives there, not on the listing.
  */
 import type { RenderBlock } from './core-renderer.js';
-import { customEmojiRef, tierIconName, DEFAULT_EMOJI_SCOPE } from './module-icons.js';
 
 interface ModuleShape {
   readonly id: string;
@@ -40,9 +39,7 @@ function asModules(value: unknown): readonly ModuleShape[] {
 export function modulesBlocks(
   data: Readonly<Record<string, unknown>> | undefined,
   invokerId: string,
-  applicationId?: string,
 ): readonly RenderBlock[] {
-  const scope = applicationId ?? DEFAULT_EMOJI_SCOPE;
   const modules = asModules(data?.['modules']);
   const total = typeof data?.['total'] === 'number' ? (data['total'] as number) : modules.length;
   const page = typeof data?.['page'] === 'number' ? (data['page'] as number) : 0;
@@ -56,11 +53,10 @@ export function modulesBlocks(
     const name = String(m.name ?? m.id);
     const description = String(m.description ?? '');
     const icon = typeof m.icon === 'string' ? m.icon : '';
-    // ONE mark per tier, the same one /health uses. A tier that carries one mark here and another
-    // there is two tiers as far as the reader is concerned.
-    const tierName = tierIconName(String(m.tier ?? ''));
-    const tierMark = tierName === undefined ? undefined : customEmojiRef(tierName, scope);
-    const heading = `${icon} **${name}**${tierMark !== undefined ? ` ${tierMark}` : ''}`;
+    // NO tier mark here. A listing line already carries the MODULE's icon; a second icon after the
+    // name is two icons on one line and reads as noise. Tier marks belong on the /health board, where
+    // a tier is the subject rather than an annotation.
+    const heading = `${icon} **${name}**`;
     blocks.push({
       kind: 'section',
       // item 4 — the description reads as a CAPTION: dim and quoted, not body copy.

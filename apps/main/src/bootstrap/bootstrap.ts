@@ -1637,19 +1637,26 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
       const personaRuntime = new PersonaRuntime({
         listPersonas: () => personaIdentities.list(),
         openBotToken: (sealed) => openSealedText(sealed, personaRootKey),
-        // RECONCILE THE CLAIM. A binding is a claim on a module, and a claim can outlive its install:
-        // any path that disabled the module without releasing it left the binding on record, and this
-        // read reported it as live — so the module was taken away from the profile entitled to install
-        // it and handed to a profile that no longer held it. A module the guild has DISABLED is held by
-        // nobody, which is the operator's own rule; the stale claim is dropped HERE, at the one place
-        // that reads bindings, and the module is genuinely free again.
+        // ONE READ, ONE ANSWER. This used to read the RAW BINDINGS, while the deployer, /browse, the
+        // install and the ownership read all used `resolveCommandOwner`. Two sources for one fact is
+        // how a persona came to register a module the ownership read had already given to the main —
+        // and then BOTH bots answered the same command, which is what "it's acting like both profiles
+        // have the same modules" was.
+        //
+        // She registers exactly what she OWNS: the same read everything else uses. A binding that no
+        // longer wins is released here rather than left to disagree.
         modulesBoundTo: async (personaId) => {
           const bound = await personaBindings.listForPersona(personaId);
           const guildId =
             (await personaIdentities.list()).find((p) => p.id === personaId)?.boundGuildId ?? '';
+          if (guildId === '') return [];
           const live: string[] = [];
           for (const binding of bound) {
-            if (guildId !== '' && (await isModuleEnabledForGuild(guildId, binding.moduleSlug))) {
+            const owner = await personaBindingService.resolveCommandOwner(
+              guildId,
+              binding.moduleSlug,
+            );
+            if (owner === personaId) {
               live.push(binding.moduleSlug);
             } else {
               await personaBindingService.unbindModule(guildId, binding.moduleSlug);
@@ -1657,7 +1664,8 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
                 personaId,
                 guildId,
                 moduleSlug: binding.moduleSlug,
-                reason: 'bound but not enabled — the claim had outlived its install',
+                owner: owner ?? 'none',
+                reason: 'the binding does not win the ownership read',
               });
             }
           }
