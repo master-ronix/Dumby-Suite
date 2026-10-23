@@ -179,3 +179,21 @@ describe('CommandPermissionTokenService', () => {
     );
   });
 });
+
+describe('listStoredApplications — who can hide a command instantly', () => {
+  test('it names each application that holds a token, ONCE, and sorted', async () => {
+    // The instant disable is a token per APPLICATION, so "can this profile do it?" is a question
+    // about a specific application — not about one environment variable. Two guilds for one
+    // application are still one answer.
+    const { service } = makeService();
+    await service.connect('app-b', 'g1', 'u1', tokens('a1', 'r1', 604800));
+    await service.connect('app-a', 'g1', 'u1', tokens('a2', 'r2', 604800));
+    await service.connect('app-b', 'g2', 'u1', tokens('a3', 'r3', 604800));
+    expect(await service.listStoredApplications()).toEqual(['app-a', 'app-b']);
+  });
+
+  test('an empty store names nothing rather than inventing an answer', async () => {
+    const { service } = makeService();
+    expect(await service.listStoredApplications()).toEqual([]);
+  });
+});

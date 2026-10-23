@@ -3,7 +3,7 @@
   "note": "Records when the corpus was last independently audited and against which commit, so audit staleness is visible the same way provenance staleness is. Read by check-side-docs (provenance rule) against the reconciliation ledger.",
   "last_audit": {
     "date": "2026-10-21",
-    "commit": "7a5877989081c62d7772e4522e1583a894b88c9c",
+    "commit": "f8df16b5425e9f550da5e53646be517626fd0d81",
     "branch": "feature/dev",
     "scope": "full-scope docs/ corpus audit + code-track reconciliation + trigger-chain run",
     "findings": "DOC-1 \u2026 DOC-11 (UR-20261021-094); DR-1 \u2026 DR-12 (UR-20261018-092, closed)",
