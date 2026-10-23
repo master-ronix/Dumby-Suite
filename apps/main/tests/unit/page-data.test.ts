@@ -508,6 +508,33 @@ describe('page-data provider', () => {
     expect(hello?.occupiedBy).toBe('another profile');
   });
 
+  test('a DISABLED module does not appear in /modules (item 3)', async () => {
+    // The listing is what is ON. A disabled module is re-enabled from /browse, not listed here.
+    const statesKnex = ((table: string) => ({
+      where: () => ({
+        whereNull: () => ({
+          select: async (): Promise<unknown[]> =>
+            table === 'guild_module_states'
+              ? [{ moduleSlug: 'hello-world', enabled: false, state: 'disabled' }]
+              : [],
+        }),
+        first: async (): Promise<unknown> => undefined,
+      }),
+    })) as unknown as Dict;
+    statesKnex['raw'] = async (): Promise<unknown[]> => [{}];
+
+    const provider = createPageDataProvider(
+      makeDeps({
+        db: { knex: statesKnex },
+        resolveOwner: async (_g: string, slug: string) =>
+          slug === 'hello-world' ? 'p-1' : undefined,
+      }),
+    );
+    const data = await provider('modules', 'guild-1', 0, undefined, 'app-x', 'p-1');
+    const listed = (data['modules'] as Array<{ id: string }>).map((m) => m.id);
+    expect(listed).not.toContain('hello-world');
+  });
+
   test('marketplace lists a SHORT main view — the rest is what Discover is for', async () => {
     const many = Array.from({ length: 30 }, (_, i) =>
       mod(`mp-${String(i).padStart(2, '0')}`, 'marketplace', ['x']),

@@ -58,7 +58,8 @@ export function modulesBlocks(
     const heading = `${icon} **${name}**`;
     blocks.push({
       kind: 'section',
-      content: description === '' ? heading : `${heading}\n-# ${description}`,
+      // item 4 — the description reads as a CAPTION: dim and quoted, not body copy.
+      content: description === '' ? heading : `${heading}\n-# > ${description}`,
       accessory: { customId: `dumby:info:${invokerId}:modules:${m.id}`, label: 'Info', style: 2 },
     });
   }

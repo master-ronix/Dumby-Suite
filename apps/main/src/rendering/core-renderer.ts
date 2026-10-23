@@ -589,7 +589,13 @@ export class CoreRenderer {
     // M and C are built from the BLOCKS, not from `sections` alone. They used to read `sections`,
     // which a block-built page (/health, /browse, /modules) leaves empty — so the whole page collapsed
     // to its surface name. A density must lose RESOLUTION, never content.
-    if (mode === 'C') {
+    // §1.2 — an EPHEMERAL has no density modes. `render({ephemeral: true, mode: 'M'})` is a
+    // contradiction, and honouring the M collapsed the module Info card to a single line — the card
+    // declared its content in `sections` and M condensed each section to its first line. The grammar
+    // already says a private card has no densities, so the density is IGNORED here rather than obeyed.
+    if (input.ephemeral === true) {
+      components.push(textDisplay(sections.join('\n\n')));
+    } else if (mode === 'C') {
       components.push(textDisplay(this.outcomeRender(input, aboveBlocks, sections)));
     } else if (mode === 'M') {
       const condensed = this.condensedRender(
@@ -609,21 +615,14 @@ export class CoreRenderer {
       // §1.4 — the renderer OWNS the separators. One is inserted below every media/thumbnail and
       // between top-level content blocks, idempotently: never doubled, and never adjacent to the
       // frame's own separators (the identity band's, the button zone's, the footer's).
-      aboveBlocks.forEach((block, index) => {
+      // The rule is for MEDIA ONLY — it separates an image from the text that follows it. Spreading
+      // one between every content block turned a listing into a fence.
+      aboveBlocks.forEach((block) => {
         const component = renderBlockComponent(block);
         if (component === undefined) return;
-        const previous = aboveBlocks[index - 1];
-        const needsRule =
-          index > 0 && (previous?.kind === 'thumbnail' || block.kind !== 'thumbnail');
-        if (needsRule) this.pushSeparator(components);
         components.push(component);
-        // A media block is always closed by a rule, so the next block never sits against it.
-        if (block.kind === 'thumbnail') this.pendingRule = true;
+        if (block.kind === 'thumbnail') this.pushSeparator(components);
       });
-      if (this.pendingRule) {
-        this.pushSeparator(components);
-        this.pendingRule = false;
-      }
     } else {
       sections.forEach((section, index) => {
         if (index > 0) components.push(separator());
@@ -817,9 +816,6 @@ export class CoreRenderer {
     const name = displayName ?? titleCaseModuleId(moduleId);
     return `-# ${name} [${moduleId}]`;
   }
-
-  /** Set when a media block has just been rendered and owes a closing rule. */
-  private pendingRule = false;
 
   /** Append a separator unless the previous component already is one. Separators are never doubled. */
   private pushSeparator(components: Component[]): void {

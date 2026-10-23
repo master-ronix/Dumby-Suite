@@ -299,3 +299,41 @@ describe('CoreRenderer reason mapping', () => {
     expect(renderer.noticeReasonFromError(new Error('boom'))).toBe('MODULE_ERROR');
   });
 });
+
+describe('an ephemeral has NO density modes (item 2)', () => {
+  const renderer = new CoreRenderer();
+
+  test('a card declaring mode M and ephemeral renders its content IN FULL', () => {
+    // The module Info card declares its content in `sections` and renders at mode M, ephemeral. M
+    // condensed each section to its first line, so the card lost everything but its title. The
+    // grammar already says a private card has no densities — so the density is ignored, not obeyed.
+    const block = [
+      '**Hello World** · Standard',
+      '-# A simple module',
+      '',
+      '**Developer**  Quixotic',
+    ].join('\n');
+    const message = renderer.render({
+      surface: 'Hello World',
+      mode: 'M',
+      ephemeral: true,
+      sections: [block],
+    });
+
+    const body = textContents(message).join('\n');
+    expect(body).toContain('Hello World');
+    expect(body).toContain('A simple module');
+    expect(body).toContain('Developer');
+  });
+
+  test('a PUBLIC page at mode M still condenses', () => {
+    const message = renderer.render({
+      surface: 'Page',
+      mode: 'M',
+      sections: ['**one**\n-# detail', '**two**'],
+    });
+    const body = textContents(message).join('\n');
+    expect(body).toContain('one');
+    expect(body).toContain('two');
+  });
+});

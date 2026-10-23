@@ -318,7 +318,9 @@ describe('a separator is NOT a block — the renderer owns them (item 1)', () =>
     ).toThrow();
   });
 
-  test('the renderer inserts them itself, so a valid page still gets rules', () => {
+  test('NO rule between two text blocks — the rule is for MEDIA only', () => {
+    // Spreading a rule between every content block turned a listing into a fence. The only rule in
+    // this page is the identity band's.
     const message = renderer.render({
       surface: 'Page',
       blocks: [
@@ -327,6 +329,21 @@ describe('a separator is NOT a block — the renderer owns them (item 1)', () =>
       ],
     });
     const inner = (message.components[0] as { components: Array<{ type: number }> }).components;
-    expect(inner.some((c) => c.type === 14)).toBe(true);
+    const texts = JSON.stringify(message);
+    expect(inner.filter((c) => c.type === 14).length).toBe(1); // the band's, and nothing more
+    expect(texts.indexOf('one')).toBeLessThan(texts.indexOf('two'));
+  });
+
+  test('a media block IS followed by a rule', () => {
+    const message = renderer.render({
+      surface: 'Page',
+      blocks: [
+        { kind: 'thumbnail', url: 'https://x/y.png' },
+        { kind: 'text', content: 'caption' },
+      ],
+    });
+    const inner = (message.components[0] as { components: Array<{ type: number }> }).components;
+    // the band's rule, then the media's own
+    expect(inner.filter((c) => c.type === 14).length).toBe(2);
   });
 });

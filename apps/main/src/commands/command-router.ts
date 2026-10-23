@@ -1133,7 +1133,8 @@ export class CommandRouter {
       // every description.
       blocks.push({
         kind: 'section',
-        content: `${icon} **${name}**\n${description}`.trim(),
+        // item 4 — the description reads as a CAPTION: dim and quoted, not body copy.
+        content: `${icon} **${name}**\n-# > ${description}`.trim(),
         accessory: { customId: `dumby:info:${invokerId}:browse:${m.id}`, label: 'Info', style: 2 },
       });
     }
