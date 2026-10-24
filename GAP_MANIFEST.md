@@ -3,7 +3,7 @@
 **Generated:** 2026-10-06 · **Re-stated:** 2026-10-18
 **Protocol:** `docs/orchestration/master-prompt.md` §3 (Codebase State Detection & Audit Protocol)
 **Repository:** `master-ronix/Dumby-Suite`
-**Branch / ref:** `feature/dev` @ `5baf5a40e2c76feacd9dba0d4fc6c944d0887bc5`
+**Branch / ref:** `feature/dev` @ `ecba3a104e9b21dfbb7df44def3087e13925fcfa`
 **Codebase state:** State C — Enforcement (code present; migration work order closed)
 **Entry procedure followed:** `docs/prompts/entry.md` → `migration/migration-prompt.md` (migration mode)
 **Run mode:** State B — audit (§3) → state-of-record reconciliation (R12); the enforcement pass (§6) resumes when the work order is fully `DONE`.
