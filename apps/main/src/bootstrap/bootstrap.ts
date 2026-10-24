@@ -797,6 +797,22 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     // runtime is constructed far below this point, so the read is late-bound; before it exists, the
     // host's own view is the honest answer rather than a guess.
     actingProfile: (applicationId: string) => personaRuntimeRef?.runtimeFor(applicationId),
+    // The held set for a profile that is NOT hosted here — the internal profile. A hosted one answers
+    // from its runtime's registry; this answers from the SAME ownership read every other surface uses,
+    // so /health's module counts agree with what the rest of the system decided.
+    heldModulesInGuild: async (guildId: string, applicationId: string | undefined) => {
+      const persona =
+        applicationId === undefined
+          ? undefined
+          : await personaIdentities.findByApplicationId(applicationId);
+      const holder = persona?.id ?? 'main';
+      const held = new Set<string>();
+      for (const entry of moduleRegistry.all()) {
+        const owner = await personaBindingService.resolveCommandOwner(guildId, entry.manifest.name);
+        if ((owner ?? 'main') === holder) held.add(entry.manifest.name);
+      }
+      return held;
+    },
     // UR-20261012-061 — the ONE ownership read. /persona, /modules, /browse and /dashboard all
     // consult it, so they cannot disagree about which profile holds a module.
     resolveOwner: (guildId, moduleSlug) =>
@@ -1167,6 +1183,18 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
       applicationId === undefined
         ? undefined
         : await personaIdentities.findByApplicationId(applicationId);
+    if (applicationId !== undefined && acting === undefined) {
+      // An interaction CARRIED an application id and it resolved to NO profile. Everything below then
+      // treats the actor as the internal profile — so a persona's own install would be recorded against
+      // the internal profile, which is exactly how a module can land on the wrong side. Loud, because
+      // the alternative is silent.
+      logger.warn('module-change-unknown-application', {
+        moduleId,
+        guildId,
+        applicationId,
+        effect: "recorded as the internal profile's",
+      });
+    }
     // UR-20261012-078 — the actor is 'main' when no application identified it (the main bot's own
     // install), matching the ownership read's answer for an enabled-but-unbound module.
     //
@@ -1277,16 +1305,25 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     // means the rows cannot disagree at all.
     await db.knex.transaction(async (trx) => {
       await trx('guild_module_states')
-        .insert({ guildId, moduleSlug: moduleId, enabled: false, state: 'disabled', enabledBy: null })
+        .insert({
+          guildId,
+          moduleSlug: moduleId,
+          enabled: false,
+          state: 'disabled',
+          enabledBy: null,
+        })
         .onConflict(db.knex.raw('("guildId", "moduleSlug") where "deletedAt" is null'))
         .merge({ enabled: false, state: 'disabled', enabledBy: null, updatedAt: db.knex.fn.now() });
       await personaBindingService.unbindModule(guildId, moduleId, trx);
     });
     await setModuleCommandAccess?.(moduleId, guildId, false);
     await enqueueModuleCommandChanges(moduleId, guildId, userId, 'disable', bccmScopeOf(acting));
-    // …and DEREGISTER it, for the same reason: a disabled module whose command stays registered is a
-    // command the member can see and that the bot then refuses.
-    await runBccmForModuleChange(bccmScopeOf(acting), `uninstall:${moduleId}`);
+    // NOT pushed inline. A disable has two halves, in this order:
+    //   1. the integration-settings RESTRICT above — instant, and it needs a command-permission token
+    //      for the profile's application. This is what hides the command from everyone immediately.
+    //   2. the QUEUED batch push — eventual, always, and it is the BCCM's to run on its schedule.
+    // Pushing here made a disable de-register the command from the guild the instant it was pressed,
+    // which is neither half's job: the restrict hides it, the queue removes it.
     // The half that was missing: without this the profile kept serving the module it had just given
     // up, until a process restart.
     await refreshCommandsForModuleChange(guildId, ownerBefore, undefined, `uninstall:${moduleId}`);

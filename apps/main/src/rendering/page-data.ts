@@ -54,6 +54,16 @@ export interface PageDataDeps {
    */
   actingProfile?: ((applicationId: string) => ActingProfile | undefined) | undefined;
   /**
+   * The modules a profile HOLDS in a guild, by the SAME ownership read every other surface uses.
+   *
+   * A hosted profile's held set is its runtime's registry. The INTERNAL profile is not hosted here, so
+   * its set came from nothing — /health reported zero standard-tier modules however many it held, and
+   * installing one left the count at zero. This is the read that fixes it.
+   */
+  heldModulesInGuild?:
+    | ((guildId: string, applicationId: string | undefined) => Promise<ReadonlySet<string>>)
+    | undefined;
+  /**
    * UR-20261012-029 — whether a bot is a member of a guild. A persona's active state is whether it
    * is actually present in its bound guild, which only the host can resolve. Absent, the page
    * reports a persona as inactive rather than guessing.
@@ -246,7 +256,7 @@ export function createPageDataProvider(deps: PageDataDeps): (
     }
   }
 
-  async function health(applicationId: string): Promise<PageData> {
+  async function health(applicationId: string, guildId: string | null): Promise<PageData> {
     // Q1-Q4 — the page is the ACTING profile's. Her client, her registry, her guilds, her uptime; the
     // host's own numbers are kept and LABELLED, because one process serves every profile and a
     // persona has no memory of her own to report.
@@ -271,13 +281,25 @@ export function createPageDataProvider(deps: PageDataDeps): (
 
     // HER modules: the core set, which every profile shares, plus exactly the modules she holds.
     // Filtering the module registry rather than the command registry — only this one carries tiers.
+    //
+    // A HOSTED profile answers from its runtime's registry. One that is not hosted here — the internal
+    // profile — has no registry to read, so its held set comes from the ownership read instead of from
+    // nothing. Without that fallback its standard-tier count was zero however many it held.
+    let held: ReadonlySet<string>;
+    if (acting?.moduleSlugs !== undefined) {
+      held = new Set(acting.moduleSlugs);
+    } else if (deps.heldModulesInGuild !== undefined && guildId !== null) {
+      held = await deps.heldModulesInGuild(guildId, applicationId);
+    } else {
+      held = new Set<string>();
+    }
     const modules = moduleRegistry
       .all()
       .filter(
         (entry) =>
           entry.manifest.tier === 'core' ||
           entry.manifest.tier === 'admin' ||
-          acting?.moduleSlugs?.includes(entry.manifest.name) === true,
+          held.has(entry.manifest.name),
       );
     const byTier = (tier: string): number =>
       modules.filter((entry) => entry.manifest.tier === tier).length;
@@ -1092,7 +1114,7 @@ export function createPageDataProvider(deps: PageDataDeps): (
   ): Promise<PageData> => {
     switch (moduleId) {
       case 'health':
-        return health(applicationId);
+        return health(applicationId, guildId);
       case 'persona':
         return persona(moduleId, guildId, query, applicationId);
       case 'queue':
