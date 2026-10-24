@@ -63,7 +63,7 @@ the application `tsc` / `vitest` (the app typecheck is a separate gate). Per-fil
 `upgradation/change-log.md`). A bare `5.x.y` in prose names the change-log track unless a
 document says otherwise.
 
-**Last independent audit.** 2026-10-21, against `feature/dev` @ `00fade6` — a full-scope corpus
+**Last independent audit.** 2026-10-21, against `feature/dev` @ `3afcc49` — a full-scope corpus
 audit + code-track reconciliation whose findings (DOC-1 … DOC-11) are formalised as
 `upgradation/UR-20261021-094.md`; the prior audit's findings (DR-1 … DR-12,
 `upgradation/UR-20261018-092.md`) and (AU-1 … AU-11, `upgradation/UR-20261016-091.md`) are closed
