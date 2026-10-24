@@ -81,8 +81,17 @@ nobody has touched reads as enabled, and a marketplace one does not.
    - no row → `defaultEnabledForTier(tier)` — on for standard, off for marketplace;
    - row → `enabled === true && state === 'active'`.
 
+#### Failure policy — the same read, two stances
+
 A failed read **fails open** for events and **fails closed** for command dispatch. That asymmetry is
 deliberate: refusing a command is recoverable, running one for a disabled guild is not.
+
+| Read | On failure | Why |
+| --- | --- | --- |
+| `isModuleEnabledForGuild` — command dispatch | **fail closed** | a refused command is recoverable; running one for a disabled guild is not |
+| `isModuleEnabledForGuild` — event router, queue, scheduler | **fail open** | dropping live work silently is worse than acting on a state we could not read |
+| `enabledByForGuild` | **undefined**, and it says so | ownership must never be GUESSED from an unreadable row |
+| `resolveCommandOwner` with an unreadable enablement | keeps the binding | two profiles believing they own one module is worse than a claim that lingers |
 
 ### Ownership — whose is it?
 
@@ -102,6 +111,38 @@ deliberate: refusing a command is recoverable, running one for a disabled guild 
 
 Step 3 is the fix for a long-running defect: the read could previously ask only *"is it enabled?"* and
 then assume the internal profile, so a persona's own install came back as the internal profile's.
+
+```
+if (tier === 'core' || tier === 'admin')      return 'shared';   // global outranks everything
+const enabled = await isModuleEnabledForGuild(guildId, moduleId);
+if (!enabled)                                  return undefined;  // nobody holds it
+if (enabledBy is a profile id)                 return enabledBy;  // the enabler decides
+if (enabledBy === 'main')                      return 'main';
+if (a live binding exists)                     return binding.personaId;  // legacy rows only
+return 'main';
+```
+
+The ORDER is the rule. Global tier first; a disabled module second; the recorded enabler third; the
+binding is a fallback for rows that predate the column, and only then does an enabled-but-unclaimed
+module fall to the internal profile.
+
+### The rows disagreeing: every combination
+
+| Tier | State | `enabledBy` | Binding | Resolved owner |
+| --- | --- | --- | --- | --- |
+| core / admin | any | any | any | **shared** |
+| standard | disabled | any | any | **nobody** |
+| standard | active | P1 | P1 | **P1** |
+| standard | active | P1 | none | **P1** |
+| standard | active | `main` | none | **`main`** |
+| standard | active | `main` | P1 | **`main`** — the enabler outranks the binding |
+| standard | active | missing | P1 | **P1** — legacy row |
+| standard | active | missing | none | **`main`** |
+| marketplace | no row | — | — | **nobody** — disabled by default |
+
+The two rows worth reading twice are the ones where the binding and the enabler disagree: **the enabler
+wins**, because it is what the guild's state actually recorded. A binding is evidence of a claim; the
+enabler is evidence of what happened.
 
 ## 5. The workflows, exactly
 
