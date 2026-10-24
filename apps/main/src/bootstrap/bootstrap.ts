@@ -1986,6 +1986,32 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
             effect: 'an interaction from this application will be REFUSED, not absorbed',
           });
         }
+        // THE MODULE STATES IN HER GUILD, with the two facts that can disagree: who the STATE says
+        // enabled it, and who the BINDING claims. When they disagree the module reads as one profile's
+        // to one surface and the other's to another — occupied on a browse while the runtime has it
+        // bound, or a health count that moves the wrong way. Printed at boot, the log an operator can
+        // actually read.
+        for (const entry of moduleRegistry.all()) {
+          // The guild-scoped tiers are exactly the ones a profile can hold.
+          if (entry.manifest.tier !== 'standard' && entry.manifest.tier !== 'marketplace') continue;
+          const owner = await personaBindingService.resolveCommandOwner(
+            persona.boundGuildId,
+            entry.manifest.name,
+          );
+          const binding = await personaBindings.findLive(persona.boundGuildId, entry.manifest.name);
+          const enabledBy = await enabledByForGuild(persona.boundGuildId, entry.manifest.name);
+          const enabledByValue = enabledBy ?? 'none';
+          const bindingValue = binding?.personaId ?? 'none';
+          logger.info('module-state', {
+            guildId: persona.boundGuildId,
+            moduleId: entry.manifest.name,
+            tier: entry.manifest.tier,
+            enabledBy: enabledByValue,
+            binding: bindingValue,
+            resolvedOwner: owner ?? 'none',
+            agrees: enabledByValue === bindingValue,
+          });
+        }
       }
     }
     const rest = new REST({ version: '10' }).setToken(config.get('BOT_TOKEN'));
