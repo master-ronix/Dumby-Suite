@@ -1,10 +1,10 @@
 {
   "$id": "docs/status/code-reconciliation.json",
   "title": "Docs \u2194 Code reconciliation",
-  "note": "Every row compares what the NEW documentation asserts against the actual source in master-ronix/Dumby-Suite (apps/main at 456c84200caf12f9e149b7d281d4fa8d424519c5, branch feature/dev). Standing rule: the specification is authority; where the code is narrower, the code is the gap to close.",
-  "verified_commit": "456c84200caf12f9e149b7d281d4fa8d424519c5",
+  "note": "Every row compares what the NEW documentation asserts against the actual source in master-ronix/Dumby-Suite (apps/main at a6b66036d1c3136bc04da0c918be092ec7a5de47, branch feature/dev). Standing rule: the specification is authority; where the code is narrower, the code is the gap to close.",
+  "verified_commit": "a6b66036d1c3136bc04da0c918be092ec7a5de47",
   "verified_branch": "feature/dev",
-  "verified_at": "2026-10-24T20:43:00Z",
+  "verified_at": "2026-10-24T21:03:21Z",
   "verdicts": [
     "match",
     "doc-incomplete",
@@ -19,7 +19,7 @@
       "code_truth": "releaseStatus is required and is z.enum(['private','public'])",
       "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
       "verdict": "match",
-      "resolution": "Re-verified against HEAD 456c84200caf12f9e149b7d281d4fa8d424519c5 \u2014 the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
+      "resolution": "Re-verified against HEAD a6b66036d1c3136bc04da0c918be092ec7a5de47 \u2014 the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
     },
     {
       "id": "REC-002",
@@ -28,7 +28,7 @@
       "code_truth": "the schema carries a required visibility enum (['public','unlisted','private'])",
       "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
       "verdict": "match",
-      "resolution": "Re-verified against HEAD 456c84200caf12f9e149b7d281d4fa8d424519c5 \u2014 the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
+      "resolution": "Re-verified against HEAD a6b66036d1c3136bc04da0c918be092ec7a5de47 \u2014 the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
     },
     {
       "id": "REC-003",
@@ -55,7 +55,7 @@
       "code_truth": "the schema requires name, version, description, tier, hardcoded, devId, visibility and releaseStatus \u2014 buildId is not a manifest field (it is platform-issued and read from the build-provenance sidecar)",
       "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
       "verdict": "match",
-      "resolution": "Re-verified against HEAD 456c84200caf12f9e149b7d281d4fa8d424519c5 \u2014 UR-20261019-103 dropped the author-declared buildId from the SDK, the contract and the 8 manifests; the required set now matches the contract exactly."
+      "resolution": "Re-verified against HEAD a6b66036d1c3136bc04da0c918be092ec7a5de47 \u2014 UR-20261019-103 dropped the author-declared buildId from the SDK, the contract and the 8 manifests; the required set now matches the contract exactly."
     },
     {
       "id": "REC-006",
@@ -113,7 +113,7 @@
       "code_truth": "MODULES_DIR default /mnt/modules; SWASTIK_STAGING_VOLUME_PATH default /mnt/modules/swastik-staging; SWASTIK_QUARANTINE_PATH default ''; tiers admin|core|standard|marketplace (SWASTIK_LIVE_VOLUME_PATH was removed \u2014 tier routing comes from MODULES_DIR)",
       "code_ref": "apps/main/src/config/env.schema.ts",
       "verdict": "match",
-      "resolution": "Re-verified against HEAD 456c84200caf12f9e149b7d281d4fa8d424519c5 \u2014 commit 7bb6302c0 removed the vestigial SWASTIK_LIVE_VOLUME_PATH."
+      "resolution": "Re-verified against HEAD a6b66036d1c3136bc04da0c918be092ec7a5de47 \u2014 commit 7bb6302c0 removed the vestigial SWASTIK_LIVE_VOLUME_PATH."
     },
     {
       "id": "REC-013",
@@ -155,7 +155,7 @@
       "code_truth": "22 CORE_TOKENS declared (Logger, Config, Db, EventBus, Cache, Queue, ModuleRegistry, PermissionResolver, Metrics, I18n, CommandRegistry, CommandRouter, Renderer, InteractionRegistry, CommandCeilingService, CollisionResolutionService, Personas, EventRouter, Scheduler, AdminEvalGate, OAuth2, MtpTokens)",
       "code_ref": "apps/main/src/di/tokens.ts",
       "verdict": "match",
-      "resolution": "Re-verified against HEAD 456c84200caf12f9e149b7d281d4fa8d424519c5 \u2014 the registry declares 22 core tokens (I18n added since the earlier 21-token count); the docs count and list now match the code."
+      "resolution": "Re-verified against HEAD a6b66036d1c3136bc04da0c918be092ec7a5de47 \u2014 the registry declares 22 core tokens (I18n added since the earlier 21-token count); the docs count and list now match the code."
     },
     {
       "id": "REC-018",
@@ -172,7 +172,7 @@
       "code_truth": "marketplaceCategory is a closed five-value enum ('audio'|'community'|'security'|'integrations'|'utility')",
       "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
       "verdict": "match",
-      "resolution": "Re-verified against HEAD 456c84200caf12f9e149b7d281d4fa8d424519c5 \u2014 the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
+      "resolution": "Re-verified against HEAD a6b66036d1c3136bc04da0c918be092ec7a5de47 \u2014 the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
     },
     {
       "id": "REC-020",
@@ -181,7 +181,7 @@
       "code_truth": "depends: array of {token,version}; provides: array of {token,contract}; services: array of {token,class,lifetime,deps}",
       "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
       "verdict": "match",
-      "resolution": "Re-verified against HEAD 456c84200caf12f9e149b7d281d4fa8d424519c5 \u2014 the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
+      "resolution": "Re-verified against HEAD a6b66036d1c3136bc04da0c918be092ec7a5de47 \u2014 the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
     },
     {
       "id": "REC-021",
@@ -190,7 +190,7 @@
       "code_truth": "devId is required; buildId is not a manifest field (UR-20261019-103 removed it from the SDK, the contract and the 8 manifests; the loader reads it from the build-provenance sidecar)",
       "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
       "verdict": "match",
-      "resolution": "Re-verified against HEAD 456c84200caf12f9e149b7d281d4fa8d424519c5 \u2014 the manifest carries devId; buildId moved to the platform-issued provenance sidecar."
+      "resolution": "Re-verified against HEAD a6b66036d1c3136bc04da0c918be092ec7a5de47 \u2014 the manifest carries devId; buildId moved to the platform-issued provenance sidecar."
     },
     {
       "id": "REC-022",
@@ -199,7 +199,7 @@
       "code_truth": "required: z.boolean().default(false)",
       "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
       "verdict": "match",
-      "resolution": "Re-verified against HEAD 456c84200caf12f9e149b7d281d4fa8d424519c5 \u2014 the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
+      "resolution": "Re-verified against HEAD a6b66036d1c3136bc04da0c918be092ec7a5de47 \u2014 the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
     },
     {
       "id": "REC-023",
@@ -226,7 +226,7 @@
       "code_truth": "the loader requires a build-provenance sidecar (no sidecar -> refuse), verifies the on-disk artifact hash against the builds row (L1, always), refuses a revoked build, and verifies the Ed25519 signature (L2, mandatory \u2014 no armed verifier -> refuse); bootstrap supplies the build store unconditionally and arms the verifier from BUILD_SIGNING_*",
       "code_ref": "apps/main/src/module-system/build-signing.ts ; apps/main/src/bootstrap/bootstrap.ts",
       "verdict": "match",
-      "resolution": "Resolved by UR-20261019-101/103 (re-verified at HEAD 456c84200caf12f9e149b7d281d4fa8d424519c5): the D-4.10 hash-bound floor always runs when a build store is supplied, and the signature layer is mandatory \u2014 the loader no longer imports an unverified module. Previously recorded as a code-gap (fail-open); the floor now holds."
+      "resolution": "Resolved by UR-20261019-101/103 (re-verified at HEAD a6b66036d1c3136bc04da0c918be092ec7a5de47): the D-4.10 hash-bound floor always runs when a build store is supplied, and the signature layer is mandatory \u2014 the loader no longer imports an unverified module. Previously recorded as a code-gap (fail-open); the floor now holds."
     },
     {
       "id": "REC-026",
@@ -235,7 +235,7 @@
       "code_truth": "the production image ships no modules; apps/main/scripts/build-modules.ts and push-modules.ts deliver them to the MODULES_DIR tier volumes; the seed/place/stage scripts are removed (UR-20261019-102 Option A)",
       "code_ref": "apps/main/package.json ; apps/main/scripts/build-modules.ts ; apps/main/scripts/push-modules.ts ; apps/main/Dockerfile",
       "verdict": "match",
-      "resolution": "Re-verified against HEAD 456c84200caf12f9e149b7d281d4fa8d424519c5 \u2014 the image carries no modules; delivery is build:modules -> push:modules to the tier volumes."
+      "resolution": "Re-verified against HEAD a6b66036d1c3136bc04da0c918be092ec7a5de47 \u2014 the image carries no modules; delivery is build:modules -> push:modules to the tier volumes."
     },
     {
       "id": "REC-027",
@@ -244,7 +244,7 @@
       "code_truth": "`build:modules --dev-id <id>` stamps the platform devId into every built manifest (UR-20261019-104 Path B); the author does not hand-write it",
       "code_ref": "apps/main/scripts/build-modules.ts",
       "verdict": "match",
-      "resolution": "Re-verified against HEAD 456c84200caf12f9e149b7d281d4fa8d424519c5 \u2014 devId is platform-injected at build time."
+      "resolution": "Re-verified against HEAD a6b66036d1c3136bc04da0c918be092ec7a5de47 \u2014 devId is platform-injected at build time."
     },
     {
       "id": "REC-028",
@@ -253,7 +253,7 @@
       "code_truth": "the loader refuses a module with no build-provenance sidecar, refuses a build with no builds row or a missing provenance column, refuses a hash mismatch, refuses a revoked build, and refuses when no signing verifier is armed (L2 mandatory); bootstrap arms the verifier from BUILD_SIGNING_KEY_ID + BUILD_SIGNING_PUBLIC_KEY/PRIVATE_KEY (UR-20261019-103)",
       "code_ref": "apps/main/src/module-system/swastik-loader.ts ; apps/main/src/bootstrap/bootstrap.ts",
       "verdict": "match",
-      "resolution": "Re-verified against HEAD 456c84200caf12f9e149b7d281d4fa8d424519c5 \u2014 every load-time provenance control is mandatory."
+      "resolution": "Re-verified against HEAD a6b66036d1c3136bc04da0c918be092ec7a5de47 \u2014 every load-time provenance control is mandatory."
     }
   ],
   "counts": {
