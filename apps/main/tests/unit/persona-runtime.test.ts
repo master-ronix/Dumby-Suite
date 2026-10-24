@@ -507,9 +507,10 @@ describe('the runtime answers for the profile /health must report (Q1-Q4)', () =
 });
 
 describe('refreshCommands — a module change must NOT reconnect', () => {
-  test('it re-deploys and swaps the registry with no login and no destroy', async () => {
-    // Assigning a module changes which commands a profile OFFERS. It does not change who the profile
-    // is or how it connects, so it must cost a REST call — never a stop and a start.
+  test('it swaps the registry with no login, no destroy and NO Discord write', async () => {
+    // Assigning a module changes which commands a profile OFFERS, in memory. The DISCORD side belongs to
+    // path 1 (the integration-settings restrict) and path 2 (the queued BCCM push) — neither of which is
+    // a bulk re-deploy. Re-deploying here de-registered a command the instant a module changed.
     const { runtime, login, destroy, deployCommands } = makeRuntime([persona()]);
     await runtime.start();
     const loginsBefore = login.mock.calls.length;
@@ -520,7 +521,15 @@ describe('refreshCommands — a module change must NOT reconnect', () => {
 
     expect(login.mock.calls.length).toBe(loginsBefore); // the gateway is untouched
     expect(destroy.mock.calls.length).toBe(destroysBefore); // the client is never dropped
-    expect(deployCommands.mock.calls.length).toBe(deploysBefore + 1); // the commands are re-pushed
+    expect(deployCommands.mock.calls.length).toBe(deploysBefore); // and Discord is NOT touched
+  });
+
+  test('reDeploy: true is opt-in, for a caller that genuinely needs the REST round trip', async () => {
+    const { runtime, deployCommands } = makeRuntime([persona()]);
+    await runtime.start();
+    const before = deployCommands.mock.calls.length;
+    await runtime.refreshCommands(persona(), { reDeploy: true });
+    expect(deployCommands.mock.calls.length).toBe(before + 1);
   });
 
   test('it DETACHES the previous handler before attaching the new one', async () => {

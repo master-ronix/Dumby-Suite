@@ -242,14 +242,24 @@ export function registerCoreFrameHandlers(deps: CoreFrameHandlerDeps): void {
             refusal = err;
           }
         }
-        // The page first: it is the interaction's one initial response, and the installed module drops
-        // out of the available list there. Then the confirmation, as a FOLLOW-UP, so it is private —
-        // a change one member made is not an announcement to the channel.
-        await dispatch(interaction, 'browse');
+        // A REFUSAL IS THE INTERACTION'S INITIAL RESPONSE.
+        //
+        // Sent as a FOLLOW-UP it could be swallowed by a failing follow-up chain, and the member saw
+        // nothing at all — which is exactly what was reported: the option's description changed to
+        // "occupied", so the refusal had fired, and no notice ever arrived. As the one initial response
+        // it cannot be lost, because an interaction that is never answered is an error Discord surfaces.
         if (selected !== undefined && refusal !== undefined && deps.moduleRefusal !== undefined) {
           const payload = await deps.moduleRefusal(selected, refusal);
-          if (payload !== undefined) await interaction.followUp?.(payload);
-        } else if (installing && selected !== undefined && deps.moduleConfirmation !== undefined) {
+          if (payload !== undefined) {
+            await interaction.editReply(payload);
+            return;
+          }
+        }
+        // Otherwise the page is the initial response — it is where an installed module drops out of the
+        // available list — and the confirmation follows privately, so a change one member made is not an
+        // announcement to the channel.
+        await dispatch(interaction, 'browse');
+        if (installing && selected !== undefined && deps.moduleConfirmation !== undefined) {
           const payload = await deps.moduleConfirmation(selected, 'installed');
           if (payload !== undefined) await interaction.followUp?.(payload);
         }

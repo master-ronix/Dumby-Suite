@@ -505,7 +505,10 @@ export class PersonaRuntime {
    * Returns undefined when the profile is not hosted here — there is nothing to refresh, and nothing
    * to take offline either.
    */
-  async refreshCommands(persona: RuntimePersona): Promise<{ commands: number } | undefined> {
+  async refreshCommands(
+    persona: RuntimePersona,
+    options: { reDeploy?: boolean } = {},
+  ): Promise<{ commands: number } | undefined> {
     const client = this.clients.get(persona.id);
     if (client === undefined) return undefined;
     const token = this.deps.openBotToken(persona.botTokenSealed);
@@ -515,7 +518,13 @@ export class PersonaRuntime {
       id: persona.id,
       applicationId: persona.discordApplicationId,
     });
-    const deployed = await this.deps.deployCommands(persona, token, registry);
+    // THE DISCORD SIDE IS NOT THIS FUNCTION'S. A module change has two paths and neither is a bulk
+    // re-deploy: path 1 is the integration-settings RESTRICT, which hides the command from everyone
+    // immediately, and path 2 is the QUEUED BCCM push, which removes it eventually. Re-deploying the
+    // whole set here was a third path nobody asked for, and it de-registered a command the instant a
+    // module changed. `reDeploy` is opt-in, for a caller that genuinely needs the REST round trip.
+    const deployed =
+      options.reDeploy === true ? await this.deps.deployCommands(persona, token, registry) : 0;
 
     // Detach the old handler BEFORE attaching the new one: two listeners would dispatch every
     // interaction twice, once against a registry the profile no longer holds.
