@@ -809,7 +809,9 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
       const held = new Set<string>();
       for (const entry of moduleRegistry.all()) {
         const owner = await personaBindingService.resolveCommandOwner(guildId, entry.manifest.name);
-        if ((owner ?? 'main') === holder) held.add(entry.manifest.name);
+        // undefined means NOBODY holds it — a disabled module is not the internal profile's, and
+        // coercing undefined to 'main' made every disabled standard module count as the main's.
+        if (owner !== undefined && owner === holder) held.add(entry.manifest.name);
       }
       return held;
     },
