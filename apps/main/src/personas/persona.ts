@@ -255,6 +255,21 @@ export interface CharterStatus {
   readonly condition: string;
 }
 
+/**
+ * An interaction carried an application id that resolves to NO profile.
+ *
+ * This used to be absorbed: the actor became the internal profile, so a persona's own install was
+ * recorded against the internal profile and the occupancy refusal — which compares actor to owner —
+ * saw 'main' against 'main' and never fired. The member saw nothing happen. Now it is a refusal with a
+ * reason, which reaches the member as an ephemeral notice instead of vanishing.
+ */
+export class UnknownApplicationError extends Error {
+  constructor(readonly applicationId: string) {
+    super(`the interaction's application ${applicationId} resolves to no profile`);
+    this.name = 'UnknownApplicationError';
+  }
+}
+
 export class PersonaOccupiedError extends Error {
   /**
    * UR-20261012-077 — the ACTOR is named, not only the owner.

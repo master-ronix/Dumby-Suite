@@ -92,7 +92,7 @@ import {
   type RawInteractionLike,
 } from '../interactions/interaction-adapters.js';
 import { join } from 'node:path';
-import { PersonaOccupiedError } from '../personas/persona.js';
+import { PersonaOccupiedError, UnknownApplicationError } from '../personas/persona.js';
 import { PersonaCommandBindingService } from '../personas/persona-command-binding.service.js';
 import {
   PersonaRuntime,
@@ -1181,10 +1181,22 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     // UR-20261012-061 — OWNERSHIP. A standard/marketplace module belongs to ONE profile in a guild,
     // whoever claimed it first. Installing it from the other profile is refused, not silently allowed.
     const owner = await personaBindingService.resolveCommandOwner(guildId, moduleId);
+    // The INTERNAL profile's own application, so it is never mistaken for an unknown one.
+    const mainApplicationId = config.get('OAUTH_CLIENT_ID');
     const acting =
-      applicationId === undefined
+      applicationId === undefined || applicationId === mainApplicationId
         ? undefined
         : await personaIdentities.findByApplicationId(applicationId);
+    if (
+      applicationId !== undefined &&
+      applicationId !== mainApplicationId &&
+      acting === undefined
+    ) {
+      // REFUSE, do not absorb. Absorbing recorded the change against the internal profile, and it also
+      // disarmed the occupancy refusal below — so the member saw nothing at all.
+      logger.warn('module-change-unknown-application', { moduleId, guildId, applicationId });
+      throw new UnknownApplicationError(applicationId);
+    }
     if (applicationId !== undefined && acting === undefined) {
       // An interaction CARRIED an application id and it resolved to NO profile. Everything below then
       // treats the actor as the internal profile — so a persona's own install would be recorded against
@@ -1946,6 +1958,35 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
       logger.info(
         `persona-runtime-start-complete hosted=${results.filter((r) => r.started).length} of ${results.length}`,
       );
+      // THE APPLICATION MAP, at boot, where it can be SEEN.
+      //
+      // Which application belongs to which profile is the one fact every install depends on: it decides
+      // whether a change is recorded against the right profile, and a mismatch otherwise shows up only
+      // as a module landing on the wrong side — with nothing in the runtime log visible on a host whose
+      // logs an operator cannot read. So it is printed here, and each mapping is CHECKED rather than
+      // assumed: `resolves` is the lookup the install path performs.
+      const internalApplicationId = config.get('OAUTH_CLIENT_ID');
+      logger.info('application-map-internal', { applicationId: internalApplicationId });
+      for (const persona of await personaIdentities.list()) {
+        const resolvesTo = await personaIdentities.findByApplicationId(
+          persona.discordApplicationId,
+        );
+        const resolves = resolvesTo?.id === persona.id;
+        logger.info('application-map-persona', {
+          personaId: persona.id,
+          applicationId: persona.discordApplicationId,
+          status: persona.status,
+          boundGuildId: persona.boundGuildId,
+          resolves,
+        });
+        if (!resolves) {
+          logger.warn('application-map-unresolved', {
+            personaId: persona.id,
+            applicationId: persona.discordApplicationId,
+            effect: 'an interaction from this application will be REFUSED, not absorbed',
+          });
+        }
+      }
     }
     const rest = new REST({ version: '10' }).setToken(config.get('BOT_TOKEN'));
     // §17.7 — the BCCM batch push's Discord surface. `getRegistered` is the authority for what
