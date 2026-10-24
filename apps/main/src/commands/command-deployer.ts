@@ -23,6 +23,19 @@ export interface CommandDeployerDeps {
   rest?: DiscordRestClient;
   enabledGuildResolver?: (moduleSlug: string) => Promise<readonly string[]>;
   /**
+   * The guilds a HOSTED PROFILE is present in.
+   *
+   * Discord resolves commands per APPLICATION, so the internal profile's GLOBAL commands and a persona's
+   * GUILD-SCOPED ones are two separate registrations of the same name. In a guild where both exist the
+   * member's `/browse` may be answered by either app — the page rendered by the persona and the install
+   * attributed to the internal profile, or the reverse. That is not a routing preference to live with;
+   * it is two bots answering one command, and it is the flapping this whole area kept producing.
+   *
+   * The fix is Discord's own override: the internal profile registers an EMPTY guild-scoped set for a
+   * guild a persona hosts, which SUPPRESSES its global commands there. Elsewhere it is unchanged.
+   */
+  personaGuilds?: (() => Promise<ReadonlySet<string>>) | undefined;
+  /**
    * UR-20261012-063 — the APPLIED renames for a guild: command key -> its current name, from
    * `guild_command_renames` (written when a BCCM rename is pushed).
    *
@@ -211,6 +224,23 @@ export class CommandDeployer {
       });
       logger.info('command-deployer-dev-registered', { commandCount: commands.length, guildId });
       return;
+    }
+
+    // A guild a persona hosts: the internal profile must NOT answer there. An empty guild-scoped set is
+    // Discord's override, and it suppresses this application's GLOBAL commands in that guild — so the
+    // member's /browse is unambiguously the persona's.
+    if (this.deps.personaGuilds !== undefined) {
+      const hosted = await this.deps.personaGuilds();
+      if (hosted.has(guildId)) {
+        await rest.put(Routes.applicationGuildCommands(config.applicationId, guildId), {
+          body: [],
+        });
+        logger.info('command-deployer-suppressed-for-hosted-guild', {
+          guildId,
+          reason: 'a persona answers this guild; the internal profile registers no commands there',
+        });
+        return;
+      }
     }
 
     const admin = commands.filter((c) => this.tierOf(c) === 'admin');

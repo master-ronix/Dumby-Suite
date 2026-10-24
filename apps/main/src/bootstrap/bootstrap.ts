@@ -2155,6 +2155,15 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
       void pushNow(commandRegistry.profile.applicationId);
     }, 30_000).unref();
     const commandDeployer = new CommandDeployer({
+      // Where a hosted persona answers, the internal profile registers NOTHING — Discord's own override,
+      // so its global commands are suppressed there and the member's command is unambiguously the
+      // persona's. Only ACTIVE personas count: an inactive one is not answering anything.
+      personaGuilds: async () =>
+        new Set(
+          (await personaIdentities.list())
+            .filter((persona) => persona.status === 'active')
+            .map((persona) => persona.boundGuildId),
+        ),
       // UR-20261012-063 — the applied renames, so a boot registers the RENAMED set instead of reverting
       // every BCCM rename back to the registry's name.
       commandRenames: async (guildId: string) => {
