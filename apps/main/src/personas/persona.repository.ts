@@ -28,8 +28,10 @@ export interface PersonaIdentityStore {
 }
 
 export interface PersonaBindingStore {
-  bind(binding: PersonaBinding): Promise<void>;
-  unbind(guildId: string, moduleSlug: string): Promise<void>;
+  /** `trx` runs the write inside a caller's transaction — used to make the claim and the module state
+   * one atomic change, so the two rows can never disagree, even for a moment. */
+  bind(binding: PersonaBinding, trx?: Knex.Transaction): Promise<void>;
+  unbind(guildId: string, moduleSlug: string, trx?: Knex.Transaction): Promise<void>;
   findLive(guildId: string, moduleSlug: string): Promise<PersonaBinding | undefined>;
   listForGuild(guildId: string): Promise<PersonaBinding[]>;
   listForPersona(personaId: string): Promise<PersonaBinding[]>;
@@ -199,15 +201,15 @@ function toRow(persona: PersonaIdentity): PersonaIdentityRow {
 export class PostgresPersonaBindingStore implements PersonaBindingStore {
   constructor(private readonly knex: Knex) {}
 
-  async bind(binding: PersonaBinding): Promise<void> {
-    await this.knex('guild_persona_bindings')
+  async bind(binding: PersonaBinding, trx?: Knex.Transaction): Promise<void> {
+    await (trx ?? this.knex)('guild_persona_bindings')
       .insert(row(binding))
       .onConflict(['guildId', 'moduleSlug'])
       .merge({ personaId: binding.personaId, deletedAt: null, updatedAt: new Date() });
   }
 
-  async unbind(guildId: string, moduleSlug: string): Promise<void> {
-    await this.knex('guild_persona_bindings')
+  async unbind(guildId: string, moduleSlug: string, trx?: Knex.Transaction): Promise<void> {
+    await (trx ?? this.knex)('guild_persona_bindings')
       .where({ guildId, moduleSlug })
       .whereNull('deletedAt')
       .update({ deletedAt: new Date(), updatedAt: new Date() });

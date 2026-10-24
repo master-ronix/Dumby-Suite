@@ -1173,53 +1173,60 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     // The install is only reached when the ownership read says the module is AVAILABLE, so any binding
     // still on record belongs to a claim that no longer holds. Clearing it here is what stops a stale
     // one from reading as live the instant this install enables the module.
-    if (owner === undefined && guildId !== null) {
-      await personaBindingService.unbindModule(guildId, moduleId);
-    }
-    if (owner !== undefined && (acting?.id ?? 'main') !== owner) {
-      logger.warn(
-        `marketplace-module-occupied module=${moduleId} guild=${guildId} owner=${owner} actor=${acting?.id ?? 'main'}`,
-      );
-      // UR-20261012-077 — name the actor. This is the refusal logged as occupied by "another persona", which read as if the persona had been refused her own module.
-      throw new PersonaOccupiedError(guildId, moduleId, owner, acting?.id ?? 'main');
-    }
-    logger.info('marketplace-install-decision', {
-      moduleId,
-      guildId,
-      owner: owner ?? 'none',
-      actor: acting?.id ?? 'main',
-      applicationId: applicationId ?? 'none',
-      claims: owner === undefined && acting !== undefined,
+    // ONE TRANSACTION for the CLAIM and the STATE.
+    //
+    // Written as two statements, the binding and the enabler could disagree for a moment — a module
+    // apparently held by one profile and enabled by another. The READ is already correct (`enabledBy`
+    // answers first), so nothing acted on it, but the rows should not be able to disagree at all: it is
+    // a confusing thing to observe while diagnosing exactly this area.
+    await db.knex.transaction(async (trx) => {
+      if (owner === undefined && guildId !== null) {
+        // A binding that no longer wins the read is released here — inside the same transaction, so it
+        // cannot survive the install that supersedes it.
+        await personaBindingService.unbindModule(guildId, moduleId, trx);
+      }
+      if (owner !== undefined && (acting?.id ?? 'main') !== owner) {
+        logger.warn(
+          `marketplace-module-occupied module=${moduleId} guild=${guildId} owner=${owner} actor=${acting?.id ?? 'main'}`,
+        );
+        // UR-20261012-077 — name the actor. This is the refusal logged as occupied by "another persona", which read as if the persona had been refused her own module.
+        throw new PersonaOccupiedError(guildId, moduleId, owner, acting?.id ?? 'main');
+      }
+      logger.info('marketplace-install-decision', {
+        moduleId,
+        guildId,
+        owner: owner ?? 'none',
+        actor: acting?.id ?? 'main',
+        applicationId: applicationId ?? 'none',
+        claims: owner === undefined && acting !== undefined,
+      });
+      // A PERSONA installing an unclaimed module CLAIMS it: the first profile to install owns it.
+      if (owner === undefined && acting !== undefined) {
+        await personaBindingService.bindModuleToPersona(
+          { guildId, moduleSlug: moduleId, personaId: acting.id },
+          trx,
+        );
+        logger.info(
+          `marketplace-module-claimed module=${moduleId} guild=${guildId} persona=${acting.id}`,
+        );
+      }
+      await trx('guild_module_states')
+        .insert({
+          guildId,
+          moduleSlug: moduleId,
+          enabled: true,
+          state: 'active',
+          // WHO enabled it. Without this, ownership could not tell the internal profile's install from a persona's.
+          enabledBy: acting?.id ?? 'main',
+        })
+        .onConflict(db.knex.raw('("guildId", "moduleSlug") where "deletedAt" is null'))
+        .merge({
+          enabled: true,
+          state: 'active',
+          enabledBy: acting?.id ?? 'main',
+          updatedAt: db.knex.fn.now(),
+        });
     });
-    // A PERSONA installing an unclaimed module CLAIMS it: the first profile to install owns it.
-    if (owner === undefined && acting !== undefined) {
-      await personaBindingService.bindModuleToPersona({
-        guildId,
-        moduleSlug: moduleId,
-        personaId: acting.id,
-      });
-      logger.info(
-        `marketplace-module-claimed module=${moduleId} guild=${guildId} persona=${acting.id}`,
-      );
-    }
-
-    await db
-      .knex('guild_module_states')
-      .insert({
-        guildId,
-        moduleSlug: moduleId,
-        enabled: true,
-        state: 'active',
-        // WHO enabled it. Without this, ownership could not tell the main's install from a persona's.
-        enabledBy: acting?.id ?? 'main',
-      })
-      .onConflict(db.knex.raw('("guildId", "moduleSlug") where "deletedAt" is null'))
-      .merge({
-        enabled: true,
-        state: 'active',
-        enabledBy: acting?.id ?? 'main',
-        updatedAt: db.knex.fn.now(),
-      });
     await setModuleCommandAccess?.(moduleId, guildId, true);
     await enqueueModuleCommandChanges(moduleId, guildId, userId, 'enable', bccmScopeOf(acting));
     // REGISTER it, don't just enable it. Enabling wrote the database and queued a rename push, but
@@ -1258,16 +1265,23 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     // Who held it, read BEFORE the write below nulls the enabler — it is one of the two profiles
     // whose command set this disable changes.
     const ownerBefore = await personaBindingService.resolveCommandOwner(guildId, moduleId);
-    await db
-      .knex('guild_module_states')
-      .insert({ guildId, moduleSlug: moduleId, enabled: false, state: 'disabled', enabledBy: null })
-      .onConflict(db.knex.raw('("guildId", "moduleSlug") where "deletedAt" is null'))
-      .merge({ enabled: false, state: 'disabled', enabledBy: null, updatedAt: db.knex.fn.now() });
-    // RELEASE THE CLAIM. A binding is a claim on the module, and it outlived the install: a persona
-    // could uninstall, the module would read as available, the MAIN could then install it — and the
-    // stale binding would read as live again the moment the module was enabled, so the module the main
-    // had just installed appeared under HER profile and not its own.
-    await personaBindingService.unbindModule(guildId, moduleId);
+    // ONE TRANSACTION: the state and the released claim together.
+    //
+    // RELEASE THE CLAIM — a binding is a claim on the module, and it outlived the install: a profile
+    // could uninstall, the module would read as available, another could then install it, and the stale
+    // binding would read as live again the moment the module was enabled, so the module the other had
+    // just installed appeared under HER profile instead of its own.
+    //
+    // Written as two statements, a disabled module could sit beside a binding that still named a
+    // holder — a disagreement an operator would see while diagnosing exactly this. One transaction
+    // means the rows cannot disagree at all.
+    await db.knex.transaction(async (trx) => {
+      await trx('guild_module_states')
+        .insert({ guildId, moduleSlug: moduleId, enabled: false, state: 'disabled', enabledBy: null })
+        .onConflict(db.knex.raw('("guildId", "moduleSlug") where "deletedAt" is null'))
+        .merge({ enabled: false, state: 'disabled', enabledBy: null, updatedAt: db.knex.fn.now() });
+      await personaBindingService.unbindModule(guildId, moduleId, trx);
+    });
     await setModuleCommandAccess?.(moduleId, guildId, false);
     await enqueueModuleCommandChanges(moduleId, guildId, userId, 'disable', bccmScopeOf(acting));
     // …and DEREGISTER it, for the same reason: a disabled module whose command stays registered is a

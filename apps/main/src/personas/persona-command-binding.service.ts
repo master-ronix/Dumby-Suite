@@ -14,6 +14,7 @@ import {
 } from './persona.js';
 import type { PersonaBindingStore, PersonaIdentityStore } from './persona.repository.js';
 import type { PersonaRegistrarStore } from './persona-registrar.repository.js';
+import type { Knex } from 'knex';
 import type { Logger } from '../logging/logger.js';
 
 export class PersonaCommandBindingService {
@@ -131,7 +132,7 @@ export class PersonaCommandBindingService {
     readonly guildId: string;
     readonly moduleSlug: string;
     readonly personaId: string;
-  }): Promise<PersonaBinding> {
+  }, trx?: Knex.Transaction): Promise<PersonaBinding> {
     const persona = await this.identities.findById(request.personaId);
     if (persona === undefined) throw new UnknownPersonaError(request.personaId);
     const existing = await this.bindings.findLive(request.guildId, request.moduleSlug);
@@ -145,7 +146,7 @@ export class PersonaCommandBindingService {
       moduleSlug: request.moduleSlug,
       personaId: request.personaId,
     };
-    await this.bindings.bind(binding);
+    await this.bindings.bind(binding, trx);
     this.logger.info('persona-module-bound', {
       guildId: request.guildId,
       moduleSlug: request.moduleSlug,
@@ -154,8 +155,12 @@ export class PersonaCommandBindingService {
     return binding;
   }
 
-  async unbindModule(guildId: string, moduleSlug: string): Promise<void> {
-    await this.bindings.unbind(guildId, moduleSlug);
+  async unbindModule(
+    guildId: string,
+    moduleSlug: string,
+    trx?: Knex.Transaction,
+  ): Promise<void> {
+    await this.bindings.unbind(guildId, moduleSlug, trx);
     this.logger.info('persona-module-unbound', { guildId, moduleSlug });
   }
 
