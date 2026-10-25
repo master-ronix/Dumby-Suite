@@ -6,7 +6,7 @@ status: normative
 version: 1.0
 ---
 
-# docs/ur/ — Frozen Program Request Records
+# upgradation/ — Frozen Program Request Records
 
 This directory is the register of the authoritative request records of the Dumby v5.0.0
 program. Each entry below identifies a record, its version, and its freeze status, and
@@ -93,6 +93,18 @@ records raised under their own IDs — never edits to frozen ones.
 > authored as a second record inside `upgradation/UR-20261012-042.md`; it has no
 > `UR-20261012-043.md` file of its own. Cross-references to it (in `upgradation/UR-20261012-044.md`,
 > `UR-20261012-045.md` and `UR-20261012-049.md`) resolve to that co-located record.
+>
+> **Records 101–104 are cited, not held.** The corpus cites `UR-20261019-101`, `UR-20261019-102`,
+> `UR-20261019-103` and `UR-20261019-104` as the authority for the provenance / build-signing /
+> module-delivery code track — see `upgradation/UR-20261021-094.md`,
+> `upgradation/UR-20261021-095.md`, `status/code-reconciliation.json` and
+> `spec/modules/module-anatomy-manifest.md`. No record file for any of the four is held in this tree,
+> and their bodies are **not reproduced here and must not be inferred**. They also sit above the
+> counter's last issued value (`UR-20261021-095`) although they are dated 2026-10-19: the counter has
+> run globally from `026` to `095` since 2026-10-12, so `101`–`104` are not issuable under it. The gap
+> at `096`–`100` is therefore **declared**, not silent. Treat the four ids as provenance labels for a
+> landed code track, not as readable records, until a later record either materialises them or retires
+> the citations.
 
 ---
 
