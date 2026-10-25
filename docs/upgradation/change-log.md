@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.104
+version: 5.5.105
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -13,7 +13,7 @@ authority_scope: [history]
 # DUMBY Documentation — Unified Change Log
 
 > **One project. One continuous history.**
-> Last recorded: 2026-10-21
+> Last recorded: 2026-10-26
 
 ---
 
@@ -145,7 +145,7 @@ migration prompt version) · `state` (Greenfield | Migration | Enforcement) · `
 | v5.4.0 — Dashboard MODULE_ERROR fix | 2026-10-08 | live log |
 | v5.5.0 — Dashboard controls / attribution / icons | 2026-10-08 | 25 gates green |
 | v5.5.1 — UR-005 build fix | 2026-10-08 | push |
-| v5.5.2 … v5.5.104 — the per-request patch series | 2026-10-11 … 2026-10-21 | change-log §3 (this file) |
+| v5.5.2 … v5.5.105 — the per-request patch series | 2026-10-11 … 2026-10-26 | change-log §3 (this file) |
 
 > §2 lists the **master / milestone tracks**. The per-request patch series after v5.5.1
 > (v5.5.2 … v5.5.99) is enumerated in §3; the front-matter `version` is the highest released
@@ -524,6 +524,21 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 
 ---
 
+### v5.5.105 — Corpus Residual Closure: Provenance Anchor Corrected, the 2026-10-24/25 Re-Anchor Track Recorded, GAP_MANIFEST State Reconciled (UR-20261026-096) — 2026-10-26
+
+- 2026-10-26 · meta-prompt 5.2.0 · state=Enforcement · handoff=master-prompt:enforce · return=met
+- **Work order.** `upgradation/UR-20261026-096.md` — closes findings DOC-012 … DOC-016.
+- **Audit basis.** An independent full-scope audit of `docs/` at `feature/dev` @ `de3bde53910990e93c0956e2758126b3087c59b4`. The 30-gate suite is **30/30 green** on a complete checkout, so every finding closed here is semantic — invisible to a structural gate — not a gate failure.
+- **DOC-013 — the unrecorded track.** Three `docs(corpus)` re-anchor commits landed after the previous record and had none of their own: `8d7912617` (2026-10-24, routing fix), `d15af679d` (2026-10-24, paths fix) and `de3bde539` (2026-10-25, surfaces fix). Each re-pointed the same five files — `README.md`, `migration/migration-prompt.md`, `status/audit-age.json`, `status/code-reconciliation.json` and `GAP_MANIFEST.md` — and `de3bde539` moved them from `732ab46` to `7e8ca739`, the newest commit to touch `apps/main`. This entry is their record; the `Last recorded` line moves to 2026-10-26.
+- **DOC-012 — the anchor.** Section 5.1 named `732ab46` while the five documents it described named `7e8ca739`; corrected in this run's DOC-012 commit, with the v5.5.103 R1 bullet keeping its history and gaining a supersession clause.
+- **DOC-014 — the state.** `GAP_MANIFEST.md` stated State C, State B and an ACTIVE work order at once, and carried a third ref (`7a58779`). Its header now states one state consistent with `migration-ledger.md` — State C — Enforcement, work order closed — and its point-in-time notice carries `7e8ca739`.
+- **DOC-015 — the 101–104 gap.** The register in `upgradation/README.md` now accounts for `UR-20261019-101` … `104`, the code-track ids the corpus cites as authority and does not hold.
+- **DOC-016 — the retired path.** The register's H1 no longer names the retired `docs/ur/` path its own quarantine note forbids quoting forward.
+- **Verification.** Corpus gate suite **30/30 green** after the changes, run from `docs/` as `for g in scripts/docs/check-*.mjs; do node "$g"; done`. No application code, workflow or deployment change is involved, so no app toolchain run is claimed.
+- **Return.** `met` (documentation scope).
+
+---
+
 ### v5.5.104 — Production Readiness: CI Deploy-Blocker Cleared, Module-Deployment Approval API, Twill Client-Secret Required (UR-20261021-095) — 2026-10-21
 
 - 2026-10-21 · meta-prompt 5.2.0 · state=Enforcement · handoff=master-prompt:enforce · return=met
@@ -544,7 +559,7 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 - 2026-10-21 · meta-prompt 5.2.0 · state=Enforcement · handoff=master-prompt:enforce · return=met
 - **Work order.** `upgradation/UR-20261021-094.md` — implements R1 … R10 and closes findings DOC-1 … DOC-11.
 - **Context.** The code track UR-20261019-101 … UR-20261019-104 landed on `feature/dev` after the corpus was last reconciled at `416864b`, leaving the corpus's code-grounding claim untrue: its `verified_commit` was 27 commits behind HEAD and its freshness guard (`check-code-reconciliation`) fails on a full checkout.
-- **R1 — provenance re-anchored.** `status/code-reconciliation.json` re-anchored to `feature/dev` @ `732ab46`, `verified_at` 2026-10-21; `status/audit-age.json`, `GAP_MANIFEST.md`, `README.md` and `migration/migration-prompt.md` re-pointed to the same commit.
+- **R1 — provenance re-anchored.** `status/code-reconciliation.json` re-anchored to `feature/dev` @ `732ab46`, `verified_at` 2026-10-21; `status/audit-age.json`, `GAP_MANIFEST.md`, `README.md` and `migration/migration-prompt.md` re-pointed to the same commit. **Superseded 2026-10-25:** `de3bde539` re-pointed those same five files to `7e8ca739`, the newest commit to touch `apps/main`, so `732ab46` is no longer a live pointer (DOC-012, `upgradation/UR-20261026-096.md`).
 - **R2 — ledger rows reconciled.** REC-025 flipped `code-gap` → `match` (UR-20261019-103 enforces the D-4.10 floor: sidecar mandatory, artifact-hash floor always, signature layer mandatory); REC-005 / REC-021 corrected (the manifest requires `devId`; `buildId` is platform-issued, not author-declared); REC-012 corrected (`SWASTIK_LIVE_VOLUME_PATH` removed). Rows added: REC-026 (Option A — the image ships no modules), REC-027 (build-time `devId` injection), REC-028 (mandatory signature layer). 25 → 28 facts, 28 `match`.
 - **R3 — `buildId` reconciled across the corpus.** `spec/modules/module-anatomy-manifest.md` §11.2, `spec/modules/building-a-module-a-complete-worked-example.md`, `spec/request-layer/division-10-hello-world-standard-tier-module.md` and `documentation/guides/building-a-module.md` now state `buildId` is platform-issued and is not a manifest field; the two "code gap" asides (spec + guide) that described a schema the code has since matched are rewritten as reconciled.
 - **R4/R5 — records.** This entry; the UR-20261018-093 disposition moved to **Executed**; the stale live-count restatement removed from `upgradation/README.md`.
@@ -2748,8 +2763,9 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 | UR-20261016-091 — corpus audit + enforcement (gate-truth, provenance, version model, guard classes) | Executed 2026-10-16 (see the `v5.5.99` entry above). Findings AU-1 … AU-11 closed; see §5.2. |
 | UR-20261018-092 — corpus audit (generated-artefact & ledger freshness, provenance/branch truth, ungated ledgers) | **Executed 2026-10-18** (see the `v5.5.101` entry above). Findings DR-1 … DR-12 plus enforcement findings FD-1/FD-2 closed. |
 | UR-20261018-093 — module load provenance (enforce the D-4.10 hash-bound floor without a signing key) | **Executed 2026-10-19** (UR-20261019-101/103; recorded 2026-10-21 by UR-20261021-094). REC-025 flipped `code-gap` → `match`; the loader now requires the sidecar, always runs the artifact-hash floor, and requires an armed signature verifier. |
-| UR-20261021-094 — corpus reconciliation (re-ground at HEAD after the provenance/signing code track) | **Executed 2026-10-21** (see the `v5.5.103` entry). Findings DOC-1 … DOC-11 closed; the corpus is re-anchored at `feature/dev` @ `732ab46`. |
+| UR-20261021-094 — corpus reconciliation (re-ground at HEAD after the provenance/signing code track) | **Executed 2026-10-21** (see the `v5.5.103` entry). Findings DOC-1 … DOC-11 closed; the corpus is re-anchored at `feature/dev` @ `7e8ca739`. |
 | UR-20261021-095 — production readiness (CI deploy-blocker, module-deployment approval API, Twill client-secret requirement) | **Executed 2026-10-21** (see the `v5.5.104` entry). Residuals PR-1 … PR-6 closed. |
+| UR-20261026-096 — corpus residual closure (provenance anchor, unrecorded re-anchor track, GAP_MANIFEST state, the 101–104 record gap) | **Executed 2026-10-26** (see the `v5.5.105` entry). Findings DOC-012 … DOC-016 closed. |
 
 ### 5.2 Residual dispositions (UR-20261015-090 R9)
 
