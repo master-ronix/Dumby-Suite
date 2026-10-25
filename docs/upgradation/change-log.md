@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.105
+version: 5.5.106
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -145,7 +145,7 @@ migration prompt version) · `state` (Greenfield | Migration | Enforcement) · `
 | v5.4.0 — Dashboard MODULE_ERROR fix | 2026-10-08 | live log |
 | v5.5.0 — Dashboard controls / attribution / icons | 2026-10-08 | 25 gates green |
 | v5.5.1 — UR-005 build fix | 2026-10-08 | push |
-| v5.5.2 … v5.5.105 — the per-request patch series | 2026-10-11 … 2026-10-26 | change-log §3 (this file) |
+| v5.5.2 … v5.5.106 — the per-request patch series | 2026-10-11 … 2026-10-26 | change-log §3 (this file) |
 
 > §2 lists the **master / milestone tracks**. The per-request patch series after v5.5.1
 > (v5.5.2 … v5.5.99) is enumerated in §3; the front-matter `version` is the highest released
@@ -521,6 +521,21 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 - **R8 — audit age.** `status/audit-age.json` records the audit date, commit, scope and request; `README.md` names the current audit.
 - **Verification.** Corpus gate suite **27/27 green**. Application toolchain not run (Node 20.20.2; app requires Node ≥ 22; no deps) — app-side items are outside the corpus scope.
 - **Return.** `met` (corpus scope) — every AU finding closed; OI-1 (human attestation) and OI-3 (Docker/K8s) remain honest standing items, not defects.
+
+---
+
+### v5.5.106 — Runtime Ownership and Command-Path Truth: the Owner Memo Removed, the Occupied Predicate Fixed, the Persona Health Read Unified, Route B De-Registration Removed (UR-20261026-097) — 2026-10-26
+
+- 2026-10-26 · meta-prompt 5.2.0 · state=Enforcement · handoff=master-prompt:enforce · return=met
+- **Work order.** `upgradation/UR-20261026-097.md` — closes RT-1 … RT-5.
+- **Basis.** An operator test pass on two profiles in one guild reported contradictory readings across /dashboard, /health, /browse, /modules and /hello. The boot log settles the shape of it: `module-state … enabledBy=7a498256-… binding=7a498256-… resolvedOwner=7a498256-… agrees=true`. The stored state was consistent; four READERS of it were not. No finding here is data corruption, and none is fixed by repairing rows.
+- **RT-1 — the memo.** `holderOf` memoised the holder into a `Map` declared beside the page-data provider, so the answer was frozen for the life of the process — nothing invalidated it. It now reads fresh and logs a failed read (`page-data-owner-read-failed`) instead of silently answering `undefined`.
+- **RT-2 — the predicate.** `/browse` computed `occupied` as `!ownedBy(...)`, true both for "another profile holds it" and for "nobody holds it", and then named the internal profile for the "nobody" case — the "occupied by Dumby Profile" that the main bot could not take. `occupied` now requires a defined holder, and the label is built from that holder alone.
+- **RT-3 — the health read.** A hosted persona's `/health` counted from her runtime registry while /modules and /dashboard counted from ownership, so her standard-tier count read 0 while a page was drawn for one. The held set now comes from the ownership read for every profile; the runtime registry is the fallback only.
+- **RT-4 — Route B.** A disable DELETED the module's guild commands whenever the permission override applied zero — which is what an absent Bearer token returns, and `DISCORD_COMMAND_PERMISSIONS_TOKEN` defaults to ''. The command was de-registered from the guild the instant the button was pressed, which is neither of the disable's two halves and which §17.7 already forbids: a disable's command removal "never take[s] effect immediately at the registration layer". The third path is removed; with no token the command stays registered and the router answers `MODULE_DISABLED` instead of `UNKNOWN_COMMAND`. `UR-20261012-030`'s Route B row is superseded, and that record is left unedited as history.
+- **RT-5 — the notice.** The refusal notice declared `ephemeral: true` while being answered by `editReply` on an interaction the registry had already acknowledged with `deferUpdate` — a public acknowledgement, and `editReply` cannot change an existing message's ephemerality. It asked for the private grammar (no accent, no footer) on a channel-visible message. It now declares `ephemeral: false`; a genuinely private refusal is recorded as a follow-up.
+- **Verification.** Corpus gate suite **30/30 green** after the change. `tsc` was run over both edited sources: no error on any edited line, only the expected missing-`@types/node` and unresolved-import diagnostics. The new unit tests were **not executed** in this sandbox — no pnpm workspace install is possible (Node 20.20.2 against a Node ≥ 22 requirement) and the bundled `esbuild` panics here — so CI is their verification and no local app run is claimed.
+- **Return.** `met` (code + corpus scope).
 
 ---
 
@@ -2766,6 +2781,7 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 | UR-20261021-094 — corpus reconciliation (re-ground at HEAD after the provenance/signing code track) | **Executed 2026-10-21** (see the `v5.5.103` entry). Findings DOC-1 … DOC-11 closed; the corpus is re-anchored at `feature/dev` @ `7e8ca739`. |
 | UR-20261021-095 — production readiness (CI deploy-blocker, module-deployment approval API, Twill client-secret requirement) | **Executed 2026-10-21** (see the `v5.5.104` entry). Residuals PR-1 … PR-6 closed. |
 | UR-20261026-096 — corpus residual closure (provenance anchor, unrecorded re-anchor track, GAP_MANIFEST state, the 101–104 record gap) | **Executed 2026-10-26** (see the `v5.5.105` entry). Findings DOC-012 … DOC-016 closed. |
+| UR-20261026-097 — runtime ownership and command-path truth (owner memo, occupied predicate, persona health read, Route B de-registration, refusal-notice grammar) | **Executed 2026-10-26** (see the `v5.5.106` entry). Findings RT-1 … RT-5 closed. |
 
 ### 5.2 Residual dispositions (UR-20261015-090 R9)
 
