@@ -74,6 +74,10 @@ function makeDeps(over: Dict = {}): PageDataDeps {
   })) as unknown as Dict;
   knex['raw'] = async (): Promise<unknown[]> => [{}];
   return {
+    // The REAL resolver answers 'main' for an enabled module with no enabler recorded — the tier
+    // default. A fixture that omits it makes every module read as unheld, which is not a state the
+    // production resolver can produce for an enabled module.
+    resolveOwner: async () => 'main',
     getClient: () => undefined,
     moduleRegistry: registry,
     db: { knex },

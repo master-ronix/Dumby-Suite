@@ -461,6 +461,19 @@ export function createPageDataProvider(deps: PageDataDeps): (
   }
 
   /** True when `actingProfileId` holds this module in this guild. Core is held by everyone. */
+  /**
+   * Does THIS profile hold the module?
+   *
+   * It used `holderOf` — the enabler column alone — and defaulted the answer to the INTERNAL profile
+   * when there was none. The ownership resolver, which the install path and the deployer both use, says
+   * 'nobody' for a disabled module. Two reads of one fact: a disabled module therefore read as the
+   * internal profile's HERE while it read as unheld THERE, and that is the disagreement that had
+   * /browse offering a module that /dashboard drew a page for.
+   *
+   * Now it asks the resolver. The resolver already answers 'main' for an enabled-but-unclaimed module,
+   * so the default it used to hard-code is preserved where it was correct — and removed where it was
+   * not, because undefined means NOBODY holds it.
+   */
   const ownedBy = async (
     guildId: string | null,
     slug: string,
@@ -468,7 +481,12 @@ export function createPageDataProvider(deps: PageDataDeps): (
     actingProfileId: string,
   ): Promise<boolean> => {
     if (tier === 'core') return true;
-    return ((await holderOf(guildId, slug)) ?? MAIN_PROFILE_ID) === actingProfileId;
+    // A DM has no module state, so nothing is guild-held there; the pages are the internal profile's,
+    // which is what this read answered before and what a DM's dashboard still shows.
+    if (guildId === null) return actingProfileId === MAIN_PROFILE_ID;
+    if (resolveOwner === undefined) return false;
+    const owner = await resolveOwner(guildId, slug);
+    return owner !== undefined && owner === actingProfileId;
   };
 
   interface PersonaProfile {
@@ -1006,7 +1024,9 @@ export function createPageDataProvider(deps: PageDataDeps): (
             ? {
                 occupied: true,
                 occupiedBy: profileLabel(
-                  heldByMain ? 'main' : ((await holderOf(guildId, slug)) ?? 'main'),
+                  // NOT `?? 'main'`: undefined means nobody holds it, and naming the internal profile
+                  // for a disabled module is the same coercion that made /browse offer it.
+                  heldByMain ? 'main' : await holderOf(guildId, slug),
                   heldByMain ? undefined : await personaNameOf(holder),
                 ),
               }

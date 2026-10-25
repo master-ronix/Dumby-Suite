@@ -155,9 +155,15 @@ export function makeModuleView(deps: ModuleViewDeps): ModuleViewService {
     // which is the migration this whole area keeps producing.
     const availableToMe = isGuildScopedTier(tier) && !heldByMe && owner === 'none';
 
-    // REGISTERED — a shared tier always; a guild-scoped module only for its holder, and only while it
-    // is enabled. This is the answer the command registration was missing.
-    const registeredForMe = isSharedTier(tier) ? true : enabled && owner === me;
+    // REGISTERED — a shared tier always; a guild-scoped module for its HOLDER, whether or not it is
+    // enabled.
+    //
+    // "Only while enabled" was wrong, and the symptom was exact: disabling a module made its command
+    // report UNKNOWN_COMMAND ("not registered or not available here") instead of MODULE_DISABLED ("the
+    // module that provides this command is switched off"). Dropping the command from the registry
+    // removed the router's ability to say the useful thing. Keeping it registered — and letting the
+    // router refuse it with MODULE_DISABLED — is the behaviour a member should see.
+    const registeredForMe = isSharedTier(tier) ? true : owner === me;
 
     return {
       moduleId,
