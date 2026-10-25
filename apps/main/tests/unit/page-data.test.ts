@@ -841,3 +841,74 @@ describe('health reports the ACTING profile, not the host (Q1-Q4)', () => {
     expect(names).toContain('Host Process (shared)');
   });
 });
+
+/**
+ * UR-20261026-097 — one ownership fact, read consistently.
+ *
+ * The surfaces disagreed because there were FOUR reads of "who holds this module": the ownership
+ * resolver, a process-lifetime memo of it, a hosted persona's runtime registry, and a guild-level
+ * enablement map. These tests pin the three that produced the operator's contradictions.
+ */
+describe('ownership is read, not remembered (UR-20261026-097)', () => {
+  test('a module NOBODY holds is not occupied, and is never attributed to the main profile', async () => {
+    // The resolver answers `undefined` — nobody holds it. `!ownedBy(...)` was true for this case too,
+    // so /browse reported the module as occupied and then had to invent a holder for it, producing
+    // "occupied by Dumby Profile" for a module the main bot did not hold.
+    const provider = createPageDataProvider(makeDeps({ resolveOwner: async () => undefined }));
+    const data = await provider('browse', 'guild-1', 0, undefined, 'app-1', 'main');
+    const hello = (
+      data['modules'] as Array<{ id: string; occupied?: boolean; occupiedBy?: string }>
+    ).find((m) => m.id === 'hello-world');
+
+    // Offered, because nobody holds it and it is therefore installable …
+    expect(hello).toBeDefined();
+    // … and NOT occupied, with nobody named.
+    expect(hello?.occupied).not.toBe(true);
+    expect(hello?.occupiedBy).toBeUndefined();
+  });
+
+  test('the holder is re-read on every render — a change is not frozen for the process', async () => {
+    // The holder moved between two renders: a persona held it, then released it. The memo answered the
+    // FIRST render's holder for the life of the process, so /browse kept naming a profile that no
+    // longer held the module while /modules and /dashboard had already moved on.
+    let holder: string | undefined = 'p-1';
+    const provider = createPageDataProvider(
+      makeDeps({
+        resolveOwner: async (_guildId: string, slug: string) =>
+          slug === 'hello-world' ? holder : undefined,
+      }),
+    );
+    const first = await provider('browse', 'guild-1', 0, undefined, 'app-1', 'main');
+    expect(
+      (first['modules'] as Array<{ id: string; occupied?: boolean }>).find(
+        (m) => m.id === 'hello-world',
+      )?.occupied,
+    ).toBe(true);
+
+    holder = undefined; // she released it
+    const second = await provider('browse', 'guild-1', 0, undefined, 'app-1', 'main');
+    expect(
+      (second['modules'] as Array<{ id: string; occupied?: boolean }>).find(
+        (m) => m.id === 'hello-world',
+      )?.occupied,
+    ).not.toBe(true);
+  });
+
+  test('/health counts what the profile HOLDS, even when her runtime registry is stale', async () => {
+    // A hosted persona's /health answered from her runtime's registry, which `refreshCommands` only
+    // updates while her client is connected — so it read 0 standard modules while /dashboard was
+    // already drawing her a page for one. Inventory is the ownership read; the registry is what is
+    // LOADED, which is a different fact.
+    const provider = createPageDataProvider(
+      makeDeps({
+        actingProfile: () => ({ moduleSlugs: [] }),
+        heldModulesInGuild: async () => new Set(['hello-world']),
+      }),
+    );
+    const data = await provider('health', 'guild-1', 0, undefined, 'app-1', 'p-1');
+    const groups = data['groups'] as Array<{ name: string; rows: Array<[string, string]> }>;
+    const modulesGroup = groups.find((group) => group.name === 'Modules');
+    expect(modulesGroup).toBeDefined();
+    expect(modulesGroup?.rows.find((row) => row[0] === 'Standard-tier')?.[1]).toBe('1');
+  });
+});

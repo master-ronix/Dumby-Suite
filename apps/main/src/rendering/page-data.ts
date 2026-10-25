@@ -282,14 +282,19 @@ export function createPageDataProvider(deps: PageDataDeps): (
     // HER modules: the core set, which every profile shares, plus exactly the modules she holds.
     // Filtering the module registry rather than the command registry — only this one carries tiers.
     //
-    // A HOSTED profile answers from its runtime's registry. One that is not hosted here — the internal
-    // profile — has no registry to read, so its held set comes from the ownership read instead of from
-    // nothing. Without that fallback its standard-tier count was zero however many it held.
+    // The held set is the OWNERSHIP read, for EVERY profile — hosted or not.
+    //
+    // A hosted profile used to answer from her runtime's registry (`acting.moduleSlugs`) while
+    // /modules and /dashboard answered from ownership, so the two could disagree for as long as her
+    // runtime had not been refreshed: /health said 0 standard modules while /dashboard drew her a page
+    // for one. Her runtime registry is refreshed by `refreshCommands`, which returns early when her
+    // client is not connected — so the divergence was not momentary, it lasted until the next reload.
+    // Inventory is ownership; the runtime registry is what is LOADED, which is a different fact.
     let held: ReadonlySet<string>;
-    if (acting?.moduleSlugs !== undefined) {
-      held = new Set(acting.moduleSlugs);
-    } else if (deps.heldModulesInGuild !== undefined && guildId !== null) {
+    if (deps.heldModulesInGuild !== undefined && guildId !== null) {
       held = await deps.heldModulesInGuild(guildId, applicationId);
+    } else if (acting?.moduleSlugs !== undefined) {
+      held = new Set(acting.moduleSlugs);
     } else {
       held = new Set<string>();
     }
@@ -429,19 +434,28 @@ export function createPageDataProvider(deps: PageDataDeps): (
    * `ownedBy` is the only thing any page consults, so /persona, /modules, /browse and /dashboard can
    * no longer disagree about who holds a module.
    */
-  const ownerCache = new Map<string, string | undefined>();
+  /**
+   * The holder of `slug` in `guildId`, read FRESH on every call.
+   *
+   * This used to memoise into a `Map` declared beside the provider, so the answer was frozen for the
+   * life of the PROCESS: /browse kept naming whoever held a module when the page was first rendered,
+   * long after an install, a disable or a move had changed it. Nothing ever invalidated that Map —
+   * there was no invalidation to call. A read that must agree with /modules and /dashboard cannot be
+   * cached across renders; within one render the callers already await in parallel, so the memo saved
+   * very little and cost correctness.
+   *
+   * A FAILED read is logged rather than silently answering `undefined`. "The owner could not be read"
+   * and "nobody holds it" are different facts, and conflating them is how /browse came to label an
+   * unheld module "occupied by the main profile".
+   */
   const holderOf = async (guildId: string | null, slug: string): Promise<string | undefined> => {
     if (guildId === null || resolveOwner === undefined) return undefined;
-    const key = `${guildId}\u0000${slug}`;
-    if (ownerCache.has(key)) return ownerCache.get(key);
-    let owner: string | undefined;
     try {
-      owner = await resolveOwner(guildId, slug);
-    } catch {
-      owner = undefined;
+      return await resolveOwner(guildId, slug);
+    } catch (err) {
+      logger.warn('page-data-owner-read-failed', { guildId, slug, error: String(err) });
+      return undefined;
     }
-    ownerCache.set(key, owner);
-    return owner;
   };
 
   /** The registered NAME of a persona id, for anything a member reads. Undefined when unknown. */
@@ -994,20 +1008,22 @@ export function createPageDataProvider(deps: PageDataDeps): (
         const slug = entry.manifest.name;
         const tier = entry.manifest.tier;
         const holder = await holderOf(guildId, slug);
-        // UR-20261012-079 — `holder === undefined` used to be the proxy for "the main bot", because
-        // an enabled-but-unbound module answered undefined. UR-078 made that read answer `'main'`
-        // explicitly, so the proxy inverted: a module the MAIN BOT enabled started reading as
-        // "Occupied by a persona — the main bot cannot take it", which is nonsense. Both spellings
-        // mean the main bot.
-        const heldByMain = holder === undefined || holder === MAIN_PROFILE_ID;
-        // Occupied: held by ANOTHER profile AND live for the guild. Two different questions, and they
-        // must not be conflated:
+        // Occupied: held by ANOTHER profile AND live for the guild. Three different questions, and
+        // they must not be conflated:
+        //   * `holder` is WHO holds it — `undefined` means NOBODY, which is not the main bot and must
+        //     never be named as one. `holder === undefined` used to be the proxy for "the main bot"
+        //     (an enabled-but-unbound module answered undefined); the ownership read answers `'main'`
+        //     explicitly now, so that proxy is gone.
         //   * `enabled` (above) is the PER-PROFILE default — it decides whether this profile is offered
         //     the module at all, and ownership makes it false for a module someone else holds.
         //   * `guildEnabled` is the GUILD's own state — a row, or the tier default. A module the guild
         //     has DISABLED is not occupied by anyone; it is available for anyone to re-enable.
         const guildEnabled = enabledBySlug.get(slug) ?? defaultEnabledForTier(tier);
-        const occupied = !(await ownedBy(guildId, slug, tier, actingProfileId)) && guildEnabled;
+        // `!mine` alone was WRONG: it is true both for "another profile holds it" and for "nobody
+        // holds it", so an unheld module was reported as occupied and the label then had to invent a
+        // holder — the "occupied by Dumby Profile" that the main bot could not take.
+        const mine = await ownedBy(guildId, slug, tier, actingProfileId);
+        const occupied = !mine && holder !== undefined && guildEnabled;
         // item 4 — NO note here. "Previously installed — select to re-enable" and "Occupied by …" as
         // subtext under every description is what made the listing read as clutter; the fact belongs
         // in the private notice the member gets when they act on it.
@@ -1020,14 +1036,14 @@ export function createPageDataProvider(deps: PageDataDeps): (
           // The option's EMOJI is built from this, so the module's own logo can label its option.
           ...(entry.manifest.ui?.icon !== undefined ? { iconName: entry.manifest.ui.icon } : {}),
           // A NAME, not a role: "Dumby Profile", or the persona's own registered name.
-          ...(occupied
+          // `holder` is defined here — the `occupied` predicate guarantees it — so there is no
+          // "nobody" left to coerce into the internal profile.
+          ...(occupied && holder !== undefined
             ? {
                 occupied: true,
                 occupiedBy: profileLabel(
-                  // NOT `?? 'main'`: undefined means nobody holds it, and naming the internal profile
-                  // for a disabled module is the same coercion that made /browse offer it.
-                  heldByMain ? 'main' : await holderOf(guildId, slug),
-                  heldByMain ? undefined : await personaNameOf(holder),
+                  holder,
+                  holder === MAIN_PROFILE_ID ? undefined : await personaNameOf(holder),
                 ),
               }
             : {}),
