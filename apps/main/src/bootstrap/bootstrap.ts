@@ -79,7 +79,7 @@ import { makeModuleChain } from '../module-system/module-chain.js';
 import { registerKnownGuilds } from '../discord/guild-registry.js';
 import { createBccmEffectHandlers } from '../commands/bccm-effects.js';
 import { effectiveCommandName, resolveEffectiveCommandNames } from '../commands/command-renames.js';
-import { deleteGuildCommands, setGuildCommandPermissions } from '../commands/command-access.js';
+import { setGuildCommandPermissions } from '../commands/command-access.js';
 import {
   disableConfirmationDescriptor,
   enableConfirmationDescriptor,
@@ -104,7 +104,7 @@ import {
 import { personaPresenceFromClient } from '../personas/persona-presence.js';
 import { buildPersonaInteractionHandler } from '../personas/persona-interaction-handler.js';
 import { createPersonaOAuthService } from '../personas/persona-oauth.js';
-import { openBotTokenOrEmpty, openSealedText } from '../personas/persona-credentials.js';
+import { openSealedText } from '../personas/persona-credentials.js';
 import { personaSetupCard } from '../rendering/persona-setup.js';
 import { personaInviteUrl, publicBaseFrom } from '../personas/persona-invite.js';
 import {
@@ -1076,11 +1076,22 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     // `flags`: setting EPHEMERAL alone (64) drops the Components-v2 bit (32768) and Discord rejects
     // the payload outright — which is why selecting an occupied module appeared to do nothing at all,
     // even after the refusal was being answered.
+    // NOT `ephemeral: true`. The declaration must match the delivery.
+    //
+    // This notice is answered through `editReply` on an interaction the component registry already
+    // acknowledged with `deferUpdate` — a PUBLIC acknowledgement — and `editReply` cannot change the
+    // ephemerality of a message that already exists. Declaring `ephemeral: true` therefore asked for
+    // the private grammar (no accent, no footer) on a message the whole channel can see: the notice
+    // carried no accent and was not hidden, which is the contradiction the operator reported.
+    //
+    // A genuinely PRIVATE refusal needs a dedicated acknowledgement for the install control (the
+    // registry's `ack: 'ephemeral'`), which would also make the post-install page private. That is a
+    // designed follow-up, not a one-line change; until then this is an honest PUBLIC formal notice.
     return renderer.renderNotice({
       ...moduleRefusalDescriptor(moduleId, moduleRegistry.get(moduleId), error, () => ownerName),
       reason: 'FORBIDDEN',
       traceId: renderer.createTraceId(),
-      ephemeral: true,
+      ephemeral: false,
     });
   };
 
@@ -2109,23 +2120,21 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
       // UR-20261012-030 (Route B) — with no user token, a DISABLE still hides at once by removing the
       // guild commands with the OWNER's own bot token, which needs no authorization at all. The BCCM
       // re-creates them on the next enable, the batched path it already owns.
-      let removed = 0;
-      if (applied === 0 && !allowed) {
-        // Never throws: an unreadable token degrades to '' and deleteGuildCommands reports it, so
-        // the disable still completes through the queued BCCM deregistration.
-        const ownerBotToken =
-          ownerPersona === undefined
-            ? config.get('BOT_TOKEN')
-            : openBotTokenOrEmpty(ownerPersona.botTokenSealed, personaRootKey);
-        removed = await deleteGuildCommands({
-          botToken: ownerBotToken,
-          applicationId: ownerApplicationId,
-          guildId,
-          registered,
-          commandNames: names,
-          logger,
-        });
-      }
+      // THERE IS NO THIRD PATH. A disable has exactly two halves, and neither is a per-command delete:
+      //   1. the integration-settings RESTRICT above — instant, and it needs a Bearer token;
+      //   2. the QUEUED BCCM batch push — eventual, always, and it is the BCCM's to run.
+      //
+      // A `deleteGuildCommands` fallback used to fire whenever `applied === 0` — which is what an
+      // ABSENT Bearer token returns, and `DISCORD_COMMAND_PERMISSIONS_TOKEN` defaults to ''. So with no
+      // token provisioned, every disable DELETED the module's guild commands instead of restricting
+      // them: the command was de-registered from the guild the instant the button was pressed, which is
+      // neither half's job. It also destroyed the module's ability to answer at all — a de-registered
+      // command is never dispatched, so the member got UNKNOWN_COMMAND instead of MODULE_DISABLED,
+      // which is the difference between "not available here" and "switched off in this server".
+      //
+      // Leaving the command REGISTERED and letting the router refuse it with MODULE_DISABLED is the
+      // intended behaviour, and it is what happens now when the token is missing.
+      const removed = 0;
       // The log viewer drops structured fields, so the outcome is in the message too (UR-019 pattern).
       logger.info(`module-command-access-set applied=${applied} removed=${removed}`, {
         moduleId,
