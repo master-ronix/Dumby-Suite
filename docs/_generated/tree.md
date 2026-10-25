@@ -331,4 +331,5 @@
 - upgradation/UR-20261018-093.md
 - upgradation/UR-20261021-094.md
 - upgradation/UR-20261021-095.md
+- upgradation/UR-20261026-096.md
 - upgradation/change-log.md
