@@ -5,13 +5,13 @@
 **Repository:** `master-ronix/Dumby-Suite`
 **Branch / ref:** `feature/dev` @ `7e8ca739c08c3d18c0627661056b6e346c6bff9e`
 **Codebase state:** State C — Enforcement (code present; migration work order closed)
-**Entry procedure followed:** `docs/prompts/entry.md` → `migration/migration-prompt.md` (migration mode)
-**Run mode:** State B — audit (§3) → state-of-record reconciliation (R12); the enforcement pass (§6) resumes when the work order is fully `DONE`.
+**Entry procedure followed:** `docs/prompts/entry.md` → `orchestration/master-prompt.md` (enforcement mode)
+**Run mode:** State C — Enforcement: audit (§3) → remediation (§4) → enforcement (§6), corpus-wide.
 
-> **Supersession note (2026-10-10).** This manifest was generated 2026-10-06 as a **State C** run, when the work order was INACTIVE. The work order is now **ACTIVE** (request records present; `migration-ledger.md` carries open items M10/M14/M16), so the governing protocol is `migration/migration-prompt.md`. The classification table below is retained as the last full audit; its F4/F5 residuals remain open (see §2).
+> **Supersession note (2026-10-10) — superseded 2026-10-26.** This manifest was generated 2026-10-06 as a **State C** run, when the work order was INACTIVE. The 2026-10-10 note then recorded the work order as **ACTIVE** (open items M10/M14/M16), making `migration/migration-prompt.md` the governing protocol. That reading is no longer current: `migration-ledger.md` records every M item `DONE` (M82 closed — superseded by M83; M74 confirmed and outside the work order), so the work order is INACTIVE again and the chain stands at **State C — Enforcement**. The note is kept as history. The classification table below is retained as the last full audit; its F4/F5 residuals remain open (see §2).
 
-> **Point-in-time notice (2026-10-11).** This manifest is a snapshot, not a live ledger. Its ref is
-> re-pointed to `feature/dev` @ `7a58779`; request-record counts are **not** restated here (read them
+> **Point-in-time notice (2026-10-11) — ref corrected 2026-10-26.** This manifest is a snapshot, not a live ledger. Its ref is
+> re-pointed to `feature/dev` @ `7e8ca739`; request-record counts are **not** restated here (read them
 > from `docs/scripts/docs/check-ur.mjs`). `check-side-docs` holds this manifest's ref in step with
 > `docs/status/code-reconciliation.json`.
 
@@ -22,8 +22,8 @@
 - **Docs base path:** `docs/` (resolved once).
 - **Authority layer:** `docs/manifest.json` read; normative set = `blueprint/`, `spec/**` (10 departments), `contracts/` (9). `documentation/` is derived; `archive/**` is not current. Precedence is owned by `spec/governance/directive-charter-how-to-use-this-document.md` §0.2 and is cited, not restated.
 - **State probe (`apps/main/`):** contains code — {{counts.code_ts_files}} `.ts` files ({{counts.code_src_ts_files}} under `apps/main/src`), {{counts.code_migrations}} Knex migrations.
-- **Work-order probe:** `upgradation/UR-*.md` → **present** (records on disk); `migration-ledger.md` (repo root) → a **constructed ledger** with items not `DONE` (M10/M14/M16). ⇒ work order **ACTIVE**.
-- **Classification:** code present **and** work order ACTIVE → **State B — Migration**. `migration/migration-prompt.md` §0.0 work-order guard passes (an active work order exists).
+- **Work-order probe:** `upgradation/UR-*.md` → **present** (records on disk); `migration-ledger.md` (repo root) → every M item `DONE`, M82 closed (superseded by M83) and M74 confirmed outside the work order. ⇒ work order **INACTIVE**.
+- **Classification:** code present **and** work order INACTIVE → **State C — Enforcement**. The caller runs `orchestration/master-prompt.md` in enforcement mode (§3 audit → §4 remediation → §6 enforcement), corpus-wide. *(The 2026-10-06 determination in this section read State B — Migration; it is superseded by the 2026-10-26 correction above.)*
 
 ---
 
