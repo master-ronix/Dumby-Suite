@@ -175,6 +175,66 @@ A migration window applies per ADR-001 (docs/adr/). Within the window, modules s
 
 ---
 
+### 1.9 Profile-Aware Accent
+
+The Renderer is **context-aware**: it is given the *acting profile* — `{ kind: 'main' | 'persona', id, accent? }`
+— and resolves the container accent in this precedence:
+
+> explicit page/module accent → the acting profile's declared accent → the framework default amber.
+
+The main bot's profile carries no accent, so it lands on amber `#FFCA6D`. A **persona with no configured
+accent** falls back to a neutral **gray `#808080`**, deliberately distinct from the framework amber so an
+unconfigured persona is visibly its own surface rather than the framework's. A Twill-registered persona
+defaults to gray **at registration** when no accent is supplied, so the stored value is defined and the
+API reports it.
+
+### 1.10 The Ephemeral Grammar
+
+A private (ephemeral) message is a **separate grammar**, not the framed page with chrome removed:
+
+- **exactly one** Components-v2 container holds everything — never several top-level containers;
+- **no accent is enforced** — the container carries no `accent_color`;
+- **no density modes, no banner, no identity band, no footer** — the caller composes freely;
+- the caller may place **any** content components (text, sections, media, separators, thumbnails) and
+  **any** interactive components (buttons, every select menu) inside.
+
+The only rules are the single container and the absent accent. The message carries the `EPHEMERAL` flag
+(`1 << 6`) alongside `IS_COMPONENTS_V2` (`1 << 15`).
+
+### 1.11 Inline Sections
+
+A **Section** (type 9) places one to three Text Displays beside a single accessory, which is a **Button**
+or a **Thumbnail**. That is the in-line button and thumbnail Discord supports; no other accessory is
+permitted. Because a Section renders its accessory on the right of the text line, an accessory sits on the
+same line as its text — a platform constraint that shapes several page layouts in Divisions 3–9.
+
+### 1.12 The Interactive Zones
+
+A framed page has two interactive regions, split by the footer:
+
+| Zone | Position | Accepts |
+|---|---|---|
+| **Button zone** | above the footer | Action Rows of buttons only |
+| **Interactive zone** | below the footer | every interactive component, with no restriction on kind — Action Rows of buttons, every select menu, any interactive block — and no limit on how many a page places there |
+
+The button zone above the footer is the page's own action bar; it does **not** exclude buttons from the
+interactive zone. Content that is not interactive — text, sections, thumbnails — belongs above the footer
+and is relocated there if a page declares it below.
+
+### 1.13 The Select Family
+
+The Renderer supports the full select-menu set — **String** (type 3), **User** (5), **Role** (6),
+**Mentionable** (7) and **Channel** (8) — each with a minted customId, and for channel selects an optional
+channel-type restriction. Modals carry **short** (style 1) and **paragraph** (style 2) text inputs.
+
+### 1.14 The Emoji Lifecycle
+
+Application emojis are **registered, loaded, deleted and pruned** through the core. A module's own asset
+directory (`<moduleRoot>/assets/`) is the source of its emoji images, each mapped to a stable name
+`dumby_<slug>_<basename>`. A sync registers every declared emoji and **prunes** managed emojis (`dumby_*`)
+that are no longer declared; an emoji uploaded by hand is never touched. The emoji population is therefore
+managed rather than append-only — removing a module's asset does not leave a dangling emoji behind.
+
 ## Contract
 - `contracts/rbac.enums.json`
 - `contracts/commands.json`
