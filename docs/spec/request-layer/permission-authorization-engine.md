@@ -250,10 +250,11 @@ authorization, because the token is scoped to the application that will carry ou
 its own Discord application, so an authorization that speaks for it must run through **its** client, not
 the resident bot's:
 
-- **Route A — the client.** The Twill registration payload may carry a sealed `oauthClientSecretSealed`,
-  envelope-encrypted exactly like the bot token (ADR-003). The persona's OAuth2 client is then built from
-  its own application id as the client id, its opened secret as the client secret, and the shared callback
-  URL as the redirect URI.
+- **Route A — the client.** The Twill registration payload **must** carry `oauthClientSecret`, and the
+  secret is required again at rotation — exactly as the bot token is. It is stored as a sealed
+  `oauthClientSecretSealed`, envelope-encrypted exactly like the bot token (ADR-003). The persona's OAuth2
+  client is then built from its own application id as the client id, its opened secret as the client
+  secret, and the shared callback URL as the redirect URI. A registration without one is rejected.
 - **Route A — the flow.** `/auth/authorize` accepts `app=<applicationId>`, runs that application's client
   through the authorize leg and records the application in a cookie. `/auth/callback` exchanges the code
   with **that** application's client only, and stores the token against it. A code is never exchanged

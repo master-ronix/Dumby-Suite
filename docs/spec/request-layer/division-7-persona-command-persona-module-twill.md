@@ -127,10 +127,14 @@ Persona creation, token binding, shard allocation, and module enablement profile
 
 **One invite control, on the persona profile, for admins.** A guild administrator sees the persona's
 invite link directly on the page — one control, never a menu of options, and never shown to a non-admin.
-With an OAuth2 client secret registered for that application the link is the **combined install and
-authorize leg** (`/auth/authorize?app=…&guild=…&bot=1`), so a single click adds the bot *and* captures
-its token. Without one it is a plain Discord bot install pinned to the persona's bound guild, because
-there is nothing to authorize against.
+For a persona registered under the current rule the link is the **combined install and authorize leg**
+(`/auth/authorize?app=…&guild=…&bot=1`), so a single click adds the bot *and* captures its token.
+
+**The OAuth client secret is required, exactly as the bot token is** — at registration and again at
+rotation. An application cannot be registered without one, so "there is nothing to authorize against" is
+not a state a new persona can be in. A legacy row registered before that requirement, and therefore
+carrying no sealed secret, is the one case that falls back to a plain Discord bot install pinned to the
+persona's bound guild.
 
 The page carries an **Info control on a persona profile only** — never on the main bot's, which has no
 OAuth redirect to register and nothing to invite. The card it opens carries the OAuth redirect callback
