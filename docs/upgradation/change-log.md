@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.107
+version: 5.5.108
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -145,7 +145,7 @@ migration prompt version) · `state` (Greenfield | Migration | Enforcement) · `
 | v5.4.0 — Dashboard MODULE_ERROR fix | 2026-10-08 | live log |
 | v5.5.0 — Dashboard controls / attribution / icons | 2026-10-08 | 25 gates green |
 | v5.5.1 — UR-005 build fix | 2026-10-08 | push |
-| v5.5.2 … v5.5.107 — the per-request patch series | 2026-10-11 … 2026-10-26 | change-log §3 (this file) |
+| v5.5.2 … v5.5.108 — the per-request patch series | 2026-10-11 … 2026-10-26 | change-log §3 (this file) |
 
 > §2 lists the **master / milestone tracks**. The per-request patch series after v5.5.1
 > (v5.5.2 … v5.5.99) is enumerated in §3; the front-matter `version` is the highest released
@@ -521,6 +521,18 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 - **R8 — audit age.** `status/audit-age.json` records the audit date, commit, scope and request; `README.md` names the current audit.
 - **Verification.** Corpus gate suite **27/27 green**. Application toolchain not run (Node 20.20.2; app requires Node ≥ 22; no deps) — app-side items are outside the corpus scope.
 - **Return.** `met` (corpus scope) — every AU finding closed; OI-1 (human attestation) and OI-3 (Docker/K8s) remain honest standing items, not defects.
+
+---
+
+### v5.5.108 — CI Enforcement Is Inert: Actions Jobs Refused at Start by an Account Billing Block (UR-20261026-099) — 2026-10-26
+
+- 2026-10-26 · meta-prompt 5.2.0 · state=Enforcement · handoff=master-prompt:enforce · return=met
+- **Work order.** `upgradation/UR-20261026-099.md` — raises RT-7 and records `OI-8`.
+- **RT-7 — the block.** Every Actions job on `feature/dev` is refused at start. The annotation on both failing jobs reads, verbatim: "The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings". No workflow has executed since the newest successful run, **2026-10-23T18:57:48Z** (`docs-gates`, `9a681ce61`); every run from **2026-10-24T21:17:26Z** (`d15af679d`) onward fails with no job started.
+- **Why it matters.** `UR-20261021-095` was raised on the premise that a red CI blocked every deploy and never advanced production past `416864b`, with ACC-1 "CI is green on `feature/dev`". That criterion is not unmet but **unachievable** while jobs are refused, and this log recorded the request as Executed with `return=met`. The deploy blocker was never the code.
+- **Consequence adopted.** No further code change is to be pushed to `feature/dev` until a workflow run completes. Every commit after 2026-10-23 — the 2026-10-24/25 surfaces/paths/routing track, and the runtime-ownership track of `UR-20261026-097` / `UR-20261026-098` — is unverified by CI; their unit tests have never executed anywhere.
+- **Interim verification.** The only verification available is a local run of the same commands: `for g in scripts/docs/check-*.mjs; do node "$g"; done` from `docs/`, run at this head and **30/30 green**.
+- **Return.** `met` (documentation scope) — the corpus now states the blocker instead of an enforcement it does not have. RT-7 closes only when a run executes (operator, Billing & plans).
 
 ---
 
@@ -2792,10 +2804,11 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 | UR-20261018-092 — corpus audit (generated-artefact & ledger freshness, provenance/branch truth, ungated ledgers) | **Executed 2026-10-18** (see the `v5.5.101` entry above). Findings DR-1 … DR-12 plus enforcement findings FD-1/FD-2 closed. |
 | UR-20261018-093 — module load provenance (enforce the D-4.10 hash-bound floor without a signing key) | **Executed 2026-10-19** (UR-20261019-101/103; recorded 2026-10-21 by UR-20261021-094). REC-025 flipped `code-gap` → `match`; the loader now requires the sidecar, always runs the artifact-hash floor, and requires an armed signature verifier. |
 | UR-20261021-094 — corpus reconciliation (re-ground at HEAD after the provenance/signing code track) | **Executed 2026-10-21** (see the `v5.5.103` entry). Findings DOC-1 … DOC-11 closed; the corpus is re-anchored at `feature/dev` @ `7e8ca739`. |
-| UR-20261021-095 — production readiness (CI deploy-blocker, module-deployment approval API, Twill client-secret requirement) | **Executed 2026-10-21** (see the `v5.5.104` entry). Residuals PR-1 … PR-6 closed. |
+| UR-20261021-095 — production readiness (CI deploy-blocker, module-deployment approval API, Twill client-secret requirement) | **Executed 2026-10-21** (see the `v5.5.104` entry). Residuals PR-1 … PR-6 closed. **ACC-1 (CI green) is unverifiable, not met:** no Actions job has started since 2026-10-23 — see `OI-8` and `UR-20261026-099`. |
 | UR-20261026-096 — corpus residual closure (provenance anchor, unrecorded re-anchor track, GAP_MANIFEST state, the 101–104 record gap) | **Executed 2026-10-26** (see the `v5.5.105` entry). Findings DOC-012 … DOC-016 closed. |
 | UR-20261026-097 — runtime ownership and command-path truth (owner memo, occupied predicate, persona health read, Route B de-registration, refusal-notice grammar) | **Executed 2026-10-26** (see the `v5.5.106` entry). Findings RT-1 … RT-5 closed; RT-5's interim grammar is superseded by UR-20261026-098. |
 | UR-20261026-098 — a private refusal (follow-up delivery, the guard's declared exception) | **Executed 2026-10-26** (see the `v5.5.107` entry). Finding RT-6 closed. |
+| UR-20261026-099 — CI enforcement inert (account billing block) | **Recorded 2026-10-26** (see the `v5.5.108` entry). RT-7 raised; closes only when an Actions job executes (operator). |
 
 ### 5.2 Residual dispositions (UR-20261015-090 R9)
 
@@ -2810,5 +2823,6 @@ Every carried residual now states its owner, status, and blocker — none is a s
 | OI-5 | Migration slices M10 / M14 / M16 | engineering | **resolved** | M10 / M14 / M16 / M18 DONE, toolchain-verified. |
 | OI-6 | 24 logged deviations (appendix-c) | framework-maintainers | **resolved** | `appendix-c` carries the ownership note; each item owned or deferred. |
 | OI-7 | Branch-divergence decision (`main` vs `feature/dev`) | operator | **resolved** | Dual-branch model recorded: `feature/dev` is the development branch, `main` the deployment branch; every change lands on `feature/dev` first and is promoted to `main`. |
+| OI-8 | CI enforcement inert — Actions jobs refused at start | operator | **open — blocker** | Account billing: "recent account payments have failed or your spending limit needs to be increased". No job started since 2026-10-23T18:57:48Z. Every commit after that is unverified by CI. Closes when a run executes; see `UR-20261026-099`. |
 | — | M18 `/modules` corrections & disable enforcement | engineering | **resolved (DONE)** | Disable enforcement present; `disable-behaviour.spec.ts` passes. |
 | — | M74 / M82 | operator | **M74 confirmed; M82 closed** | M74's ownership model (`upgradation/UR-20261012-059.md`) is confirmed by operator directive; its implementation is a code item outside the docs corpus. M82 closed — superseded by M83 (DONE). |
