@@ -2184,13 +2184,27 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
       // token/Bearer mechanics live in `command-access.ts` so they are unit-tested. UR-20261011-020
       // — prefer the dashboard-authorized token FOR THIS APPLICATION, fall back to the operator's
       // static env token (the main bot only), and absent both use Route B below.
+      // `refreshIfExpired` — a token that lapsed since the six-hourly refresh is refreshed HERE,
+      // once, rather than making a healthy store behave like a missing one.
       const storedToken = await commandPermissionTokens.resolveAccessToken(
         ownerApplicationId,
         guildId,
+        { refreshIfExpired: true },
       );
-      const bearer =
-        storedToken ??
-        (ownerPersona === undefined ? config.get('DISCORD_COMMAND_PERMISSIONS_TOKEN') : undefined);
+      // The static env token is the LEGACY escape hatch, never the mechanism: it is unrefreshed, it
+      // cannot serve a persona, and it goes stale silently. The stored token is the supported path.
+      const envToken =
+        ownerPersona === undefined ? config.get('DISCORD_COMMAND_PERMISSIONS_TOKEN') : '';
+      const bearer = storedToken ?? (envToken === '' ? undefined : envToken);
+      if (storedToken === undefined && envToken !== '') {
+        logger.warn('command-access-env-fallback-used', {
+          moduleId,
+          guildId,
+          applicationId: ownerApplicationId,
+          effect:
+            'a static, unrefreshed DISCORD_COMMAND_PERMISSIONS_TOKEN was used to hide this command; connect the profile at /auth/authorize so the stored token is used instead',
+        });
+      }
       const applied = await setGuildCommandPermissions({
         token: bearer ?? '',
         applicationId: ownerApplicationId,

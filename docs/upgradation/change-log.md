@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.115
+version: 5.5.116
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -145,7 +145,7 @@ migration prompt version) · `state` (Greenfield | Migration | Enforcement) · `
 | v5.4.0 — Dashboard MODULE_ERROR fix | 2026-10-08 | live log |
 | v5.5.0 — Dashboard controls / attribution / icons | 2026-10-08 | 25 gates green |
 | v5.5.1 — UR-005 build fix | 2026-10-08 | push |
-| v5.5.2 … v5.5.115 — the per-request patch series | 2026-10-11 … 2026-10-26 | change-log §3 (this file) |
+| v5.5.2 … v5.5.116 — the per-request patch series | 2026-10-11 … 2026-10-26 | change-log §3 (this file) |
 
 > §2 lists the **master / milestone tracks**. The per-request patch series after v5.5.1
 > (v5.5.2 … v5.5.99) is enumerated in §3; the front-matter `version` is the highest released
@@ -521,6 +521,19 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 - **R8 — audit age.** `status/audit-age.json` records the audit date, commit, scope and request; `README.md` names the current audit.
 - **Verification.** Corpus gate suite **27/27 green**. Application toolchain not run (Node 20.20.2; app requires Node ≥ 22; no deps) — app-side items are outside the corpus scope.
 - **Return.** `met` (corpus scope) — every AU finding closed; OI-1 (human attestation) and OI-3 (Docker/K8s) remain honest standing items, not defects.
+
+---
+
+### v5.5.116 — The Stored Token Is the Mechanism, and It Heals on Demand (RT-20) — 2026-10-26
+
+- 2026-10-26 · meta-prompt 5.2.0 · state=Enforcement · handoff=master-prompt:enforce · return=met
+- **Work order.** None. The record tiers were retired by `UR-20261026-102`, which directs that work after it is recorded here.
+- **The concern, from the operator.** "I just hope `DISCORD_COMMAND_PERMISSIONS_TOKEN` is not an environment variable instead of a solid robust backend."
+- **It is not.** The supported path is `command_permission_tokens` — one row per (application, guild), holding a SEALED access and refresh token, refreshed by a scheduled job every six hours, with `revoked`/`expired` states and an `adoptLegacy` migration for pre-key rows. The env var is a legacy hatch: internal profile only, used only when no stored token exists, and it cannot serve a persona.
+- **RT-20 — but one case made a healthy store behave like a missing one.** `resolveAccessToken` returned nothing for an expired row, and the refresh job runs every six hours — so a token that lapsed between cycles left a disable with no Bearer at all, indistinguishable from having never connected. `resolveAccessToken` now takes `{ refreshIfExpired }`; the disable path passes it, refreshing once and re-reading once. Deliberately once: a refresh that fails is a revoked or broken grant, and retrying would hammer Discord on every disable.
+- **The hatch is announced, not assumed.** When the static variable is what actually hides a command, the disable logs `command-access-env-fallback-used` naming the application and the connect URL to use instead. The boot log already reports `command-access-instant-disable envFallback=<bool> storedApplications=[…]`, so the question "is a variable doing this?" is answered before anything is touched.
+- **Verification.** Three tests: an expired row is refreshed on demand and the fresh token returned; without the flag it stays a pure read with no network call; a row with no refresh token is not healed and does not throw. `tsc` over both edited sources reports nothing attributable to this change (one pre-existing `--noResolve` artefact in `listStoredApplications`, untouched).
+- **Return.** `met`.
 
 ---
 

@@ -197,3 +197,42 @@ describe('listStoredApplications — who can hide a command instantly', () => {
     expect(await service.listStoredApplications()).toEqual([]);
   });
 });
+
+// RT-20 — a healthy store must not behave like a missing one.
+//
+// The refresh cron runs every six hours, so an access token that expires between cycles used to leave
+// resolveAccessToken answering nothing — and a disable then fell back exactly as if no authorization
+// existed. `refreshIfExpired` refreshes once, at the point of use.
+describe('resolveAccessToken is self-healing when asked (RT-20)', () => {
+  test('an EXPIRED row is refreshed on demand and the fresh token returned', async () => {
+    const { service, setClock, refresher } = makeService();
+    // 2-second life, so the fixture is expired as soon as the clock moves past it.
+    await service.connect('app1', 'g1', 'u1', tokens('access-old', 'refresh-1', 2));
+
+    expect(await service.resolveAccessToken('app1', 'g1')).toBeUndefined();
+
+    setClock(1_000_000 + 10_000);
+    expect(await service.resolveAccessToken('app1', 'g1')).toBeUndefined();
+
+    const healed = await service.resolveAccessToken('app1', 'g1', { refreshIfExpired: true });
+    expect(healed).toBe('new-access');
+    expect(refresher.refreshToken).toHaveBeenCalled();
+  });
+
+  test('without the flag it stays a pure read — no network, no refresh', async () => {
+    const { service, setClock, refresher } = makeService();
+    await service.connect('app1', 'g1', 'u1', tokens('access-old', 'refresh-1', 2));
+    setClock(1_000_000 + 10_000);
+
+    expect(await service.resolveAccessToken('app1', 'g1')).toBeUndefined();
+    expect(refresher.refreshToken).not.toHaveBeenCalled();
+  });
+
+  test('a row with no refresh token is not healed, and does not throw', async () => {
+    const { service, setClock } = makeService();
+    await service.connect('app1', 'g1', 'u1', tokens('access-old', '', 2));
+    setClock(1_000_000 + 10_000);
+
+    expect(await service.resolveAccessToken('app1', 'g1', { refreshIfExpired: true })).toBeUndefined();
+  });
+});

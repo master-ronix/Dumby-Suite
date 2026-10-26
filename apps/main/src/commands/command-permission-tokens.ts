@@ -150,8 +150,11 @@ export class CommandPermissionTokenService {
     }
   }
 
-  /** The live access token for the application in the guild, or undefined when there is none usable. */
-  async resolveAccessToken(applicationId: string, guildId: string): Promise<string | undefined> {
+  /** The live access token, as the store currently holds it. Touches no network. */
+  private async readUsable(
+    applicationId: string,
+    guildId: string,
+  ): Promise<string | undefined> {
     const record = await this.store.findByApplicationGuild(applicationId, guildId);
     if (record === undefined || record.status !== 'active') return undefined;
     if (record.accessTokenExpiresAt.getTime() <= this.now()) return undefined;
@@ -165,6 +168,41 @@ export class CommandPermissionTokenService {
       });
       return undefined;
     }
+  }
+
+  /**
+   * The live access token for the application in the guild, or undefined when there is none usable.
+   *
+   * `refreshIfExpired` makes the stored-token path SELF-HEALING at the point of use. The refresh cron
+   * runs every six hours, so an access token that expires between cycles leaves this answering
+   * nothing — and a disable then behaves exactly as it would with no authorization at all, which is
+   * the one case where a healthy store is indistinguishable from a missing one. With the flag set, an
+   * unusable row is refreshed once and re-read once.
+   *
+   * Deliberately ONCE: a refresh that fails is a revoked or broken grant, and retrying it in a loop
+   * would hammer Discord on every disable.
+   */
+  async resolveAccessToken(
+    applicationId: string,
+    guildId: string,
+    options: { refreshIfExpired?: boolean } = {},
+  ): Promise<string | undefined> {
+    const first = await this.readUsable(applicationId, guildId);
+    if (first !== undefined || options.refreshIfExpired !== true) return first;
+    try {
+      // `refreshDue` refreshes every row at or near expiry. An EXPIRED row always qualifies: its
+      // remaining time is negative, which is inside any positive lead.
+      const { refreshed } = await this.refreshDue();
+      if (refreshed === 0) return undefined;
+    } catch (err) {
+      this.logger.warn('command-permission-token-refresh-on-demand-failed', {
+        applicationId,
+        guildId,
+        error: String(err),
+      });
+      return undefined;
+    }
+    return this.readUsable(applicationId, guildId);
   }
 
   /** The connection state a dashboard shows, for one application in one guild. */

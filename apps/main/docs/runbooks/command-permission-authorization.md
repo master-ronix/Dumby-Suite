@@ -108,12 +108,26 @@ Access tokens expire. `refreshDue()` runs at bootstrap and refreshes rows that c
 `lastRefreshedAt` records it. `resolveAccessToken` returns nothing for a row that is `revoked`,
 `expired`, or unreadable — in which case a disable degrades to state + queue rather than failing.
 
-## The static fallback, and when to use it
+## The stored token is the mechanism; the env var is a legacy hatch
 
-`DISCORD_COMMAND_PERMISSIONS_TOKEN` is a pre-provisioned Bearer token used **only for the internal
-profile** (`ownerPersona === undefined`). It is the fallback when you cannot run the connect flow at
-all. It cannot serve a persona, it is not refreshed, and it must be rotated by hand when it expires.
-Prefer Step 2.
+The supported path is the **store**: `command_permission_tokens`, one row per (application, guild),
+holding a SEALED access and refresh token, refreshed by a scheduled job every six hours. Nothing about
+that is per-environment or per-restart — a profile that has been connected stays connected.
+
+Precedence, in `setModuleCommandAccess`:
+
+1. `commandPermissionTokens.resolveAccessToken(application, guild)` — the stored token. If it has
+   lapsed since the last scheduled refresh it is refreshed **on demand, once**, and re-read; a healthy
+   store therefore never behaves like a missing one.
+2. `DISCORD_COMMAND_PERMISSIONS_TOKEN` — only for the **internal profile**, only when no stored token
+   exists. It is static, unrefreshed, cannot serve a persona, and must be rotated by hand. Whenever it
+   is actually used the log says so: `command-access-env-fallback-used`.
+
+If you see `command-access-env-fallback-used`, the connect flow has not been run for that application —
+and that variable is doing the work. Run Step 2 and it stops.
+
+The boot log answers the same question before you touch anything:
+`command-access-instant-disable envFallback=<true|false> storedApplications=[…]`.
 
 ## What this runbook does not fix
 
