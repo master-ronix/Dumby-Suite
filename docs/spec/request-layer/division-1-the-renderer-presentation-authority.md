@@ -69,14 +69,27 @@ Four dynamic slots fill the static frame. The Renderer owns the resolution of ev
 |---|---|---|
 | **Accent** | Renderer (fixed) | The official accent colour, amber `#FFCA6D` |
 | **Banner** | Module or framework assets directory | 1280×720 banner image (Media Gallery type 12) |
-| **Module identity** | Module manifest (`devId`, name, logo) | Logo emoji, module name, developer. No version — no surface carries one (ADR-013) |
+| **Module identity** | Module manifest (`ui.icon`, `devId`, name) | Custom-emoji logo, module name, registered developer. No version — no surface carries one (ADR-013) |
 | **Content** | Command schema + handler output | Page-specific sections (per-command divisions below) |
 
 **Accent slot.** The official accent colour is amber `#FFCA6D` — the framework default. It is a property of the Dumby interface, not of individual modules: dividers, footer rules, the buffer indicator, the formal notice marker, and default banner gradients are all rendered in `#FFCA6D`. Module visual identity is carried by the banner and module identity slots. Modules do not override the framework chrome accent; a module may declare its own accent for its own pages (ADR-012), falling back to amber `#FFCA6D`.
 
 **Banner slot.** A 1280×720 image (YouTube thumbnail dimensions, 16:9 aspect ratio) served as a full-width media gallery. Every module's manifest declares its assets directory; if the directory contains no banner, the Renderer generates one using the official accent colour as a gradient background with the module's logo emoji and name centred (§11.5).
 
-**Module identity slot.** The module's logo emoji (from `logo.png` in its assets directory, or the default `📦`), its display name, and its developer (`devId`). For framework-shipped surfaces the developer is Quixotic Mnemonics. The module's version is **not** shown: no user-facing surface displays a version string (ADR-013).
+**Module identity slot.** A module's logo is a **custom Discord emoji**, named by the manifest's
+`ui.icon` (ADR-014). A module that names none — or whose declared emoji did not resolve — falls back to
+the framework's own neutral marker, the wireframe cube `dumby_module`, uploaded from
+`apps/main/assets/default-module-icon.png` at bootstrap. An emoji id is only known at runtime, so the
+icon resolves through a registry populated when the bot uploads its emojis; until then, or if the upload
+failed, a unicode fallback applies so a page never renders without an icon.
+
+Three emoji names sit close together and are each stated once: `dumby_module` is the logo **fallback** (a
+cube); `dumby_modules` is the squared marker beside each command in a module's command list, which is the
+`modules` module's declared logo and never a fallback; and `dumby_home` is both the Home control's house
+and the dashboard module's logo, which declares the same emoji rather than shipping a duplicate.
+
+The slot also carries the module's display name and its **registered developer** — see §1.5. The
+module's version is **not** shown: no user-facing surface displays a version string (ADR-013).
 
 **Content slot.** The body of the page. The Renderer derives it from the command's declared schema and the data returned by the command handler, laid out as divider-separated sections. The per-command divisions of this reference specify what each content slot contains.
 
@@ -106,7 +119,7 @@ one; it belongs in the manifest, the release record and the trace reference on a
 in the title band or the footer.
 
 - **Title** — the surface or module identity: `Dumby | Dashboard`, `Dumby | Health`, `Dumby | Marketplace`, `Dumby | Hello World`. The title names the page the user is on.
-- **Attribution** — the subtitle line, rendered in Discord subtext formatting (`-#`): the real developer of the surface. Framework-shipped surfaces attribute to **Quixotic Mnemonics**; module pages attribute to the module's real developer (from `devId`). The attribution is passed whole rather than assembled, because the resident bot and a persona do not even share a verb — `Developed by Quixotic Mnemonics` against `Powered by Dumby Suite`.
+- **Attribution** — the subtitle line, rendered in Discord subtext formatting (`-#`): the real developer of the surface. A module page attributes to the developer's **platform-registered username**, resolved from the account registry by the manifest's `devId` (ADR-014). A `devId` that is not registered resolves to nothing and the caller falls back to the module's declared developer rather than inventing a name; the static organisation name is not the attribution source. Framework-shipped surfaces attribute to **Quixotic Mnemonics**. The attribution is passed whole rather than assembled, because the resident bot and a persona do not even share a verb — `Developed by Quixotic Mnemonics` against `Powered by Dumby Suite`.
 
 The attribution line appears **once**, directly below the title, in the identity band. It is not
 repeated in the footer (ADR-015). Framework-level surfaces — the Marketplace among them — use their
