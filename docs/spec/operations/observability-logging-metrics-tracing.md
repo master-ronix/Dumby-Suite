@@ -64,6 +64,21 @@ error   an unexpected error reaching the root error boundary, a critical query, 
         job that exhausted its retries
 ```
 
+**Every warning and error line is self-describing.** A line at `warn` or `error` carries its own
+reason, and where a remedy exists, the remedy — so an operator reading the line alone can act on it
+without opening the source. The structured fields are retained alongside the text; the text is not a
+substitute for them, it is what makes them actionable at 3am.
+
+Three shapes this takes, each drawn from a real incident:
+
+- **An error line carries the underlying error.** A client-level failure reads
+  `discord-client-error: <err>`, not a bare key.
+- **A misconfiguration line carries the remedy.** A rejected signing key names the cause *and* what to
+  do: the key must be a single-line PEM with escaped newlines. A warning that says only "invalid key"
+  costs the operator the search that the message existed to save.
+- **A refusal line carries its reason.** A provenance check that declines a module names which check
+  failed, so the developer is not left guessing between the dozen that could have.
+
 ### 27.3 Metrics
 
 `prom-client` exposes Prometheus text format from the metrics endpoint.
