@@ -120,6 +120,24 @@ Hardcoded modules        always scoped to hardcodeGuildId alone — never global
                          in any other guild, for as long as the module exists
 ```
 
+**The persona runtime deploys by the same split, scoped to its bound guild.** A persona registers the
+same command set as the resident bot, and the scope is decided by tier, not by identity:
+
+- **core** payloads go to the **global** route — core is shared and undisputed, so it answers in DMs and
+  in any guild the persona is reached in;
+- **standard and marketplace** payloads go to the persona's **bound guild** only;
+- **no command is ever registered in both scopes** — the persona registers each command exactly once;
+- an **empty set still clears both scopes**, so a profile that loses every command does not leave a
+  stale registration behind.
+
+A persona is guild-bounded: it registers the full set, and rejects an invocation that arrives from a
+guild it does not serve. Registration scope is not the enforcement mechanism — the dispatch check is.
+
+**A DM invocation is refused, not dropped.** DM use is prohibited for the resident bot by design, and
+the refusal must be *sent*: an invocation with no guild has no reply to edit, so it answers through a
+fresh notice naming the DM prohibition rather than throwing before anything is sent. A silent throw
+surfaces to the member as "The application did not respond", which tells them nothing.
+
 ### 17.5 The CommandContext Object
 
 Every `execute(interaction, context)` call, and every middleware `execute(context, next)`
