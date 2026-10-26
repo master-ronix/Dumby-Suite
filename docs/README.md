@@ -63,9 +63,9 @@ the application `tsc` / `vitest` (the app typecheck is a separate gate). Per-fil
 `upgradation/change-log.md`). A bare `5.x.y` in prose names the change-log track unless a
 document says otherwise.
 
-**Last independent audit.** 2026-10-21, against `feature/dev` @ `7e8ca73` — a full-scope corpus
-audit + code-track reconciliation whose findings (DOC-1 … DOC-11) are formalised as
-`upgradation/UR-20261021-094.md`; the prior audit's findings (DR-1 … DR-12,
+**Last independent audit.** 2026-10-26, against `feature/dev` @ `a3b093f9` — a full-scope corpus
+audit + runtime-ownership code track whose findings (RT-1 … RT-11) are formalised as
+`upgradation/UR-20261026-097.md`, `-098`, `-100` and `-101`; the prior audit's findings (DR-1 … DR-12,
 `upgradation/UR-20261018-092.md`) and (AU-1 … AU-11, `upgradation/UR-20261016-091.md`) are closed
 under it. The audit's date, commit, scope and request are also recorded machine-readably in
 `status/audit-age.json`. The audit's date and commit are recorded here so audit staleness is visible the same way

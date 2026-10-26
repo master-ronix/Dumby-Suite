@@ -1,10 +1,10 @@
 {
   "$id": "docs/status/code-reconciliation.json",
   "title": "Docs \u2194 Code reconciliation",
-  "note": "Every row compares what the NEW documentation asserts against the actual source in master-ronix/Dumby-Suite (apps/main at 7e8ca739c08c3d18c0627661056b6e346c6bff9e, branch feature/dev). Standing rule: the specification is authority; where the code is narrower, the code is the gap to close.",
-  "verified_commit": "7e8ca739c08c3d18c0627661056b6e346c6bff9e",
+  "note": "Every row compares what the NEW documentation asserts against the actual source in master-ronix/Dumby-Suite (apps/main at a3b093f923191b4c20ec61e652b8f82e7ae824d2, branch feature/dev). Standing rule: the specification is authority; where the code is narrower, the code is the gap to close. The anchor is the last commit to touch apps/main|packages, so no commit after it can move the code under a row without the freshness gate failing. The pre-existing rows were re-anchored, not re-derived: the commits since the previous anchor changed the ownership reads, the disable path, dispatch ownership and the refusal notice \u2014 areas no row covered, which is RT-10 in upgradation/UR-20261026-101.md. REC-029 \u2026 REC-032 close that gap and were verified at this anchor.",
+  "verified_commit": "a3b093f923191b4c20ec61e652b8f82e7ae824d2",
   "verified_branch": "feature/dev",
-  "verified_at": "2026-10-25T12:04:23Z",
+  "verified_at": "2026-10-26T10:09:03Z",
   "verdicts": [
     "match",
     "doc-incomplete",
@@ -19,7 +19,7 @@
       "code_truth": "releaseStatus is required and is z.enum(['private','public'])",
       "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
       "verdict": "match",
-      "resolution": "Re-verified against HEAD 7e8ca739c08c3d18c0627661056b6e346c6bff9e \u2014 the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
+      "resolution": "Re-verified \u2014 the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
     },
     {
       "id": "REC-002",
@@ -28,7 +28,7 @@
       "code_truth": "the schema carries a required visibility enum (['public','unlisted','private'])",
       "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
       "verdict": "match",
-      "resolution": "Re-verified against HEAD 7e8ca739c08c3d18c0627661056b6e346c6bff9e \u2014 the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
+      "resolution": "Re-verified \u2014 the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
     },
     {
       "id": "REC-003",
@@ -55,7 +55,7 @@
       "code_truth": "the schema requires name, version, description, tier, hardcoded, devId, visibility and releaseStatus \u2014 buildId is not a manifest field (it is platform-issued and read from the build-provenance sidecar)",
       "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
       "verdict": "match",
-      "resolution": "Re-verified against HEAD 7e8ca739c08c3d18c0627661056b6e346c6bff9e \u2014 UR-20261019-103 dropped the author-declared buildId from the SDK, the contract and the 8 manifests; the required set now matches the contract exactly."
+      "resolution": "Re-verified \u2014 UR-20261019-103 dropped the author-declared buildId from the SDK, the contract and the 8 manifests; the required set now matches the contract exactly."
     },
     {
       "id": "REC-006",
@@ -63,7 +63,8 @@
       "doc_claim": "14 concrete error classes + base DumbyError (contracts/errors.json)",
       "code_truth": "DumbyError base + 14 concrete subclasses, matching code names exactly",
       "code_ref": "apps/main/src/errors/taxonomy.ts",
-      "verdict": "match"
+      "verdict": "match",
+      "resolution": ""
     },
     {
       "id": "REC-007",
@@ -71,7 +72,8 @@
       "doc_claim": "18 stages (status/counts.json bootstrap_stages)",
       "code_truth": "BOOTSTRAP_STAGES has exactly 18 entries in the same order",
       "code_ref": "apps/main/src/bootstrap/stages.ts",
-      "verdict": "match"
+      "verdict": "match",
+      "resolution": ""
     },
     {
       "id": "REC-008",
@@ -79,7 +81,8 @@
       "doc_claim": "9 steps (status/counts.json shutdown_steps)",
       "code_truth": "SHUTDOWN_STEPS has exactly 9 entries in the same order",
       "code_ref": "apps/main/src/bootstrap/stages.ts",
-      "verdict": "match"
+      "verdict": "match",
+      "resolution": ""
     },
     {
       "id": "REC-009",
@@ -87,7 +90,8 @@
       "doc_claim": "12 built-in middleware stages",
       "code_truth": "12 built-in files with explicit priorities: maintenance-mode -20, admin-tier-gate -10, trace 0, auth 10, guild-config 20, locale 30, rate-limit 40, permission 50, rbac 60, cooldown 70, defer 80, analytics 90",
       "code_ref": "apps/main/src/middleware/built-in/*.ts",
-      "verdict": "match"
+      "verdict": "match",
+      "resolution": ""
     },
     {
       "id": "REC-010",
@@ -95,7 +99,8 @@
       "doc_claim": "six ranks; canonical names MODERATOR and ADMINISTRATOR",
       "code_truth": "six ranks OWNER(6) ADMINISTRATOR(5) MODERATOR(4) HELPER(3) MEMBER(2) RESTRICTED(1); ADMIN/MOD accepted only as aliases",
       "code_ref": "apps/main/src/permissions/rank.ts",
-      "verdict": "match"
+      "verdict": "match",
+      "resolution": ""
     },
     {
       "id": "REC-011",
@@ -113,7 +118,7 @@
       "code_truth": "MODULES_DIR default /mnt/modules; SWASTIK_STAGING_VOLUME_PATH default /mnt/modules/swastik-staging; SWASTIK_QUARANTINE_PATH default ''; tiers admin|core|standard|marketplace (SWASTIK_LIVE_VOLUME_PATH was removed \u2014 tier routing comes from MODULES_DIR)",
       "code_ref": "apps/main/src/config/env.schema.ts",
       "verdict": "match",
-      "resolution": "Re-verified against HEAD 7e8ca739c08c3d18c0627661056b6e346c6bff9e \u2014 commit 7bb6302c0 removed the vestigial SWASTIK_LIVE_VOLUME_PATH."
+      "resolution": "Re-verified \u2014 commit 7bb6302c0 removed the vestigial SWASTIK_LIVE_VOLUME_PATH."
     },
     {
       "id": "REC-013",
@@ -121,7 +126,8 @@
       "doc_claim": "8 commands (status/counts.json core_commands)",
       "code_truth": "8 first-party module packages: browse, dashboard, health, hello-world, modules, permit, persona, queue",
       "code_ref": "packages/modules/",
-      "verdict": "match"
+      "verdict": "match",
+      "resolution": ""
     },
     {
       "id": "REC-014",
@@ -129,7 +135,8 @@
       "doc_claim": "bounded emit depth",
       "code_truth": "InternalEventBus maxEmitDepth default 20; env EVENT_BUS_MAX_EMIT_DEPTH default 20; event name regex {domain}.{entity}.{action}",
       "code_ref": "apps/main/src/events/event-bus.ts ; apps/main/src/config/env.schema.ts",
-      "verdict": "match"
+      "verdict": "match",
+      "resolution": ""
     },
     {
       "id": "REC-015",
@@ -137,7 +144,8 @@
       "doc_claim": "13-minute follow-up watchdog",
       "code_truth": "FOLLOWUP_ALARM_MS = 13 * 60 * 1000",
       "code_ref": "apps/main/src/rendering/core-renderer.ts",
-      "verdict": "match"
+      "verdict": "match",
+      "resolution": ""
     },
     {
       "id": "REC-016",
@@ -155,7 +163,7 @@
       "code_truth": "22 CORE_TOKENS declared (Logger, Config, Db, EventBus, Cache, Queue, ModuleRegistry, PermissionResolver, Metrics, I18n, CommandRegistry, CommandRouter, Renderer, InteractionRegistry, CommandCeilingService, CollisionResolutionService, Personas, EventRouter, Scheduler, AdminEvalGate, OAuth2, MtpTokens)",
       "code_ref": "apps/main/src/di/tokens.ts",
       "verdict": "match",
-      "resolution": "Re-verified against HEAD 7e8ca739c08c3d18c0627661056b6e346c6bff9e \u2014 the registry declares 22 core tokens (I18n added since the earlier 21-token count); the docs count and list now match the code."
+      "resolution": "Re-verified \u2014 the registry declares 22 core tokens (I18n added since the earlier 21-token count); the docs count and list now match the code."
     },
     {
       "id": "REC-018",
@@ -163,7 +171,8 @@
       "doc_claim": "Node.js LTS >= 22, ESM, pnpm",
       "code_truth": "engines node >=22.0.0, pnpm >=9.0.0; type module; TypeScript strict/NodeNext",
       "code_ref": "apps/main/package.json",
-      "verdict": "match"
+      "verdict": "match",
+      "resolution": ""
     },
     {
       "id": "REC-019",
@@ -172,7 +181,7 @@
       "code_truth": "marketplaceCategory is a closed five-value enum ('audio'|'community'|'security'|'integrations'|'utility')",
       "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
       "verdict": "match",
-      "resolution": "Re-verified against HEAD 7e8ca739c08c3d18c0627661056b6e346c6bff9e \u2014 the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
+      "resolution": "Re-verified \u2014 the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
     },
     {
       "id": "REC-020",
@@ -181,7 +190,7 @@
       "code_truth": "depends: array of {token,version}; provides: array of {token,contract}; services: array of {token,class,lifetime,deps}",
       "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
       "verdict": "match",
-      "resolution": "Re-verified against HEAD 7e8ca739c08c3d18c0627661056b6e346c6bff9e \u2014 the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
+      "resolution": "Re-verified \u2014 the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
     },
     {
       "id": "REC-021",
@@ -190,7 +199,7 @@
       "code_truth": "devId is required; buildId is not a manifest field (UR-20261019-103 removed it from the SDK, the contract and the 8 manifests; the loader reads it from the build-provenance sidecar)",
       "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
       "verdict": "match",
-      "resolution": "Re-verified against HEAD 7e8ca739c08c3d18c0627661056b6e346c6bff9e \u2014 the manifest carries devId; buildId moved to the platform-issued provenance sidecar."
+      "resolution": "Re-verified \u2014 the manifest carries devId; buildId moved to the platform-issued provenance sidecar."
     },
     {
       "id": "REC-022",
@@ -199,7 +208,7 @@
       "code_truth": "required: z.boolean().default(false)",
       "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
       "verdict": "match",
-      "resolution": "Re-verified against HEAD 7e8ca739c08c3d18c0627661056b6e346c6bff9e \u2014 the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
+      "resolution": "Re-verified \u2014 the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
     },
     {
       "id": "REC-023",
@@ -226,7 +235,7 @@
       "code_truth": "the loader requires a build-provenance sidecar (no sidecar -> refuse), verifies the on-disk artifact hash against the builds row (L1, always), refuses a revoked build, and verifies the Ed25519 signature (L2, mandatory \u2014 no armed verifier -> refuse); bootstrap supplies the build store unconditionally and arms the verifier from BUILD_SIGNING_*",
       "code_ref": "apps/main/src/module-system/build-signing.ts ; apps/main/src/bootstrap/bootstrap.ts",
       "verdict": "match",
-      "resolution": "Resolved by UR-20261019-101/103 (re-verified at HEAD 7e8ca739c08c3d18c0627661056b6e346c6bff9e): the D-4.10 hash-bound floor always runs when a build store is supplied, and the signature layer is mandatory \u2014 the loader no longer imports an unverified module. Previously recorded as a code-gap (fail-open); the floor now holds."
+      "resolution": "Resolved by UR-20261019-101/103 (re-verified): the D-4.10 hash-bound floor always runs when a build store is supplied, and the signature layer is mandatory \u2014 the loader no longer imports an unverified module. Previously recorded as a code-gap (fail-open); the floor now holds."
     },
     {
       "id": "REC-026",
@@ -235,7 +244,7 @@
       "code_truth": "the production image ships no modules; apps/main/scripts/build-modules.ts and push-modules.ts deliver them to the MODULES_DIR tier volumes; the seed/place/stage scripts are removed (UR-20261019-102 Option A)",
       "code_ref": "apps/main/package.json ; apps/main/scripts/build-modules.ts ; apps/main/scripts/push-modules.ts ; apps/main/Dockerfile",
       "verdict": "match",
-      "resolution": "Re-verified against HEAD 7e8ca739c08c3d18c0627661056b6e346c6bff9e \u2014 the image carries no modules; delivery is build:modules -> push:modules to the tier volumes."
+      "resolution": "Re-verified \u2014 the image carries no modules; delivery is build:modules -> push:modules to the tier volumes."
     },
     {
       "id": "REC-027",
@@ -244,7 +253,7 @@
       "code_truth": "`build:modules --dev-id <id>` stamps the platform devId into every built manifest (UR-20261019-104 Path B); the author does not hand-write it",
       "code_ref": "apps/main/scripts/build-modules.ts",
       "verdict": "match",
-      "resolution": "Re-verified against HEAD 7e8ca739c08c3d18c0627661056b6e346c6bff9e \u2014 devId is platform-injected at build time."
+      "resolution": "Re-verified \u2014 devId is platform-injected at build time."
     },
     {
       "id": "REC-028",
@@ -253,14 +262,50 @@
       "code_truth": "the loader refuses a module with no build-provenance sidecar, refuses a build with no builds row or a missing provenance column, refuses a hash mismatch, refuses a revoked build, and refuses when no signing verifier is armed (L2 mandatory); bootstrap arms the verifier from BUILD_SIGNING_KEY_ID + BUILD_SIGNING_PUBLIC_KEY/PRIVATE_KEY (UR-20261019-103)",
       "code_ref": "apps/main/src/module-system/swastik-loader.ts ; apps/main/src/bootstrap/bootstrap.ts",
       "verdict": "match",
-      "resolution": "Re-verified against HEAD 7e8ca739c08c3d18c0627661056b6e346c6bff9e \u2014 every load-time provenance control is mandatory."
+      "resolution": "Re-verified \u2014 every load-time provenance control is mandatory."
+    },
+    {
+      "id": "REC-029",
+      "area": "module ownership \u2014 one read for every surface",
+      "doc_claim": "every page and the install path read a module's holder from the ONE ownership resolver; no surface caches it or re-derives it (spec/modules/module-tiers-lifecycle.md)",
+      "code_truth": "page-data reads the holder fresh on every render \u2014 there is no process-lifetime memo; /browse marks a module occupied only when a DEFINED holder is not the acting profile; /health takes its held set from the ownership read for every profile, hosted or not; /modules and /dashboard use the same resolver",
+      "code_ref": "apps/main/src/rendering/page-data.ts",
+      "verdict": "match",
+      "resolution": "Established by UR-20261026-097 (RT-1 \u2026 RT-3); the surfaces previously disagreed because four independent reads of one fact existed."
+    },
+    {
+      "id": "REC-030",
+      "area": "module disable \u2014 command removal is queued, never immediate",
+      "doc_claim": "\u00a717.7: a module disable's command removal never takes effect immediately at the registration layer; it is an entry in the shared guild command change queue",
+      "code_truth": "a disable writes the disabled state, writes the @everyone deny override that hides the commands instantly, and enqueues the removal; there is no per-command delete path (the applied===0 fallback was removed)",
+      "code_ref": "apps/main/src/bootstrap/bootstrap.ts; apps/main/src/commands/command-access.ts",
+      "verdict": "match",
+      "resolution": "Established by UR-20261026-097 (RT-4). The removed fallback had been de-registering commands instantly, which is neither of the disable's two halves."
+    },
+    {
+      "id": "REC-031",
+      "area": "command dispatch \u2014 a module and its commands belong to one profile",
+      "doc_claim": "a guild-scoped module and its commands belong to one profile, and a profile that does not hold the module does not answer its commands",
+      "code_truth": "assertPersonaOwnsCommand refuses with CommandScopeDeniedError('out-of-scope') when the resolver names a different profile; core and admin short-circuit as 'shared'; the holder answers her own command",
+      "code_ref": "apps/main/src/commands/command-router.ts",
+      "verdict": "match",
+      "resolution": "Established by UR-20261026-100 (RT-8) on the operator's ruling. It had logged and proceeded, which let a stale registration answer for the wrong profile."
+    },
+    {
+      "id": "REC-032",
+      "area": "interaction \u2014 a refusal is answered privately",
+      "doc_claim": "a refusal is for the member who tried it, so it is delivered privately (spec/request-layer/division-2-interaction-lifecycle-buffer-notices-components.md)",
+      "code_truth": "the module-refusal notice is delivered with interaction.followUp \u2014 a new, private message \u2014 and declares ephemeral: true; the read-only guard permits followUp only for a handler that sets allowFollowUp, and keeps reply and showModal blocked",
+      "code_ref": "apps/main/src/interactions/core-frame.handlers.ts; apps/main/src/rendering/core-renderer.ts",
+      "verdict": "match",
+      "resolution": "Established by UR-20261026-098 (RT-6). Riding editReply on a publicly acknowledged interaction made the card private in grammar and public in fact."
     }
   ],
   "counts": {
-    "match": 28,
+    "match": 32,
     "doc-incomplete": 0,
     "code-gap": 0,
     "code-anchor-broken": 0,
-    "total": 28
+    "total": 32
   }
 }

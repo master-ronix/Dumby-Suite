@@ -2,11 +2,11 @@
   "schema": "audit-age/v1",
   "note": "Records when the corpus was last independently audited and against which commit, so audit staleness is visible the same way provenance staleness is. Read by check-side-docs (provenance rule) against the reconciliation ledger.",
   "last_audit": {
-    "date": "2026-10-21",
-    "commit": "7e8ca739c08c3d18c0627661056b6e346c6bff9e",
+    "date": "2026-10-26",
+    "commit": "a3b093f923191b4c20ec61e652b8f82e7ae824d2",
     "branch": "feature/dev",
-    "scope": "full-scope docs/ corpus audit + code-track reconciliation + trigger-chain run",
-    "findings": "DOC-1 \u2026 DOC-11 (UR-20261021-094); DR-1 \u2026 DR-12 (UR-20261018-092, closed)",
-    "request": "upgradation/UR-20261021-094.md"
+    "scope": "full-scope docs/ corpus audit + runtime-ownership code track + trigger-chain run",
+    "findings": "RT-1 \u2026 RT-11 (UR-20261026-097, -098, -100, -101); RT-7 CI blocker carried as OI-8 (UR-20261026-099); DOC-012 \u2026 DOC-016 closed earlier the same day",
+    "request": "upgradation/UR-20261026-101.md"
   }
 }
