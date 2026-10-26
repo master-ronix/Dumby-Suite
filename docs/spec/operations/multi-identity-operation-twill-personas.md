@@ -232,6 +232,30 @@ facts must also reach her live instance, or it is invisible until someone restar
   application, not a session, so they outlive the client: destroying the client alone leaves the picker
   still offering commands that answer nothing.
 
+**Identifiers are shape-validated, not merely non-empty.** A registration parses each field through a
+**shape** validator: a Discord id must be a snowflake, and a client secret must have the shape Discord
+issues. Reading a field as "any non-empty string" validates nothing. The failure this rule prevents is
+subtle and was real: the presentation fields (`presenceStatus`, `note`, `accent`) *were* validated
+because they were added later, while the identifiers present from the start were never checked — the
+surface validated what it had most recently been asked to, not what it most needed to.
+
+**Uniqueness on a soft-deletable table is partial.** A revoked persona is soft-deleted, so its
+application id stays in the table. A plain unique constraint would therefore let a revoked identity
+block its own replacement for ever. Uniqueness is declared **among live rows only** — the partial unique
+index (`where deletedAt is null`) the corpus already uses for guild members, roles and module states.
+
+**A rebind is not a column update.** `boundGuildId` reads like one more field, but three stores move with
+it, and moving one is the trap revocation fell into:
+
+- her **bindings** are keyed by `(guildId, moduleSlug)` — rows left in the old guild keep modules marked
+  occupied there, so nobody else can install them;
+- her **commands** are registered against the old guild and must be deregistered there and registered in
+  the new one;
+- her **runtime** must be rebuilt for the new guild.
+
+A rebind that writes the column alone leaves a persona half-moved: still holding modules in a guild she
+no longer serves, still answering in it.
+
 **One persona can be cycled on demand.** `POST /twill/personas/:personaId/reload` exists for the cases a
 write cannot cover — a row edited out of band, a migration, a module's command set changing underneath
 her, or an operator simply wanting her cycled as a first diagnostic step. It restarts **that persona
