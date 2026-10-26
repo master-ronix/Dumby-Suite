@@ -190,6 +190,28 @@ credentials"*) and it is recorded here so a later reader does not relax it.
 | `DELETE` | `/twill/registrars/:authority/:applicationId` | Withdraw a grant |
 | `GET` | `/twill/guilds/:guildId/module-chain` | The raw ownership chain for every module in a guild — tier, state row, enabling profile, binding, resolved owner (§44) |
 
+**Ownership is the gate; the registrar registry is an optional allowlist.** These are two different
+mechanisms and only one of them decides whether a registration proceeds:
+
+- **Proof of ownership.** `verifyApplicationOwnership` asks Discord (`GET /applications/@me`, with the
+  bot token) which application that token belongs to, and requires it to be the one being claimed.
+  Holding the token **is** holding the application, so this is a real proof — and it needs no operator
+  in the loop, which is exactly what bring-your-own-identity requires.
+- **The registrar registry is an allowlist, not the gate.** `persona_registrars` records
+  `(authority, discordApplicationId)` grants, where a `discordApplicationId` of empty means "any
+  application" so the registry is not chicken-and-egg. It is enforced **only when it has entries**. An
+  empty registry means the operator has not asked for an allowlist, and registration proceeds on the
+  ownership proof alone. An authenticated caller who is not on a non-empty allowlist gets `403`.
+
+**Nothing sealed is ever echoed.** The public view of a persona discloses its identity and an
+`oauthConfigured` flag — never a sealed envelope, never the bot-token digest. A response that returns
+what it just sealed hands out the credential it was protecting.
+
+**The registration surface is opt-in on the API server.** `TWILL_ROUTES_ON_API` defaults to **false** and
+mounts the Twill routes on the API server as well as the dedicated Twill process. It sits behind the same
+internal API key as the other internal surfaces. The default is off because the endpoint accepts bot
+tokens and client secrets: a surface that accepts credentials must not grow by default.
+
 **A mutation never requires a process restart.** A binding change, a rebind or a credential rotation
 re-registers over REST; the reload route restarts one persona's runtime, which is the only operation
 that needs a new connection.
