@@ -115,6 +115,23 @@ OAuth redirect to register and nothing to invite. The card it opens carries the 
 guide and nothing else: Discord publishes no API for an application's redirect list, so whether the URL
 the card asks for is actually registered cannot be read, and the page must not imply otherwise.
 
+**Why the page cannot answer the question, and why a probe cannot either.** There is no API that reads an
+application's registered redirect URIs, so the page can present the value to register but can never
+confirm it. The obvious workaround — a server-side request to the authorize endpoint with the candidate
+URI, on the theory that Discord validates the redirect before rendering consent — does not work, and the
+reason is worth keeping so it is not re-proposed:
+
+- the documented failure for a **malformed** URI is a JSON syntax error (`{"redirect_uri": ["Not a well
+  formed URL."]}`), which is a syntax check, not a registration check;
+- an **unregistered but well-formed** URI surfaces as an error page *after* the user reaches the consent
+  step, so it needs a logged-in browser session — a server-side request receives the login page, not a
+  verdict;
+- the token endpoint does validate `redirect_uri` against the registered list, but only after a real
+  authorization `code` exists, which requires a user to complete the flow.
+
+The honest answer is therefore the one the page gives: here is the value to register, and no claim that
+it is registered.
+
 ### 7.6 DM Behavior
 
 The main bot operates under a complete DM prohibition — it never initiates or answers direct messages. Twill instances decide their own DM behavior: each instance's configuration, set at registration, determines whether that persona accepts DMs. The persona listing displays each instance's DM behavior.
