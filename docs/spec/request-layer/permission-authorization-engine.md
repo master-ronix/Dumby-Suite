@@ -246,6 +246,23 @@ only through the queued BCCM deregistration; with it the change lands immediatel
 The authorization is per guild and per application: a persona acting in a guild needs its own
 authorization, because the token is scoped to the application that will carry out the change.
 
+**Per-application OAuth — one client per persona (Route A), and the fallback (Route B).** A persona is
+its own Discord application, so an authorization that speaks for it must run through **its** client, not
+the resident bot's:
+
+- **Route A — the client.** The Twill registration payload may carry a sealed `oauthClientSecretSealed`,
+  envelope-encrypted exactly like the bot token (ADR-003). The persona's OAuth2 client is then built from
+  its own application id as the client id, its opened secret as the client secret, and the shared callback
+  URL as the redirect URI.
+- **Route A — the flow.** `/auth/authorize` accepts `app=<applicationId>`, runs that application's client
+  through the authorize leg and records the application in a cookie. `/auth/callback` exchanges the code
+  with **that** application's client only, and stores the token against it. A code is never exchanged
+  through a different client than the one that requested it.
+- **Route B — the fallback.** An application with no usable client secret resolves to no client, and the
+  path falls back to removing the module's commands with the **owning application's bot token**. A token
+  that cannot be opened must not break the flow: the open returns empty, the deregistration reports the
+  empty token and returns, and the disable completes through the queued BCCM.
+
 ### 21.8 How To Verify This Section Against the Code
 
 - The seven-layer resolver and its fail-open/fail-closed ordering:

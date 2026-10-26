@@ -100,7 +100,11 @@ For each activated persona, the listing shows:
   persona, the enablement record for the main bot). Core and admin tiers are shared and are never
   listed under a profile. Ownership is specified once in §44 Module Lifecycle & Ownership.
 - **DM behavior** (the main bot shows "Prohibited"; a Twill instance shows the DM behavior its instance has decided).
-- **Status** (Online/Offline/Connecting — based on gateway connection state).
+- **Status** (Online/Offline/Connecting). A registered, non-retired persona reads **Online** because it
+  exists and is invitable — not because its gateway happens to be connected. Whether its bot is already
+  in the guild is a **second, separate fact**, stated honestly in the headline subtext ("In this guild" /
+  "Not in this guild yet"). Presence must not drive the status, or a persona that exists but has not
+  been invited looks dead.
 - **Nothing else.** The page does not list a profile's commands: a profile's command set is the
   framework's, derived from ownership at deploy time, not a property of the profile.
 
@@ -120,6 +124,13 @@ selected, not to the default.
 ### 7.5 Persona Creation & Configuration — Twill Registration API
 
 Persona creation, token binding, shard allocation, and module enablement profiles are handled exclusively through the **Twill registration API** — the administrative API surface for bring-your-own-identity hosting (blueprint.md §35; the API family is specified in §44). Under the Twill model the guild administrator supplies their own bot token and application; Dumby hosts the running instance; and the registration binds the persona to exactly one server. None of these operations are performed through `/persona` or any other Discord-facing command. The listing includes an informational note stating where persona management is handled.
+
+**One invite control, on the persona profile, for admins.** A guild administrator sees the persona's
+invite link directly on the page — one control, never a menu of options, and never shown to a non-admin.
+With an OAuth2 client secret registered for that application the link is the **combined install and
+authorize leg** (`/auth/authorize?app=…&guild=…&bot=1`), so a single click adds the bot *and* captures
+its token. Without one it is a plain Discord bot install pinned to the persona's bound guild, because
+there is nothing to authorize against.
 
 The page carries an **Info control on a persona profile only** — never on the main bot's, which has no
 OAuth redirect to register and nothing to invite. The card it opens carries the OAuth redirect callback
