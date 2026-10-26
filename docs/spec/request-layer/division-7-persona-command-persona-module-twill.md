@@ -106,6 +106,17 @@ For each activated persona, the listing shows:
 
 If no Twill personas are active (only the main bot exists), the listing shows only the main bot entry.
 
+**Which profile the page opens on.** The page opens on **the identity that is running the command** —
+not on the owner of the `persona` module, and not on the persona registered for the guild. Those are
+three different questions, and answering either of the wrong two is how `/persona` once opened on a
+persona when the main bot invoked it. A module's owner is not the identity issuing the command, and a
+guild's registration is not the identity issuing it either. The acting identity is a property of the
+process, not of the guild: empty in the resident bot's process, set in a dedicated persona's.
+
+**A refresh keeps the chosen profile.** The switcher lets a member view a persona other than the one
+running the command. That choice survives a refresh: a re-render returns to the profile the member
+selected, not to the default.
+
 ### 7.5 Persona Creation & Configuration — Twill Registration API
 
 Persona creation, token binding, shard allocation, and module enablement profiles are handled exclusively through the **Twill registration API** — the administrative API surface for bring-your-own-identity hosting (blueprint.md §35; the API family is specified in §44). Under the Twill model the guild administrator supplies their own bot token and application; Dumby hosts the running instance; and the registration binds the persona to exactly one server. None of these operations are performed through `/persona` or any other Discord-facing command. The listing includes an informational note stating where persona management is handled.
