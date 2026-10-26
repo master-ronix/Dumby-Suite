@@ -195,3 +195,30 @@ describe('InteractionRegistry autocomplete budget', () => {
     expect(AUTOCOMPLETE_BUDGET_MS).toBe(800);
   });
 });
+
+// UR-20261026-098 — the opt-in reaches the guard, so a control that needs a private follow-up gets it
+// and every other control keeps the guard intact.
+describe('UR-20261026-098 — allowFollowUp reaches the renderer guard', () => {
+  test('passes the handler\'s opt-in to createReadOnlyInteraction', async () => {
+    const seen: Array<{ allowFollowUp?: boolean } | undefined> = [];
+    const renderer = {
+      createReadOnlyInteraction<T extends object>(
+        interaction: T,
+        options?: { allowFollowUp?: boolean },
+      ): T {
+        seen.push(options);
+        return interaction;
+      },
+    };
+    const registry = new InteractionRegistry({ renderer });
+    const execute = vi.fn(async () => undefined);
+    registry.register({ customIdPrefix: 'a:', allowFollowUp: true, parse: () => ({}), execute });
+    registry.register({ customIdPrefix: 'b:', parse: () => ({}), execute });
+
+    await registry.dispatch(makeInteraction('a:one'));
+    await registry.dispatch(makeInteraction('b:one'));
+
+    expect(seen[0]).toEqual({ allowFollowUp: true });
+    expect(seen[1]).toEqual({ allowFollowUp: false });
+  });
+});

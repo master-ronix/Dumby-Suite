@@ -9,19 +9,32 @@ describe('ACC-REQ-0005-3 — notice frame', () => {
   });
 });
 
-// UR-20261026-097 — the refusal notice must DECLARE the grammar it is actually delivered with.
-describe('UR-20261026-097 — a refusal notice is not declared private when it is delivered publicly', () => {
-  it('the module-refusal notice does not ask for the ephemeral grammar', () => {
-    // It is answered with `editReply` on an interaction the component registry already acknowledged
-    // with `deferUpdate` — a PUBLIC acknowledgement — and `editReply` cannot change the ephemerality
-    // of a message that already exists. Declaring `ephemeral: true` asked for the private grammar
-    // (no accent, no footer) on a message the whole channel can see, which is the contradiction the
-    // operator reported: "no accent, and not hidden".
+// UR-20261026-098 — a refusal must be BOTH private in grammar AND private in delivery.
+describe('UR-20261026-098 — the refusal notice is private, and is delivered privately', () => {
+  it('declares the private grammar', () => {
+    // The notice asks for the ephemeral grammar (no accent, no footer). That is only correct if the
+    // message really is private — which is the second half of this test.
     const src = readSrc('bootstrap/bootstrap.ts');
     const notice = src.slice(src.indexOf('const moduleRefusalNotice'));
     const body = notice.slice(0, notice.indexOf('const moduleEnableConfirmation'));
-    // Property-anchored: the surrounding prose may legitimately NAME the old declaration.
-    expect(body).not.toMatch(/^\s*ephemeral:\s*true,$/m);
-    expect(body).toMatch(/^\s*ephemeral:\s*false,$/m);
+    expect(body).not.toMatch(/^\s*ephemeral:\s*false,$/m);
+    expect(body).toMatch(/^\s*ephemeral:\s*true,$/m);
+  });
+
+  it('is delivered with a follow-up, not by editing the publicly acknowledged message', () => {
+    // `editReply` cannot change an existing message's ephemerality, and the registry has already
+    // acknowledged the interaction with a public `deferUpdate`. A follow-up is a NEW message, and a
+    // new message can be private. Riding the edit made the card private in grammar and public in
+    // fact — the contradiction the operator reported.
+    const src = readSrc('interactions/core-frame.handlers.ts');
+    const start = src.indexOf("if (action === 'install')");
+    const branch = src.slice(start, src.indexOf("if (action === 'profile')"));
+    expect(branch).toMatch(/interaction\.followUp\?\.\(payload\)/);
+    expect(branch).not.toMatch(/interaction\.editReply\(payload\)/);
+  });
+
+  it('the page controls declare the follow-up exception', () => {
+    const src = readSrc('interactions/core-frame.handlers.ts');
+    expect(src).toMatch(/allowFollowUp:\s*true/);
   });
 });

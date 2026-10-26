@@ -53,6 +53,16 @@ export interface IComponentHandler {
   idempotencyKey?: (interaction: ComponentInteraction, context: unknown) => string;
   /** Defaults to 'update'. */
   ack?: AckMode;
+  /**
+   * Permit this handler to send a PRIVATE follow-up message.
+   *
+   * Off by default: Appendix C #20 keeps a handler from opening a response path of its own, and
+   * `editReply` on the acknowledged message is normally the only way out. It is opt-in because one
+   * answer has no other honest route — a REFUSAL must be private, and the interaction's own response
+   * is already spent on the public `deferUpdate` that keeps the page editing in place. `reply` and
+   * `showModal` stay blocked; only `followUp` opens, and only for a handler that declares it.
+   */
+  allowFollowUp?: boolean;
   execute(interaction: ComponentInteraction, context: unknown): Promise<void>;
 }
 
@@ -71,7 +81,7 @@ export interface InteractionRegistryOptions {
    * Appendix C #20 — the Renderer's read-only guard. When provided, component handlers receive a
    * read-only interaction so the component path cannot bypass the Renderer and reply directly.
    */
-  renderer?: { createReadOnlyInteraction<T extends object>(interaction: T): T };
+  renderer?: { createReadOnlyInteraction<T extends object>(interaction: T, options?: { allowFollowUp?: boolean }): T };
 }
 
 /** Appendix C #19 — the idempotency contract, so the in-memory default can be swapped for Redis. */
@@ -113,7 +123,7 @@ export class InteractionRegistry {
   private readonly idempotency: IdempotencyStore;
   private readonly acknowledge: ((interaction: ComponentInteraction) => Promise<void>) | undefined;
   private readonly renderer:
-    { createReadOnlyInteraction<T extends object>(interaction: T): T } | undefined;
+    { createReadOnlyInteraction<T extends object>(interaction: T, options?: { allowFollowUp?: boolean }): T } | undefined;
 
   constructor(options: InteractionRegistryOptions = {}) {
     this.acknowledge = options.acknowledge;
@@ -173,11 +183,14 @@ export class InteractionRegistry {
     if (existing) return existing;
 
     // A modal-opening control needs the raw interaction (to call `showModal`); every other control
-    // gets the Renderer's read-only guard, so it cannot bypass the Renderer.
+    // gets the Renderer's read-only guard, so it cannot bypass the Renderer. A handler that declares
+    // `allowFollowUp` keeps that guard but gains the one exit it needs for a private answer.
     const safeInteraction =
       ack === 'none' || this.renderer === undefined
         ? interaction
-        : this.renderer.createReadOnlyInteraction(interaction);
+        : this.renderer.createReadOnlyInteraction(interaction, {
+            allowFollowUp: handler.allowFollowUp === true,
+          });
     const pending = handler
       .execute(safeInteraction, context)
       .then(async () => {

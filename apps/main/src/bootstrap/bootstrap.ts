@@ -1076,22 +1076,19 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     // `flags`: setting EPHEMERAL alone (64) drops the Components-v2 bit (32768) and Discord rejects
     // the payload outright — which is why selecting an occupied module appeared to do nothing at all,
     // even after the refusal was being answered.
-    // NOT `ephemeral: true`. The declaration must match the delivery.
+    // `ephemeral: true` — the declaration and the delivery now agree.
     //
-    // This notice is answered through `editReply` on an interaction the component registry already
-    // acknowledged with `deferUpdate` — a PUBLIC acknowledgement — and `editReply` cannot change the
-    // ephemerality of a message that already exists. Declaring `ephemeral: true` therefore asked for
-    // the private grammar (no accent, no footer) on a message the whole channel can see: the notice
-    // carried no accent and was not hidden, which is the contradiction the operator reported.
-    //
-    // A genuinely PRIVATE refusal needs a dedicated acknowledgement for the install control (the
-    // registry's `ack: 'ephemeral'`), which would also make the post-install page private. That is a
-    // designed follow-up, not a one-line change; until then this is an honest PUBLIC formal notice.
+    // This notice is answered with `interaction.followUp(...)`, a NEW message, and a new message can
+    // be private where an edit of an existing one cannot. That is why the grammar is asked for again:
+    // the private grammar (no accent, no footer) is correct for a message only the invoking member
+    // sees, and the follow-up is what makes it true. Before this, the same flag rode `editReply` on a
+    // publicly acknowledged interaction, so the card carried the private grammar while the whole
+    // channel could read it.
     return renderer.renderNotice({
       ...moduleRefusalDescriptor(moduleId, moduleRegistry.get(moduleId), error, () => ownerName),
       reason: 'FORBIDDEN',
       traceId: renderer.createTraceId(),
-      ephemeral: false,
+      ephemeral: true,
     });
   };
 
@@ -1360,6 +1357,7 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   // is the fallback; a hosted persona registers hers when her runtime starts.
   const personaRouters = new Map<string, CommandRouter>();
   registerCoreFrameHandlers({
+    logger,
     routerFor: (applicationId: string) => personaRouters.get(applicationId),
     /**
      * The private confirmation for a module change. EPHEMERAL (flags 64) on purpose: a member who

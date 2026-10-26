@@ -53,6 +53,11 @@ export interface CoreFrameHandlerDeps {
   registry: InteractionRegistry;
   router: CommandRouter;
   /**
+   * Optional diagnostics. Used where a failure must NOT be silent but must also not cost the member
+   * their answer — a page refresh that fails after a refusal is logged, never thrown.
+   */
+  logger?: { warn: (message: string, meta?: Record<string, unknown>) => void };
+  /**
    * The router for the application that owns an interaction.
    *
    * The main bot and every hosted persona have their OWN router — the profile, the accent and the
@@ -156,6 +161,9 @@ export function registerCoreFrameHandlers(deps: CoreFrameHandlerDeps): void {
   // card's uninstall control re-renders that card in place.
   registry.register({
     customIdPrefix: ACT_PREFIX,
+    // A refused install is answered with a PRIVATE follow-up, so this control declares the one
+    // exception to the read-only guard. The page itself still edits in place through `editReply`.
+    allowFollowUp: true,
     parse: (customId) => {
       const parts = customId.split(':');
       return { action: parts[3], target: parts[4], page: parts[5] };
@@ -242,16 +250,27 @@ export function registerCoreFrameHandlers(deps: CoreFrameHandlerDeps): void {
             refusal = err;
           }
         }
-        // A REFUSAL IS THE INTERACTION'S INITIAL RESPONSE.
+        // A REFUSAL IS ANSWERED PRIVATELY, AND FIRST.
         //
-        // Sent as a FOLLOW-UP it could be swallowed by a failing follow-up chain, and the member saw
-        // nothing at all — which is exactly what was reported: the option's description changed to
-        // "occupied", so the refusal had fired, and no notice ever arrived. As the one initial response
-        // it cannot be lost, because an interaction that is never answered is an error Discord surfaces.
+        // The interaction is already acknowledged — the registry ran `deferUpdate` before this handler,
+        // which is a PUBLIC acknowledgement, and `editReply` cannot change an existing message's
+        // ephemerality. So the refusal could not be private while it rode the page edit, and it was
+        // delivered as a public notice carrying the private grammar (no accent, no footer): the exact
+        // contradiction the operator reported.
+        //
+        // It is now a private FOLLOW-UP, sent BEFORE the page refresh. The order is the fix for the
+        // older bug this path once had — as a follow-up after a failing refresh the notice was
+        // swallowed and the member saw nothing at all. Sent first, the member is always told; the page
+        // refresh is then best-effort, and a failure there cannot cost the notice.
         if (selected !== undefined && refusal !== undefined && deps.moduleRefusal !== undefined) {
           const payload = await deps.moduleRefusal(selected, refusal);
           if (payload !== undefined) {
-            await interaction.editReply(payload);
+            await interaction.followUp?.(payload);
+            try {
+              await dispatch(interaction, 'browse');
+            } catch (err) {
+              deps.logger?.warn('browse-refresh-after-refusal-failed', { error: String(err) });
+            }
             return;
           }
         }

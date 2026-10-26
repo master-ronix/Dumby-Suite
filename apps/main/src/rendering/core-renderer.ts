@@ -434,7 +434,11 @@ export class CoreRenderer {
     return `tr_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
   }
 
-  createReadOnlyInteraction<T extends object>(interaction: T): T {
+  createReadOnlyInteraction<T extends object>(
+    interaction: T,
+    options: { allowFollowUp?: boolean } = {},
+  ): T {
+    const allowFollowUp = options.allowFollowUp === true;
     return new Proxy(interaction, {
       get(target, prop, receiver) {
         // §2.4 / Appendix C #20 — a handler must not open a response path of its own, so `reply`,
@@ -443,7 +447,13 @@ export class CoreRenderer {
         // that `editReply` is the only call that can land a result on the existing message. Blocking
         // it left every component handler with no way to respond at all — the trigger fired, the
         // handler ran, and nothing ever reached the message.
-        if (prop === 'reply' || prop === 'followUp' || prop === 'showModal') {
+        //
+        // `followUp` is the single declared exception, for a handler that opts in with
+        // `allowFollowUp`. It exists because a REFUSAL must be PRIVATE and the interaction's one
+        // response is already spent on the public `deferUpdate`; a follow-up is the only route to a
+        // message the channel cannot see. `reply` and `showModal` remain blocked — a second initial
+        // response is rejected by Discord, and a modal is not a message.
+        if (prop === 'reply' || prop === 'showModal' || (prop === 'followUp' && !allowFollowUp)) {
           return async (): Promise<never> => {
             throw new DirectInteractionResponseError(String(prop));
           };

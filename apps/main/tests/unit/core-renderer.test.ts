@@ -1,5 +1,9 @@
 import { describe, expect, test, vi } from 'vitest';
-import { CoreRenderer, InvalidRenderDescriptorError } from '../../src/rendering/core-renderer.js';
+import {
+  CoreRenderer,
+  DirectInteractionResponseError,
+  InvalidRenderDescriptorError,
+} from '../../src/rendering/core-renderer.js';
 import {
   ComponentType,
   type Component,
@@ -335,5 +339,33 @@ describe('an ephemeral has NO density modes (item 2)', () => {
     const body = textContents(message).join('\n');
     expect(body).toContain('one');
     expect(body).toContain('two');
+  });
+});
+
+// UR-20261026-098 — the read-only guard, and the single exception it now carries.
+describe('UR-20261026-098 — createReadOnlyInteraction', () => {
+  const surface = () => ({
+    reply: async (): Promise<string> => 'reply',
+    followUp: async (): Promise<string> => 'followUp',
+    showModal: async (): Promise<string> => 'showModal',
+    editReply: async (): Promise<string> => 'editReply',
+  });
+
+  test('blocks reply, followUp and showModal by default, and allows editReply', async () => {
+    const guarded = new CoreRenderer().createReadOnlyInteraction(surface());
+    await expect(guarded.reply()).rejects.toBeInstanceOf(DirectInteractionResponseError);
+    await expect(guarded.followUp()).rejects.toBeInstanceOf(DirectInteractionResponseError);
+    await expect(guarded.showModal()).rejects.toBeInstanceOf(DirectInteractionResponseError);
+    await expect(guarded.editReply()).resolves.toBe('editReply');
+  });
+
+  test('allows followUp only for a handler that opts in — reply and showModal stay shut', async () => {
+    const guarded = new CoreRenderer().createReadOnlyInteraction(surface(), {
+      allowFollowUp: true,
+    });
+    await expect(guarded.followUp()).resolves.toBe('followUp');
+    await expect(guarded.reply()).rejects.toBeInstanceOf(DirectInteractionResponseError);
+    await expect(guarded.showModal()).rejects.toBeInstanceOf(DirectInteractionResponseError);
+    await expect(guarded.editReply()).resolves.toBe('editReply');
   });
 });
