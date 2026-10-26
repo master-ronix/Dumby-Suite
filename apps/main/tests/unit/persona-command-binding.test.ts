@@ -1,7 +1,5 @@
 import { test, expect, describe, vi } from 'vitest';
 import { PersonaCommandBindingService } from '../../src/personas/persona-command-binding.service.js';
-import { CommandRegistry } from '../../src/commands/command-registry.js';
-import { CommandRouter } from '../../src/commands/command-router.js';
 
 /**
  * UR-20261012-078 — the main bot's ownership.
