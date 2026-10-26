@@ -1121,6 +1121,41 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   ): Promise<void> => {
     const entry = moduleRegistry.get(moduleId);
     if (entry === undefined || entry.manifest.commands.length === 0) return;
+    const keys = entry.manifest.commands.map((command) => command.name);
+    // THE OPPOSITE ACTION IS REVOKED, NOT OUTVOTED.
+    //
+    // A disable queues a removal and an enable queues a re-registration, so a module toggled twice
+    // inside the batch window left BOTH rows pending. The push replays them in order, which meant the
+    // outcome depended on row order: an enable read before its disable still ended with the command
+    // removed, and the member who had just switched the module back on watched its command disappear.
+    // §17.7 lets an administrator revoke a queued entry any time before its push; this is that
+    // revocation, performed automatically by the change that contradicts it.
+    //
+    // A soft delete, not a status change: `pendingEntries` already excludes `deletedAt`, and the row
+    // stays readable as the record of a request that was withdrawn.
+    const opposite = action === 'enable' ? 'disable' : 'enable';
+    let revoked = 0;
+    try {
+      revoked = await db
+        .knex('guild_command_queue')
+        .where({ guildId, applicationId, status: 'pending' })
+        .whereIn('commandKey', keys)
+        .whereNull('deletedAt')
+        .whereRaw("payload->>'action' = ?", [opposite])
+        .update({ deletedAt: db.knex.fn.now(), updatedAt: db.knex.fn.now() });
+    } catch (err) {
+      // A failed revocation must not lose the change being made: the new row still goes in, and the
+      // ordered replay keeps the later action winning.
+      logger.warn('bccm-queue-revoke-failed', {
+        moduleId,
+        guildId,
+        action,
+        error: String(err),
+      });
+    }
+    if (revoked > 0) {
+      logger.info('bccm-queue-revoked', { moduleId, guildId, action, revoked });
+    }
     await db.knex('guild_command_queue').insert(
       entry.manifest.commands.map((command) => ({
         guildId,

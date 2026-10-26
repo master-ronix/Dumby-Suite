@@ -33,10 +33,20 @@ export function createKnexBccmStore(knex: Knex): BccmBatchStore {
       guildId: string,
       applicationId: string,
     ): Promise<readonly BccmQueueEntry[]> {
+      // ORDERED, because the batch is a REPLAY. `applyBatch` walks the entries in order and mutates
+      // one name set, so a pending disable and a pending enable for the same command resolve by
+      // whichever row comes back first — and an unordered SELECT is free to return them either way.
+      // A disable then an enable must end with the command PRESENT; without this it ended with
+      // whatever the planner felt like. `createdAt` is the queue's own chronology; `id` breaks a tie
+      // between rows written in the same millisecond.
       const rows = await knex('guild_command_queue')
         .where({ guildId, applicationId, status: 'pending' })
         .whereNull('deletedAt')
-        .select('commandKey', 'payload');
+        .select('commandKey', 'payload')
+        .orderBy([
+          { column: 'createdAt', order: 'asc' },
+          { column: 'id', order: 'asc' },
+        ]);
       return rows.map(toEntry);
     },
 

@@ -398,3 +398,17 @@ describe('resolveCommandPayloads', () => {
     expect(problems).toEqual([{ name: 'Bad Name', reason: 'invalid-name' }]);
   });
 });
+
+// RT-17 — WHY the writer revokes the opposite action instead of letting the replay sort it out.
+describe('applyBatch is order-dependent, so a contradiction must be revoked (RT-17)', () => {
+  const registered = [{ name: 'hello' }];
+  const entry = (action: 'enable' | 'disable') => ({ commandKey: 'hello', action });
+
+  test('enable after disable leaves the command present', () => {
+    expect(applyBatch(registered, [entry('disable'), entry('enable')])).toContain('hello');
+  });
+
+  test('disable after enable leaves it absent — the same two rows, the other way round', () => {
+    expect(applyBatch(registered, [entry('enable'), entry('disable')])).not.toContain('hello');
+  });
+});

@@ -159,3 +159,21 @@ describe('scope isolation', () => {
     });
   });
 });
+
+// RT-17 — the batch is a REPLAY, so the queue must hand back a chronology, not a set.
+describe('pendingEntries is ordered, because applyBatch replays it (RT-17)', () => {
+  test('orders by createdAt then id', async () => {
+    const { knex, calls } = fakeKnex({ rows: [] });
+    const store = createKnexBccmStore(knex);
+    await store.pendingEntries('g1', 'app-1');
+
+    const orderBy = calls.filter((c) => c.method === 'orderBy').at(-1);
+    expect(orderBy).toBeDefined();
+    // One call carrying both keys, in this order: createdAt first (the queue's own chronology), id to
+    // break a tie between rows written in the same millisecond.
+    expect(orderBy?.args[0]).toEqual([
+      { column: 'createdAt', order: 'asc' },
+      { column: 'id', order: 'asc' },
+    ]);
+  });
+});

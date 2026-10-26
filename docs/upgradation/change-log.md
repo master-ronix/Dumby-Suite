@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.113
+version: 5.5.114
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -145,7 +145,7 @@ migration prompt version) · `state` (Greenfield | Migration | Enforcement) · `
 | v5.4.0 — Dashboard MODULE_ERROR fix | 2026-10-08 | live log |
 | v5.5.0 — Dashboard controls / attribution / icons | 2026-10-08 | 25 gates green |
 | v5.5.1 — UR-005 build fix | 2026-10-08 | push |
-| v5.5.2 … v5.5.113 — the per-request patch series | 2026-10-11 … 2026-10-26 | change-log §3 (this file) |
+| v5.5.2 … v5.5.114 — the per-request patch series | 2026-10-11 … 2026-10-26 | change-log §3 (this file) |
 
 > §2 lists the **master / milestone tracks**. The per-request patch series after v5.5.1
 > (v5.5.2 … v5.5.99) is enumerated in §3; the front-matter `version` is the highest released
@@ -521,6 +521,19 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 - **R8 — audit age.** `status/audit-age.json` records the audit date, commit, scope and request; `README.md` names the current audit.
 - **Verification.** Corpus gate suite **27/27 green**. Application toolchain not run (Node 20.20.2; app requires Node ≥ 22; no deps) — app-side items are outside the corpus scope.
 - **Return.** `met` (corpus scope) — every AU finding closed; OI-1 (human attestation) and OI-3 (Docker/K8s) remain honest standing items, not defects.
+
+---
+
+### v5.5.114 — A Re-Enable Revokes the Queued Removal, and the Batch Replays in Order (RT-17, RT-18) — 2026-10-26
+
+- 2026-10-26 · meta-prompt 5.2.0 · state=Enforcement · handoff=master-prompt:enforce · return=met
+- **Work order.** None. The record tiers were retired by `UR-20261026-102`, which directs that work after it is recorded here.
+- **The expectation, from the operator.** "If we enabled module back both paths should revert — enable the command back as it is from the integration panel, and revoke the BCCM queue's window-based de-registration."
+- **RT-17 — the queue could not revert itself.** A disable queues a removal and an enable queues a re-registration, so a module toggled twice inside the batch window left **both** rows pending. `applyBatch` replays them in order against one name set, and `pendingEntries` had **no ordering** — so the outcome depended on which row the planner returned first. An enable read before its disable still ended with the command removed: the member who had just switched the module back on watched its command disappear. §17.7 already permits revoking a queued entry before its push; nothing performed that revocation.
+- **The fix.** `enqueueModuleCommandChanges` now revokes the CONTRADICTING action — soft-deleting pending rows for the same command keys in the same guild and application (`deletedAt`, so `pendingEntries` stops returning them and the row survives as the record of a withdrawn request) — before writing its own. It is symmetric: disable revokes a pending enable, enable revokes a pending disable. A failed revocation is logged (`bccm-queue-revoke-failed`) and the new row still goes in. `pendingEntries` now returns rows in `createdAt` order, with `id` breaking a tie, so the replay is deterministic even if a revocation never wrote.
+- **RT-18 — the integration-panel half is already a restore, and cannot be more.** `setModuleCommandAccess(..., true)` PUTs `@everyone: allow`, which is the command's default state. Discord publishes **no DELETE** for application command permissions, so "remove the override" is not an operation that exists; re-writing the default is the restore. Recorded so the expectation is answered rather than quietly unimplemented.
+- **Verification.** Two tests: `pendingEntries` emits `orderBy` on `createdAt` then `id`; and `applyBatch` with the same two rows in each order yields present-then-absent, which is the defect stated as a property. `tsc` over both edited sources: no error attributable to this change.
+- **Return.** `met`.
 
 ---
 

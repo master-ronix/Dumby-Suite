@@ -117,6 +117,22 @@ The window is §17.7's: queued at T₀, prepare window from T₀+12h, push at th
 disable's removal is **eventual by design** — Discord caps guild-command creation at 200/day, and the
 batch is what conserves it.
 
+**Half 1 and half 2 both revert on a re-enable.** A module toggled twice inside the window used to
+leave a pending removal and a pending re-registration in the same batch, and the replay decided the
+outcome by row order — so a member who switched the module back on could watch its command disappear.
+Now the change that contradicts a queued one **revokes** it:
+
+- on **enable**, any pending `disable` rows for that module's commands are soft-deleted
+  (`deletedAt` set) before the `enable` row is written — log line `bccm-queue-revoked`;
+- on **disable**, any pending `enable` rows are revoked the same way;
+- `pendingEntries` returns rows in `createdAt` order, so even a revocation that failed to write cannot
+  make the replay non-deterministic.
+
+Verify with the same query as above: after a re-enable, **no** `disable` row should be `pending` for
+those command keys. And on the Discord side, an enable re-writes the `@everyone` permission to allow —
+which is the command's default state. Discord publishes no DELETE for command permissions, so "remove
+the override" is not an operation that exists; re-writing the default is the restore.
+
 ## Step 5 — what each log line means, in one place
 
 | Line | Meaning |
