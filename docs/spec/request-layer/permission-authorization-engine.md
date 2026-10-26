@@ -225,6 +225,27 @@ admin-tier gate middleware at priority −10, the owner-ids environment variable
 per-capability environment guard, and time/output bounding — the layers independent by
 design.
 
+**The command-permission token — the only route to instant command hiding.** The dashboard's OAuth2
+bridge authorizes *reads*. Hiding a command's permissions on Discord in the same second it changes needs
+a second, user-scoped token, and that is what this flow exists for. Without it a change reaches Discord
+only through the queued BCCM deregistration; with it the change lands immediately.
+
+- **Storage.** `guild_command_permission_tokens` holds one row per guild and application: the
+  authorizing user, the token expiry, a status, and the **ids of two sealed credentials** — access and
+  refresh. The token *values* are never stored in the clear. They are sealed with the same envelope root
+  key the credentials service uses (`ENCRYPTION_ROOT_KEY`), so a database dump alone yields no usable
+  token.
+- **The callback.** `/auth/callback` validates the CSRF `state` cookie, exchanges the authorization code,
+  verifies through `/users/@me/guilds` that the authorizing user can **Manage** the guild, and only then
+  stores the sealed token set. A user who cannot manage the guild authorizes nothing.
+- **The surface.** `/dashboard` carries the **Authorize Dumby** control and the current connection status,
+  so an operator can see whether the token exists and whether it is still live.
+- **Refresh.** The access token is refreshed from the sealed refresh token; a refresh failure is surfaced
+  as a status, never as a silent loss of instant hiding.
+
+The authorization is per guild and per application: a persona acting in a guild needs its own
+authorization, because the token is scoped to the application that will carry out the change.
+
 ### 21.8 How To Verify This Section Against the Code
 
 - The seven-layer resolver and its fail-open/fail-closed ordering:
