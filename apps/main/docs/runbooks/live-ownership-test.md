@@ -93,6 +93,23 @@ module-command-access-set applied=<n> removed=<n>
 - `command-access-token-missing` in the log is the diagnostic for `applied=0`: run the connect flow in
   `command-permission-authorization.md`.
 
+**If the integration panel still shows `@everyone` allowed after a disable, that is `applied=0`, not a
+broken gate.** Discord's command-permission endpoint accepts only a user Bearer token; a bot token is
+rejected, and `DISCORD_COMMAND_PERMISSIONS_TOKEN` defaults to empty. With no authorization connected
+there is nothing to write, so the command stays visible to every member and answers `MODULE_DISABLED`
+when used, until the queued batch push removes it. The panel looking unchanged is the correct rendering
+of "no override was written".
+
+The boot log now says which it is, per application, before you touch anything:
+
+```
+command-permission-authorization profile=<internal|persona> applicationId=… state=<active|none|expired|revoked> instantHideArmed=<true|false>
+```
+
+`instantHideArmed=false` carries an `effect` and a `fix` — the `/auth/authorize?guild=…` URL to open for
+that application. Once a row is `active`, a disable writes the deny override and the panel shows
+`@everyone` crossed out.
+
 **Half 2 — the queued removal (no token needed).** The disable writes rows to the queue:
 
 ```sql

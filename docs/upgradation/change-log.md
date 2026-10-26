@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.114
+version: 5.5.115
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -145,7 +145,7 @@ migration prompt version) · `state` (Greenfield | Migration | Enforcement) · `
 | v5.4.0 — Dashboard MODULE_ERROR fix | 2026-10-08 | live log |
 | v5.5.0 — Dashboard controls / attribution / icons | 2026-10-08 | 25 gates green |
 | v5.5.1 — UR-005 build fix | 2026-10-08 | push |
-| v5.5.2 … v5.5.114 — the per-request patch series | 2026-10-11 … 2026-10-26 | change-log §3 (this file) |
+| v5.5.2 … v5.5.115 — the per-request patch series | 2026-10-11 … 2026-10-26 | change-log §3 (this file) |
 
 > §2 lists the **master / milestone tracks**. The per-request patch series after v5.5.1
 > (v5.5.2 … v5.5.99) is enumerated in §3; the front-matter `version` is the highest released
@@ -521,6 +521,19 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 - **R8 — audit age.** `status/audit-age.json` records the audit date, commit, scope and request; `README.md` names the current audit.
 - **Verification.** Corpus gate suite **27/27 green**. Application toolchain not run (Node 20.20.2; app requires Node ≥ 22; no deps) — app-side items are outside the corpus scope.
 - **Return.** `met` (corpus scope) — every AU finding closed; OI-1 (human attestation) and OI-3 (Docker/K8s) remain honest standing items, not defects.
+
+---
+
+### v5.5.115 — Instant Hiding Is Announced at Boot, Not Discovered in the Panel (RT-19) — 2026-10-26
+
+- 2026-10-26 · meta-prompt 5.2.0 · state=Enforcement · handoff=master-prompt:enforce · return=met
+- **Work order.** None. The record tiers were retired by `UR-20261026-102`, which directs that work after it is recorded here.
+- **The report, from a live test.** After a disable the command correctly stopped being de-registered and correctly answered `MODULE_DISABLED` — but Discord's integration panel still showed `@everyone` allowed, so nothing had disappeared instantly.
+- **RT-19 — a silent state on the Discord side.** That panel reading is `applied=0`: the command-permission endpoint accepts only a user Bearer token carrying `applications.commands.permissions.update`, a bot token is rejected, and `DISCORD_COMMAND_PERMISSIONS_TOKEN` defaults to empty. With no authorization connected there is nothing to write, so the command stays visible to every member and answers `MODULE_DISABLED` until the queued batch push removes it. The code was right; the state was invisible. The only signals were a `command-access-token-missing` warning buried in a runtime log and a panel that looks unchanged because no override exists.
+- **The fix.** The boot sequence now states it per application, before anything is touched: `command-permission-authorization profile=<internal|persona> applicationId=… state=<active|none|expired|revoked> instantHideArmed=<true|false>`, carrying an `effect` and a `fix` (the `/auth/authorize?guild=…` URL for that application) when it is false. Read-only — it consults `commandPermissionTokens.status` and logs.
+- **Also recorded.** The first disable in that test de-registered the command instantly; the re-enable and re-disable behaved. That is the pre-`UR-20261026-097` build (Route B still present) versus the deployed one, not a second defect — Route B is gone from the tree and `removed` is now a constant 0.
+- **Verification.** `tsc` over the edited bootstrap: no error attributable to this change. The runbook records the panel reading as the correct rendering of "no override was written", so the next operator does not read it as a broken gate.
+- **Return.** `met`.
 
 ---
 

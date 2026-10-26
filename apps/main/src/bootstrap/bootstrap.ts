@@ -2034,6 +2034,52 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
             effect: 'an interaction from this application will be REFUSED, not absorbed',
           });
         }
+        // IS INSTANT HIDING ARMED, for each application that can hold a module in this guild?
+        //
+        // A disable's first half writes a @everyone deny override, and that endpoint accepts ONLY a
+        // user Bearer token carrying `applications.commands.permissions.update` — a bot token is
+        // rejected outright. Without one, `applied` is 0 and nothing is written: the command stays
+        // VISIBLE to every member until the queued batch push removes it (§17.7, up to 24h), answering
+        // MODULE_DISABLED if used. On the Discord side that state is silent — the integration panel
+        // still shows @everyone allowed, so it looks like nothing happened. Printed at boot, where the
+        // operator reads, instead of being discovered from the panel.
+        if (persona.boundGuildId !== '') {
+          for (const [profile, appId] of [
+            ['internal', internalApplicationId],
+            ['persona', persona.discordApplicationId],
+          ] as const) {
+            if (appId === '') continue;
+            let state: string;
+            try {
+              state = await commandPermissionTokens.status(appId, persona.boundGuildId);
+            } catch (err) {
+              state = 'unreadable';
+              logger.warn('command-permission-authorization-unreadable', {
+                applicationId: appId,
+                guildId: persona.boundGuildId,
+                error: String(err),
+              });
+            }
+            const armed = state === 'active';
+            logger.info('command-permission-authorization', {
+              profile,
+              applicationId: appId,
+              guildId: persona.boundGuildId,
+              state,
+              instantHideArmed: armed,
+              ...(armed
+                ? {}
+                : {
+                    effect:
+                      'a disable will NOT hide this profile\u2019s commands instantly; they stay visible until the queued batch push removes them, and answer MODULE_DISABLED if used',
+                    fix:
+                      profile === 'persona'
+                        ? `/auth/authorize?guild=${persona.boundGuildId}&app=${appId}`
+                        : `/auth/authorize?guild=${persona.boundGuildId}`,
+                  }),
+            });
+          }
+        }
         // THE MODULE STATES IN HER GUILD, with the two facts that can disagree: who the STATE says
         // enabled it, and who the BINDING claims. When they disagree the module reads as one profile's
         // to one surface and the other's to another — occupied on a browse while the runtime has it
