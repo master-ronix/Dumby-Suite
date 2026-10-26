@@ -8,5 +8,12 @@
     "scope": "full-scope docs/ corpus audit + runtime-ownership code track + trigger-chain run",
     "findings": "RT-1 \u2026 RT-11 (UR-20261026-097, -098, -100, -101); RT-7 CI blocker carried as OI-8 (UR-20261026-099); DOC-012 \u2026 DOC-016 closed earlier the same day",
     "request": "upgradation/UR-20261026-101.md"
+  },
+  "ci_enforcement": {
+    "verified": "2026-10-26",
+    "position": "CI is NOT inert. Actions runs execute on feature/dev; docs-gates passes (runs 40390270507, 40391257578 and the retirement commit 28d568a7). The earlier OI-8 reading - 'no Actions job has started since 2026-10-23, account billing block' - is falsified: 60 runs span 2026-10-23T18:57Z to 2026-10-26T10:11Z.",
+    "current_red_signal": "CI / Gates (D-8.4 strict sequence) fails at Gate 4 - unit tests + coverage floors. Gate 3 (format) failed earlier the same day and was fixed in fb4e361. Four tests remain red, all present at the base commit and untouched by the docs run: command-registry-router (2), persona-command-binding (1), interaction-registry (1).",
+    "owner": "code track - the four tests sit in behaviour governed by UR-20261012-067, -078, -080 and UR-20261026-098, and deciding test-versus-code per assertion needs those records closed first.",
+    "note": "Recorded here rather than in last_audit.findings, which is the historical record of the a3b093f9 audit and is not rewritten."
   }
 }
