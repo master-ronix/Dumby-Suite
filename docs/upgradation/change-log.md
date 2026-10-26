@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.109
+version: 5.5.110
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -145,7 +145,7 @@ migration prompt version) · `state` (Greenfield | Migration | Enforcement) · `
 | v5.4.0 — Dashboard MODULE_ERROR fix | 2026-10-08 | live log |
 | v5.5.0 — Dashboard controls / attribution / icons | 2026-10-08 | 25 gates green |
 | v5.5.1 — UR-005 build fix | 2026-10-08 | push |
-| v5.5.2 … v5.5.109 — the per-request patch series | 2026-10-11 … 2026-10-26 | change-log §3 (this file) |
+| v5.5.2 … v5.5.110 — the per-request patch series | 2026-10-11 … 2026-10-26 | change-log §3 (this file) |
 
 > §2 lists the **master / milestone tracks**. The per-request patch series after v5.5.1
 > (v5.5.2 … v5.5.99) is enumerated in §3; the front-matter `version` is the highest released
@@ -521,6 +521,18 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 - **R8 — audit age.** `status/audit-age.json` records the audit date, commit, scope and request; `README.md` names the current audit.
 - **Verification.** Corpus gate suite **27/27 green**. Application toolchain not run (Node 20.20.2; app requires Node ≥ 22; no deps) — app-side items are outside the corpus scope.
 - **Return.** `met` (corpus scope) — every AU finding closed; OI-1 (human attestation) and OI-3 (Docker/K8s) remain honest standing items, not defects.
+
+---
+
+### v5.5.110 — The Reconciliation Ledger Covers the Faulted Areas; the Anchor Moves With the Code Track (UR-20261026-101) — 2026-10-26
+
+- 2026-10-26 · meta-prompt 5.2.0 · state=Enforcement · handoff=master-prompt:enforce · return=met
+- **Work order.** `upgradation/UR-20261026-101.md` — closes RT-10 and RT-11.
+- **RT-10 — the coverage gap.** The ledger reported 28 rows, all `match`, `code-gap: 0` — and not one of them covered module ownership, the disable path, dispatch ownership or refusal delivery, which is where every operator fault lived. A ledger with no row for a behaviour cannot detect that behaviour going wrong. REC-029 … REC-032 are added, one per area, each naming its `code_ref` and the record that established it; the counts block is recomputed from the row list.
+- **RT-11 — the anchor.** `verified_commit` was `7e8ca739` with **six commits since touching `apps/main`/`packages`**. `check-code-reconciliation` fails on exactly that, and it did not fail here only because the anchor is absent from a shallow local clone and the gate downgrades that to a warning. Anchored now at the last commit to touch those surfaces (`a3b093f9`), with `GAP_MANIFEST.md`, `README.md`, `status/audit-age.json` and `migration/migration-prompt.md` moved with it — the one-canonical-commit rule `UR-20261021-094` R1 established.
+- **Honesty of the re-anchor.** The 13 pre-existing `resolution` strings carried `Re-verified against HEAD <sha> — `; the sha is dropped and the substance kept. Re-pointing a ledger is not re-verifying 28 rows, and the ledger's `note` now says which act happened, why the re-anchor is sound, and that REC-029 … REC-032 are the rows verified at this anchor.
+- **Verification.** Corpus gate suite **30/30 green**. The freshness condition the sandbox cannot evaluate was checked by its local equivalent: `git rev-list <last-code-commit>..HEAD -- apps/main packages` is **empty**.
+- **Return.** `met` (corpus scope). The shallow-clone blind spot in the gate itself is recorded as out of scope, not fixed here.
 
 ---
 
@@ -2821,6 +2833,7 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 | UR-20261026-098 — a private refusal (follow-up delivery, the guard's declared exception) | **Executed 2026-10-26** (see the `v5.5.107` entry). Finding RT-6 closed. |
 | UR-20261026-099 — CI enforcement inert (account billing block) | **Recorded 2026-10-26** (see the `v5.5.108` entry). RT-7 raised; closes only when an Actions job executes (operator). |
 | UR-20261026-100 — a module and its commands are one bound pair; command-permission authorization documented | **Executed 2026-10-26** (see the `v5.5.109` entry). Findings RT-8, RT-9 closed. |
+| UR-20261026-101 — the reconciliation ledger covers the faulted areas; the anchor moves with the code track | **Executed 2026-10-26** (see the `v5.5.110` entry). Findings RT-10, RT-11 closed. |
 
 ### 5.2 Residual dispositions (UR-20261015-090 R9)
 
