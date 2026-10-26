@@ -147,6 +147,40 @@ first. Existing single-server-bound personas are honored under an open grandfath
 
 Divergences are recorded in `status/code-reconciliation.json`.
 
+### 35.8 The Registration & Management Surface
+
+The Twill API is the **only** surface that creates or reconfigures a persona. No Discord-facing command
+does either. It is served by the API process and gated by `TWILL_ROUTES_ON_API`; the registrar registry
+below it is what makes a registration possible at all.
+
+**Credential gating is the precondition, not a feature.** A registration proves the applicant holds the
+application — by presenting its bot token to `verifyApplicationOwnership` — before anything is created.
+This is the operator's rule (*"registration of persona via twill must only be done using sensitive
+credentials"*) and it is recorded here so a later reader does not relax it.
+
+| Method | Path | Purpose |
+|---|---|---|
+| `POST` | `/twill/personas/register` | Register a persona against a proven application |
+| `GET` | `/twill/personas` | Every persona, identity only. A revoked persona is absent: revocation is a soft delete |
+| `GET` | `/twill/personas/:personaId` | One persona's detail |
+| `PATCH` | `/twill/personas/:personaId` | Update the persona's presentation — presence, status quote, accent |
+| `DELETE` | `/twill/personas/:personaId` | Revoke. Soft delete; the row survives, the persona stops serving |
+| `POST` | `/twill/personas/:personaId/credentials` | Rotate the sealed credentials |
+| `POST` | `/twill/personas/:personaId/rebind` | Change the one guild the persona is bound to |
+| `POST` | `/twill/personas/:personaId/reload` | Restart that persona alone — never the process |
+| `GET` | `/twill/personas/:personaId/status` | Presence and runtime state |
+| `GET` | `/twill/personas/:personaId/charter` | The charter status — free default, explicit sunset (ADR-008) |
+| `POST` | `/twill/personas/:personaId/bindings` | Bind a module to the persona |
+| `DELETE` | `/twill/personas/:personaId/bindings/:moduleSlug` | Release a binding |
+| `GET` | `/twill/registrars` | The registrar registry — who may register which application |
+| `POST` | `/twill/registrars` | Grant a registrar |
+| `DELETE` | `/twill/registrars/:authority/:applicationId` | Withdraw a grant |
+| `GET` | `/twill/guilds/:guildId/module-chain` | The raw ownership chain for every module in a guild — tier, state row, enabling profile, binding, resolved owner (§44) |
+
+**A mutation never requires a process restart.** A binding change, a rebind or a credential rotation
+re-registers over REST; the reload route restarts one persona's runtime, which is the only operation
+that needs a new connection.
+
 ## Contract
 - `contracts/errors.json`
 
