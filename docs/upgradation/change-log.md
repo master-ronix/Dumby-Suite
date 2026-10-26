@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.108
+version: 5.5.109
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -145,7 +145,7 @@ migration prompt version) · `state` (Greenfield | Migration | Enforcement) · `
 | v5.4.0 — Dashboard MODULE_ERROR fix | 2026-10-08 | live log |
 | v5.5.0 — Dashboard controls / attribution / icons | 2026-10-08 | 25 gates green |
 | v5.5.1 — UR-005 build fix | 2026-10-08 | push |
-| v5.5.2 … v5.5.108 — the per-request patch series | 2026-10-11 … 2026-10-26 | change-log §3 (this file) |
+| v5.5.2 … v5.5.109 — the per-request patch series | 2026-10-11 … 2026-10-26 | change-log §3 (this file) |
 
 > §2 lists the **master / milestone tracks**. The per-request patch series after v5.5.1
 > (v5.5.2 … v5.5.99) is enumerated in §3; the front-matter `version` is the highest released
@@ -521,6 +521,17 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 - **R8 — audit age.** `status/audit-age.json` records the audit date, commit, scope and request; `README.md` names the current audit.
 - **Verification.** Corpus gate suite **27/27 green**. Application toolchain not run (Node 20.20.2; app requires Node ≥ 22; no deps) — app-side items are outside the corpus scope.
 - **Return.** `met` (corpus scope) — every AU finding closed; OI-1 (human attestation) and OI-3 (Docker/K8s) remain honest standing items, not defects.
+
+---
+
+### v5.5.109 — A Module and Its Commands Are One Bound Pair; Command-Permission Authorization Documented (UR-20261026-100) — 2026-10-26
+
+- 2026-10-26 · meta-prompt 5.2.0 · state=Enforcement · handoff=master-prompt:enforce · return=met
+- **Work order.** `upgradation/UR-20261026-100.md` — closes RT-8 and RT-9.
+- **RT-8 — dispatch obeys ownership.** `assertPersonaOwnsCommand` logged `command-scope-owned-elsewhere` and answered anyway. It now throws `CommandScopeDeniedError` with the NEUTRAL `out-of-scope` cause when the resolver names a different profile: a stale, renamed or carried-over registration no longer lets the main bot answer a persona's module. Core and admin keep their `'shared'` short-circuit, and the holder still answers her own command. This reverses a deliberate earlier decision on the operator's ruling — the test that encoded the old behaviour was reversed rather than deleted, with a companion test proving the holder side.
+- **RT-9 — the authorization route documented.** `apps/main/docs/runbooks/command-permission-authorization.md` separates three things that look alike: the **install** flow (`bot=1`; no user token), the **connect** flow (`/auth/authorize?guild=…`; yields `applications.commands.permissions.update`), and the **static fallback** (`DISCORD_COMMAND_PERMISSIONS_TOKEN`; internal profile only, never refreshed, cannot serve a persona). It records the redirect registration, the per-persona `&app=<id>` case, the verification query and the `module-command-access-set applied=… removed=…` outcome line.
+- **Verification.** Corpus gate suite **30/30 green** after the change. `tsc` over the edited router: no error attributable to this change. The changed unit tests were **not executed** — Actions jobs are refused at start (`OI-8`, `UR-20261026-099`), and this sandbox cannot install the workspace.
+- **Return.** `met` (code + documentation scope).
 
 ---
 
@@ -2809,6 +2820,7 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 | UR-20261026-097 — runtime ownership and command-path truth (owner memo, occupied predicate, persona health read, Route B de-registration, refusal-notice grammar) | **Executed 2026-10-26** (see the `v5.5.106` entry). Findings RT-1 … RT-5 closed; RT-5's interim grammar is superseded by UR-20261026-098. |
 | UR-20261026-098 — a private refusal (follow-up delivery, the guard's declared exception) | **Executed 2026-10-26** (see the `v5.5.107` entry). Finding RT-6 closed. |
 | UR-20261026-099 — CI enforcement inert (account billing block) | **Recorded 2026-10-26** (see the `v5.5.108` entry). RT-7 raised; closes only when an Actions job executes (operator). |
+| UR-20261026-100 — a module and its commands are one bound pair; command-permission authorization documented | **Executed 2026-10-26** (see the `v5.5.109` entry). Findings RT-8, RT-9 closed. |
 
 ### 5.2 Residual dispositions (UR-20261015-090 R9)
 
