@@ -74,6 +74,7 @@ The formal notice frame is the Renderer's unified presentation for failure, main
 | Reason code | Category | Typical trigger |
 |---|---|---|
 | `UNKNOWN_COMMAND` | Input | The invoked command is not registered or not available |
+| `INVALID_INPUT` | Input | A submitted value is not acceptable — a rename name Discord rejects, or any value failing its own validation |
 | `MAINTENANCE` | System | Maintenance mode is active |
 | `NOT_FOUND` | State | The selected target (module, queue entry, grant target) does not exist |
 | `FORBIDDEN` | Authorization | The user's Layer 6 rank, Layer 7 resolution, or Discord permission bits are below the requirement |
@@ -82,6 +83,8 @@ The formal notice frame is the Renderer's unified presentation for failure, main
 | `RATE_LIMITED` | Throttling | A rate limit is exceeded |
 | `GUILD_UNAVAILABLE` | Availability | The module is not available in this guild |
 | `MODULE_DISABLED` | Availability | The module is disabled in this guild — its commands stay registered so the member is told *why*, and the router refuses them here rather than letting dispatch report `UNKNOWN_COMMAND` |
+| `STATE_UNAVAILABLE` | State | The guild's state could not be read (cause `state-unreadable`), so the action cannot be evaluated — distinct from being denied |
+| `OUT_OF_BOUND_GUILD` | Availability | A persona acted outside the one guild it is bound to (`PersonaBoundGuildError`) |
 | `MODULE_ERROR` | Failure | A module handler failed during execution |
 | `OVERDUE` | Failure | The interaction expired before its final render; an overdue event was logged (§2.6) |
 
