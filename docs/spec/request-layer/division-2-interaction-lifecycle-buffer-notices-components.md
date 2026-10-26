@@ -81,10 +81,31 @@ The formal notice frame is the Renderer's unified presentation for failure, main
 | `COOLDOWN` | Throttling | A cooldown is active for the user and command |
 | `RATE_LIMITED` | Throttling | A rate limit is exceeded |
 | `GUILD_UNAVAILABLE` | Availability | The module is not available in this guild |
+| `MODULE_DISABLED` | Availability | The module is disabled in this guild — its commands stay registered so the member is told *why*, and the router refuses them here rather than letting dispatch report `UNKNOWN_COMMAND` |
 | `MODULE_ERROR` | Failure | A module handler failed during execution |
 | `OVERDUE` | Failure | The interaction expired before its final render; an overdue event was logged (§2.6) |
 
 The notice frame is the only failure presentation. Validation failures (§6.7), permission denials (§8.4), install rejections (§5.5), and expiry outcomes (§2.6) all render through it.
+
+**A refusal is private.** A module refusal is for the member who tried the action, not an
+announcement to the channel. It is delivered as a **private follow-up**, never by editing the message
+that carries the page.
+
+The constraint is structural, not cosmetic. The component registry acknowledges every control with a
+*public* `deferUpdate` before the handler runs — that is what lets the handler edit the existing
+message in place — and an edit cannot change an existing message's ephemerality. So a notice that rides
+the page edit is public by construction, and putting the private grammar on it produces a
+channel-visible card with no accent and no footer. A follow-up is a new message, and a new message can
+be private.
+
+**Order is part of the contract.** The refusal is sent **before** the page refresh. Sent after a
+failing refresh it is swallowed and the member sees nothing at all; sent first, the member is always
+told and the refresh is best-effort, so a refresh failure cannot cost the notice.
+
+**A refusal names both parties.** A refusal has two: who was refused, and who holds the thing. The
+message names both, because wording that names only the holder invites the reader to assume the actor
+is the same kind of profile — an assumption that is wrong whenever the actor is the resident bot, which
+is not a persona at all.
 
 ### 2.4 Interactive Component Dispatch
 
