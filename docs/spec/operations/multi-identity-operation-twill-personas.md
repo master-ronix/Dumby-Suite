@@ -68,6 +68,19 @@ RBAC / permission /    same engine, same source    same engine, same source of t
 guild config           of truth
 ```
 
+**One identity's fault is contained to that identity.** Because a persona is the same framework under a
+different identity, its failure modes have to be scoped the same way its successes are:
+
+- **The interaction handler never throws.** Chat-input commands go to that persona's own router; buttons
+  and select menus go to the shared component registry; anything else is ignored. A throw here would
+  take a gateway listener down for every identity on the process, so the handler absorbs it.
+- **A router that cannot be constructed degrades that persona to components-only.** The persona still
+  serves its controls; it stops answering commands. It does not fail to start, and the failure is
+  logged.
+- **Router configuration has one description.** A persona's router is configured by the same function the
+  resident bot's is, so "the framework running again under a different identity" is true of the wiring
+  and not only of the boot sequence.
+
 ### 35.3 Persona Bindings — Which Identity Runs What
 
 A guild admin configures **persona bindings**: a mapping, stored alongside the per-guild module
