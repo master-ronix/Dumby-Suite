@@ -49,7 +49,7 @@ carries no repeated "Marketplace" heading.
 │                                                           │
 │  Explore new modules to install          [Discover icon]  │
 │  Dumby | Marketplace                                      │
-│  -# Developed by Quixotic Mnemonics v5.0.0                │
+│  -# Developed by Quixotic Mnemonics                       │
 │                                                           │
 ├─────────────────────────────────────────────────────────┤
 │                                                           │
@@ -61,7 +61,7 @@ carries no repeated "Marketplace" heading.
 │                                                           │
 ├─────────────────────────────────────────────────────────┤
 │                                                           │
-│  -# Developed by Quixotic Mnemonics v5.0.0   [D][M][C]  │
+│  -# Developed by Quixotic Mnemonics                     │
 │                                                           │
 ├─────────────────────────────────────────────────────────┤
 │                                                           │
@@ -150,7 +150,7 @@ asked.
 
 ```
 Dumby | Marketplace
--# Developed by Quixotic Mnemonics v5.0.0
+-# Developed by Quixotic Mnemonics
 ```
 
 The Marketplace is a framework-level surface: its title names the surface, and its attribution credits

@@ -44,7 +44,7 @@ The `/dashboard` command is the single entry point to the entire Dumby user-faci
 ├─────────────────────────────────────────────────────────┤
 │                                                           │
 │  Dumby | Dashboard                                        │
-│  -# Developed by Quixotic Mnemonics v5.0.0                │
+│  -# Developed by Quixotic Mnemonics                       │
 │                                                           │
 ├─────────────────────────────────────────────────────────┤
 │                                                           │
@@ -59,7 +59,7 @@ The `/dashboard` command is the single entry point to the entire Dumby user-faci
 │                                                           │
 ├─────────────────────────────────────────────────────────┤
 │                                                           │
-│  -# Developed by Quixotic Mnemonics v5.0.0   [D][M][C]  │
+│  -# Developed by Quixotic Mnemonics                     │
 │                                                           │
 ├─────────────────────────────────────────────────────────┤
 │                                                           │
@@ -87,7 +87,7 @@ The dashboard home page carries the A4 grammar (§1.5):
 
 ```
 Dumby | Dashboard
--# Developed by Quixotic Mnemonics v5.0.0
+-# Developed by Quixotic Mnemonics
 ```
 
 Module pages replace the surface name and the attribution with the module's identity: `Dumby | Leveling` with `-# Developed by {ModuleDeveloper} v{ModuleVersion}`. The navigation dropdown is the only component present on every page in every mode; the identity band and footer change to match the current surface.

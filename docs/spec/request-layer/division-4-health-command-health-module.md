@@ -39,7 +39,7 @@ The `/health` command is a Core-tier module shipping a single slash command. It 
 ├─────────────────────────────────────────────────────────┤
 │                                                           │
 │  Dumby | Health                                           │
-│  -# Developed by Quixotic Mnemonics v5.0.0                │
+│  -# Developed by Quixotic Mnemonics                       │
 │                                                           │
 ├─────────────────────────────────────────────────────────┤
 │                                                           │
@@ -98,7 +98,7 @@ The `/health` command is a Core-tier module shipping a single slash command. It 
 │                                                           │
 ├─────────────────────────────────────────────────────────┤
 │                                                           │
-│  -# Developed by Quixotic Mnemonics v5.0.0   [D][M][C]  │
+│  -# Developed by Quixotic Mnemonics                     │
 │                                                           │
 ├─────────────────────────────────────────────────────────┤
 │                                                           │
@@ -186,7 +186,7 @@ Degraded subsystems are flagged in place: a failed or reconnecting subsystem ren
 The health page uses:
 ```
 Dumby | Health
--# Developed by Quixotic Mnemonics v5.0.0
+-# Developed by Quixotic Mnemonics
 ```
 
 ---

@@ -88,7 +88,7 @@ The title format for all pages follows the single A4 grammar (§1.5):
 
 ```
 Dumby | {PageName}
--# Developed by {Developer} v{Version}
+-# Developed by {Developer}
 ```
 
 Where:

@@ -34,7 +34,7 @@ Every renderer page is built from the same static Components V2 grammar: frames,
 | Frame | Container (type 17, `IS_COMPONENTS_V2` flag 32768) | The top-level page frame; exactly one per page |
 | Divider | Separator (type 14) | Delimits the identity band, each content section, and the footer |
 | Title / subtitle | Text Display (type 10) | Surface/module identity and attribution, per the grammar in §1.5 |
-| Footer | Text Display (type 10) + mode control | Attribution repeat, density mode control (§1.4), trace reference on notices |
+| Footer | Text Display (type 10) | On a module page, `<display name> [<module id>]` and nothing else (ADR-015); trace reference on notices. Attribution is **not** repeated here |
 
 The canonical vertical order of a renderer page:
 
@@ -43,7 +43,7 @@ The canonical vertical order of a renderer page:
 │  [BANNER SLOT — media gallery]                            │
 ├─────────────────────────────────────────────────────────┤
 │  Dumby | {SurfaceName}                                   │
-│  -# Developed by {Developer} v{Version}                   │
+│  -# Developed by {Developer}                              │
 ├─────────────────────────────────────────────────────────┤
 │  [MODULE IDENTITY SLOT]                                  │
 ├─────────────────────────────────────────────────────────┤
@@ -69,14 +69,14 @@ Four dynamic slots fill the static frame. The Renderer owns the resolution of ev
 |---|---|---|
 | **Accent** | Renderer (fixed) | The official accent colour, amber `#FFCA6D` |
 | **Banner** | Module or framework assets directory | 1280×720 banner image (Media Gallery type 12) |
-| **Module identity** | Module manifest (`devId`, name, version, logo) | Logo emoji, module name, version, developer |
+| **Module identity** | Module manifest (`devId`, name, logo) | Logo emoji, module name, developer. No version — no surface carries one (ADR-013) |
 | **Content** | Command schema + handler output | Page-specific sections (per-command divisions below) |
 
 **Accent slot.** The official accent colour is amber `#FFCA6D` — the framework default. It is a property of the Dumby interface, not of individual modules: dividers, footer rules, the buffer indicator, the formal notice marker, and default banner gradients are all rendered in `#FFCA6D`. Module visual identity is carried by the banner and module identity slots. Modules do not override the framework chrome accent; a module may declare its own accent for its own pages (ADR-012), falling back to amber `#FFCA6D`.
 
 **Banner slot.** A 1280×720 image (YouTube thumbnail dimensions, 16:9 aspect ratio) served as a full-width media gallery. Every module's manifest declares its assets directory; if the directory contains no banner, the Renderer generates one using the official accent colour as a gradient background with the module's logo emoji and name centred (§11.5).
 
-**Module identity slot.** The module's logo emoji (from `logo.png` in its assets directory, or the default `📦`), its display name, its version, and its developer (`devId`). For framework-shipped surfaces the developer is Quixotic Mnemonics.
+**Module identity slot.** The module's logo emoji (from `logo.png` in its assets directory, or the default `📦`), its display name, and its developer (`devId`). For framework-shipped surfaces the developer is Quixotic Mnemonics. The module's version is **not** shown: no user-facing surface displays a version string (ADR-013).
 
 **Content slot.** The body of the page. The Renderer derives it from the command's declared schema and the data returned by the command handler, laid out as divider-separated sections. The per-command divisions of this reference specify what each content slot contains.
 
@@ -98,13 +98,26 @@ One grammar governs titles and attribution on every renderer page — there are 
 
 ```
 Dumby | {SurfaceName}
--# Developed by {Developer} v{Version}
+-# Developed by {Developer}
 ```
 
-- **Title** — the surface or module identity: `Dumby | Dashboard`, `Dumby | Health`, `Dumby | Marketplace`, `Dumby | Hello World`. The title names the page the user is on.
-- **Attribution** — the footer/subtitle line, rendered in Discord subtext formatting (`-#`): the real developer of the surface. Framework-shipped surfaces attribute to **Quixotic Mnemonics** with the framework version (`v5.0.0`); module pages attribute to the module's real developer (from `devId`) with the module's version.
+**No version string appears on any surface** (ADR-013). The version is a build fact, not a user-facing
+one; it belongs in the manifest, the release record and the trace reference on a formal notice, never
+in the title band or the footer.
 
-The attribution line appears directly below the title and is repeated in the footer of the frame. Framework-level surfaces — the Marketplace among them — use their surface name in the title and attribute to the framework developer, because they are framework-shipped surfaces; the grammar is identical everywhere.
+- **Title** — the surface or module identity: `Dumby | Dashboard`, `Dumby | Health`, `Dumby | Marketplace`, `Dumby | Hello World`. The title names the page the user is on.
+- **Attribution** — the subtitle line, rendered in Discord subtext formatting (`-#`): the real developer of the surface. Framework-shipped surfaces attribute to **Quixotic Mnemonics**; module pages attribute to the module's real developer (from `devId`). The attribution is passed whole rather than assembled, because the resident bot and a persona do not even share a verb — `Developed by Quixotic Mnemonics` against `Powered by Dumby Suite`.
+
+The attribution line appears **once**, directly below the title, in the identity band. It is not
+repeated in the footer (ADR-015). Framework-level surfaces — the Marketplace among them — use their
+surface name in the title and attribute to the framework developer, because they are framework-shipped
+surfaces; the grammar is identical everywhere.
+
+**Module-page footer.** A module page's footer renders exactly the module's display name followed by
+its id in brackets — `<display name> [<module id>]` — and nothing else (ADR-013 as amended by
+ADR-015). When a module declares no display name, the title-cased id is used. The footer is omitted
+entirely on a render that carries no module id, because that render is framework chrome rather than a
+module page.
 
 ### 1.6 Official Accent Colour
 

@@ -24,7 +24,7 @@ On every interaction that passes the invoker re-check (§2.4), the Renderer imme
 ```
 ┌─────────────────────────────────────────────────────────┐
 │  Dumby | {SurfaceName}                                   │
-│  -# Developed by {Developer} v{Version}                   │
+│  -# Developed by {Developer}                              │
 ├─────────────────────────────────────────────────────────┤
 │  ⏳ Preparing {SurfaceName}…                              │
 └─────────────────────────────────────────────────────────┘
@@ -54,7 +54,7 @@ The formal notice frame is the Renderer's unified presentation for failure, main
 ```
 ┌─────────────────────────────────────────────────────────┐
 │  Dumby | {SurfaceName}                                   │
-│  -# Developed by {Developer} v{Version}                   │
+│  -# Developed by {Developer}                              │
 ├─────────────────────────────────────────────────────────┤
 │  ⚠ {Notice heading}                                      │
 │                                                           │

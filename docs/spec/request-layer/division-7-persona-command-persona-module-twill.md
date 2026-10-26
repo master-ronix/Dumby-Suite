@@ -39,7 +39,7 @@ The `/persona` command lists all activated personas with their command inventory
 ├─────────────────────────────────────────────────────────┤
 │                                                           │
 │  Dumby | Persona                                          │
-│  -# Developed by Quixotic Mnemonics v5.0.0                │
+│  -# Developed by Quixotic Mnemonics                       │
 │                                                           │
 ├─────────────────────────────────────────────────────────┤
 │                                                           │
@@ -79,7 +79,7 @@ The `/persona` command lists all activated personas with their command inventory
 │                                                           │
 ├─────────────────────────────────────────────────────────┤
 │                                                           │
-│  -# Developed by Quixotic Mnemonics v5.0.0   [D][M][C]  │
+│  -# Developed by Quixotic Mnemonics                     │
 │                                                           │
 ├─────────────────────────────────────────────────────────┤
 │                                                           │
@@ -130,7 +130,7 @@ The main bot operates under a complete DM prohibition — it never initiates or 
 The persona page uses:
 ```
 Dumby | Persona
--# Developed by Quixotic Mnemonics v5.0.0
+-# Developed by Quixotic Mnemonics
 ```
 
 ---

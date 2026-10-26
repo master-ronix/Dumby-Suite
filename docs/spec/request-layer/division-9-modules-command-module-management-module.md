@@ -39,7 +39,7 @@ The `/modules` command displays a list of all activated, installed, and Standard
 ├─────────────────────────────────────────────────────────┤
 │                                                           │
 │  Dumby | Modules                                          │
-│  -# Developed by Quixotic Mnemonics v5.0.0                │
+│  -# Developed by Quixotic Mnemonics                       │
 │                                                           │
 ├─────────────────────────────────────────────────────────┤
 │                                                           │
@@ -56,7 +56,7 @@ The `/modules` command displays a list of all activated, installed, and Standard
 │                                                           │
 ├─────────────────────────────────────────────────────────┤
 │                                                           │
-│  -# Developed by Quixotic Mnemonics v5.0.0   [D][M][C]  │
+│  -# Developed by Quixotic Mnemonics                     │
 │                                                           │
 ├─────────────────────────────────────────────────────────┤
 │                                                           │
@@ -126,7 +126,7 @@ When a module is selected, the message passes through the buffer state and is ed
 │                                                           │
 ├─────────────────────────────────────────────────────────┤
 │                                                           │
-│  -# Developed by Quixotic Mnemonics v1.0.0   [D][M][C]  │
+│  -# Developed by Quixotic Mnemonics v1.0.0              │
 │                                                           │
 ├─────────────────────────────────────────────────────────┤
 │                                                           │
@@ -177,7 +177,7 @@ Idempotency protection absorbs double-clicks and network retries: a second unins
 The modules list page uses:
 ```
 Dumby | Modules
--# Developed by Quixotic Mnemonics v5.0.0
+-# Developed by Quixotic Mnemonics
 ```
 
 When viewing a specific module's detail page, the title and attribution change to the module's identity:

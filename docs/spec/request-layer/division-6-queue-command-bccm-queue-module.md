@@ -78,7 +78,7 @@ When `/queue` is invoked without arguments, the frame displays the list of all q
 ├─────────────────────────────────────────────────────────┤
 │                                                           │
 │  Dumby | Queue                                            │
-│  -# Developed by Quixotic Mnemonics v5.0.0                │
+│  -# Developed by Quixotic Mnemonics                       │
 │                                                           │
 ├─────────────────────────────────────────────────────────┤
 │                                                           │
@@ -111,7 +111,7 @@ When `/queue` is invoked without arguments, the frame displays the list of all q
 │                                                           │
 ├─────────────────────────────────────────────────────────┤
 │                                                           │
-│  -# Developed by Quixotic Mnemonics v5.0.0   [D][M][C]  │
+│  -# Developed by Quixotic Mnemonics                     │
 │                                                           │
 ├─────────────────────────────────────────────────────────┤
 │                                                           │
@@ -161,7 +161,7 @@ The BCCM batching window operates on a 12–13 hour cycle. All queued actions fo
 The queue page uses:
 ```
 Dumby | Queue
--# Developed by Quixotic Mnemonics v5.0.0
+-# Developed by Quixotic Mnemonics
 ```
 
 ---

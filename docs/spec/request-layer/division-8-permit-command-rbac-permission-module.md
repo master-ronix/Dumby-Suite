@@ -96,7 +96,7 @@ The message is edited to show a dropdown (String Select Menu) containing the mod
 ├─────────────────────────────────────────────────────────┤
 │                                                           │
 │  Dumby | Permit                                           │
-│  -# Developed by Quixotic Mnemonics v5.0.0                │
+│  -# Developed by Quixotic Mnemonics                       │
 │                                                           │
 ├─────────────────────────────────────────────────────────┤
 │                                                           │
@@ -114,7 +114,7 @@ The message is edited to show a dropdown (String Select Menu) containing the mod
 │                                                           │
 ├─────────────────────────────────────────────────────────┤
 │                                                           │
-│  -# Developed by Quixotic Mnemonics v5.0.0   [D][M][C]  │
+│  -# Developed by Quixotic Mnemonics                     │
 │                                                           │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -254,7 +254,7 @@ Rate-limit grants are Layer 7 grants enforced by the rate-limiter middleware wit
 The permit page uses:
 ```
 Dumby | Permit
--# Developed by Quixotic Mnemonics v5.0.0
+-# Developed by Quixotic Mnemonics
 ```
 
 ---
