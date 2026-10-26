@@ -1,10 +1,10 @@
 {
   "$id": "docs/status/code-reconciliation.json",
   "title": "Docs \u2194 Code reconciliation",
-  "note": "Every row compares what the NEW documentation asserts against the actual source in master-ronix/Dumby-Suite (apps/main at 3589b2baecff1b7ef134960bcc857e71e42938ce, branch feature/dev). Standing rule: the specification is authority; where the code is narrower, the code is the gap to close. The anchor is the last commit to touch apps/main|packages, so no commit after it can move the code under a row without the freshness gate failing. REC-034 was added at the previous anchor, for the re-enable revert that the queue and the permission write gained. This re-anchor carries the boot-time statement of whether instant hiding is armed (RT-19) \u2014 a read, not a change to any row's subject. The other rows were re-anchored, not re-derived: no commit in the range touched the code they describe.",
-  "verified_commit": "3589b2baecff1b7ef134960bcc857e71e42938ce",
+  "note": "Every row compares what the NEW documentation asserts against the actual source in master-ronix/Dumby-Suite (apps/main at 5eda6ff5d38a411c5b8ba033eea2bfa9061d73da, branch feature/dev). Standing rule: the specification is authority; where the code is narrower, the code is the gap to close. The anchor is the last commit to touch apps/main|packages, so no commit after it can move the code under a row without the freshness gate failing. REC-034 was added at the previous anchor, for the re-enable revert that the queue and the permission write gained. This re-anchor carries the on-demand refresh of the stored command-permission token (RT-20), which changes how a disable obtains its Bearer \u2014 no row's subject changed, but the code under REC-030 did. The other rows were re-anchored, not re-derived: no commit in the range touched the code they describe.",
+  "verified_commit": "5eda6ff5d38a411c5b8ba033eea2bfa9061d73da",
   "verified_branch": "feature/dev",
-  "verified_at": "2026-10-26T22:21:03Z",
+  "verified_at": "2026-10-26T22:34:26Z",
   "verdicts": [
     "match",
     "doc-incomplete",
