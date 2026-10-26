@@ -1,10 +1,10 @@
 {
   "$id": "docs/status/code-reconciliation.json",
   "title": "Docs \u2194 Code reconciliation",
-  "note": "Every row compares what the NEW documentation asserts against the actual source in master-ronix/Dumby-Suite (apps/main at 9fff7ad63c93e7f30af2d1078ddcf60bed5bbf4a, branch feature/dev). Standing rule: the specification is authority; where the code is narrower, the code is the gap to close. The anchor is the last commit to touch apps/main|packages, so no commit after it can move the code under a row without the freshness gate failing. REC-033 was added at this anchor, for the absent-command explanation that dispatch gained when a profile's filtered registry met another profile's command. The other rows were re-anchored, not re-derived: no commit in the range touched the code they describe.",
-  "verified_commit": "9fff7ad63c93e7f30af2d1078ddcf60bed5bbf4a",
+  "note": "Every row compares what the NEW documentation asserts against the actual source in master-ronix/Dumby-Suite (apps/main at c7c4e3295f4134f8ce7510242fb2bb95833e6981, branch feature/dev). Standing rule: the specification is authority; where the code is narrower, the code is the gap to close. The anchor is the last commit to touch apps/main|packages, so no commit after it can move the code under a row without the freshness gate failing. REC-034 was added at this anchor, for the re-enable revert that the queue and the permission write gained. The other rows were re-anchored, not re-derived: no commit in the range touched the code they describe.",
+  "verified_commit": "c7c4e3295f4134f8ce7510242fb2bb95833e6981",
   "verified_branch": "feature/dev",
-  "verified_at": "2026-10-26T21:59:25Z",
+  "verified_at": "2026-10-26T22:07:47Z",
   "verdicts": [
     "match",
     "doc-incomplete",
@@ -308,13 +308,22 @@
       "code_ref": "apps/main/src/commands/command-router.ts",
       "verdict": "match",
       "resolution": "Established by RT-15. Before it, a persona answered UNKNOWN_COMMAND for a module the main bot was answering OUT_OF_SCOPE."
+    },
+    {
+      "id": "REC-034",
+      "area": "module re-enable \u2014 both halves of a disable revert",
+      "doc_claim": "a disable has two halves, an instant permission restrict and a queued removal, and a re-enable reverses BOTH: the command is restored to its default permission state and the queued removal is revoked before its push (spec/request-layer/command-framework-routing-engine.md \u00a717.7)",
+      "code_truth": "an enable rewrites the @everyone command permission to allow \u2014 the command's default state, since Discord publishes no DELETE for command permissions \u2014 and enqueueModuleCommandChanges soft-deletes any pending row carrying the contradicting action for the same command keys, guild and application, before writing its own. pendingEntries returns rows in createdAt order so the replay is deterministic.",
+      "code_ref": "apps/main/src/bootstrap/bootstrap.ts; apps/main/src/commands/bccm-batch-push-store.ts",
+      "verdict": "match",
+      "resolution": "Established by RT-17 and RT-18. Before it, a module toggled twice inside the batch window left a pending removal beside a pending re-registration and the replay decided the outcome by row order."
     }
   ],
   "counts": {
-    "match": 33,
+    "match": 34,
     "doc-incomplete": 0,
     "code-gap": 0,
     "code-anchor-broken": 0,
-    "total": 33
+    "total": 34
   }
 }
