@@ -221,6 +221,7 @@
 - status/classification.json
 - status/code-reconciliation.json
 - status/compliance.json
+- status/consolidation-disposition.json
 - status/counts.json
 - status/coverage-ledger.json
 - status/entities.json
@@ -337,4 +338,5 @@
 - upgradation/UR-20261026-099.md
 - upgradation/UR-20261026-100.md
 - upgradation/UR-20261026-101.md
+- upgradation/UR-20261026-102.md
 - upgradation/change-log.md
