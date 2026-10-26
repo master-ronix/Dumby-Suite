@@ -83,6 +83,14 @@ the framework's own neutral marker, the wireframe cube `dumby_module`, uploaded 
 icon resolves through a registry populated when the bot uploads its emojis; until then, or if the upload
 failed, a unicode fallback applies so a page never renders without an icon.
 
+**An emoji id belongs to the application that uploaded it.** Discord scopes an application emoji to its
+own application, so the same icon is a different id for the resident bot and for every persona. Each
+identity therefore registers its own set under its own application id and references only ids from its
+own scope — a page rendered by one identity must never carry an id another identity uploaded, because
+that id resolves to nothing (or, worse, to an unrelated emoji) in the rendering application. One emoji
+scope per dispatch: the identity doing the rendering decides which ids are valid, and the fallback
+applies per identity rather than per process.
+
 Three emoji names sit close together and are each stated once: `dumby_module` is the logo **fallback** (a
 cube); `dumby_modules` is the squared marker beside each command in a module's command list, which is the
 `modules` module's declared logo and never a fallback; and `dumby_home` is both the Home control's house
