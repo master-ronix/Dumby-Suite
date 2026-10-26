@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.110
+version: 5.5.111
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -145,7 +145,7 @@ migration prompt version) · `state` (Greenfield | Migration | Enforcement) · `
 | v5.4.0 — Dashboard MODULE_ERROR fix | 2026-10-08 | live log |
 | v5.5.0 — Dashboard controls / attribution / icons | 2026-10-08 | 25 gates green |
 | v5.5.1 — UR-005 build fix | 2026-10-08 | push |
-| v5.5.2 … v5.5.110 — the per-request patch series | 2026-10-11 … 2026-10-26 | change-log §3 (this file) |
+| v5.5.2 … v5.5.111 — the per-request patch series | 2026-10-11 … 2026-10-26 | change-log §3 (this file) |
 
 > §2 lists the **master / milestone tracks**. The per-request patch series after v5.5.1
 > (v5.5.2 … v5.5.99) is enumerated in §3; the front-matter `version` is the highest released
@@ -521,6 +521,50 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 - **R8 — audit age.** `status/audit-age.json` records the audit date, commit, scope and request; `README.md` names the current audit.
 - **Verification.** Corpus gate suite **27/27 green**. Application toolchain not run (Node 20.20.2; app requires Node ≥ 22; no deps) — app-side items are outside the corpus scope.
 - **Return.** `met` (corpus scope) — every AU finding closed; OI-1 (human attestation) and OI-3 (Docker/K8s) remain honest standing items, not defects.
+
+---
+
+### v5.5.111 — The Record Tiers Retired; the Corpus States Its Own Authority (UR-20261026-102) — 2026-10-26
+
+- 2026-10-26 · meta-prompt 5.2.0 · state=Enforcement · handoff=master-prompt:enforce · return=met
+- **Work order.** `upgradation/UR-20261026-102.md`, archived with the tier it retires. It is the last request
+  record: its completion retires the record tiers it belongs to.
+- **Stage 2 — the authority order.** The corpus carried no statement of which of its three descriptions of one
+  system wins, so a disagreement had no declared resolution. `spec/governance/directive-charter-how-to-use-
+  this-document.md` §0.2 now declares it: the **specification** governs required behaviour, the **shipped code**
+  governs what is actually implemented, and a **decision record** is evidence of a decision, never an authority
+  over behaviour. A spec/code divergence is recorded as a code-gap in `status/code-reconciliation.json`, never
+  smoothed over in prose. `AGENTS.md` points at it rather than restating it.
+- **Stages 3–5 — the retirement, split.** 110 request records and 16 decision records moved to
+  `docs/archive/v5.0.0-records/` with a generated `INDEX.md` carrying each record's disposition. Nothing was
+  deleted. The **chain tiers stay** — `prompts/`, `orchestration/`, `migration/` are operating procedure, not
+  provenance — and `upgradation/change-log.md` stays as this file: the chain's terminal sink, which the
+  all-or-nothing plan would have archived and thereby pointed the chain at a read-only file.
+- **Absorption.** 49 records' durable content landed in the normative corpus across 20 commits; 41 more were
+  verified already absorbed, 12 of them at rule level as a batch. The UR-102 ACC-2 sample audit ran **25/25**
+  before the retirement, not after.
+- **The findings.** Thirty raised and closed. The largest: **ADR-016** (context-aware renderer, ephemeral
+  grammar, interactive zones, emoji lifecycle) and **ADR-014** (custom-emoji icons, registry attribution) were
+  Accepted and entirely absent from the spec; **ADR-013/015** were contradicted by ten divisions that still put
+  a version string and a D/M/C control on every surface; the **module execution context** (`ExecutionIdentity`,
+  `ModuleStanding`) existed only in a record; the **Twill surface** had 16 routes and no normative home; the
+  **notice reason-code contract** was short four codes; **revocation** reached Postgres but not the runtime or
+  Discord; and the ownership specification carried §10 **duplicated verbatim**.
+- **Code.** Four source files and three test files. Two Prettier reformats; `OUT_OF_SCOPE` added as the
+  fifteenth reason code keyed on a new `owned-elsewhere` cause, splitting the ownership refusal from the
+  `out-of-scope` catch-all that also serves DM, admin-guild and unresolved-tier refusals; 63 lines of tests
+  deleted that asserted the pre-UR-20261026-100 "go practical" model §44 contradicts four times; one fixture
+  corrected to minted customIds.
+- **Gates.** 30 → 29. `check-supersession` retired with the live ADR series it policed; `check-chain`,
+  `check-chain-states` and `check-corpus-boundary` repointed at the archive; `check-entities` now reads it;
+  `check-ur` and `sync-ur` had no subject left.
+- **Verification.** Gate suite **29/29 green**, before and after every edit. CI **fully green** — run
+  `40401729675`: all 20 gate steps, the Integration suite against live Postgres and Redis, and the Docker
+  build. This is the first green CI on `feature/dev` since 2026-10-23; Gate 3 had been failing on three
+  untouched files and Gate 4 on four tests, both since the base commit.
+- **Return.** `met`. The 34 records still un-absorbed at clause level are archived with disposition rows; the
+  owner accepted them as archived. The shallow-clone blind spot recorded by UR-20261026-101 remains out of
+  scope, not fixed here.
 
 ---
 
