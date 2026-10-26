@@ -81,7 +81,12 @@ export interface InteractionRegistryOptions {
    * Appendix C #20 — the Renderer's read-only guard. When provided, component handlers receive a
    * read-only interaction so the component path cannot bypass the Renderer and reply directly.
    */
-  renderer?: { createReadOnlyInteraction<T extends object>(interaction: T, options?: { allowFollowUp?: boolean }): T };
+  renderer?: {
+    createReadOnlyInteraction<T extends object>(
+      interaction: T,
+      options?: { allowFollowUp?: boolean },
+    ): T;
+  };
 }
 
 /** Appendix C #19 — the idempotency contract, so the in-memory default can be swapped for Redis. */
@@ -123,7 +128,13 @@ export class InteractionRegistry {
   private readonly idempotency: IdempotencyStore;
   private readonly acknowledge: ((interaction: ComponentInteraction) => Promise<void>) | undefined;
   private readonly renderer:
-    { createReadOnlyInteraction<T extends object>(interaction: T, options?: { allowFollowUp?: boolean }): T } | undefined;
+    | {
+        createReadOnlyInteraction<T extends object>(
+          interaction: T,
+          options?: { allowFollowUp?: boolean },
+        ): T;
+      }
+    | undefined;
 
   constructor(options: InteractionRegistryOptions = {}) {
     this.acknowledge = options.acknowledge;

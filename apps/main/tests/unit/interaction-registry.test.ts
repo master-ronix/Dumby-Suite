@@ -199,7 +199,7 @@ describe('InteractionRegistry autocomplete budget', () => {
 // UR-20261026-098 — the opt-in reaches the guard, so a control that needs a private follow-up gets it
 // and every other control keeps the guard intact.
 describe('UR-20261026-098 — allowFollowUp reaches the renderer guard', () => {
-  test('passes the handler\'s opt-in to createReadOnlyInteraction', async () => {
+  test("passes the handler's opt-in to createReadOnlyInteraction", async () => {
     const seen: Array<{ allowFollowUp?: boolean } | undefined> = [];
     const renderer = {
       createReadOnlyInteraction<T extends object>(

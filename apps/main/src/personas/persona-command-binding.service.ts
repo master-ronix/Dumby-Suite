@@ -128,11 +128,14 @@ export class PersonaCommandBindingService {
     return (await this.identities.findById(id)) ?? persona;
   }
 
-  async bindModuleToPersona(request: {
-    readonly guildId: string;
-    readonly moduleSlug: string;
-    readonly personaId: string;
-  }, trx?: Knex.Transaction): Promise<PersonaBinding> {
+  async bindModuleToPersona(
+    request: {
+      readonly guildId: string;
+      readonly moduleSlug: string;
+      readonly personaId: string;
+    },
+    trx?: Knex.Transaction,
+  ): Promise<PersonaBinding> {
     const persona = await this.identities.findById(request.personaId);
     if (persona === undefined) throw new UnknownPersonaError(request.personaId);
     const existing = await this.bindings.findLive(request.guildId, request.moduleSlug);
@@ -155,11 +158,7 @@ export class PersonaCommandBindingService {
     return binding;
   }
 
-  async unbindModule(
-    guildId: string,
-    moduleSlug: string,
-    trx?: Knex.Transaction,
-  ): Promise<void> {
+  async unbindModule(guildId: string, moduleSlug: string, trx?: Knex.Transaction): Promise<void> {
     await this.bindings.unbind(guildId, moduleSlug, trx);
     this.logger.info('persona-module-unbound', { guildId, moduleSlug });
   }
