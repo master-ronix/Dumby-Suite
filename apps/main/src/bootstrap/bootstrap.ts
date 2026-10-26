@@ -882,6 +882,10 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     }),
     resolveCommandOwner: (guildId: string, moduleSlug: string) =>
       personaBindingService.resolveCommandOwner(guildId, moduleSlug),
+    // The UNFILTERED registry, for the same reason the ownership read is shared: a profile's own
+    // registry is filtered to what she holds, so only the full one can say whether an absent command
+    // is unknown or merely someone else's.
+    globalRegistry: commandRegistry,
     ...(residentPersonaId !== undefined ? { residentPersonaId } : {}),
     // UR-20261012-057 — the application this router renders for. A persona must reference ITS OWN
     // emoji ids; the main bot uses the default scope.

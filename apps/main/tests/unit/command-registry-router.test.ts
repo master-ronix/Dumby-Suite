@@ -1030,3 +1030,79 @@ describe('a persona may run SHARED commands (UR-20261012-080)', () => {
     expect(executed).toHaveBeenCalledTimes(1);
   });
 });
+
+// RT-15 — a command absent from a profile's FILTERED registry is not "unknown".
+//
+// A persona registers only what she can answer, so a module another profile holds is missing from her
+// registry entirely. She was told UNKNOWN_COMMAND ("that command is not registered or is not available
+// here") while the main bot answered OUT_OF_SCOPE ("another profile in this server holds it") for the
+// same module in the same guild — the same fact told two different ways depending on who was asked.
+describe('a command absent from a profile registry is explained, not called unknown (RT-15)', () => {
+  const full = () => {
+    const reg = new CommandRegistry();
+    reg.registerModule('hello-world', 'standard');
+    reg.register({
+      data: { name: 'whoami', description: 'Who am I' },
+      execute: async () => ({ page: 'whoami', data: {} }),
+      moduleId: 'hello-world',
+    } as never);
+    return reg;
+  };
+  const empty = () => {
+    const reg = new CommandRegistry();
+    reg.registerModule('hello-world', 'standard');
+    return reg; // she holds nothing: /whoami is absent, as a filtered registry would leave it
+  };
+  const notice = (i: ReturnType<typeof makeInteraction>): string =>
+    JSON.stringify(i.editReply.mock.calls.at(-1)?.[0]);
+
+  test('another profile holds the module -> OUT_OF_SCOPE, the same answer the holder gives', async () => {
+    const router = new CommandRouter(empty(), logger2, {
+      globalRegistry: full(),
+      resolveCommandOwner: async () => 'main',
+      isModuleEnabledInGuild: async () => true,
+    } as never);
+    const interaction = { ...makeInteraction('whoami'), applicationId: 'app-persona' };
+
+    await expect(router.dispatch(interaction)).resolves.toBeUndefined();
+    const text = notice(interaction);
+    expect(text).toContain('Not available in this server');
+    expect(text).not.toContain('That command is not registered');
+  });
+
+  test('the module is switched off for the guild -> MODULE_DISABLED', async () => {
+    const router = new CommandRouter(empty(), logger2, {
+      globalRegistry: full(),
+      resolveCommandOwner: async () => undefined,
+      isModuleEnabledInGuild: async () => false,
+    } as never);
+    const interaction = { ...makeInteraction('whoami'), applicationId: 'app-persona' };
+
+    await router.dispatch(interaction);
+    expect(notice(interaction)).toContain('This module is switched off');
+  });
+
+  test('a command the platform does not know stays UNKNOWN_COMMAND', async () => {
+    const router = new CommandRouter(empty(), logger2, {
+      globalRegistry: full(),
+      resolveCommandOwner: async () => 'main',
+      isModuleEnabledInGuild: async () => true,
+    } as never);
+    const interaction = { ...makeInteraction('nonexistent'), applicationId: 'app-persona' };
+
+    await router.dispatch(interaction);
+    expect(notice(interaction)).toContain('That command is not registered');
+  });
+
+  test('without the full registry the answer is unchanged — no invented reason', async () => {
+    // The main bot's registry IS the full one, so this is also the pre-existing behaviour for it.
+    const router = new CommandRouter(empty(), logger2, {
+      resolveCommandOwner: async () => 'main',
+      isModuleEnabledInGuild: async () => true,
+    } as never);
+    const interaction = { ...makeInteraction('whoami'), applicationId: 'app-persona' };
+
+    await router.dispatch(interaction);
+    expect(notice(interaction)).toContain('That command is not registered');
+  });
+});

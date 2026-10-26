@@ -159,6 +159,15 @@ export interface CommandRouterOptions {
   grantStore?: { list(guildId: string): Promise<readonly RbacGrant[]> };
   renderer?: CoreRenderer;
   resolveCommandOwner?: (guildId: string, moduleSlug: string) => Promise<string | undefined>;
+  /**
+   * The UNFILTERED command registry, when this router serves a profile whose own registry is filtered.
+   *
+   * A persona registers only the commands she can answer, so a module another profile holds is absent
+   * from her registry entirely. Without the full registry the router cannot tell "this command does not
+   * exist" from "this command is not YOURS", and it answered UNKNOWN_COMMAND for a module the main bot
+   * was answering with OUT_OF_SCOPE — one profile told who holds it, the other told it does not exist.
+   */
+  globalRegistry?: CommandRegistry;
   residentPersonaId?: string;
   /**
    * UR-20261012-060 — the ONE guild this identity serves. A persona sets it; the main bot does not,
@@ -390,6 +399,28 @@ export class CommandRouter {
 
     const def = this.registry.get(name);
     if (!def) {
+      // ABSENT IS NOT THE SAME AS UNKNOWN.
+      //
+      // A profile's registry is filtered to the modules she holds, so a command that belongs to
+      // another profile is not in it at all — and this branch answered UNKNOWN_COMMAND ("that command
+      // is not registered or is not available here") for a module the OTHER profile was answering
+      // with OUT_OF_SCOPE ("another profile in this server holds it"). Same module, same guild, two
+      // different stories, depending on which profile you asked.
+      const absent = await this.explainAbsentCommand(name, interaction.guildId);
+      if (absent !== undefined) {
+        this.logger.warn('command-absent-from-profile-registry', {
+          command: name,
+          guildId: interaction.guildId,
+          userId: interaction.user.id,
+          answer: absent,
+        });
+        await this.renderer.editNotice(interaction, {
+          ...identity,
+          reason: absent,
+          traceId,
+        });
+        return;
+      }
       this.logger.warn('command-not-found', { command: name, userId: interaction.user.id });
       await this.renderer.editNotice(interaction, {
         ...identity,
@@ -932,6 +963,54 @@ export class CommandRouter {
       owner,
       ownedByCaller: shared || owner === identity.profileId,
     };
+  }
+
+  /**
+   * Why is a command the PLATFORM knows about missing from THIS profile's registry?
+   *
+   * Only two answers are honest, and both are better than UNKNOWN_COMMAND: the module is switched off
+   * for the guild (MODULE_DISABLED), or another profile holds it (OUT_OF_SCOPE). Everything else —
+   * a typo, a command that never existed, a shared tier that should always be present — stays
+   * UNKNOWN_COMMAND, because that is what it is.
+   *
+   * Read-only: it answers a question, it never refuses anything.
+   */
+  private async explainAbsentCommand(
+    name: string,
+    guildId: string | null,
+  ): Promise<NoticeReasonCode | undefined> {
+    const global = this.options.globalRegistry;
+    if (global === undefined || guildId === null) return undefined;
+    const known = global.get(name);
+    if (known === undefined) return undefined;
+    // A SHARED tier is held by every profile, so its absence is a fault, not an ownership fact —
+    // and saying "another profile holds it" about a core command would be a new lie.
+    const tier = global.getModuleTier(known.moduleId);
+    if (tier === 'core' || tier === 'admin') return undefined;
+    if (this.options.isModuleEnabledInGuild !== undefined) {
+      try {
+        if (!(await this.options.isModuleEnabledInGuild(known.moduleId, guildId))) {
+          return 'MODULE_DISABLED';
+        }
+      } catch (err) {
+        // Unreadable state is not a licence to invent a reason; fall through to ownership.
+        this.logger.warn(
+          `command-absent-enabled-unreadable module=${known.moduleId} guild=${guildId} reason=${String(err)}`,
+        );
+      }
+    }
+    if (this.options.resolveCommandOwner !== undefined) {
+      try {
+        const owner = await this.options.resolveCommandOwner(guildId, known.moduleId);
+        const me = this.options.residentPersonaId ?? 'main';
+        if (owner !== undefined && owner !== 'shared' && owner !== me) return 'OUT_OF_SCOPE';
+      } catch (err) {
+        this.logger.warn(
+          `command-absent-owner-unreadable module=${known.moduleId} guild=${guildId} reason=${String(err)}`,
+        );
+      }
+    }
+    return undefined;
   }
 
   private async assertPersonaOwnsCommand(

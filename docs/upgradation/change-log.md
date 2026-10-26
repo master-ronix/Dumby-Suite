@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.112
+version: 5.5.113
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -145,7 +145,7 @@ migration prompt version) · `state` (Greenfield | Migration | Enforcement) · `
 | v5.4.0 — Dashboard MODULE_ERROR fix | 2026-10-08 | live log |
 | v5.5.0 — Dashboard controls / attribution / icons | 2026-10-08 | 25 gates green |
 | v5.5.1 — UR-005 build fix | 2026-10-08 | push |
-| v5.5.2 … v5.5.112 — the per-request patch series | 2026-10-11 … 2026-10-26 | change-log §3 (this file) |
+| v5.5.2 … v5.5.113 — the per-request patch series | 2026-10-11 … 2026-10-26 | change-log §3 (this file) |
 
 > §2 lists the **master / milestone tracks**. The per-request patch series after v5.5.1
 > (v5.5.2 … v5.5.99) is enumerated in §3; the front-matter `version` is the highest released
@@ -521,6 +521,19 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 - **R8 — audit age.** `status/audit-age.json` records the audit date, commit, scope and request; `README.md` names the current audit.
 - **Verification.** Corpus gate suite **27/27 green**. Application toolchain not run (Node 20.20.2; app requires Node ≥ 22; no deps) — app-side items are outside the corpus scope.
 - **Return.** `met` (corpus scope) — every AU finding closed; OI-1 (human attestation) and OI-3 (Docker/K8s) remain honest standing items, not defects.
+
+---
+
+### v5.5.113 — An Absent Command Is Not an Unknown One; the Live Ownership Runbook (RT-15, RT-16) — 2026-10-26
+
+- 2026-10-26 · meta-prompt 5.2.0 · state=Enforcement · handoff=master-prompt:enforce · return=met
+- **Work order.** None. The record tiers were retired by `UR-20261026-102`, which directs that work after it is recorded here.
+- **RT-15 — the asymmetry, from a live test.** With a persona holding hello-world, the main bot answered `/hello` with `OUT_OF_SCOPE` ("another profile in this server holds it"). With the main bot holding it, the persona answered `UNKNOWN_COMMAND` ("that command is not registered or is not available here"). Same module, same guild, two different stories.
+- **Why.** A persona's registry is FILTERED to the modules she holds (`buildRegistry` → `filterRegistryForModules`), so another profile's command is absent from it entirely. `dispatch` looked the name up, found nothing, and answered `UNKNOWN_COMMAND` — before ownership was ever consulted. The main bot's registry is unfiltered, so its lookup succeeded and reached the ownership assertion that produced the useful notice.
+- **The fix.** `CommandRouter` gains `globalRegistry` — the unfiltered registry, wired from `commandRouterOptions` so both routers share it. On a miss it now asks `explainAbsentCommand`, which answers `MODULE_DISABLED` when the module is off for the guild, `OUT_OF_SCOPE` when another profile holds it, and leaves `UNKNOWN_COMMAND` for a command the platform genuinely does not know. Shared tiers short-circuit: saying "another profile holds it" about a core command would be a new lie. Read-only; it answers a question and refuses nothing.
+- **RT-16 — the live test was undocumented.** `apps/main/docs/runbooks/live-ownership-test.md` records the three possible states as a truth table across `/modules`, `/dashboard`, `/health` and `/browse`; the boot-log line that says whether a disagreement is data or a reader; the asymmetry check; and how to verify BOTH halves of a disable from the database and the log — `guild_command_queue` rows plus `module-command-access-set applied=/removed=` and `bccm-batch-push-complete guilds=/sent=` — without opening Discord's integration panel.
+- **Verification.** Four new unit tests: another profile holds it → `OUT_OF_SCOPE`; module switched off → `MODULE_DISABLED`; a command the platform does not know → `UNKNOWN_COMMAND`; and no `globalRegistry` → unchanged, no invented reason. `tsc` over the edited router: no error attributable to this change.
+- **Return.** `met`.
 
 ---
 
