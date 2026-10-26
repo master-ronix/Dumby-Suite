@@ -49,7 +49,32 @@ The canonical document-precedence order for the whole set. When any two document
 
 > **Restructure note (v5.0.0 corpus).** The nine documents above are the pre-restructure v5.0 source records. They are preserved verbatim under `_inbox/` and distributed across the restructured corpus (`blueprint/`, `documentation/`, `spec/`); where this list names a source document, read it as the distributed section(s) it became. The ADR series and the other decision records cite these source names in the same historical sense.
 
-The ADR series in `docs/adr/` is binding on the choices it governs; the frozen request records in `upgradation/` are provenance, never build specifications.
+### The authority order across three sources
+
+The corpus, the shipped code and the decision records are three descriptions of one system, and they
+drift. This is the single statement of which one wins, and what a reader does when they disagree:
+
+```
+1. The specification (spec/, blueprint/, contracts/)  — governs REQUIRED behaviour.
+2. The shipped code                                   — governs what is ACTUALLY implemented.
+3. The decision records (adr/, upgradation/)          — evidence of a DECISION, never an authority.
+```
+
+- **The specification governs required behaviour.** Where the code and the specification differ, the
+  divergence is a **code-gap**: it is recorded in `status/code-reconciliation.json` with the `code_ref`
+  that holds the behaviour, and it is never smoothed over in prose. A specification statement is not
+  softened to match the code, and the code is not silently assumed correct.
+- **The code governs what is actually implemented.** A claim about current behaviour is answered from
+  the tree, not from the specification's intent. When they disagree the reader has learned something
+  worth recording, not a licence to pick the convenient one.
+- **A decision record is never an authority over behaviour.** It explains *why* a choice was made. Its
+  normative content belongs in the specification; when a record and the specification disagree, the
+  record is the stale copy and the specification is the target — unless the record is later than the
+  specification and states a decision the specification has not yet absorbed, in which case absorbing
+  it is the work, not citing it.
+
+A record that has been absorbed changes nothing by being deleted; a record that has not been absorbed is
+the only place a decision survives, which is why absorption precedes retirement.
 
 ### 0.3 Requirement Language (RFC 2119)
 
