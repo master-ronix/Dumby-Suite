@@ -214,6 +214,9 @@ The isolation rules are build failures, not review habits:
 
 ### 11.7 The Module Lifecycle Hooks — Complete Reference
 
+The hooks run under the module execution context (§11.14), so a hook can tell which profile it is
+serving and where.
+
 The loader calls the hooks in order; each is expected to be idempotent, because the
 framework may retry a failed load or call a hook during shutdown.
 
@@ -350,6 +353,57 @@ response — it never propagates to another module or the framework).
 Where this section and the tree disagree, the disagreement is recorded in
 `status/code-reconciliation.json`; the specification is the target, and the code is the
 gap where the two differ.
+
+### 11.14 The Execution Context — What a Module Knows About Its Own Invocation
+
+The framework hosts the main bot and any number of personas **in one process**, so a module that is
+bound to more than one profile runs the same code under different identities, in different guilds.
+A module therefore has to be able to answer two questions at run time: *which profile is running
+this*, and *what is this module's own standing where it is running*. Both answers travel with the
+work; neither is passed as an argument.
+
+**The four entry points.** A module has exactly four: `command`, `event`, `job` and `task`. A command
+carries an interaction, and the interaction is where the guild and the application come from, so a
+command receives the context directly on its own `CommandContext`. The other three carry no
+interaction, and they receive the same context **out of band** — see the carrier below.
+
+**The shapes.** A command's context and the module execution context carry the same two records:
+
+| Record | Fields |
+|---|---|
+| `ExecutionIdentity` | `profileId` (`'main'` or the persona's id) · `kind` (`'main'` \| `'persona'`) · `applicationId` — the application this identity speaks as · `profileName` · `guildId` (where the signal came from; `null` in a DM) · `boundGuildId` (the one guild a persona serves; absent for the main bot) |
+| `ModuleStanding` | `moduleId` · `tier` · `enabled` (in this guild; core is always enabled) · `owner` (`'main'`, a persona id, or `'shared'` for core) · `ownedByCaller` (is the caller the one who holds it) |
+
+`ModuleExecutionContext` wraps them with the work's own coordinates: `moduleId`, `source` (which of
+the four entry points is running it), `identity` and `standing`.
+
+**Why the context is not a parameter.** An event handler is declared `handle: (...args: unknown[])`.
+An appended context lands inside the rest parameter and is invisible; a prepended one silently breaks
+every handler ever written. The context is therefore carried out of band, through a
+`ModuleContextStore` the **host** installs — the application uses `AsyncLocalStorage`, so the context
+propagates through awaits and callbacks.
+
+**The SDK stays environment-neutral.** `packages/swastik` declares the carrier's *shape* and never
+depends on an implementation: no Node builtins, no `@types/node`. The host installs the carrier once
+at boot with `installModuleContextStore`. With no store installed, `runWithModuleContext` is a plain
+call, so the framework behaves exactly as it did before the context existed.
+
+**The module-facing surface.**
+
+| Function | Contract |
+|---|---|
+| `currentModuleContext()` | the context of the work currently running, or `undefined` outside a module entry point |
+| `requireModuleContext()` | the context, or a throw naming the reason — for logic that is meaningless without knowing whose signal it is answering. A loud failure beats a silent guess at the wrong guild |
+| `runWithModuleContext(context, fn)` | runs `fn` with the context attached. The **host** calls this once per entry point; a module never calls it |
+| `installModuleContextStore(store)` | installs the carrier. Called once by the host at boot |
+
+A module reads the context and acts on it; it never constructs one. Where the context is absent, a
+module that needs it fails loudly rather than assuming the main bot or the invoking guild.
+
+Verification: `packages/swastik/src/context.ts` (the carrier and the four functions),
+`packages/swastik/src/commands.ts` (`ExecutionIdentity`, `ModuleStanding`),
+`apps/main/src/module-system/execution-context.ts` and `apps/main/src/events/event-bus.ts` (the host
+installations).
 
 ## Contract
 - `contracts/module-manifest.schema.json`
