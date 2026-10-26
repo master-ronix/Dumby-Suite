@@ -297,6 +297,22 @@ subsequent upload resolves the caller's dev id against the row, and a non-owner 
 with 403 before validation. Ownership transfer is an explicit operator action, never a side
 effect of an upload.
 
+**Runtime verification key custody.** The signing secret belongs to the builder, not to the bot. The
+runtime is given the **public** half (`BUILD_SIGNING_PUBLIC_KEY`), which is preferred; the private key
+remains accepted so the builder and any existing deployment keep working, and the public key is derived
+from it when no public key is set. Either key may be supplied in the escaped single-line PEM form.
+
+**An empty configuration is an honest "off".** When neither key is configured, no key resolves and the
+provenance guard is left **disarmed** — with no warning, because nothing is wrong. A warning is reserved
+for a key that was supplied and could not be used.
+
+**Arming the guard cannot throw.** This is a boot-time path: an unusable key degrades to "guard off, one
+warning", never to a dead process. The failure this rule exists to prevent is real and was shipped once —
+resolving the key outside its surrounding handler let a malformed PEM throw during boot and kill the
+process with `ERR_OSSL_UNSUPPORTED`, a live outage. Key resolution and registration are therefore kept
+inside one handler, and a malformed row in the `signing_keys` registry is **skipped** while the remaining
+keys still register, so one bad row cannot disarm the whole set.
+
 **Throttling and internal-surface authentication.** Swastik registers a rate limiter across
 its surface — a global bucket of 30 requests per minute per caller, with a tighter bucket of
 5 per minute on the registration, upload, and deploy routes. A caller exceeding a bucket
