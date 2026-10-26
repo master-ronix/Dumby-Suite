@@ -47,6 +47,7 @@ export interface RenderProfile {
 export type NoticeReasonCode =
   | 'STATE_UNAVAILABLE'
   | 'MODULE_DISABLED'
+  | 'OUT_OF_SCOPE'
   | 'OUT_OF_BOUND_GUILD'
   | 'UNKNOWN_COMMAND'
   | 'MAINTENANCE'
@@ -787,6 +788,9 @@ export class CoreRenderer {
       const cause = (err as { scopeCause?: string }).scopeCause;
       if (cause === 'state-unreadable') return 'STATE_UNAVAILABLE';
       if (cause === 'module-disabled') return 'MODULE_DISABLED';
+      // UR-20261026-100 RT-8 — the fourth cause: the module is held by ANOTHER profile here.
+      // Neither a permission failure nor a disabled module, so neither notice is honest.
+      if (cause === 'out-of-scope') return 'OUT_OF_SCOPE';
       return 'FORBIDDEN';
     }
     if (name === 'PersonaOccupiedError') return 'FORBIDDEN';
@@ -1030,6 +1034,8 @@ export class CoreRenderer {
         return 'Could not check this server';
       case 'MODULE_DISABLED':
         return 'This module is switched off';
+      case 'OUT_OF_SCOPE':
+        return 'Not available in this server';
       case 'OUT_OF_BOUND_GUILD':
         return 'This is not my server';
       case 'UNKNOWN_COMMAND':
@@ -1061,6 +1067,8 @@ export class CoreRenderer {
         return 'This server\u2019s module state could not be read, so the command was refused rather than allowed on a guess. This is a fault on our side, not a permission decision \u2014 try again shortly.';
       case 'MODULE_DISABLED':
         return 'The module that provides this command is switched off in this server, so this is not a permissions problem. A server admin can turn it back on from /browse.';
+      case 'OUT_OF_SCOPE':
+        return 'The module that provides this command is not available in guild here \u2014 another profile in this server holds it, so this profile does not answer it. The holding profile must release it before this one can take it.';
       case 'OUT_OF_BOUND_GUILD':
         return 'This persona is bound to one server and refuses every command and action everywhere else. Invite the main bot, or use the persona in its own server.';
       case 'UNKNOWN_COMMAND':

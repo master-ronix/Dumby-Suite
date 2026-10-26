@@ -83,6 +83,7 @@ The formal notice frame is the Renderer's unified presentation for failure, main
 | `RATE_LIMITED` | Throttling | A rate limit is exceeded |
 | `GUILD_UNAVAILABLE` | Availability | The module is not available in this guild |
 | `MODULE_DISABLED` | Availability | The module is disabled in this guild — its commands stay registered so the member is told *why*, and the router refuses them here rather than letting dispatch report `UNKNOWN_COMMAND` |
+| `OUT_OF_SCOPE` | Availability | The module is held by **another profile** in this server, so this one does not answer it — neither a permission failure nor a disabled module |
 | `STATE_UNAVAILABLE` | State | The guild's state could not be read (cause `state-unreadable`), so the action cannot be evaluated — distinct from being denied |
 | `OUT_OF_BOUND_GUILD` | Availability | A persona acted outside the one guild it is bound to (`PersonaBoundGuildError`) |
 | `MODULE_ERROR` | Failure | A module handler failed during execution |

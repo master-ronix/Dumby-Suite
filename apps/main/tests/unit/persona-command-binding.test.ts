@@ -98,44 +98,6 @@ describe('the ownership read answers for the main bot (UR-20261012-078)', () => 
   });
 });
 
-describe('the main bot is not refused its own module (UR-20261012-078)', () => {
-  test('a persona ANSWERS a module the main bot owns', async () => {
-    // "Go practical": the refusal moved to the INSTALL. A module that is on for the guild, and whose
-    // command is registered for this application, is one this profile may answer.
-    const reg = new CommandRegistry();
-    reg.registerModule('hello-world', 'standard');
-    const executed = vi.fn(async () => ({ page: 'hello', data: {} }));
-    reg.register({
-      data: { name: 'hello', description: 'Says hello' },
-      moduleId: 'hello-world',
-      execute: executed,
-    } as never);
-    const router = new CommandRouter(
-      reg,
-      logger() as never,
-      {
-        isModuleEnabledInGuild: async () => true,
-        resolveCommandOwner: async () => 'main',
-        residentPersonaId: 'persona-1',
-      } as never,
-    );
-
-    const interaction = {
-      commandName: 'hello',
-      guildId: 'g1',
-      user: { id: 'u1' },
-      applicationId: 'app-persona',
-      reply: async () => undefined,
-      deferReply: async () => undefined,
-      editReply: async () => undefined,
-      replied: false,
-      deferred: false,
-    };
-    await router.dispatch(interaction as never);
-    expect(executed).toHaveBeenCalled();
-  });
-});
-
 describe('ownership is decided by WHO enabled it', () => {
   const make = (enabledBy: string | undefined, enabled = true) =>
     new PersonaCommandBindingService(

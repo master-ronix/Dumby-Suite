@@ -1029,27 +1029,4 @@ describe('a persona may run SHARED commands (UR-20261012-080)', () => {
 
     expect(executed).toHaveBeenCalledTimes(1);
   });
-
-  test('a persona ANSWERS a standard module the main bot holds', async () => {
-    // Same rule from the other side. Registration is what keeps a guild from having two bots answer
-    // one command: the deployer registers a guild-scoped module only for the profile that holds it.
-    const reg = new CommandRegistry();
-    reg.registerModule('hello-world', 'standard');
-    const executed = vi.fn(async () => ({ page: 'hello', data: {} }));
-    reg.register({
-      data: { name: 'hello', description: 'Says hello' },
-      moduleId: 'hello-world',
-      execute: executed,
-    } as never);
-    const router = new CommandRouter(reg, logger2, {
-      isModuleEnabledInGuild: async () => true,
-      resolveCommandOwner: async () => 'main',
-      residentPersonaId: 'persona-1',
-    } as never);
-
-    const interaction = { ...makeInteraction('hello'), applicationId: 'app-persona' };
-    await router.dispatch(interaction);
-
-    expect(executed).toHaveBeenCalled();
-  });
 });

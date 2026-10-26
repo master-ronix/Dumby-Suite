@@ -215,8 +215,8 @@ describe('UR-20261026-098 — allowFollowUp reaches the renderer guard', () => {
     registry.register({ customIdPrefix: 'a:', allowFollowUp: true, parse: () => ({}), execute });
     registry.register({ customIdPrefix: 'b:', parse: () => ({}), execute });
 
-    await registry.dispatch(makeInteraction('a:one'));
-    await registry.dispatch(makeInteraction('b:one'));
+    await registry.dispatch(makeInteraction('a:key:user-1:ctx'));
+    await registry.dispatch(makeInteraction('b:key:user-1:ctx'));
 
     expect(seen[0]).toEqual({ allowFollowUp: true });
     expect(seen[1]).toEqual({ allowFollowUp: false });
