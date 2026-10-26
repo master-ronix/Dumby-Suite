@@ -126,6 +126,14 @@ relevant section rather than the whole file. The pre-restructure source records 
 request records live under `docs/upgradation/`. This file is itself point-in-time — verify a path
 against the tree before trusting it.
 
+**Which source wins.** The corpus, the shipped code and the decision records are three descriptions of
+one system, and they drift. The order is stated once, normatively, in
+`docs/spec/governance/directive-charter-how-to-use-this-document.md` §0.2 — read it before resolving a
+disagreement rather than picking the convenient one. In short: the specification governs required
+behaviour, the code governs what is actually implemented, and a decision record is evidence of a
+decision rather than an authority over behaviour. A spec/code divergence is recorded as a code-gap in
+`docs/status/code-reconciliation.json`; it is never smoothed over in prose.
+
 ## CI & supply chain
 
 - `.github/workflows/ci.yml`: a single `gates` job (gitleaks → dependency-review on PR → root+app
