@@ -764,11 +764,11 @@ describe('a module can tell WHO it is running as (UR-20261012-067)', () => {
     expect(ctx.module['ownedByCaller']).toBe(true);
   });
 
-  test('the main bot ANSWERS a module a persona holds — ownership gates the install, not the answer', async () => {
-    // "Go practical": a module that is on for the guild, whose command is REGISTERED for this
-    // application, is a module this profile may answer. Refusing here produced FORBIDDEN for a module
-    // the operator had installed and enabled, which reads as a permissions bug. The refusal lives at
-    // the INSTALL, where it already is.
+  test('the main bot REFUSES a module a persona holds — the module and its commands are one bound pair', async () => {
+    // The operator reversed the earlier "go practical" reading: wherever the module is, and whatever
+    // state it is in, decides how its commands are called and registered. A profile that does not hold
+    // the module must not answer its commands. The deployer registers a guild-scoped module's commands
+    // for its holder only; this is the second line of the same rule, for a stale registration.
     const reg = new CommandRegistry();
     reg.registerModule('hello-world', 'standard');
     const seen: { ctx?: unknown } = {};
@@ -777,10 +777,32 @@ describe('a module can tell WHO it is running as (UR-20261012-067)', () => {
       resolveCommandOwner: async () => 'p-1',
       isModuleEnabledInGuild: async () => true,
     } as never);
+    const interaction = { ...makeInteraction('whoami'), applicationId: 'app-main' };
 
-    await router.dispatch({ ...makeInteraction('whoami'), applicationId: 'app-main' });
+    await expect(router.dispatch(interaction)).resolves.toBeUndefined();
 
-    // Answered, and the context says who it is running as.
+    // Not executed …
+    expect(seen.ctx).toBeUndefined();
+    // … and refused with the NEUTRAL notice: not a permission failure, not a disabled module.
+    const notice = JSON.stringify(interaction.editReply.mock.calls.at(-1)?.[0]);
+    expect(notice).toContain('is not available in guild');
+    expect(notice).not.toContain('Could not check this server');
+  });
+
+  test('the profile that DOES hold the module still answers it', async () => {
+    // The same guild, seen from the holder: her own id is the owner, so the command is hers to answer.
+    const reg = new CommandRegistry();
+    reg.registerModule('hello-world', 'standard');
+    const seen: { ctx?: unknown } = {};
+    captureContext(reg, seen);
+    const router = new CommandRouter(reg, logger2, {
+      resolveCommandOwner: async () => 'p-1',
+      residentPersonaId: 'p-1',
+      isModuleEnabledInGuild: async () => true,
+    } as never);
+
+    await router.dispatch({ ...makeInteraction('whoami'), applicationId: 'app-persona' });
+
     expect(seen.ctx).toBeDefined();
   });
 });

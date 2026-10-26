@@ -961,17 +961,27 @@ export class CommandRouter {
     // undefined. Comparing against `undefined` would make the main bot refuse its OWN module.
     if (owner === (this.options.residentPersonaId ?? 'main')) return;
 
-    // "GO PRACTICAL" — a profile that legitimately holds the module is not refused for answering it.
+    // A MODULE AND ITS COMMANDS ARE ONE BOUND PAIR, AND THEY BELONG TO ONE PROFILE.
     //
-    // This used to throw PersonaOccupiedError here, which made the MAIN BOT refuse /hello in a guild
-    // where a persona held hello-world — even though the main had installed it, and even though
-    // `guild_module_states` says the module is ENABLED. A module that is on for the guild, and whose
-    // command is REGISTERED for this application (registration is where ownership is enforced, by the
-    // deployer's guild resolver), is a module this profile may answer. The refusal belongs at the
-    // INSTALL — where it already is — not at dispatch, where it produced "FORBIDDEN" for a working
-    // module and read as a permissions bug.
-    this.logger.info(
-      `command-scope-owned-elsewhere command=${command.data.name} module=${command.moduleId} guild=${guildId} owner=${owner} actor=${this.options.residentPersonaId ?? 'main'}`,
+    // This used to log `command-scope-owned-elsewhere` and PROCEED, on the theory that registration is
+    // where ownership is enforced and that a registered command is therefore one this profile may
+    // answer. The operator settled it the other way: wherever the module is, and whatever state it is
+    // in, is what decides how its commands are called and registered — so a profile that does not hold
+    // the module must not answer its commands, whichever profile that is.
+    //
+    // The deployer already registers a guild-scoped module's commands for its HOLDER only, at guild
+    // scope, and suppresses the internal profile where a hosted persona answers. This is the second
+    // line of that same rule, for a registration that is stale, renamed, or carried over from before
+    // the module moved — the case that made the main bot answer a persona's module.
+    //
+    // The cause is the NEUTRAL one. This is not a permission failure and not a disabled module, and
+    // reporting either would send the member to the wrong fix.
+    throw new CommandScopeDeniedError(
+      command.data.name,
+      command.moduleId,
+      tier ?? 'unresolved',
+      guildId,
+      'out-of-scope',
     );
   }
 
