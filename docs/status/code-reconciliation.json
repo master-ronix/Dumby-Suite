@@ -1,10 +1,10 @@
 {
   "$id": "docs/status/code-reconciliation.json",
   "title": "Docs \u2194 Code reconciliation",
-  "note": "Every row compares what the NEW documentation asserts against the actual source in master-ronix/Dumby-Suite (apps/main at 42c256bfa378f849f8dc5394ee13eb6178bdaedb, branch feature/dev). Standing rule: the specification is authority; where the code is narrower, the code is the gap to close. The anchor is the last commit to touch apps/main|packages, so no commit after it can move the code under a row without the freshness gate failing. REC-031 was re-derived at this anchor, because the record-tier retirement split the ownership refusal's cause out of 'out-of-scope' and added the OUT_OF_SCOPE reason code. REC-029 and REC-032 were re-read at this anchor: their files changed in that retirement, but by Prettier reformatting only, and their claims still hold. The remaining rows were re-anchored, not re-derived \u2014 no commit in the range touched the code they describe.",
-  "verified_commit": "42c256bfa378f849f8dc5394ee13eb6178bdaedb",
+  "note": "Every row compares what the NEW documentation asserts against the actual source in master-ronix/Dumby-Suite (apps/main at 9fff7ad63c93e7f30af2d1078ddcf60bed5bbf4a, branch feature/dev). Standing rule: the specification is authority; where the code is narrower, the code is the gap to close. The anchor is the last commit to touch apps/main|packages, so no commit after it can move the code under a row without the freshness gate failing. REC-033 was added at this anchor, for the absent-command explanation that dispatch gained when a profile's filtered registry met another profile's command. The other rows were re-anchored, not re-derived: no commit in the range touched the code they describe.",
+  "verified_commit": "9fff7ad63c93e7f30af2d1078ddcf60bed5bbf4a",
   "verified_branch": "feature/dev",
-  "verified_at": "2026-10-26T21:37:55Z",
+  "verified_at": "2026-10-26T21:59:25Z",
   "verdicts": [
     "match",
     "doc-incomplete",
@@ -299,13 +299,22 @@
       "code_ref": "apps/main/src/interactions/core-frame.handlers.ts; apps/main/src/rendering/core-renderer.ts",
       "verdict": "match",
       "resolution": "Established by UR-20261026-098 (RT-6). Riding editReply on a publicly acknowledged interaction made the card private in grammar and public in fact."
+    },
+    {
+      "id": "REC-033",
+      "area": "command dispatch \u2014 an absent command is explained, not called unknown",
+      "doc_claim": "a refusal tells the member the truth about WHY: a module another profile holds is reported as held elsewhere, a module switched off for the guild as switched off, and only a command the platform does not know as unknown (spec/request-layer/division-2-interaction-lifecycle-buffer-notices-components.md)",
+      "code_truth": "a profile's registry is filtered to the modules she holds, so dispatch misses another profile's command; on a miss the router consults the unfiltered globalRegistry and answers MODULE_DISABLED when the module is off for the guild, OUT_OF_SCOPE when another profile holds it, and UNKNOWN_COMMAND only when the command is genuinely unknown. Core and admin short-circuit, because 'another profile holds it' about a shared command would be a lie.",
+      "code_ref": "apps/main/src/commands/command-router.ts",
+      "verdict": "match",
+      "resolution": "Established by RT-15. Before it, a persona answered UNKNOWN_COMMAND for a module the main bot was answering OUT_OF_SCOPE."
     }
   ],
   "counts": {
-    "match": 32,
+    "match": 33,
     "doc-incomplete": 0,
     "code-gap": 0,
     "code-anchor-broken": 0,
-    "total": 32
+    "total": 33
   }
 }
