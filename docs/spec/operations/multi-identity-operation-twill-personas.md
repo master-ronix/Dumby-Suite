@@ -212,9 +212,30 @@ mounts the Twill routes on the API server as well as the dedicated Twill process
 internal API key as the other internal surfaces. The default is off because the endpoint accepts bot
 tokens and client secrets: a surface that accepts credentials must not grow by default.
 
-**A mutation never requires a process restart.** A binding change, a rebind or a credential rotation
-re-registers over REST; the reload route restarts one persona's runtime, which is the only operation
-that needs a new connection.
+**A mutation must reach the running persona, without a process restart.** The runtime reads a persona's
+row **once**, at boot: who is active, which modules she is bound to, which token she logs in with, what
+presence to apply. Everything it knows was true at that moment. So every write that changes one of those
+facts must also reach her live instance, or it is invisible until someone restarts the process:
+
+| Write | What must happen |
+|---|---|
+| presence / status quote / accent | applied to her **running client** — the route is the composition point and holds both the service and the runtime |
+| module binding, rebind | her command set is rebuilt and re-registered over REST |
+| credential rotation | her connection is rebuilt — the one operation that genuinely needs a new one |
+| registration | the runtime admits her without a restart |
+
+**Revocation reaches three stores, and all three matter.** A persona is not one row:
+
+- **Postgres** — the row is soft-deleted, so the identity survives for audit and does not serve;
+- **the runtime's client map** — her live gateway connection is destroyed, or she stays online;
+- **Discord** — her commands are deregistered against **her application**. Commands belong to an
+  application, not a session, so they outlive the client: destroying the client alone leaves the picker
+  still offering commands that answer nothing.
+
+**One persona can be cycled on demand.** `POST /twill/personas/:personaId/reload` exists for the cases a
+write cannot cover — a row edited out of band, a migration, a module's command set changing underneath
+her, or an operator simply wanting her cycled as a first diagnostic step. It restarts **that persona
+alone**, never the process.
 
 ## Contract
 - `contracts/errors.json`
