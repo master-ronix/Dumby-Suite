@@ -135,9 +135,10 @@
   "assets": {
     "orchestration": "orchestration/",
     "migration": "migration/",
-    "upgradation": "upgradation/",
+    "upgradation": "archive/v5.0.0-records/upgradation/",
     "prompts": "prompts/",
-    "inbox": "_inbox/"
+    "inbox": "_inbox/",
+    "adr": "archive/v5.0.0-records/adr/"
   },
   "generated": [
     "_generated/index.md",

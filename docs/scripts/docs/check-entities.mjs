@@ -4,7 +4,7 @@
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
-const DIRS = ['blueprint', 'documentation', 'spec', 'adr', 'upgradation'];
+const DIRS = ['blueprint', 'documentation', 'spec', 'archive/v5.0.0-records/adr', 'archive/v5.0.0-records/upgradation'];
 const E = JSON.parse(readFileSync('status/entities.json', 'utf8'));
 
 const walk = (dir) => {

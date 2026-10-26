@@ -8,7 +8,7 @@ Dumby is a TypeScript (ESM, Node ≥ 22) modular Discord bot framework: one pnpm
 stages), one DI container, one command router, one seven-layer permission engine, one Renderer
 (Components v2; the classic embed ban is absolute), a Knex/PostgreSQL data layer, an L1+L2 cache,
 a BullMQ job queue, and Pino/prom-client/OpenTelemetry observability. Its documentation corpus
-(`docs/`) is gate-verified (30/30) and code-grounded; where spec and code diverge the divergence
+(`docs/`) is gate-verified (29/29) and code-grounded; where spec and code diverge the divergence
 is recorded in `docs/status/code-reconciliation.json`. Current chain state: **State C — Enforcement**
 (the migration work order is closed — M82 superseded by M83, M74 model confirmed; see `migration-ledger.md`).
 

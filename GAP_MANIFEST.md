@@ -35,7 +35,7 @@
 | 2 | Unit tests (`vitest`, unit config) | `COMPLETE` | 66 files / 757 tests passed / 0 failed |
 | 3 | Lint (ESLint, `--max-warnings=0`) | `COMPLETE` | exit 0, zero warnings |
 | 4 | Format (Prettier `--check`) | `COMPLETE` | "All matched files use Prettier code style" |
-| 5 | Documentation gates (`docs/scripts/docs/check-*.mjs`) | `COMPLETE` | 30 / 30 gates green |
+| 5 | Documentation gates (`docs/scripts/docs/check-*.mjs`) | `COMPLETE` | 29 / 29 gates green |
 | 6 | Bootstrap (18-stage) | `COMPLETE` | `src/bootstrap/bootstrap.ts`; stage tests pass; readiness 503→200 |
 | 7 | DI container | `COMPLETE` | reconciliation REC-017 `match`; frozen-core + MockContainer tested |
 | 8 | Middleware pipeline | `COMPLETE` | 12 built-in middlewares at `src/middleware/built-in/`; REC-009 `match` |
@@ -99,7 +99,7 @@ Ordered by `master-prompt.md` §3.4 severity. No compile-blocking faults were fo
 4. **F5 (coverage floors) — CLOSED 2026-10-15.** Per-layer thresholds live in `vitest.config.ts` and are met; `test:coverage` green.
 5. **F4 (verification surfaces) — flow + integration CLOSED 2026-10-15** (19 + 206 tests pass); Docker/K8s remain unverified (no daemon / cluster).
 
-**Enforcement-pass status (updated 2026-10-15).** Every local gate is green — typecheck, ESLint (`--max-warnings=0`), Prettier, **1,281 unit tests across 123 files**, the modules contract suite, **19 flow tests across 6 files**, **206 integration tests across 166 files**, `test:coverage` with **per-layer floors met**, and **30 documentation gates**. F1, F2, F3, F5 and the flow/integration half of F4 are closed. The only remaining unverified items are the Docker image build and the K8s apply, which require a daemon / cluster. Per master-prompt §6.1 the manifest is `COMPLETE` for every surface reachable without external infrastructure.
+**Enforcement-pass status (updated 2026-10-15).** Every local gate is green — typecheck, ESLint (`--max-warnings=0`), Prettier, **1,281 unit tests across 123 files**, the modules contract suite, **19 flow tests across 6 files**, **206 integration tests across 166 files**, `test:coverage` with **per-layer floors met**, and **29 documentation gates**. F1, F2, F3, F5 and the flow/integration half of F4 are closed. The only remaining unverified items are the Docker image build and the K8s apply, which require a daemon / cluster. Per master-prompt §6.1 the manifest is `COMPLETE` for every surface reachable without external infrastructure.
 
 ---
 

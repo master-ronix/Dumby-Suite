@@ -37,13 +37,13 @@ for (const f of walk(ALT)) {
 }
 
 // 3. the normative ADR series lives in docs/adr/ and is front-mattered
-const adrs = readdirSync('adr').filter((f) => /^ADR-\d+\.md$/.test(f));
+const adrs = readdirSync('archive/v5.0.0-records/adr').filter((f) => /^ADR-\d+\.md$/.test(f));
 if (adrs.length === 0) {
-  console.error('FAIL: docs/adr/ carries no ADR-*.md records');
+  console.error('FAIL: archive/v5.0.0-records/adr carries no ADR-*.md records');
   bad++;
 }
 for (const f of adrs) {
-  const t = readFileSync(join('adr', f), 'utf8');
+  const t = readFileSync(join('archive/v5.0.0-records/adr', f), 'utf8');
   if (!t.startsWith('---') || !/kind:\s*adr/.test(t)) {
     console.error(`FAIL: adr/${f} is not a front-mattered adr record`);
     bad++;

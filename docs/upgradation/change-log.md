@@ -81,7 +81,7 @@ completed step's record is missing.
 ## 9. Record
 
 > **Population status:** §1–§5 are populated. §3 carries the version history through v5.5.104 and
-> the 2026-10-21 production-readiness pass. The corpus gate suite is **30 gates, all green** at HEAD.
+> the 2026-10-21 production-readiness pass. The corpus gate suite is **29 gates, all green** at HEAD.
 
 ### 1. Scope & Method
 
@@ -659,7 +659,7 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 - **DR-12/FD-1 — predicate reconciled.** `prompts/entry.md`, `migration/migration-prompt.md` (§0.0/§2/§3) and `migration/ledger-template.md` now state the work-order predicate the same way (ledger-driven), so state detection is deterministic again.
 - **FD-2 — code counts single-sourced.** `status/counts.json` gains `code_ts_files`/`code_src_ts_files`/`code_migrations` (verified by `check-counts`); `GAP_MANIFEST.md` carries `{{counts.*}}` tokens.
 - **DR-10 — coverage scope stated.** The `status/coverage-ledger.json` note records that the reader-facing trees (`blueprint/`, `documentation/`) are outside the coverage ledger.
-- **Gate suite.** 27 → **30 gates**; the added gates are `generated`, `section-order`, `supersession`. **30/30 green** at HEAD.
+- **Gate suite.** 27 → **29 gates**; the added gates are `generated`, `section-order`, `supersession`. **30/30 green** at HEAD.
 - **Return.** `met` — every DR/FD finding closed. OI-1 (human attestation) and OI-3 (Docker/K8s) remain honest standing items, not defects (a human review pass and a daemon/cluster are required; neither is available here).
 
 ---

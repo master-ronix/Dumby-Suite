@@ -123,7 +123,7 @@ These rules override every other instruction you may have read in the documentat
 
 **R7 — Stop at the fence line of your budget.** If your session budget is nearly exhausted mid-item, STOP, record the item as IN-PROGRESS with a precise resume note in the ledger, and end. A clean handoff is worth more than a half-finished sprawl. NEVER start an item you can see you cannot finish.
 
-**R8 — The spec wins, but only where the delta reaches.** Inside the current blast radius, implement to the spec exactly (precedence: `spec/` > `spec/governance/` > `spec/request-layer/` > `spec/architecture/directory-file-structure.md`; binding ADRs in `adr/`). Outside it, the codebase's current behavior stands until its own item says otherwise.
+**R8 — The spec wins, but only where the delta reaches.** Inside the current blast radius, implement to the spec exactly (precedence: `spec/` > `spec/governance/` > `spec/request-layer/` > `spec/architecture/directory-file-structure.md`; binding ADRs in `archive/v5.0.0-records/adr/`). Outside it, the codebase's current behavior stands until its own item says otherwise.
 
 **R9 — Canonical vocabulary from line one.** Every line you write or touch uses the canonical vocabulary: **Twill** (persona), **Release Manager**, **MODERATOR / ADMINISTRATOR**, buffer-then-render, formal notice frame, tier volumes. No legacy names in new code. (The full sweep of legacy names in UNTOUCHED files is its own final item — do not do it early.)
 

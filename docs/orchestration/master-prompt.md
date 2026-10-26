@@ -17,25 +17,25 @@ change_log: upgradation/change-log.md
 - **Chain role:** *build* — the build protocol of the trigger chain.
 - **Preceded by:** `prompts/meta-prompt.md` (activation), which hands off here on **State A (greenfield)**; it may also be invoked directly as a build request.
 - **Hands off to:** `upgradation/change-log.md` (every phase and remediation records itself there), then returns to `prompts/meta-prompt.md`.
-- **Authority:** `spec/` is the sole architectural authority. The precedence order is stated once, in `spec/governance/directive-charter-how-to-use-this-document.md`, and is cited, never restated. The `adr/` series binds the choices it governs; the frozen request records in `upgradation/` are provenance, never build specifications.
+- **Authority:** `spec/` is the sole architectural authority. The precedence order is stated once, in `spec/governance/directive-charter-how-to-use-this-document.md`, and is cited, never restated. The `archive/v5.0.0-records/adr/` series binds the choices it governs; the frozen request records in `upgradation/` are provenance, never build specifications.
 
 ## 2. Purpose
 
 Take a greenfield workspace **or** any partially-complete codebase to a verified, deployable Dumby application at full specification compliance — detecting what exists, what is missing, what is faulty, and what is not working, then driving the codebase to full compliance. It handles all three starting states: the phases below are the target sequence, and in State B the run enters that sequence at the phase matching the highest-complete subsystem and remediates everything below and around it. In State C there is no delta to land: the run is pure enforcement — the corpus is verified against the codebase from start to end, one file at a time, at a paced rate, and every deviation is remediated or recorded.
 
-Context-window optimization governs the design: this document contains zero content from the source documents. Every technical specification lives in the document that owns it and is loaded on demand, per phase — never in bulk. Where a build choice is governed by a recorded decision, the governing ADR in `adr/` is read before the choice, never in bulk.
+Context-window optimization governs the design: this document contains zero content from the source documents. Every technical specification lives in the document that owns it and is loaded on demand, per phase — never in bulk. Where a build choice is governed by a recorded decision, the governing ADR in `archive/v5.0.0-records/adr/` is read before the choice, never in bulk.
 
 **Document type:** Master Build Prompt — orchestration brief that takes an implementer from empty workspace OR any partially-complete codebase to a verified, deployable Dumby bot at 100% specification compliance.
 
 **Project:** Dumby — Discord Unified Modular Bot System
 
-**Derived from:** The Dumby documentation corpus at version 5.0.0 (Consolidated Re-Baseline) in `docs/` — with `spec/` 5.0.0 (Consolidated Re-Baseline Edition) as the sole architectural authority — together with the ADR series in `adr/` and the frozen request records in `upgradation/`.
+**Derived from:** The Dumby documentation corpus at version 5.0.0 (Consolidated Re-Baseline) in `docs/` — with `spec/` 5.0.0 (Consolidated Re-Baseline Edition) as the sole architectural authority — together with the ADR series in `archive/v5.0.0-records/adr/` and the frozen request records in `upgradation/`.
 
 **Governing objective:** Following this prompt end-to-end MUST yield a finished, deployable, ready-to-use Dumby bot — regardless of whether the starting point is an empty workspace or a partially-built codebase. The prompt detects what exists, what is missing, what is faulty, and what is not working — then drives the codebase to full compliance with the specification.
 
-**Output location:** The main project is built inside `apps/main/`; the `swastik` module-authoring package is built inside `packages/swastik/`. All source documents remain in `docs/` — the document set plus the `adr/` decision records and the frozen `ur/` request records — as the permanent reference set.
+**Output location:** The main project is built inside `apps/main/`; the `swastik` module-authoring package is built inside `packages/swastik/`. All source documents remain in `docs/` — the document set plus the `archive/v5.0.0-records/adr/` decision records and the frozen `ur/` request records — as the permanent reference set.
 
-**First priority:** Context window optimization. This prompt contains zero content from the source documents. It is pure orchestration — detection logic, remediation protocol, and phase sequencing. Every technical specification lives in the document that owns it. Source documents are loaded on demand, per phase, never in bulk. Where a build choice is governed by a recorded decision, the governing ADR in `adr/` is one of those on-demand sources — read it before making the choice it governs, never in bulk.
+**First priority:** Context window optimization. This prompt contains zero content from the source documents. It is pure orchestration — detection logic, remediation protocol, and phase sequencing. Every technical specification lives in the document that owns it. Source documents are loaded on demand, per phase, never in bulk. Where a build choice is governed by a recorded decision, the governing ADR in `archive/v5.0.0-records/adr/` is one of those on-demand sources — read it before making the choice it governs, never in bulk.
 
 ## 3. Preconditions
 
@@ -54,7 +54,7 @@ Context-window optimization governs the design: this document contains zero cont
 | Wiki / API book | `documentation/` | what each part is and how to use it |
 | Contracts | `contracts/` | machine-readable interfaces |
 | Capability ledger | `status/capabilities.json` | build / defer / do-not-re-implement |
-| Decisions | `adr/` | binding decisions |
+| Decisions | `archive/v5.0.0-records/adr/` | binding decisions |
 | Change log | `upgradation/change-log.md` | history, defect lifecycle, records |
 | Archived legacy | `archive/v4.5.1/documentation.md` | inherited decisions only |
 
@@ -84,12 +84,12 @@ This prompt provides three things the source documents do not: (1) a method for 
 
 #### 0.3 Precedence Order
 
-The canonical document-precedence order is stated once, in `spec/governance/` (§0.2); this prompt cites it rather than restating it. When any two source documents appear to conflict, the higher-precedence document wins, the conflict is recorded in `upgradation/change-log.md`, and the higher-precedence reading is taken. The ADRs in `adr/` are binding on the build choices they govern — where an ADR covers a choice you are about to make, the recorded decision wins over any contrary reading of prose elsewhere in the set. The frozen request records in `upgradation/` are provenance — they explain why the documentation reads as it does; they are never build specifications.
+The canonical document-precedence order is stated once, in `spec/governance/` (§0.2); this prompt cites it rather than restating it. When any two source documents appear to conflict, the higher-precedence document wins, the conflict is recorded in `upgradation/change-log.md`, and the higher-precedence reading is taken. The ADRs in `archive/v5.0.0-records/adr/` are binding on the build choices they govern — where an ADR covers a choice you are about to make, the recorded decision wins over any contrary reading of prose elsewhere in the set. The frozen request records in `upgradation/` are provenance — they explain why the documentation reads as it does; they are never build specifications.
 
 #### 0.4 Build Discipline
 
 - Read the named source sections *before* implementing or remediating a subsystem. Never work from assumption — work from the specification.
-- Where an ADR in `adr/` governs a build choice, read it before implementing that choice. A deviation from a recorded decision is a defect to fix or a judgment to record in `upgradation/change-log.md` — never a silent override.
+- Where an ADR in `archive/v5.0.0-records/adr/` governs a build choice, read it before implementing that choice. A deviation from a recorded decision is a defect to fix or a judgment to record in `upgradation/change-log.md` — never a silent override.
 - Use the canonical vocabulary everywhere — code, tests, commit messages, and docs alike. The persona system is **Twill** (bring-your-own-identity, single-server-bound). The release-management service is the **Release Manager**. The rank names are **MODERATOR** and **ADMINISTRATOR**. No legacy names, no shorthand variants.
 - Each phase or remediation item must be verifiable before moving on.
 - Write tests alongside implementation. For remediation, update or write tests that prove the fault is fixed.
@@ -140,12 +140,12 @@ Known gaps from the specification's history are documented in `upgradation/chang
 | `spec/orientation/definitions.md` | Document intent, impact, purpose, definition for the full document set |
 | `archive/v4.5.1/documentation.md` | Archived legacy reference — frozen; retained for inherited decisions only |
 | `orchestration/master-prompt.md` | This document — the orchestration brief |
-| `adr/` | ADR series — recorded decisions, binding on the build choices they govern |
+| `archive/v5.0.0-records/adr/` | ADR series — recorded decisions, binding on the build choices they govern |
 | `upgradation/` | Frozen request records — provenance for the v5.0.0 re-baseline |
 
 #### 2.2 Subsystem-to-Document Loading Guide
 
-When implementing, auditing, or remediating a specific subsystem, read the department spec(s) listed below. The frozen legacy record is `archive/v4.5.1/documentation.md` — consult it for inherited decisions only; `spec/` governs on any conflict. Where a row's build choice is governed by an ADR, read that ADR from `adr/` before implementing.
+When implementing, auditing, or remediating a specific subsystem, read the department spec(s) listed below. The frozen legacy record is `archive/v4.5.1/documentation.md` — consult it for inherited decisions only; `spec/` governs on any conflict. Where a row's build choice is governed by an ADR, read that ADR from `archive/v5.0.0-records/adr/` before implementing.
 
 | Subsystem | Spec home |
 |-----------|-----------|
@@ -303,7 +303,7 @@ For every item in the Gap Manifest, execute this loop:
 
 #### 4.1 The Remediation Loop
 
-**Step 1 — Read the specification.** Read the source-document sections named in §2.2 for the affected subsystem. Read the full specification, not a summary. For known-defect items, also read the corresponding entry in `upgradation/change-log.md`'s defect lifecycle for the documented resolution path. If an ADR in `adr/` governs the affected build choice, read it too — the remediation must land on the recorded decision.
+**Step 1 — Read the specification.** Read the source-document sections named in §2.2 for the affected subsystem. Read the full specification, not a summary. For known-defect items, also read the corresponding entry in `upgradation/change-log.md`'s defect lifecycle for the documented resolution path. If an ADR in `archive/v5.0.0-records/adr/` governs the affected build choice, read it too — the remediation must land on the recorded decision.
 
 **Step 2 — Diagnose.** Compare the existing code against the specification line by line. Identify exactly what is wrong, missing, or contradictory. Write down the specific delta: "the spec requires X at location Y; the code has Z instead."
 
@@ -352,7 +352,7 @@ Each phase specifies: its goal, source-document sections to read, deliverables, 
 - `spec/architecture/directory-file-structure.md` — Directory & File Structure
 - `spec/governance/` Part 2 (D-2.1 to D-2.15) — Technology stack and runtime boundaries
 - `spec/governance/` (rule D-8.4), D-8.6 — CI sequence, container discipline
-- The ADR in `adr/` governing the tier-volume layout and module storage
+- The ADR in `archive/v5.0.0-records/adr/` governing the tier-volume layout and module storage
 
 **Deliver:**
 - pnpm workspace with `apps/main/` and `packages/swastik/` as workspace members
@@ -436,7 +436,7 @@ Each phase specifies: its goal, source-document sections to read, deliverables, 
 **Read:**
 - `spec/modules/module-anatomy-manifest.md`, §13, §14, §18, §19, §21
 - `spec/governance/` Part 4 (D-4.1 to D-4.14), D-5.1, D-5.2, D-5.3
-- The ADRs in `adr/` governing module storage and the sanctioned cross-module patterns
+- The ADRs in `archive/v5.0.0-records/adr/` governing module storage and the sanctioned cross-module patterns
 
 **Deliver:**
 - Module registry, loader, and manifest Zod schema (full field set, co-constraints, and the visibility enum per blueprint §11) — framework code under `src/`; feature modules themselves never live in the source tree
@@ -469,7 +469,7 @@ Each phase specifies: its goal, source-document sections to read, deliverables, 
 **Read:**
 - `spec/architecture/technology-stack-decision-matrix.md`, §10.2, §16.5, §17, §18, §20
 - `spec/governance/` (rule D-2.5), D-3.9, D-3.10, D-4.14 and the ban-registry entries governing presentation (embed ban, DM prohibition)
-- The ADRs in `adr/` governing the renderer grammar and the accent token
+- The ADRs in `archive/v5.0.0-records/adr/` governing the renderer grammar and the accent token
 
 **Deliver:**
 - `src/discord/` — Client builder, live + mock gateway adapters
@@ -577,8 +577,8 @@ First-party modules are seeded onto their tier volumes (`modules-core` for the C
 **Goal:** The build is documented and passes the Definition of Done (§6).
 
 **Deliver:**
-- `README.md`, `adr/`, `docs/runbooks/`, `docs/security/`, `.env.example` (per source documents)
-- `adr/` stands as issued: any implementation decision that contradicts a recorded ADR is a deviation to record in `upgradation/change-log.md`, never a silent override
+- `README.md`, `archive/v5.0.0-records/adr/`, `docs/runbooks/`, `docs/security/`, `.env.example` (per source documents)
+- `archive/v5.0.0-records/adr/` stands as issued: any implementation decision that contradicts a recorded ADR is a deviation to record in `upgradation/change-log.md`, never a silent override
 - `upgradation/change-log.md` updated with any deviations per directive D-1.6 and D-0.6
 - Final verification per §6
 
