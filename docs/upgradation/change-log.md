@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.106
+version: 5.5.107
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -145,7 +145,7 @@ migration prompt version) · `state` (Greenfield | Migration | Enforcement) · `
 | v5.4.0 — Dashboard MODULE_ERROR fix | 2026-10-08 | live log |
 | v5.5.0 — Dashboard controls / attribution / icons | 2026-10-08 | 25 gates green |
 | v5.5.1 — UR-005 build fix | 2026-10-08 | push |
-| v5.5.2 … v5.5.106 — the per-request patch series | 2026-10-11 … 2026-10-26 | change-log §3 (this file) |
+| v5.5.2 … v5.5.107 — the per-request patch series | 2026-10-11 … 2026-10-26 | change-log §3 (this file) |
 
 > §2 lists the **master / milestone tracks**. The per-request patch series after v5.5.1
 > (v5.5.2 … v5.5.99) is enumerated in §3; the front-matter `version` is the highest released
@@ -521,6 +521,19 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 - **R8 — audit age.** `status/audit-age.json` records the audit date, commit, scope and request; `README.md` names the current audit.
 - **Verification.** Corpus gate suite **27/27 green**. Application toolchain not run (Node 20.20.2; app requires Node ≥ 22; no deps) — app-side items are outside the corpus scope.
 - **Return.** `met` (corpus scope) — every AU finding closed; OI-1 (human attestation) and OI-3 (Docker/K8s) remain honest standing items, not defects.
+
+---
+
+### v5.5.107 — A Private Refusal: the Refusal Notice Delivered as a Private Follow-Up (UR-20261026-098) — 2026-10-26
+
+- 2026-10-26 · meta-prompt 5.2.0 · state=Enforcement · handoff=master-prompt:enforce · return=met
+- **Work order.** `upgradation/UR-20261026-098.md` — closes RT-6 and supersedes RT-5's interim answer.
+- **The obstacle.** The component registry acknowledges every page control with `deferUpdate` before the handler runs — a PUBLIC acknowledgement whose purpose is that the handler can then edit the existing message in place. `editReply` cannot change an existing message's ephemerality, so a notice riding that edit was public by construction, and asking for the private grammar on it produced exactly what the operator reported: no accent, and not hidden.
+- **RT-6 — the fix.** A follow-up is a NEW message, and a new message can be private. The refusal is now sent with `interaction.followUp?.(payload)` and declares `ephemeral: true` again, superseding RT-5's `ephemeral: false`.
+- **The guard's one exception.** `createReadOnlyInteraction` accepts `{ allowFollowUp }`; `reply` and `showModal` stay blocked, and `followUp` is blocked unless the caller opts in. The registry passes `handler.allowFollowUp` through, and the page controls declare it — so the exception is visible in a handler's declaration rather than implied by its behaviour.
+- **Order matters.** The notice is sent BEFORE the page refresh, and the refresh is wrapped: this path once sent the refusal after the refresh, and a failing refresh swallowed it so the member saw nothing. Sent first, the notice is the part that cannot be lost.
+- **Verification.** Corpus gate suite **30/30 green** after the change. `tsc` over all four edited sources: no error attributable to this change. The new and changed unit tests were **not executed** in this sandbox (no pnpm workspace install; the bundled `esbuild` panics here), so CI is their verification. The `followUp`-after-`deferUpdate` call is the one part only a real click can confirm.
+- **Return.** `met` (code + corpus scope).
 
 ---
 
@@ -2781,7 +2794,8 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 | UR-20261021-094 — corpus reconciliation (re-ground at HEAD after the provenance/signing code track) | **Executed 2026-10-21** (see the `v5.5.103` entry). Findings DOC-1 … DOC-11 closed; the corpus is re-anchored at `feature/dev` @ `7e8ca739`. |
 | UR-20261021-095 — production readiness (CI deploy-blocker, module-deployment approval API, Twill client-secret requirement) | **Executed 2026-10-21** (see the `v5.5.104` entry). Residuals PR-1 … PR-6 closed. |
 | UR-20261026-096 — corpus residual closure (provenance anchor, unrecorded re-anchor track, GAP_MANIFEST state, the 101–104 record gap) | **Executed 2026-10-26** (see the `v5.5.105` entry). Findings DOC-012 … DOC-016 closed. |
-| UR-20261026-097 — runtime ownership and command-path truth (owner memo, occupied predicate, persona health read, Route B de-registration, refusal-notice grammar) | **Executed 2026-10-26** (see the `v5.5.106` entry). Findings RT-1 … RT-5 closed. |
+| UR-20261026-097 — runtime ownership and command-path truth (owner memo, occupied predicate, persona health read, Route B de-registration, refusal-notice grammar) | **Executed 2026-10-26** (see the `v5.5.106` entry). Findings RT-1 … RT-5 closed; RT-5's interim grammar is superseded by UR-20261026-098. |
+| UR-20261026-098 — a private refusal (follow-up delivery, the guard's declared exception) | **Executed 2026-10-26** (see the `v5.5.107` entry). Finding RT-6 closed. |
 
 ### 5.2 Residual dispositions (UR-20261015-090 R9)
 
