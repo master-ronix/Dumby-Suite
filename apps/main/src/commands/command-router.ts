@@ -120,7 +120,14 @@ export type CommandScopeCause =
    * three above (a DM, the wrong guild for an admin command, an unresolved tier) must not be reported
    * as "the module is switched off" — that would be a new lie in place of the old one.
    */
-  | 'out-of-scope';
+  | 'out-of-scope'
+  /**
+   * UR-20261026-100 RT-8 — the module is held by ANOTHER profile in this guild. Distinct from
+   * `out-of-scope`, which stays the catch-all for a DM, the wrong guild for an admin command and an
+   * unresolved tier: those are authorisation boundaries, this one is an ownership fact, and a member
+   * told "your permissions do not allow this" would be sent to the wrong fix.
+   */
+  | 'owned-elsewhere';
 
 export class CommandScopeDeniedError extends Error {
   constructor(
@@ -981,7 +988,7 @@ export class CommandRouter {
       command.moduleId,
       tier ?? 'unresolved',
       guildId,
-      'out-of-scope',
+      'owned-elsewhere',
     );
   }
 

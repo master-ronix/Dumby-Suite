@@ -790,7 +790,7 @@ export class CoreRenderer {
       if (cause === 'module-disabled') return 'MODULE_DISABLED';
       // UR-20261026-100 RT-8 — the fourth cause: the module is held by ANOTHER profile here.
       // Neither a permission failure nor a disabled module, so neither notice is honest.
-      if (cause === 'out-of-scope') return 'OUT_OF_SCOPE';
+      if (cause === 'owned-elsewhere') return 'OUT_OF_SCOPE';
       return 'FORBIDDEN';
     }
     if (name === 'PersonaOccupiedError') return 'FORBIDDEN';
