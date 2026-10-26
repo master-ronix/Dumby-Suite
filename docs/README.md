@@ -46,7 +46,7 @@ for g in scripts/docs/check-*.mjs; do node "$g"; done
 CI runs the same loop: `.github/workflows/docs-gates.yml` at the **repository root** executes
 every gate on any change under `docs/` (a `.github/` nested under `docs/` would be inert).
 
-Gates (29): manifest · coverage · **ledger-content** · frontmatter · contracts · **compliance** · counts · no-restatement · archive-guard · **asset-adaptation** · status-evidence · anchors · anchor-paths · **edges** · acceptance · reconciliation · code-reconciliation · **entities** · **terminology** · **authority** · **facts** · **normative-markers** · **chain** · **chain-states** · **corpus-boundary** · **side-docs** · **ur** · **generated** · **section-order** · **supersession**.
+Gates (29): manifest · coverage · **ledger-content** · frontmatter · contracts · **compliance** · counts · no-restatement · archive-guard · **asset-adaptation** · status-evidence · anchors · anchor-paths · **edges** · acceptance · reconciliation · code-reconciliation · **entities** · **terminology** · **authority** · **facts** · **normative-markers** · **chain** · **chain-states** · **corpus-boundary** · **side-docs** · **ur** · **generated** · **section-order**.
 
 **Verification status (policy).** These gates are structural: they prove the corpus is internally
 consistent and single-sourced, not that a human has reviewed every section, and they do **not** run
@@ -63,7 +63,7 @@ the application `tsc` / `vitest` (the app typecheck is a separate gate). Per-fil
 `upgradation/change-log.md`). A bare `5.x.y` in prose names the change-log track unless a
 document says otherwise.
 
-**Last independent audit.** 2026-10-26, against `feature/dev` @ `a3b093f9` — a full-scope corpus
+**Last independent audit.** 2026-10-26, against `feature/dev` @ `42c256bf` — a full-scope corpus
 audit + runtime-ownership code track whose findings (RT-1 … RT-11) are formalised as
 `upgradation/UR-20261026-097.md`, `-098`, `-100` and `-101`; the prior audit's findings (DR-1 … DR-12,
 `upgradation/UR-20261018-092.md`) and (AU-1 … AU-11, `upgradation/UR-20261016-091.md`) are closed

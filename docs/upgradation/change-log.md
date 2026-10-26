@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.111
+version: 5.5.112
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -145,7 +145,7 @@ migration prompt version) · `state` (Greenfield | Migration | Enforcement) · `
 | v5.4.0 — Dashboard MODULE_ERROR fix | 2026-10-08 | live log |
 | v5.5.0 — Dashboard controls / attribution / icons | 2026-10-08 | 25 gates green |
 | v5.5.1 — UR-005 build fix | 2026-10-08 | push |
-| v5.5.2 … v5.5.111 — the per-request patch series | 2026-10-11 … 2026-10-26 | change-log §3 (this file) |
+| v5.5.2 … v5.5.112 — the per-request patch series | 2026-10-11 … 2026-10-26 | change-log §3 (this file) |
 
 > §2 lists the **master / milestone tracks**. The per-request patch series after v5.5.1
 > (v5.5.2 … v5.5.99) is enumerated in §3; the front-matter `version` is the highest released
@@ -521,6 +521,21 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 - **R8 — audit age.** `status/audit-age.json` records the audit date, commit, scope and request; `README.md` names the current audit.
 - **Verification.** Corpus gate suite **27/27 green**. Application toolchain not run (Node 20.20.2; app requires Node ≥ 22; no deps) — app-side items are outside the corpus scope.
 - **Return.** `met` (corpus scope) — every AU finding closed; OI-1 (human attestation) and OI-3 (Docker/K8s) remain honest standing items, not defects.
+
+---
+
+### v5.5.112 — The Reconciliation Gate's Freshness Half Was Dead Code; the Ledger Re-Anchored (RT-12 … RT-14) — 2026-10-26
+
+- 2026-10-26 · meta-prompt 5.2.0 · state=Enforcement · handoff=master-prompt:enforce · return=met
+- **Work order.** None. The record tiers were retired by `UR-20261026-102`, which directs that work after it is recorded here; this entry is that record.
+- **RT-12 — the dead half.** `check-code-reconciliation` read its anchor and then called `.toString()` on `execSync('git rev-parse HEAD', { stdio: 'ignore' })`. `stdio: 'ignore'` captures nothing, so `execSync` returns `null` and the call threw — into an outer `catch` written for "no git work tree", which swallowed it silently. **Every freshness check below that line was dead code, in every checkout, since the line was written.** The gate validated counts and verdicts and reported success; it never once compared the anchor to the code.
+- **RT-13 — what that hid.** The ledger's anchor sat at `a3b093f9` with four commits after it touching `apps/main` (`b17a726f8`, `7dce2daf6`, `bb56f2dad`, `b3c484508`), and `REC-031` had gone stale: the retirement split the ownership refusal's cause out of `out-of-scope` into `owned-elsewhere` and added `OUT_OF_SCOPE` as the fifteenth reason code, which the row still described the old way.
+- **RT-14 — the retired gate still named.** `README.md` enumerated thirty gates under the heading "Gates (29)", still including `supersession`, which was retired with the live ADR series. The count was right; the list was not.
+- **The fix.** The anchor is read with stdout captured; a COMPLETE checkout that cannot resolve its own anchor now FAILS rather than warning, while a shallow one still warns — that is an environment limit, not a defect — and the outer catch no longer swallows an unexpected throw. `REC-031` is re-derived at the new anchor; `REC-029` and `REC-032` were re-read and hold (their files changed by Prettier reformatting only); the remaining rows are re-anchored, not re-derived, and the ledger's `note` says which act occurred. The anchor moves to `42c256bfa` with all five carriers, and the gate list drops `supersession`.
+- **Verification.** The four branches were exercised in a throwaway repository: complete + anchor absent → exit 1; complete + anchor present + no code drift → exit 0; complete + a code commit after the anchor → exit 1; shallow + anchor absent → exit 0 with a warning. Gate suite **29/29 green** on the pushed tree.
+- **OI-8 closes.** CI executes again: run `40401729675` on `42c256bfa` is green across all twenty gate steps, the Integration suite against live Postgres and Redis, and the Docker build. `UR-20261021-095` ACC-1 is satisfiable again.
+- **Still open, deliberately.** Detecting drift *in CI* needs `fetch-depth: 0` in the workflow that runs the gates; until then CI's shallow checkout still takes the warn path. That is a workflow change with a runtime cost, and it is not made here.
+- **Return.** `met`.
 
 ---
 
@@ -2892,6 +2907,6 @@ Every carried residual now states its owner, status, and blocker — none is a s
 | OI-5 | Migration slices M10 / M14 / M16 | engineering | **resolved** | M10 / M14 / M16 / M18 DONE, toolchain-verified. |
 | OI-6 | 24 logged deviations (appendix-c) | framework-maintainers | **resolved** | `appendix-c` carries the ownership note; each item owned or deferred. |
 | OI-7 | Branch-divergence decision (`main` vs `feature/dev`) | operator | **resolved** | Dual-branch model recorded: `feature/dev` is the development branch, `main` the deployment branch; every change lands on `feature/dev` first and is promoted to `main`. |
-| OI-8 | CI enforcement inert — Actions jobs refused at start | operator | **open — blocker** | Account billing: "recent account payments have failed or your spending limit needs to be increased". No job started since 2026-10-23T18:57:48Z. Every commit after that is unverified by CI. Closes when a run executes; see `UR-20261026-099`. |
+| OI-8 | CI enforcement inert — Actions jobs refused at start | operator | **resolved** | Account billing was cleared. Run `40401729675` on `42c256bfa` is green across all twenty gate steps, the Integration suite against live Postgres and Redis, and the Docker build — the first green CI on `feature/dev` since 2026-10-23. Every commit after that date is now CI-verified as part of the tree. |
 | — | M18 `/modules` corrections & disable enforcement | engineering | **resolved (DONE)** | Disable enforcement present; `disable-behaviour.spec.ts` passes. |
 | — | M74 / M82 | operator | **M74 confirmed; M82 closed** | M74's ownership model (`upgradation/UR-20261012-059.md`) is confirmed by operator directive; its implementation is a code item outside the docs corpus. M82 closed — superseded by M83 (DONE). |

@@ -33,7 +33,37 @@ try {
       resolves = false;
     }
     if (!resolves) {
-      console.warn(`WARN: verified_commit ${d.verified_commit.slice(0, 7)} is not present in this checkout (shallow?) — freshness not verifiable here`);
+      // A SHALLOW checkout cannot verify freshness — warn, because the commit is legitimately absent
+      // (`actions/checkout` defaults to fetch-depth: 1).
+      //
+      // A COMPLETE checkout that cannot resolve its own anchor is a different thing: the ledger is
+      // anchored to a commit this branch does not contain, which is a stale or foreign anchor and not
+      // an environment limit. Warning there hid exactly that — the anchor sat four code commits behind
+      // and every run reported success. It fails now.
+      const shallow = (() => {
+        try {
+          return (
+            execSync('git rev-parse --is-shallow-repository', {
+              stdio: ['ignore', 'pipe', 'ignore'],
+            })
+              .toString()
+              .trim() === 'true'
+          );
+        } catch {
+          // Cannot tell: do not fail on an unknown.
+          return true;
+        }
+      })();
+      if (shallow) {
+        console.warn(
+          `WARN: verified_commit ${d.verified_commit.slice(0, 7)} is not present in this checkout (shallow) — freshness not verifiable here`,
+        );
+      } else {
+        console.error(
+          `FAIL: verified_commit ${d.verified_commit.slice(0, 7)} is absent from a COMPLETE checkout — the ledger is anchored to a commit this branch does not contain`,
+        );
+        process.exit(1);
+      }
     } else {
       try {
         execSync(`git merge-base --is-ancestor ${d.verified_commit} HEAD`, { stdio: 'ignore' });
@@ -41,7 +71,14 @@ try {
         console.error(`FAIL: verified_commit ${d.verified_commit} is not an ancestor of HEAD`);
         process.exit(1);
       }
-      const head = execSync('git rev-parse HEAD', { stdio: 'ignore' }).toString().trim();
+      // `stdio: 'ignore'` captures NOTHING, so execSync returns null and `.toString()` threw —
+      // and the outer catch swallowed it. Every freshness check below was dead code, in every
+      // checkout, since this line was written. Capture stdout.
+      const head = execSync('git rev-parse HEAD', {
+        stdio: ['ignore', 'pipe', 'ignore'],
+      })
+        .toString()
+        .trim();
       // Freshness (UR-20261015-090 R2): the ledger verifies DOCS against CODE. It goes stale only
       // when the CODE moves — a docs-only commit does not invalidate a code-grounding claim. So fail
       // when any commit since verified_commit touched the code surfaces (apps/main, packages).
@@ -66,8 +103,13 @@ try {
       }
     }
   }
-} catch {
-  /* no git work tree (e.g. a bare export) — freshness is not checkable here */
+} catch (err) {
+  // A bare export has no work tree, and that is the ONLY case this may swallow. Anything else is a
+  // fault in the check itself, and swallowing it made the freshness half silently inert: it reported
+  // success while the ledger sat four code commits behind. Say so.
+  console.warn(
+    `WARN: freshness not checkable here (${err instanceof Error ? err.message : String(err)})`,
+  );
 }
 
 console.log(`OK: code-reconciliation (${d.facts.length} facts, counts consistent)`);

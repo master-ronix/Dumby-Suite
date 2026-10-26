@@ -1,10 +1,10 @@
 {
   "$id": "docs/status/code-reconciliation.json",
   "title": "Docs \u2194 Code reconciliation",
-  "note": "Every row compares what the NEW documentation asserts against the actual source in master-ronix/Dumby-Suite (apps/main at a3b093f923191b4c20ec61e652b8f82e7ae824d2, branch feature/dev). Standing rule: the specification is authority; where the code is narrower, the code is the gap to close. The anchor is the last commit to touch apps/main|packages, so no commit after it can move the code under a row without the freshness gate failing. The pre-existing rows were re-anchored, not re-derived: the commits since the previous anchor changed the ownership reads, the disable path, dispatch ownership and the refusal notice \u2014 areas no row covered, which is RT-10 in upgradation/UR-20261026-101.md. REC-029 \u2026 REC-032 close that gap and were verified at this anchor.",
-  "verified_commit": "a3b093f923191b4c20ec61e652b8f82e7ae824d2",
+  "note": "Every row compares what the NEW documentation asserts against the actual source in master-ronix/Dumby-Suite (apps/main at 42c256bfa378f849f8dc5394ee13eb6178bdaedb, branch feature/dev). Standing rule: the specification is authority; where the code is narrower, the code is the gap to close. The anchor is the last commit to touch apps/main|packages, so no commit after it can move the code under a row without the freshness gate failing. REC-031 was re-derived at this anchor, because the record-tier retirement split the ownership refusal's cause out of 'out-of-scope' and added the OUT_OF_SCOPE reason code. REC-029 and REC-032 were re-read at this anchor: their files changed in that retirement, but by Prettier reformatting only, and their claims still hold. The remaining rows were re-anchored, not re-derived \u2014 no commit in the range touched the code they describe.",
+  "verified_commit": "42c256bfa378f849f8dc5394ee13eb6178bdaedb",
   "verified_branch": "feature/dev",
-  "verified_at": "2026-10-26T10:09:03Z",
+  "verified_at": "2026-10-26T21:37:55Z",
   "verdicts": [
     "match",
     "doc-incomplete",
@@ -286,10 +286,10 @@
       "id": "REC-031",
       "area": "command dispatch \u2014 a module and its commands belong to one profile",
       "doc_claim": "a guild-scoped module and its commands belong to one profile, and a profile that does not hold the module does not answer its commands",
-      "code_truth": "assertPersonaOwnsCommand refuses with CommandScopeDeniedError('out-of-scope') when the resolver names a different profile; core and admin short-circuit as 'shared'; the holder answers her own command",
+      "code_truth": "assertPersonaOwnsCommand refuses with CommandScopeDeniedError('owned-elsewhere') when the resolver names a different profile \u2014 a cause of its own, not the 'out-of-scope' catch-all that also serves a DM, the wrong guild for an admin command and an unresolved tier. core and admin short-circuit as 'shared'; the holder answers her own command. The renderer maps the cause to the OUT_OF_SCOPE notice reason code, which states that another profile holds the module.",
       "code_ref": "apps/main/src/commands/command-router.ts",
       "verdict": "match",
-      "resolution": "Established by UR-20261026-100 (RT-8) on the operator's ruling. It had logged and proceeded, which let a stale registration answer for the wrong profile."
+      "resolution": "Established by UR-20261026-100 (RT-8) on the operator's ruling, and refined by UR-20261026-102, which split the cause out of 'out-of-scope' and added OUT_OF_SCOPE as the fifteenth reason code. It had logged and proceeded, which let a stale registration answer for the wrong profile."
     },
     {
       "id": "REC-032",
