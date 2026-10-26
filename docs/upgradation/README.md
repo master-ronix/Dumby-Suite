@@ -99,12 +99,15 @@ records raised under their own IDs — never edits to frozen ones.
 > module-delivery code track — see `upgradation/UR-20261021-094.md`,
 > `upgradation/UR-20261021-095.md`, `status/code-reconciliation.json` and
 > `spec/modules/module-anatomy-manifest.md`. No record file for any of the four is held in this tree,
-> and their bodies are **not reproduced here and must not be inferred**. They also sit above the
-> counter's last issued value (`UR-20261021-095`) although they are dated 2026-10-19: the counter has
-> run globally from `026` to `095` since 2026-10-12, so `101`–`104` are not issuable under it. The gap
-> at `096`–`100` is therefore **declared**, not silent. Treat the four ids as provenance labels for a
-> landed code track, not as readable records, until a later record either materialises them or retires
-> the citations.
+> and their bodies are **not reproduced here and must not be inferred**. They are dated 2026-10-19 and
+> sat above the counter's value when this note was written (`UR-20261021-095`); the counter has run
+> globally from `026` since 2026-10-12. It has since advanced: `UR-20261026-096` … `UR-20261026-101`
+> were issued on 2026-10-26, so the gap formerly declared at `096`–`100` is closed and the last issued
+> value is `101`. The four cited ids are still unheld, and no collision arises from that — a record id
+> is the full `UR-<date>-<seq>` string, so the cited `UR-20261019-101` and the issued
+> `UR-20261026-101` are different ids. Treat the four cited ids as provenance labels for a landed code
+> track, not as readable records, until a later record either materialises them or retires the
+> citations.
 
 ---
 
