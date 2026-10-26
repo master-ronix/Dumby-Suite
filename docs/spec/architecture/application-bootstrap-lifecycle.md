@@ -57,6 +57,14 @@ The exact stage list and order are declared once, in `apps/main/src/bootstrap/st
 and the number of stages is single-sourced in `status/counts.json`
 (`bootstrap_stages: 18`).
 
+**Per-guild command deployment is backgrounded, and readiness does not wait on it.** Stage 13 collects
+and registers the command classes, but deploying them per guild is rate-limited — two bulk-overwrite
+calls per guild — and running it inline blocked readiness for minutes on every restart. The gateway
+connection is independent of command deployment, so the deploy runs in the background once the bot is
+live: the pod joins the service's endpoint list on its own schedule, and a slow or failed deploy cannot
+hold it out. A guild that joins after boot gets its commands immediately rather than at the next
+restart.
+
 ### 8.3 Health Endpoint ↔ Stage Mapping
 
 ```
