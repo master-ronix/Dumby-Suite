@@ -1,7 +1,7 @@
 import { describe, test, expect } from 'vitest';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { readRepo, repoRoot } from '../spec-utils.js';
+import { repoRoot } from '../spec-utils.js';
 
 /**
  * OI-11 — a module's artwork belongs to the module.
@@ -94,8 +94,6 @@ describe('OI-11 — module artwork is owned by the module', () => {
     const borrowing = modules()
       .filter((module) => module.ui.iconAsset === undefined)
       .map((module) => module.slug);
-    expect(borrowing).toEqual([...EXCEPTIONS].filter((slug) =>
-      borrowing.includes(slug),
-    ));
+    expect(borrowing).toEqual([...EXCEPTIONS].filter((slug) => borrowing.includes(slug)));
   });
 });
