@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.118
+version: 5.5.119
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -145,7 +145,7 @@ migration prompt version) · `state` (Greenfield | Migration | Enforcement) · `
 | v5.4.0 — Dashboard MODULE_ERROR fix | 2026-10-08 | live log |
 | v5.5.0 — Dashboard controls / attribution / icons | 2026-10-08 | 25 gates green |
 | v5.5.1 — UR-005 build fix | 2026-10-08 | push |
-| v5.5.2 … v5.5.118 — the per-request patch series | 2026-10-11 … 2026-10-27 | change-log §3 (this file) |
+| v5.5.2 … v5.5.119 — the per-request patch series | 2026-10-11 … 2026-10-27 | change-log §3 (this file) |
 
 > §2 lists the **master / milestone tracks**. The per-request patch series after v5.5.1
 > (v5.5.2 … v5.5.99) is enumerated in §3; the front-matter `version` is the highest released
@@ -521,6 +521,18 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 - **R8 — audit age.** `status/audit-age.json` records the audit date, commit, scope and request; `README.md` names the current audit.
 - **Verification.** Corpus gate suite **27/27 green**. Application toolchain not run (Node 20.20.2; app requires Node ≥ 22; no deps) — app-side items are outside the corpus scope.
 - **Return.** `met` (corpus scope) — every AU finding closed; OI-1 (human attestation) and OI-3 (Docker/K8s) remain honest standing items, not defects.
+
+---
+
+### v5.5.119 — The Runner and Its Coverage Provider Move Together (RT-26) — 2026-10-27
+
+- 2026-10-27 · meta-prompt 5.2.0 · state=Enforcement · handoff=master-prompt:enforce · return=met
+- **Work order.** None. The record tiers were retired by `UR-20261026-102`, which directs that work after it is recorded here.
+- **RT-26 — an incoherent update, by configuration.** Dependabot raised `#61`: `@vitest/coverage-v8` 4.1.10 → 5.0.5 while `vitest` stayed at `^4.1.10`. A coverage provider's major must equal its runner's — the provider is loaded BY the runner — so that PR would break Gate 4 on an otherwise-healthy tree even after a clean rebase. Nothing in `dependabot.yml` said the two belong together.
+- **The fix.** A `vitest-major` group over `['vitest', '@vitest/*']` restricted to `update-types: ['major']`, so the pair always arrives in one PR. Restricting it to MAJOR keeps it **disjoint** from `npm-minor-patch` above: Dependabot requires a dependency to match at most one group, and an unrestricted pattern group would have overlapped every minor and patch bump of both packages.
+- **What this does not fix.** `#61` as raised is still incoherent and should not be merged; the group only prevents the next one. The other three majors (`vite` 8, `zod` 4, `recharts` 3) need code migration, not a dependency merge.
+- **Blocked, and stated plainly.** `@dependabot rebase` was requested on `#57`, `#58`, `#59` and `#60` after retargeting; Dependabot has not responded — no reply, no new commit — and `dependabot_security_updates` reads `disabled` on the repository. The bumps cannot be applied by hand either: `pnpm install --lockfile-only` cannot resolve this workspace (the V8 collector dies at 2 GB with no swap), so `pnpm-lock.yaml` cannot be regenerated faithfully, and a hand-edited lockfile fails the frozen-lockfile install in Gate 1. Progress needs either a responding Dependabot or a machine with pnpm and Node ≥ 22.
+- **Return.** `met` for the configuration; the bumps remain open.
 
 ---
 

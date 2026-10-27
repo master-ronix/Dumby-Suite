@@ -30,3 +30,14 @@ updates:
       npm-minor-patch:
         applies-to: version-updates
         update-types: ['minor', 'patch']
+      # THE RUNNER AND ITS COVERAGE PROVIDER MOVE TOGETHER, OR NOT AT ALL.
+      #
+      # `@vitest/coverage-v8`'s major must equal `vitest`'s major: the provider is loaded by the
+      # runner, and a provider one major ahead fails to load, taking Gate 4 (unit tests + coverage
+      # floors) down on an otherwise-healthy tree. Left ungrouped, Dependabot raised exactly that —
+      # a lone `@vitest/coverage-v8` 4 -> 5 against `vitest` still on ^4. Restricting this group to
+      # MAJOR keeps it disjoint from `npm-minor-patch` above, so no dependency matches two groups.
+      vitest-major:
+        applies-to: version-updates
+        patterns: ['vitest', '@vitest/*']
+        update-types: ['major']
