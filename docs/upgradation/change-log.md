@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.126
+version: 5.5.127
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -80,8 +80,8 @@ completed step's record is missing.
 
 ## 9. Record
 
-> **Population status:** §1–§5 are populated. §3 carries the version history through v5.5.126 and
-> the 2026-10-27 enforcement pass. The corpus gate suite is **29 gates, all green** at HEAD.
+> **Population status:** §1–§5 are populated. §3 carries the version history through v5.5.127 and
+> the 2026-10-27 module-boundary change. The corpus gate suite is **29 gates, all green** at HEAD.
 
 ### 1. Scope & Method
 
@@ -521,6 +521,20 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 - **R8 — audit age.** `status/audit-age.json` records the audit date, commit, scope and request; `README.md` names the current audit.
 - **Verification.** Corpus gate suite **27/27 green**. Application toolchain not run (Node 20.20.2; app requires Node ≥ 22; no deps) — app-side items are outside the corpus scope.
 - **Return.** `met` (corpus scope) — every AU finding closed; OI-1 (human attestation) and OI-3 (Docker/K8s) remain honest standing items, not defects.
+
+---
+
+### v5.5.127 — Module Boundary: the Capability Surface and Structural Isolation (MB-1 … MB-3) — 2026-10-27
+
+- 2026-10-27 · meta-prompt 5.2.0 · state=Enforcement · handoff=master-prompt:enforce · return=unmet
+- 2026-10-27 · master-prompt 5.2.0 · enforce · subsystem=module-system · verdict=PARTIAL
+- **Work order.** `UR-20261027-105` — the operator directive of 2026-10-27, raised on this branch at `5d01df7`. The work-order probe stays INACTIVE (no open ledger item), so the chain is State C — Enforcement; the record is a scoped implementation, not an enforcement pass, and `return=unmet` because `MB-4` is not implemented.
+- **`MB-1` — the core base was handed to every module.** `loader.ts` called `mod.onLoad?.(this.container)`: the whole DI container, all 22 core tokens, for every tier. A Standard or Marketplace module could resolve `core.Db` (SQL, and every row the framework holds), `core.CommandRegistry` (every slash command registered to any profile or guild), `core.Scheduler`, `core.Queue`, `core.EventBus` and `core.ModuleRegistry`, exactly as a Core module can. A module is now handed a **guarded container**: Core and Admin hold all 24 capabilities; Standard and Marketplace hold the baseline eight (`logging`, `config.read`, `cache`, `metrics`, `i18n`, `presentation.render`, `permissions.resolve`, `global.data.emit`) and are refused the rest at the point of use, by a throw that names the module, the tier and the capability. `freeze`, `createChild` and `createScope` are refused to non-privileged tiers as well — a module that could freeze or fork the root container could reshape the framework for every other module. Every core token is mapped to a capability, and an unmapped token is unreachable by every tier, so adding a token cannot silently widen the surface.
+- **`MB-2` — isolation is now structural.** The global data emit channel (`emit`/`on` over the reserved `global.data.<topic>` namespace) is the one sanctioned way a module shares anything: the payload is validated as JSON, so no function, class instance or database client can travel through it, and every delivery is stamped with the emitting module, so a subscriber can never address the emitter back. The internal event bus is not a capability any non-core tier holds, so a module reaches the shared channel and not the bus underneath it. The module lint config drops the `forCrossModuleRead` escape hatch it advertised but never implemented, bans bare cross-module package imports as well as deep ones, and bans `@workspace/dumby` — the static half now agrees with the runtime half.
+- **`MB-3` — four identical entrypoints.** `core.ts`, `admin.ts`, `standard.ts` and `marketplace.ts` were byte-identical, so the tiers differed in name only. Each now states its surface: core and admin re-export the full capability set, standard and marketplace export the baseline and name the withheld capabilities in the file. This is documentary and ergonomic, not type-level — the SDK's `defineModule<Container>` stays generic, so the load-bearing enforcement is `MB-1`'s runtime guard. Per-tier overloads are a follow-up.
+- **`MB-4` — NOT implemented.** Module *processes* are not yet held to the same registry, ownership and state model as commands: the gates are per-surface and divergent (commands fail closed per guild, events and jobs fail open, cron tasks are gated fleet-wide), a process carries no `{profileId, guildId, enabledBy, enabledAt, trigger}` provenance, and disabling stops the next tick rather than terminating running work. The approach is specified in full at `UR-20261027-105` §3.4 — one standing read, a `ProcessRegistry`, an `AbortSignal` contract on `BaseTask.execute` / `BaseProcessor.process`, a `module.state.disabled` trigger on the internal bus, and the provenance fields on `ModuleExecutionContext`. It is not claimed as done.
+- **Verification.** Documentation gates **29/29 green**, including `check-generated`, `check-counts` (18/18 verified, the tree and code counts moved for the new files) and `check-ur`. The application toolchain (`tsc`, `vitest`) was **not run locally** — no dependency tree is installed in this environment — so every type and test claim rests on the CI run for the pushed commit, which this entry reports separately once it exists.
+- **Return.** `unmet` for the record as a whole: `MB-1` … `MB-3` land, `MB-4` does not.
 
 ---
 
