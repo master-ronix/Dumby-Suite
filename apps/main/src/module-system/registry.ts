@@ -1,6 +1,7 @@
 import type { CommandDeclaration } from '@workspace/swastik';
 import type { Container } from '../di/container.js';
 import type { ModuleManifest } from './manifest.schema.js';
+import type { ModulePage } from '@workspace/swastik';
 
 /** §5.9 — a module-declared BullMQ job processor (registered against its named queue). */
 export interface ModuleJobDeclaration {
@@ -44,6 +45,8 @@ export interface LoadedModule {
   events?: readonly ModuleEventHandlerDeclaration[];
   /** §29.6 — the module's cron tasks; the loader registers them with the scheduler. */
   tasks?: readonly ModuleTaskDeclaration[];
+  /** UR-20261027-106 — the pages the MODULE owns; the loader registers them with the page registry. */
+  pages?: readonly ModulePage[];
   onLoad?: (container: Container) => Promise<void> | void;
   onReady?: (container: Container) => Promise<void> | void;
   /** UR-20261012-071 — §11.7's DISABLED → ENABLED hook: start the module's active processes. */

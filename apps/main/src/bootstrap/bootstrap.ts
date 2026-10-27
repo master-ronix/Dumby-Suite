@@ -873,6 +873,8 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   // getter closes over the client the live branch assigns later.
   let discordClient: Client | undefined;
   const pageDataProvider = createPageDataProvider({
+    // UR-20261027-106 — pages a MODULE owns answer before the switch below.
+    pages: moduleLoader.pages,
     // Q1-Q4 — /health reports the PROFILE that ran it: her client, her registry, her start time. The
     // runtime is constructed far below this point, so the read is late-bound; before it exists, the
     // host's own view is the honest answer rather than a guess.

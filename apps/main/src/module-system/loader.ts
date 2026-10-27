@@ -19,6 +19,7 @@ import type { Scheduler } from '../queue/scheduler.js';
 import { runWithModuleContext } from '@workspace/swastik';
 import type { ModuleContextResolver } from './execution-context.js';
 import { withModuleCapabilities } from './module-capabilities.js';
+import { PageRegistry } from './page-registry.js';
 import { makeGlobalDataEmit, makeUnavailableGlobalData } from './global-data-emit.js';
 import type { InternalEventBus } from '../events/event-bus.js';
 
@@ -81,6 +82,11 @@ const FRAMEWORK_VERSION = '5.0.0';
 const FIRST_PARTY_DEV_ID = 'dev_first_party';
 
 export class ModuleLoader {
+  /**
+   * UR-20261027-106 — the pages modules own. `rendering/page-data.ts` consults this BEFORE its own
+   * switch, so a module that declares a page takes over its own surface.
+   */
+  readonly pages = new PageRegistry();
   constructor(
     private readonly registry: ModuleRegistry,
     private readonly container: Container,
@@ -213,6 +219,10 @@ export class ModuleLoader {
               );
             }
           }
+        }
+        // UR-20261027-106 — register the pages the module owns.
+        if (mod.pages !== undefined) {
+          for (const page of mod.pages) this.pages.register(mod.manifest.name, page);
         }
         // §5.9 — register the module's declared job queues against the queue manager.
         if (mod.jobs !== undefined) {
