@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.119
+version: 5.5.120
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -145,7 +145,7 @@ migration prompt version) · `state` (Greenfield | Migration | Enforcement) · `
 | v5.4.0 — Dashboard MODULE_ERROR fix | 2026-10-08 | live log |
 | v5.5.0 — Dashboard controls / attribution / icons | 2026-10-08 | 25 gates green |
 | v5.5.1 — UR-005 build fix | 2026-10-08 | push |
-| v5.5.2 … v5.5.119 — the per-request patch series | 2026-10-11 … 2026-10-27 | change-log §3 (this file) |
+| v5.5.2 … v5.5.120 — the per-request patch series | 2026-10-11 … 2026-10-27 | change-log §3 (this file) |
 
 > §2 lists the **master / milestone tracks**. The per-request patch series after v5.5.1
 > (v5.5.2 … v5.5.99) is enumerated in §3; the front-matter `version` is the highest released
@@ -521,6 +521,17 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 - **R8 — audit age.** `status/audit-age.json` records the audit date, commit, scope and request; `README.md` names the current audit.
 - **Verification.** Corpus gate suite **27/27 green**. Application toolchain not run (Node 20.20.2; app requires Node ≥ 22; no deps) — app-side items are outside the corpus scope.
 - **Return.** `met` (corpus scope) — every AU finding closed; OI-1 (human attestation) and OI-3 (Docker/K8s) remain honest standing items, not defects.
+
+---
+
+### v5.5.120 — The Dependency Backlog Is Carried, Not Closed (RT-27) — 2026-10-27
+
+- 2026-10-27 · meta-prompt 5.2.0 · state=Enforcement · handoff=master-prompt:enforce · return=met
+- **Work order.** None. The record tiers were retired by `UR-20261026-102`, which directs that work after it is recorded here.
+- **RT-27 — the fix is inert from here.** Dependabot reads `dependabot.yml` from the **default branch**, which is `main`. So `target-branch: feature/dev` (RT-25) and the `vitest-major` group (RT-26) are committed and green on `feature/dev` but cannot take effect until they reach `main` — and `main` is outside the scope this work is permitted to write. The proof is `#62`: raised *after* the config change landed, it still arrived against `main`, with 40 updates instead of 35, because Dependabot was still reading the old configuration.
+- **The owner's decisions, recorded.** (1) They will merge the `dependabot.yml` change into `main` themselves — commits `7a8d3957` (target-branch) and `12982028` (vitest group), both touching only `.github/dependabot.yml` and this file. (2) The three majors stay **open** as separate migrations, now carried as `OI-9`. (3) `#62` is to be re-resolved by Dependabot rather than by hand.
+- **What changed hands.** `#57` was superseded by `#62`; `#58`, `#59`, `#60` and `#62` are retargeted to `feature/dev`; `#61` carries an explanation of why it must not be merged and no rebase was triggered for it.
+- **Return.** `met` for what was in scope; the dependency work is carried by the owner, with the blocker and its cause stated rather than left implicit.
 
 ---
 
@@ -3000,5 +3011,6 @@ Every carried residual now states its owner, status, and blocker — none is a s
 | OI-6 | 24 logged deviations (appendix-c) | framework-maintainers | **resolved** | `appendix-c` carries the ownership note; each item owned or deferred. |
 | OI-7 | Branch-divergence decision (`main` vs `feature/dev`) | operator | **resolved** | Dual-branch model recorded: `feature/dev` is the development branch, `main` the deployment branch; every change lands on `feature/dev` first and is promoted to `main`. |
 | OI-8 | CI enforcement inert — Actions jobs refused at start | operator | **resolved** | Account billing was cleared. Run `40401729675` on `42c256bfa` is green across all twenty gate steps, the Integration suite against live Postgres and Redis, and the Docker build — the first green CI on `feature/dev` since 2026-10-23. Every commit after that date is now CI-verified as part of the tree. |
+| OI-9 | Three **major** dependency updates open — `vite` 7→8, `zod` 3→4 (runtime, both `apps/main` and `packages/swastik`), `recharts` 2→3 | operator | **open — deferred** | The owner will do these as separate migrations on a machine with pnpm and Node ≥ 22. They cannot be applied or verified from the corpus sandbox: `pnpm install --lockfile-only` cannot resolve the workspace (V8 collector dies at 2 GB with no swap), so `pnpm-lock.yaml` cannot be regenerated faithfully and a hand-edited lockfile fails the frozen-lockfile install in Gate 1. `@vitest/coverage-v8` 4→5 was incoherent as raised and is now grouped with `vitest` (RT-26). |
 | — | M18 `/modules` corrections & disable enforcement | engineering | **resolved (DONE)** | Disable enforcement present; `disable-behaviour.spec.ts` passes. |
 | — | M74 / M82 | operator | **M74 confirmed; M82 closed** | M74's ownership model (`upgradation/UR-20261012-059.md`) is confirmed by operator directive; its implementation is a code item outside the docs corpus. M82 closed — superseded by M83 (DONE). |
