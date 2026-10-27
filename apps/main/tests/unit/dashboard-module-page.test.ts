@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, test, expect } from 'vitest';
 import { dashboardPage } from '@module-dashboard-page';
 import type { ModulePageReadModel, ModuleSummary } from '@workspace/swastik';
@@ -75,6 +77,18 @@ const fixtures: ModuleFixture[] = [
 ];
 
 describe('dashboard module page — the composition that moved out of page-data.ts', () => {
+  // The loader registers `pages`, not the page's own export name. Declaring the page and never
+  // exporting it as `pages` left the registry empty and /dashboard rendering nothing — a live
+  // regression no other test could see, because nothing else asserts the module's export surface.
+  test('the module exports the `pages` array the loader registers', () => {
+    const index = readFileSync(
+      fileURLToPath(new URL('../../../packages/modules/dashboard/src/index.ts', import.meta.url)),
+      'utf8',
+    );
+    expect(index).toMatch(/export const pages = \[/);
+    expect(index).toMatch(/export const pages = \[dashboardPage\]/);
+  });
+
   test('page 0 lists every core module command with its own icon', async () => {
     const data = await dashboardPage.render(ctx(0), readModel(fixtures));
     expect(data.lines).toEqual(['[dumby_health] `/health`', 'FALLBACK `/dashboard`']);

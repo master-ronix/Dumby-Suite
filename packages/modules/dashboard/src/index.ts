@@ -35,7 +35,16 @@ export async function onUnload(): Promise<void> {
 
 // UR-20261027-106 — the module OWNS its page. The loader registers it; the host consults the registry
 // before its own switch, so this composition is what renders /dashboard.
+import { dashboardPage } from "./pages/dashboard.page.js";
+
 export {
   dashboardPage,
   type DashboardPageData,
 } from "./pages/dashboard.page.js";
+
+/**
+ * The surface the LOADER reads. It registers `pages`, not the individual export names — declaring the
+ * page and never exporting it here left the registry empty and `/dashboard` rendering nothing, which
+ * is the one failure this shape makes possible.
+ */
+export const pages = [dashboardPage];
