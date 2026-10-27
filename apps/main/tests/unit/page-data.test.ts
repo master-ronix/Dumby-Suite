@@ -382,31 +382,92 @@ describe('page-data provider', () => {
     expect(lines.every((line) => !line.includes('v1.0.0'))).toBe(true);
   });
 
-  test('dashboard page 0 renders the core command list with icons', async () => {
+  // UR-20261027-106 — /dashboard is a MODULE page now. Its composition lives in
+  // packages/modules/dashboard, which apps/main does not depend on, so these cases test the DISPATCH:
+  // a registered page answers instead of the switch, and it receives a read-model scoped to the
+  // request. The module's own composition is tested where it lives.
+  function pageReturning(result: unknown, spy?: (ctx: unknown, read: unknown) => void): unknown {
+    return {
+      id: 'dashboard',
+      render: async (ctx: unknown, read: unknown) => {
+        spy?.(ctx, read);
+        return result;
+      },
+    };
+  }
+
+  test('a registered page answers instead of the built-in switch', async () => {
+    const seen: { ctx?: Dict; read?: Dict } = {};
+    const provider = createPageDataProvider(
+      makeDeps({
+        pages: {
+          get: (id: string) =>
+            id === 'dashboard'
+              ? {
+                  id,
+                  moduleId: 'dashboard',
+                  page: pageReturning({ lines: ['from the module'] }, (ctx, read) => {
+                    seen.ctx = ctx as Dict;
+                    seen.read = read as Dict;
+                  }),
+                }
+              : undefined,
+        },
+      }),
+    );
+    const data = await provider('dashboard', 'guild-1', 2, undefined, 'app-1', 'persona-7');
+    expect(data['lines']).toEqual(['from the module']);
+    // The context carries the request's own guild, application, profile and page — nothing else.
+    expect(seen.ctx).toEqual({
+      guildId: 'guild-1',
+      applicationId: 'app-1',
+      profileId: 'persona-7',
+      page: 2,
+    });
+  });
+
+  test('the page receives a read-model answering from the registry', async () => {
+    let modules: unknown;
+    const provider = createPageDataProvider(
+      makeDeps({
+        pages: {
+          get: (id: string) =>
+            id === 'dashboard'
+              ? {
+                  id,
+                  moduleId: 'dashboard',
+                  page: {
+                    id,
+                    render: async (_ctx: unknown, read: { list(): Promise<unknown> }) => {
+                      modules = await read.list();
+                      return {};
+                    },
+                  },
+                }
+              : undefined,
+        },
+      }),
+    );
+    await provider('dashboard', null, 0, undefined, 'app-1', 'main');
+    // The registry above carries health/dashboard/hello-world/browse; the read-model reports them.
+    expect((modules as { slug: string }[]).map((m) => m.slug)).toEqual([
+      'health',
+      'dashboard',
+      'hello-world',
+      'browse',
+    ]);
+  });
+
+  test('a page no module owns still falls through to the built-in switch', async () => {
+    const provider = createPageDataProvider(makeDeps({ pages: { get: () => undefined } }));
+    const data = await provider('health', null, 0, undefined, 'app-1', 'main');
+    expect((data['lines'] as string[]).some((line) => line.includes('/health'))).toBe(true);
+  });
+
+  test('with no page registered, /dashboard answers nothing — the module owns it now', async () => {
     const provider = createPageDataProvider(makeDeps());
     const data = await provider('dashboard', null, 0, undefined, 'app-1', 'main');
-    const lines = data['lines'] as string[];
-    // UR-20261011-009 — a module with no declared logo shows the framework FALLBACK logo (📦),
-    // not the white-square decoration (which is only for a module page's own command list).
-    expect(lines).toContain('📦 `/health`');
-    expect(data['pageTotal']).toBe(2);
-  });
-
-  test('dashboard page 1 renders the standard module page with its commands, icon and identity', async () => {
-    const provider = createPageDataProvider(makeDeps());
-    const data = await provider('dashboard', null, 1, undefined, 'app-1', 'main');
-    // item 4 — the module icon sits beside every module command list, module pages included.
-    expect(data['lines']).toEqual(['⬜ `/hello`']);
-    // item 7 — the page names its owning module, so the frame resolves THAT module's identity
-    // (its banner and footer), not the dashboard's.
-    expect(data['pageModuleId']).toBe('hello-world');
-    expect(data['pageModuleName']).toBe('Hello World');
-  });
-
-  test('dashboard page out of range falls back to the main page', async () => {
-    const provider = createPageDataProvider(makeDeps());
-    const data = await provider('dashboard', null, 99, undefined, 'app-1', 'main');
-    expect(data['page']).toBe(0);
+    expect(data).toEqual({});
   });
 
   test('marketplace lists available modules without an in-content title', async () => {

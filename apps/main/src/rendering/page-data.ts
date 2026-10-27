@@ -829,102 +829,6 @@ export function createPageDataProvider(deps: PageDataDeps): (
   // items 4/5/8 — every module command list carries the module icon asset beside it (the main page
   // and every module page alike), and a module page lists only that module's commands, under their
   // CURRENT (BCCM-effective) name and status.
-  async function dashboard(
-    page: number,
-    guildId: string | null,
-    applicationId: string,
-    actingProfileId: string,
-  ): Promise<PageData> {
-    const all = moduleRegistry.all();
-    // UR-20261011-011 — a disabled standard module has NO page on the dashboard (its commands are
-    // not registered for the guild either, §17.6).
-    const enabledBySlug = await enabledStates(guildId);
-    // UR-20261012-061 — only the standard modules THIS profile holds.
-    const dashboardEntries = await Promise.all(
-      all
-        .filter((entry) => entry.manifest.tier === 'standard')
-        .map(async (entry) => ({
-          entry,
-          mine: await ownedBy(guildId, entry.manifest.name, 'standard', actingProfileId),
-        })),
-    );
-    // item 6 — the DIAL's serial order: a module page is ordered by WHEN THE MODULE WAS INSTALLED in
-    // this guild, so a module keeps its place as others come and go. `guild_module_states.createdAt`
-    // is that moment; a module with no row (never explicitly installed) sorts last, deterministically.
-    const installedAt = new Map<string, number>();
-    if (guildId !== null) {
-      const rows = (await db
-        .knex('guild_module_states')
-        .select('moduleSlug', 'createdAt')
-        .where({ guildId })
-        .whereNull('deletedAt')) as unknown as { moduleSlug: string; createdAt: unknown }[];
-      for (const row of rows) {
-        const parsed = Date.parse(String(row.createdAt));
-        installedAt.set(row.moduleSlug, Number.isNaN(parsed) ? Number.MAX_SAFE_INTEGER : parsed);
-      }
-    }
-    const installRank = (slug: string): number => installedAt.get(slug) ?? Number.MAX_SAFE_INTEGER;
-
-    const standard = dashboardEntries
-      .filter((r) => r.mine && (enabledBySlug.get(r.entry.manifest.name) ?? true))
-      .map((r) => r.entry)
-      .sort((a, b) => installRank(a.manifest.name) - installRank(b.manifest.name));
-    const pageTotal = 1 + standard.length;
-
-    // item 6 — the navigation entries, in that same order: one per module page, carrying the module's
-    // declared logo NAME (the router resolves it for the acting application) so the option can show
-    // the module's own icon, and the module's description verbatim.
-    const navigation = standard.map((entry, index) => ({
-      id: entry.manifest.name,
-      name: entry.manifest.ui?.displayName ?? titleCaseId(entry.manifest.name),
-      description: entry.manifest.description,
-      page: index + 1,
-      ...(entry.manifest.ui?.icon !== undefined ? { iconName: entry.manifest.ui.icon } : {}),
-      // The module's OWN accent, when it declares one: the module's page then renders in it, and
-      // falls back to the acting profile's accent (a persona's, or the neutral gray) when it does not.
-      ...(entry.manifest.ui?.accent !== undefined ? { accent: entry.manifest.ui.accent } : {}),
-    }));
-
-    if (page >= 1 && page <= standard.length) {
-      const entry = standard[page - 1];
-      if (entry !== undefined) {
-        const effective = await resolveEffectiveCommandNames(db.knex, guildId);
-        const statuses = await resolveCommandStatuses(db.knex, guildId);
-        // UR-20261011-009 — a module page's command list carries the squared marker (`dumby_modules`,
-        // the modules module's grid), NOT the module-logo fallback (`dumby_module`, a cube). The list
-        // reads as "this module's commands".
-        const icon = commandMarkerIcon(applicationId);
-        const lines = entry.manifest.commands.map((command) => {
-          const current = effectiveCommandName(effective, command.name);
-          const status = statuses.get(command.name) ?? 'enabled';
-          const suffix = status === 'disabled' ? '  · disabled' : '';
-          return `${icon} \`/${current}\`${suffix}`;
-        });
-        // item 7 — the page names its owning module, so the frame carries THAT module's banner,
-        // footer and identity (the hello-world page shows the default banner, not the dashboard's).
-        return {
-          lines,
-          pageTotal,
-          page,
-          navigation,
-          pageModuleId: entry.manifest.name,
-          pageModuleName: entry.manifest.ui?.displayName ?? titleCaseId(entry.manifest.name),
-        };
-      }
-    }
-
-    // item 6 - the main page combines every CORE-tier module's commands, each with its module icon.
-    const lines: string[] = [];
-    for (const entry of all) {
-      if (entry.manifest.tier !== 'core') continue;
-      const icon = moduleIcon(entry.manifest.ui?.icon, applicationId);
-      for (const command of entry.manifest.commands) {
-        lines.push(`${icon} \`/${command.name}\``);
-      }
-    }
-    return { lines, pageTotal, page: 0, navigation };
-  }
-
   // items 1/5/6 — /browse is marketplace discovery. No in-content heading (the frame title already
   // names the surface — item 1). It lists the available, not-installed marketplace modules (item 5);
   // with a search query (item 5b) it lists only the name/description matches. The listing caps at
@@ -1225,8 +1129,6 @@ export function createPageDataProvider(deps: PageDataDeps): (
         return queue(guildId);
       case 'permit':
         return permit(applicationId);
-      case 'dashboard':
-        return dashboard(page, guildId, applicationId, actingProfileId);
       case 'browse':
         return marketplace(query, guildId, applicationId, actingProfileId);
       case 'modules':
