@@ -245,13 +245,13 @@ Test coverage should be written in priority order using the existing DI infrastr
 
 ### 44.1.1 Kind-Based End-to-End K8s Script
 
-`scripts/kind-dev-up.sh` provisions a local Kubernetes cluster end-to-end to reduce friction for local testing of Dumby.
+`scripts/kind-dev-up.sh` is specified to provision a local Kubernetes cluster end-to-end to reduce friction for local testing of Dumby. **Status: not present in the tree** — no `kind`-related script exists under `scripts/` or `apps/main/scripts/`; the steps below are the intended behaviour, not a description of a shipped script.
 
 **Steps performed by the script:**
 1. Create a Kind cluster (or reuse an existing one).
 2. Build the Docker image and load it into the Kind node (`kind load docker-image`).
 3. Create the `dumby-secrets` Secret from local env/values.
-4. Apply kustomize overlays under `deploy/k8s/overlays/staging/`.
+4. Apply kustomize overlays under `apps/main/deploy/k8s/overlays/staging/`.
 
 **.
 

@@ -516,8 +516,8 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 - **R1/R2 — gate-truth restored.** `blueprint/structure.md` and `spec/architecture/directory-file-structure.md` regenerated to the tree; `check-side-docs.mjs` generalised to match every phrasing of the entry count, not one.
 - **R3/R4 — provenance re-unified.** One canonical commit across `status/code-reconciliation.json`, `GAP_MANIFEST.md` (ref + prose), `migration/migration-prompt.md` and the audit line in `README.md`; `verified_at` added; `check-side-docs.mjs` now fails on any stale commit literal in the provenance surfaces.
 - **R5 — version model reconciled.** change-log front-matter, §2 note and §9 population line all at the highest track; the `v5.5.96`/`v5.5.97` OI-7 statements reconciled.
-- **R6 — guard-class closure.** `migration-prompt.md` no longer restates the UR count; the gate-count guard now covers the change-log head; the 121-vs-live distinction is stated in `archive/v5.0.0-records/upgradation/README.md`.
-- **R7 — records hygiene.** change-log §3 early bodies explicitly marked header-only (§2 basis updated); the `migration-prompt.md` §3 template tokens marked as shapes, not values.
+- **R6 — guard-class closure.** `migration/migration-prompt.md` no longer restates the UR count; the gate-count guard now covers the change-log head; the 121-vs-live distinction is stated in `archive/v5.0.0-records/upgradation/README.md`.
+- **R7 — records hygiene.** change-log §3 early bodies explicitly marked header-only (§2 basis updated); the `migration/migration-prompt.md` §3 template tokens marked as shapes, not values.
 - **R8 — audit age.** `status/audit-age.json` records the audit date, commit, scope and request; `README.md` names the current audit.
 - **Verification.** Corpus gate suite **27/27 green**. Application toolchain not run (Node 20.20.2; app requires Node ≥ 22; no deps) — app-side items are outside the corpus scope.
 - **Return.** `met` (corpus scope) — every AU finding closed; OI-1 (human attestation) and OI-3 (Docker/K8s) remain honest standing items, not defects.

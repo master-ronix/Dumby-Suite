@@ -209,7 +209,7 @@ review_state: pending-evidence
 
 #### [From §8 (Application Bootstrap & Lifecycle)] Design consideration — enforce the overhead budget as CI gates.
 
-> **Design consideration — enforce the overhead budget as CI gates.** The stated framework-overhead targets (P50 < 8 ms, P99 < 20 ms per command) are currently aspirations. `scripts/load-test.ts` should be wired into CI as a benchmarked gate so regressions against the budget fail the build — this budget is also the basis for rejecting per-command runtime policy checks. Impact: Medium; feasibility: Medium.
+> **Design consideration — enforce the overhead budget as CI gates.** The stated framework-overhead targets (P50 < 8 ms, P99 < 20 ms per command) are currently aspirations. `apps/main/scripts/load-test.ts` should be wired into CI as a benchmarked gate so regressions against the budget fail the build — this budget is also the basis for rejecting per-command runtime policy checks. Impact: Medium; feasibility: Medium.
 
 #### [From §8 (Application Bootstrap & Lifecycle)] Webhook Signature Verification Infrastructure
 
@@ -786,7 +786,7 @@ Maintain local command set.
 
 #### [From §40 (CI/CD Pipeline)] Function reference — Core Release Pipeline (Path A):
 
-> **Function reference — Core Release Pipeline (Path A):** Merge → CI (`ci.yml`, §40.1: tsc/ESLint/Prettier/Vitest with coverage) → Staging (`deploy-staging.yml`, §40.3: auto on merge, no human approval) → Production gate (`deploy-production.yml`, §40.4: two distinct human appro… Status: Implemented. Requirement: Maintain the two-approver manual production gate. touchpoints: `ci.yml` (§40.1); `deploy-staging.yml` (§40.3); `deploy-production.yml` (§40.4); Kubernetes rolling update (§33.2); 18-stage bootstrap (§8.2); 9-step graceful shutdown (§9.1).
+> **Function reference — Core Release Pipeline (Path A):** Merge → CI (`ci.yml`, §40.1: tsc/ESLint/Prettier/Vitest with coverage) → Staging (`.github/workflows/deploy-staging.yml`, §40.3: auto on merge, no human approval) → Production gate (`.github/workflows/deploy-production.yml`, §40.4: two distinct human appro… Status: Implemented. Requirement: Maintain the two-approver manual production gate. touchpoints: `.github/workflows/ci.yml` (§40.1); `.github/workflows/deploy-staging.yml` (§40.3); `.github/workflows/deploy-production.yml` (§40.4); Kubernetes rolling update (§33.2); 18-stage bootstrap (§8.2); 9-step graceful shutdown (§9.1).
 #### [From §40 (CI/CD Pipeline)] SBOM / Hash Computation
 
 #### [From §40 (CI/CD Pipeline)] Release Manager Complete Release Workflow Sequence
@@ -902,7 +902,7 @@ Maintain local command set.
 
 ####
 
-> the third Terraform module `cache` (note: the repo directory is currently named `redis` in `deploy/terraform/modules/redis/`; it must be renamed to `cache` to match the spec, or a documented exception must be recorded)
+> the third Terraform module `cache` (note: the repo directory is currently named `redis` in `apps/main/deploy/terraform/modules/redis/`; it must be renamed to `cache` to match the spec, or a documented exception must be recorded)
 
 #### [From §41 (Infrastructure & Deployment)] import / require of manifest (RCE path)
 
@@ -932,7 +932,7 @@ Maintain local command set.
 
 #### [From §41 (Infrastructure & Deployment)] Design consideration — end-to-end deployment flow.
 
-> **Design consideration — end-to-end deployment flow.** The runbook's six-step flow (Terraform apply, kubeconfig, Docker build/push to ECR, `kubectl apply -k`, migrate, verify readiness) should be codified end to end: `deploy-staging.yml` and `deploy-production.yml` already automate the later steps, and the Terraform-output-to-Secret handoff is the least-automated link to close. Impact: Medium; feasibility: High.
+> **Design consideration — end-to-end deployment flow.** The runbook's six-step flow (Terraform apply, kubeconfig, Docker build/push to ECR, `kubectl apply -k`, migrate, verify readiness) should be codified end to end: `.github/workflows/deploy-staging.yml` and `.github/workflows/deploy-production.yml` already automate the later steps, and the Terraform-output-to-Secret handoff is the least-automated link to close. Impact: Medium; feasibility: High.
 
 #### [From §41 (Infrastructure & Deployment)] Roadmap note — dry-run upload endpoint.
 
