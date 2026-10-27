@@ -10,12 +10,8 @@
  * enforced by `packages/modules/eslint.config.mjs`; the runtime half by the guarded container the
  * loader hands every module, which refuses a capability its tier does not hold.
  */
-export type {
-  ModuleCommandManifest,
-  ModuleManifest,
-  SwastikModule,
-} from "../manifest.js";
-export { defineModule } from "../manifest.js";
+export type { ModuleCommandManifest, ModuleManifest, SwastikModule } from '../manifest.js';
+export { defineModule } from '../manifest.js';
 export {
   baselineCapabilities,
   coreOnlyCapabilities,
@@ -26,4 +22,4 @@ export {
   type ModuleCapability,
   type ModuleRuntime,
   type ModuleRuntimeExtras,
-} from "../capabilities.js";
+} from '../capabilities.js';

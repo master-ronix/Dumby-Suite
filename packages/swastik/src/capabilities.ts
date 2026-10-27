@@ -98,12 +98,7 @@ export interface GlobalDataDelivery {
 }
 
 export type JsonValue =
-  | string
-  | number
-  | boolean
-  | null
-  | JsonValue[]
-  | { [key: string]: JsonValue };
+  string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 
 /**
  * What a module receives in place of the raw container. It IS the container, narrowed: the guard

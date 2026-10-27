@@ -9,12 +9,8 @@
  *
  * Sharing with another module happens on the global data emit channel and nowhere else.
  */
-export type {
-  ModuleCommandManifest,
-  ModuleManifest,
-  SwastikModule,
-} from "../manifest.js";
-export { defineModule } from "../manifest.js";
+export type { ModuleCommandManifest, ModuleManifest, SwastikModule } from '../manifest.js';
+export { defineModule } from '../manifest.js';
 export {
   baselineCapabilities,
   type GlobalDataDelivery,
@@ -23,4 +19,4 @@ export {
   type ModuleCapability,
   type ModuleRuntime,
   type ModuleRuntimeExtras,
-} from "../capabilities.js";
+} from '../capabilities.js';

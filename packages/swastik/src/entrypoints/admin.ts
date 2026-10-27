@@ -5,12 +5,8 @@
  * same capabilities as core, plus the tier rules the manifest schema enforces (`devGuildOnly: true`).
  * It is not a wider surface than core: no tier reaches further than the internal core base.
  */
-export type {
-  ModuleCommandManifest,
-  ModuleManifest,
-  SwastikModule,
-} from "../manifest.js";
-export { defineModule } from "../manifest.js";
+export type { ModuleCommandManifest, ModuleManifest, SwastikModule } from '../manifest.js';
+export { defineModule } from '../manifest.js';
 export {
   baselineCapabilities,
   coreOnlyCapabilities,
@@ -21,4 +17,4 @@ export {
   type ModuleCapability,
   type ModuleRuntime,
   type ModuleRuntimeExtras,
-} from "../capabilities.js";
+} from '../capabilities.js';

@@ -84,10 +84,7 @@ const CORE_BASE_BAN = {
     'all. Share data through the global data emit channel.',
 };
 
-const restrictedImports = (patterns) => [
-  'error',
-  { paths: [EMBED_BAN], patterns },
-];
+const restrictedImports = (patterns) => ['error', { paths: [EMBED_BAN], patterns }];
 
 const perModuleBlocks = moduleDirs.flatMap((dir) => {
   const crossModule = crossModuleGroup(packageNameOf(dir));
@@ -99,11 +96,7 @@ const perModuleBlocks = moduleDirs.flatMap((dir) => {
     {
       files: [`packages/modules/${dir}/commands/**/*.ts`],
       rules: {
-        'no-restricted-imports': restrictedImports([
-          CORE_BASE_BAN,
-          crossModule,
-          REPOSITORY_GROUP,
-        ]),
+        'no-restricted-imports': restrictedImports([CORE_BASE_BAN, crossModule, REPOSITORY_GROUP]),
       },
     },
     {
@@ -112,11 +105,7 @@ const perModuleBlocks = moduleDirs.flatMap((dir) => {
         `packages/modules/${dir}/*.repository.ts`,
       ],
       rules: {
-        'no-restricted-imports': restrictedImports([
-          CORE_BASE_BAN,
-          crossModule,
-          EVENT_BUS_GROUP,
-        ]),
+        'no-restricted-imports': restrictedImports([CORE_BASE_BAN, crossModule, EVENT_BUS_GROUP]),
       },
     },
   ];

@@ -1,10 +1,6 @@
 import type { InternalEventBus } from '../events/event-bus.js';
 import type { Logger } from '../logging/logger.js';
-import type {
-  GlobalDataDelivery,
-  GlobalDataEmit,
-  JsonValue,
-} from '@workspace/swastik';
+import type { GlobalDataDelivery, GlobalDataEmit, JsonValue } from '@workspace/swastik';
 
 /**
  * The global data emit channel — the ONE sanctioned way a module shares data with another.
@@ -47,9 +43,7 @@ export function isJsonValue(value: unknown, seen: WeakSet<object> = new WeakSet(
   if (Array.isArray(value)) return value.every((entry) => isJsonValue(entry, seen));
   const prototype = Object.getPrototypeOf(value) as object | null;
   if (prototype !== Object.prototype && prototype !== null) return false;
-  return Object.values(value as Record<string, unknown>).every((entry) =>
-    isJsonValue(entry, seen),
-  );
+  return Object.values(value as Record<string, unknown>).every((entry) => isJsonValue(entry, seen));
 }
 
 export interface GlobalDataEmitOptions {
