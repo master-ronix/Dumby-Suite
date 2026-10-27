@@ -1,10 +1,10 @@
 {
   "$id": "docs/status/code-reconciliation.json",
   "title": "Docs ↔ Code reconciliation",
-  "note": "Every row compares what the NEW documentation asserts against the actual source in master-ronix/Dumby-Suite (apps/main at faf916a6306d3c59f2d35e0f4b3f18947c8bc8e4, branch feature/dev). Standing rule: the specification is authority; where the code is narrower, the code is the gap to close. The anchor is the last commit to touch apps/main|packages, so no commit after it can move the code under a row without the freshness gate failing. This re-anchor follows five dependency merges, none of which changed a row's subject: a manifest and lockfile change moves no code that any row describes, so the rows are re-anchored, not re-derived. Re-anchored 2026-10-27 to the module-boundary code change (UR-20261027-105): the loader, the module-system and the swastik surface moved, so every row was re-read against the new anchor; no existing row's subject changed, and REC-039 is added for the isolation claim.",
-  "verified_commit": "faf916a6306d3c59f2d35e0f4b3f18947c8bc8e4",
+  "note": "Every row compares what the NEW documentation asserts against the actual source in master-ronix/Dumby-Suite (apps/main at d047b3b9edf94e7fac06fd7ff124f0433223c0ee, branch feature/dev). Standing rule: the specification is authority; where the code is narrower, the code is the gap to close. The anchor is the last commit to touch apps/main|packages, so no commit after it can move the code under a row without the freshness gate failing. This re-anchor follows five dependency merges, none of which changed a row's subject: a manifest and lockfile change moves no code that any row describes, so the rows are re-anchored, not re-derived. Re-anchored 2026-10-27 to the module-boundary code change (UR-20261027-105): the loader, the module-system and the swastik surface moved, so every row was re-read against the new anchor; no existing row's subject changed, and REC-039 is added for the isolation claim.",
+  "verified_commit": "d047b3b9edf94e7fac06fd7ff124f0433223c0ee",
   "verified_branch": "feature/dev",
-  "verified_at": "2026-10-27T10:46:08Z",
+  "verified_at": "2026-10-27T14:23:21Z",
   "verdicts": [
     "match",
     "doc-incomplete",

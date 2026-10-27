@@ -155,8 +155,8 @@ None (conceptual).
 ## Acceptance
 ```acceptance
 - id: ACC-REF-0044-1
-  check: "The OpenAPI contract exists and declares a paths block (a presence check; endpoint parity is not asserted by this test and is carried by REC-036, REC-037 and REC-038 in status/code-reconciliation.json)"
-  test: tests/api/openapi-parity.spec.ts
+  check: "The OpenAPI contract and the mounted surface agree in both directions: every path the contract declares is registered by the server, and every path the server registers is declared by the contract"
+  test: tests/unit/openapi-parity.test.ts
 ```
 
 ## Edges (-> blueprint)
