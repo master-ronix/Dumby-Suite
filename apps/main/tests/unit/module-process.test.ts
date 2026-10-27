@@ -1,4 +1,4 @@
-import { describe, test, expect, vi } from 'vitest';
+import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   ProcessProvenanceError,
   ProcessRegistry,
@@ -212,37 +212,41 @@ function makeTask(name: string, run: (signal?: AbortSignal) => Promise<void>): B
 }
 
 describe('Scheduler — a disabled module’s process stops, and can be asked to stop early', () => {
-  test('a denied standing skips the run and keeps the task armed', async () => {
+  // The scheduler arms a real setTimeout for the cron's next occurrence, so the tests drive it with
+  // fake timers: `*/1` is one MINUTE, not one tick.
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const MINUTE = 60_000;
+
+  test('a denied standing skips the run, and the task stays armed', async () => {
     const ran = vi.fn(async () => {});
+    const denied = {
+      moduleId: 'hello-world',
+      guildId: 'g1',
+      profileId: 'main',
+      allowed: false,
+      reason: 'not-enabled' as const,
+      enabledBy: null,
+      enabledAt: null,
+    };
     const scheduler = new Scheduler({
       logger,
       lockStore: fakeLockStore(),
       standing: {
-        forGuild: async () => ({
-          moduleId: 'hello-world',
-          guildId: 'g1',
-          profileId: 'main',
-          allowed: false,
-          reason: 'not-enabled',
-          enabledBy: null,
-          enabledAt: null,
-        }),
-        forFleet: async () => ({
-          moduleId: 'hello-world',
-          guildId: null,
-          profileId: 'main',
-          allowed: false,
-          reason: 'not-enabled',
-          enabledBy: null,
-          enabledAt: null,
-        }),
+        forGuild: async () => denied,
+        forFleet: async () => ({ ...denied, guildId: null }),
       },
     });
     scheduler.register(makeTask('t', ran), 'hello-world', { guildId: 'g1' });
     scheduler.start();
-    await new Promise((resolve) => setTimeout(resolve, 30));
-    scheduler.stop();
+    await vi.advanceTimersByTimeAsync(MINUTE);
     expect(ran).not.toHaveBeenCalled();
+    scheduler.stop();
   });
 
   test('terminateModule aborts the signal and stops the task re-arming', async () => {
@@ -253,17 +257,17 @@ describe('Scheduler — a disabled module’s process stops, and can be asked to
     const scheduler = new Scheduler({ logger, lockStore: fakeLockStore() });
     scheduler.register(makeTask('t', ran), 'hello-world', { guildId: 'g1' });
     scheduler.start();
-    await new Promise((resolve) => setTimeout(resolve, 30));
-    expect(ran).toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(MINUTE);
+    expect(ran).toHaveBeenCalledTimes(1);
     expect(seen?.aborted).toBe(false);
 
     const stopped = scheduler.terminateModule('hello-world');
     expect(stopped).toBe(1);
     expect(seen?.aborted).toBe(true);
 
-    const callsAfter = ran.mock.calls.length;
-    await new Promise((resolve) => setTimeout(resolve, 40));
-    expect(ran.mock.calls.length).toBe(callsAfter);
+    // A further period must not fire it again: termination clears the timer and blocks re-arming.
+    await vi.advanceTimersByTimeAsync(MINUTE * 3);
+    expect(ran).toHaveBeenCalledTimes(1);
     scheduler.stop();
   });
 
@@ -274,13 +278,14 @@ describe('Scheduler — a disabled module’s process stops, and can be asked to
     scheduler.start();
     scheduler.terminateModule('hello-world');
     expect(scheduler.resumeModule('hello-world')).toBe(1);
-    await new Promise((resolve) => setTimeout(resolve, 30));
+    await vi.advanceTimersByTimeAsync(MINUTE);
+    expect(ran).toHaveBeenCalledTimes(1);
     scheduler.stop();
-    expect(ran).toHaveBeenCalled();
   });
 
   test('the run is recorded with its provenance while the module is enabled', async () => {
     const registry = new ProcessRegistry({ logger });
+    const enabledAt = new Date('2026-10-27T01:00:00Z');
     const scheduler = new Scheduler({
       logger,
       lockStore: fakeLockStore(),
@@ -293,16 +298,16 @@ describe('Scheduler — a disabled module’s process stops, and can be asked to
           guildId: 'g1',
           profileId: 'persona-3',
           allowed: true,
-          reason: 'enabled',
+          reason: 'enabled' as const,
           enabledBy: 'persona-3',
-          enabledAt: new Date('2026-10-27T01:00:00Z'),
+          enabledAt,
         }),
         forFleet: async () => ({
           moduleId: 'hello-world',
           guildId: null,
           profileId: 'persona-3',
           allowed: true,
-          reason: 'enabled',
+          reason: 'enabled' as const,
           enabledBy: null,
           enabledAt: null,
         }),
@@ -314,13 +319,15 @@ describe('Scheduler — a disabled module’s process stops, and can be asked to
       { guildId: 'g1' },
     );
     scheduler.start();
-    await new Promise((resolve) => setTimeout(resolve, 30));
+    await vi.advanceTimersByTimeAsync(MINUTE);
     scheduler.stop();
     const rows = registry.snapshot();
     expect(rows.length).toBeGreaterThan(0);
     expect(rows[0]?.kind).toBe('task');
     expect(rows[0]?.profileId).toBe('persona-3');
     expect(rows[0]?.profileKind).toBe('persona');
+    expect(rows[0]?.guildId).toBe('g1');
     expect(rows[0]?.enabledBy).toBe('persona-3');
+    expect(rows[0]?.state).toBe('completed');
   });
 });
