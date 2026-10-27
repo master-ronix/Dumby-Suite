@@ -2,19 +2,19 @@
   "schema": "audit-age/v1",
   "note": "Records when the corpus was last independently audited and against which commit, so audit staleness is visible the same way provenance staleness is. Read by check-side-docs (provenance rule) against the reconciliation ledger.",
   "last_audit": {
-    "date": "2026-10-26",
+    "date": "2026-10-27",
     "commit": "be0d123c6aac72dfd76369864860220996245bc0",
     "branch": "feature/dev",
-    "scope": "full-scope docs/ corpus audit + runtime-ownership code track + trigger-chain run",
-    "findings": "RT-1 \u2026 RT-11 (UR-20261026-097, -098, -100, -101); RT-7 CI blocker carried as OI-8 (UR-20261026-099); DOC-012 \u2026 DOC-016 closed earlier the same day",
-    "request": "archive/v5.0.0-records/upgradation/UR-20261026-101.md",
-    "re_anchored": "2026-10-27 \u2014 re-anchored 9c67e2cc \u2192 7cc721a6 (after Dependabot #62) \u2192 be0d123c (after the five dependency merges #63\u2013#67). Every hop was dependency-only: manifests and lockfile, no source under apps/main/src or packages/*/src. No row's subject changed, so the 2026-10-26 findings still hold at the new commit."
+    "scope": "full-scope docs/ corpus enforcement audit at HEAD c6c2c82 (343 files inventoried, all 29 gates run, the shipped HTTP surface compared against contracts/openapi.yaml) + trigger-chain run, State C - Enforcement",
+    "findings": "DOC-017 … DOC-024 (UR-20261027-104); the citation-integrity audit earlier the same day closed DOC-001 … DOC-013 under UR-20261027-103",
+    "request": "upgradation/UR-20261027-104.md",
+    "re_anchored": "2026-10-27 — re-anchored 9c67e2cc → 7cc721a6 (after Dependabot #62) → be0d123c (after the five dependency merges #63–#67). Every hop was dependency-only: manifests and lockfile, no source under apps/main/src or packages/*/src. No row's subject changed, so the 2026-10-26 findings still hold at the new commit."
   },
   "ci_enforcement": {
-    "verified": "2026-10-26",
-    "position": "CI is NOT inert. Actions runs execute on feature/dev; docs-gates passes (runs 40390270507, 40391257578 and the retirement commit 28d568a7). The earlier OI-8 reading - 'no Actions job has started since 2026-10-23, account billing block' - is falsified: 60 runs span 2026-10-23T18:57Z to 2026-10-26T10:11Z.",
-    "current_red_signal": "CI / Gates (D-8.4 strict sequence) fails at Gate 4 - unit tests + coverage floors. Gate 3 (format) failed earlier the same day and was fixed in fb4e361. Four tests remain red, all present at the base commit and untouched by the docs run: command-registry-router (2), persona-command-binding (1), interaction-registry (1).",
-    "owner": "code track - the four tests sit in behaviour governed by UR-20261012-067, -078, -080 and UR-20261026-098, and deciding test-versus-code per assertion needs those records closed first.",
-    "note": "Recorded here rather than in last_audit.findings, which is the historical record of the a3b093f9 audit and is not rewritten."
+    "verified": "2026-10-27",
+    "current_position": "CI is green at HEAD. Run 40475495976 on c6c2c82 (2026-10-27T08:43:27Z) succeeded across all three jobs: 'Gates (D-8.4 strict sequence)' - including Gate 1 typecheck, Gate 4 unit tests + coverage floors and Gate 5 build - plus 'Integration (live Postgres + Redis, D-8.10)' and 'Docker build (D-8.6 context = workspace root)'. 'docs-gates' (run 40475495951) succeeded on the same commit.",
+    "superseded_red_signal": "History, not a current claim: on 2026-10-26 the D-8.4 sequence was observed failing at Gate 4 - unit tests + coverage floors - with four tests red: command-registry-router (2), persona-command-binding (1), interaction-registry (1), all present at the base commit and untouched by that day's docs run. The reading was superseded by 42c256bfa (2026-10-26 21:15:30 +0000), the first green CI on feature/dev since 2026-10-23, and by every run since. It is kept here because the history is the record, not because it describes HEAD.",
+    "owner": "code track - the four tests sat in behaviour governed by UR-20261012-067, -078, -080 and UR-20261026-098; they pass at HEAD.",
+    "note": "Recorded here rather than in last_audit.findings, which is the record of the audit that raised it and is not rewritten."
   }
 }

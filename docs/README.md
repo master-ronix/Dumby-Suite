@@ -63,11 +63,13 @@ the application `tsc` / `vitest` (the app typecheck is a separate gate). Per-fil
 `upgradation/change-log.md`). A bare `5.x.y` in prose names the change-log track unless a
 document says otherwise.
 
-**Last independent audit.** 2026-10-26, against `feature/dev` @ `9c67e2cc`, re-anchored to
-`be0d123c` on 2026-10-27 after Dependabot `#63`–`#67` (dependency-only: manifests and lockfile, no
-source) — a full-scope corpus
-audit + runtime-ownership code track whose findings (RT-1 … RT-11) are formalised as
-`archive/v5.0.0-records/upgradation/UR-20261026-097.md`, `-098`, `-100` and `-101`; the prior audit's findings (DR-1 … DR-12,
+**Last independent audit.** 2026-10-27, against `feature/dev` @ `c6c2c82` — a full-scope corpus
+enforcement audit (all 343 files inventoried, all 29 gates run, the shipped HTTP surface compared
+against `contracts/openapi.yaml`) whose findings (DOC-017 … DOC-024) are formalised as
+`upgradation/UR-20261027-104.md`. The citation-integrity audit earlier the same day (DOC-001 …
+DOC-013) is `upgradation/UR-20261027-103.md`; the 2026-10-26 full-scope corpus audit + runtime-ownership
+code track (RT-1 … RT-11) is `archive/v5.0.0-records/upgradation/UR-20261026-097.md`, `-098`, `-100` and
+`-101`; and the audits before it (DR-1 … DR-12,
 `archive/v5.0.0-records/upgradation/UR-20261018-092.md`) and (AU-1 … AU-11, `archive/v5.0.0-records/upgradation/UR-20261016-091.md`) are closed
 under it. The audit's date, commit, scope and request are also recorded machine-readably in
 `status/audit-age.json`. The audit's date and commit are recorded here so audit staleness is visible the same way
