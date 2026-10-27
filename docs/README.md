@@ -12,14 +12,14 @@ gate-verified.
 - **`documentation/`** — the **nodes**: the wiki and the API book — what each part *is*.
 - **`spec/`** — the **behavioural source**: what each mechanism *must do*, by department.
 
-Supporting: `contracts/` (machine-readable interfaces) · `status/` (ledgers) · `adr/`
-(decision records) · `archive/v4.5.1/` (quarantined legacy) · `_inbox/` (the frozen
+Supporting: `contracts/` (machine-readable interfaces) · `status/` (ledgers) ·
+`archive/v5.0.0-records/adr/` (decision records) · `archive/v4.5.1/` (quarantined legacy) · `_inbox/` (the frozen
 pre-restructure source records the corpus was derived from) · `orchestration/ migration/
 upgradation/ prompts/` (build & migration assets) · `_generated/` (generated index).
 
 **Boundary.** `apps/main/docs/` (adr · api · architecture · compliance · privacy · runbooks ·
 security) is an application-local, **non-normative** set. It is **outside this corpus and its
-gates**; nothing there is an authority. The single normative ADR series is `adr/` (ADR-001 …
+gates**; nothing there is an authority. The single normative ADR series is `archive/v5.0.0-records/adr/` (ADR-001 …
 ADR-016). `check-corpus-boundary` guards this boundary; `apps/main/docs/` carries no corpus
 front-matter and makes no normative claim.
 
@@ -67,8 +67,8 @@ document says otherwise.
 `be0d123c` on 2026-10-27 after Dependabot `#62` (dependency-only: manifests and lockfile, no
 source) — a full-scope corpus
 audit + runtime-ownership code track whose findings (RT-1 … RT-11) are formalised as
-`upgradation/UR-20261026-097.md`, `-098`, `-100` and `-101`; the prior audit's findings (DR-1 … DR-12,
-`upgradation/UR-20261018-092.md`) and (AU-1 … AU-11, `upgradation/UR-20261016-091.md`) are closed
+`archive/v5.0.0-records/upgradation/UR-20261026-097.md`, `-098`, `-100` and `-101`; the prior audit's findings (DR-1 … DR-12,
+`archive/v5.0.0-records/upgradation/UR-20261018-092.md`) and (AU-1 … AU-11, `archive/v5.0.0-records/upgradation/UR-20261016-091.md`) are closed
 under it. The audit's date, commit, scope and request are also recorded machine-readably in
 `status/audit-age.json`. The audit's date and commit are recorded here so audit staleness is visible the same way
 provenance staleness is.

@@ -4,7 +4,7 @@
 //   1. docs/README.md must document the boundary (name `apps/main/docs`);
 //   2. no file under apps/main/docs/ may carry a corpus front-matter block (a leading `---`),
 //      which is how corpus membership is expressed;
-//   3. the normative ADR series is docs/adr/ (front-mattered, kind: adr).
+//   3. the normative ADR series is archive/v5.0.0-records/adr/ (front-mattered, kind: adr).
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -36,7 +36,7 @@ for (const f of walk(ALT)) {
   }
 }
 
-// 3. the normative ADR series lives in docs/adr/ and is front-mattered
+// 3. the normative ADR series lives in archive/v5.0.0-records/adr/ and is front-mattered
 const adrs = readdirSync('archive/v5.0.0-records/adr').filter((f) => /^ADR-\d+\.md$/.test(f));
 if (adrs.length === 0) {
   console.error('FAIL: archive/v5.0.0-records/adr carries no ADR-*.md records');

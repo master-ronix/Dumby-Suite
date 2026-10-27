@@ -29,7 +29,7 @@ review_state: pending-evidence
 
 **Core principle of this document:** Every surface defined below is issued by the core Renderer. Module authors declare command schemas; the Renderer derives the presentation, the components, and the flows. The Core Command Surface — `/dashboard`, `/health`, `/browse`, `/queue`, `/persona`, `/permit`, `/modules`, and `/hello` — is the reference implementation set for the grammar this document specifies.
 
-**Relationship to engineering authority:** Where this reference defers to the engineering specification, it cross-references blueprint.md (principally §4 Directives & Bans, §11.2 Module Manifest, §12 Authoring Package, §13 Tiers, §16.5 Renderer Service, §17 Command Framework, §20 Interaction & Component Handling, §21 Permission Engine, §22.6 Operator Terminal, §27 Audit & Telemetry, §28 Resilience, §35 Personas — Twill, §44 API Families) and the ADR series under docs/adr/. Implementation status for every capability specified here is tracked in blueprint.md's audit register, not in this document.
+**Relationship to engineering authority:** Where this reference defers to the engineering specification, it cross-references blueprint.md (principally §4 Directives & Bans, §11.2 Module Manifest, §12 Authoring Package, §13 Tiers, §16.5 Renderer Service, §17 Command Framework, §20 Interaction & Component Handling, §21 Permission Engine, §22.6 Operator Terminal, §27 Audit & Telemetry, §28 Resilience, §35 Personas — Twill, §44 API Families) and the ADR series under archive/v5.0.0-records/adr/. Implementation status for every capability specified here is tracked in blueprint.md's audit register, not in this document.
 
 ---
 

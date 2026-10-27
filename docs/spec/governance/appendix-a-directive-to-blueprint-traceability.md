@@ -52,7 +52,7 @@ presentation, dashboard navigation, banners), module-authoring guidance,
 and the illustrative module catalog of blueprint Part VII.
 
 Decision records: rules that cite an ADR are decided by the corresponding
-record in `docs/adr/` (ADR-001…ADR-011).
+record in `archive/v5.0.0-records/adr/` (ADR-001…ADR-011).
 
 ## Acceptance
 ```acceptance

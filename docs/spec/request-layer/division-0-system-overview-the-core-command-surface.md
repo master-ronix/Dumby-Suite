@@ -23,7 +23,7 @@ The two design words carrying the whole system are **Unified** and **Modular**. 
 
 ### 0.2 The Blueprint (blueprint.md)
 
-The blueprint is the complete engineering and implementation reference at version 5.0.0 (Consolidated Re-Baseline Edition). It spans 48 numbered sections across 9 parts, covering architecture, design, lifecycle, infrastructure, security, operations, module catalog, power engine panel, and administrative interfaces. Cross-cutting decisions are recorded as Architecture Decision Records under docs/adr/. The stack is TypeScript (strict mode), Node.js LTS ≥ 22, discord.js v14, PostgreSQL, Redis, BullMQ, Fastify, Pino/Prometheus/OpenTelemetry.
+The blueprint is the complete engineering and implementation reference at version 5.0.0 (Consolidated Re-Baseline Edition). It spans 48 numbered sections across 9 parts, covering architecture, design, lifecycle, infrastructure, security, operations, module catalog, power engine panel, and administrative interfaces. Cross-cutting decisions are recorded as Architecture Decision Records under archive/v5.0.0-records/adr/. The stack is TypeScript (strict mode), Node.js LTS ≥ 22, discord.js v14, PostgreSQL, Redis, BullMQ, Fastify, Pino/Prometheus/OpenTelemetry.
 
 Key structural elements from the blueprint relevant to the end-user interface:
 
@@ -33,7 +33,7 @@ Key structural elements from the blueprint relevant to the end-user interface:
 
 - **Permission Engine (§21):** Seven layers. Layer 6 is a pure backend rank function with six ranks — OWNER > ADMINISTRATOR > MODERATOR > HELPER > MEMBER > RESTRICTED — evaluated from live Discord state and never written anywhere. Layer 7 holds guild-side grants — permit, blacklist, whitelist, cooldown, and rate-limit — scoped role > group > set with most-specific-wins resolution, applying to module commands only and never overriding Layers 1–3, the bot-capability check, or the RESTRICTED floor. Grants are resolved fresh on every interaction.
 
-- **Components V2 and the Renderer (§16.5, §20):** The core Renderer is the single presentation authority. Every user-facing surface is a Components V2 container (Container type 17, Text Display type 10, `IS_COMPONENTS_V2` flag 32768). Classic embeds (EmbedBuilder/MessageEmbed) are banned across four enforcement layers, mirroring the prefix-command ban (§4; ADR-001 in docs/adr/).
+- **Components V2 and the Renderer (§16.5, §20):** The core Renderer is the single presentation authority. Every user-facing surface is a Components V2 container (Container type 17, Text Display type 10, `IS_COMPONENTS_V2` flag 32768). Classic embeds (EmbedBuilder/MessageEmbed) are banned across four enforcement layers, mirroring the prefix-command ban (§4; ADR-001 in archive/v5.0.0-records/adr/).
 
 - **BCCM (§15.8):** Bot Command Cosmetics for Marketplace — guild-level command renaming and aliasing, queued and batched through `guild_command_queue` within a 12–13 hour window rather than instant, constrained by Discord's 200-per-day guild-command-creation limit.
 
@@ -41,7 +41,7 @@ Key structural elements from the blueprint relevant to the end-user interface:
 
 ### 0.3 The Documentation Set
 
-The documentation set is anchored by blueprint.md 5.0.0, the engineering authority this reference defers to throughout. Supporting documents: concept.md carries the framework glossary (including the Renderer, buffer embed, formal notice frame, density Modes D/M/C, Core Command Surface, Twill, and Release Manager entries); directive.md carries the ban registry (prefix-command ban, classic-embed ban, DM prohibition) with their enforcement layers; documentation.md is the frozen legacy architecture record, retained for historical decisions that the blueprint supersedes; and docs/adr/ records the cross-cutting tension decisions. Version 5.0.0 is a consolidated re-baseline: every document in the set carries the same version and the same vocabulary.
+The documentation set is anchored by blueprint.md 5.0.0, the engineering authority this reference defers to throughout. Supporting documents: concept.md carries the framework glossary (including the Renderer, buffer embed, formal notice frame, density Modes D/M/C, Core Command Surface, Twill, and Release Manager entries); directive.md carries the ban registry (prefix-command ban, classic-embed ban, DM prohibition) with their enforcement layers; documentation.md is the frozen legacy architecture record, retained for historical decisions that the blueprint supersedes; and archive/v5.0.0-records/adr/ records the cross-cutting tension decisions. Version 5.0.0 is a consolidated re-baseline: every document in the set carries the same version and the same vocabulary.
 
 ### 0.4 The Core Command Surface
 

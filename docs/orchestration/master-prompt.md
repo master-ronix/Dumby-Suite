@@ -33,7 +33,7 @@ Context-window optimization governs the design: this document contains zero cont
 
 **Governing objective:** Following this prompt end-to-end MUST yield a finished, deployable, ready-to-use Dumby bot — regardless of whether the starting point is an empty workspace or a partially-built codebase. The prompt detects what exists, what is missing, what is faulty, and what is not working — then drives the codebase to full compliance with the specification.
 
-**Output location:** The main project is built inside `apps/main/`; the `swastik` module-authoring package is built inside `packages/swastik/`. All source documents remain in `docs/` — the document set plus the `archive/v5.0.0-records/adr/` decision records and the frozen `ur/` request records — as the permanent reference set.
+**Output location:** The main project is built inside `apps/main/`; the `swastik` module-authoring package is built inside `packages/swastik/`. All source documents remain in `docs/` — the document set plus the `archive/v5.0.0-records/adr/` decision records and the frozen `archive/v5.0.0-records/upgradation/` request records — as the permanent reference set.
 
 **First priority:** Context window optimization. This prompt contains zero content from the source documents. It is pure orchestration — detection logic, remediation protocol, and phase sequencing. Every technical specification lives in the document that owns it. Source documents are loaded on demand, per phase, never in bulk. Where a build choice is governed by a recorded decision, the governing ADR in `archive/v5.0.0-records/adr/` is one of those on-demand sources — read it before making the choice it governs, never in bulk.
 

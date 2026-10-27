@@ -17,5 +17,5 @@
 | Contracts | contracts/ | machine-readable interfaces |
 | Status | status/ | capabilities, counts, coverage ledger |
 | Assets | orchestration/ migration/ upgradation/ prompts/ | engines + program records |
-| Decisions | adr/ | ADRs |
+| Decisions | archive/v5.0.0-records/adr/ | ADRs |
 | Archive | archive/ | quarantined legacy |

@@ -169,7 +169,7 @@ Classic embeds — the discord.js `EmbedBuilder` and `MessageEmbed` types — ar
 3. **Dispatch-time boundary** — the Renderer is the only emission path; a handler response that is not a valid render descriptor never reaches Discord, and the user sees the formal notice frame instead.
 4. **Release gate** — promotion and CI fail any module or core change that reintroduces classic embed construction; the same gate audits the renderer path so that new ingestion surfaces are covered as they appear.
 
-A migration window applies per ADR-001 (docs/adr/). Within the window, modules still emitting classic embeds are flagged by layers 1 and 4; when the window closes, all four layers enforce unconditionally.
+A migration window applies per ADR-001 (archive/v5.0.0-records/adr/). Within the window, modules still emitting classic embeds are flagged by layers 1 and 4; when the window closes, all four layers enforce unconditionally.
 
 ---
 

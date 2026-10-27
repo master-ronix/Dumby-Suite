@@ -218,7 +218,7 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 - **D3 — stale corpus path.** `docs/ur/` (removed in the restructure) corrected to `upgradation/` in `spec/reference/colophon.md`, `spec/governance/directive-charter-how-to-use-this-document.md`, and `spec/orientation/complete-engineering-implementation-reference.md`.
 - **O1 — change-log population.** §3 history carries this entry; §1, §2, §4, §5 are explicitly marked as not-yet-populated.
 - **O2 — precedence naming.** A restructure note added beneath the charter's precedence list, mapping the pre-restructure source names to the distributed corpus and the frozen `_inbox/`.
-- **O3 — UR provenance.** A clarifying note added to `upgradation/README.md` tying `counts.ur_requests` to the source program rather than to files on disk.
+- **O3 — UR provenance.** A clarifying note added to `archive/v5.0.0-records/upgradation/README.md` tying `counts.ur_requests` to the source program rather than to files on disk.
 - **Gates.** `check-edges` (edge-target paths resolve) and `check-compliance` (derived ledger is current) added; `check-counts` extended to verify `logged_deviations`; `check-anchor-paths` extended to flag renamed corpus directories. 25 gates total, all green.
 
 ### v5.0.0 (addendum) — Ecosystem Flow Suite (spec/lifecycle §37.8–§37.13)
@@ -516,7 +516,7 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 - **R1/R2 — gate-truth restored.** `blueprint/structure.md` and `spec/architecture/directory-file-structure.md` regenerated to the tree; `check-side-docs.mjs` generalised to match every phrasing of the entry count, not one.
 - **R3/R4 — provenance re-unified.** One canonical commit across `status/code-reconciliation.json`, `GAP_MANIFEST.md` (ref + prose), `migration/migration-prompt.md` and the audit line in `README.md`; `verified_at` added; `check-side-docs.mjs` now fails on any stale commit literal in the provenance surfaces.
 - **R5 — version model reconciled.** change-log front-matter, §2 note and §9 population line all at the highest track; the `v5.5.96`/`v5.5.97` OI-7 statements reconciled.
-- **R6 — guard-class closure.** `migration-prompt.md` no longer restates the UR count; the gate-count guard now covers the change-log head; the 121-vs-live distinction is stated in `upgradation/README.md`.
+- **R6 — guard-class closure.** `migration-prompt.md` no longer restates the UR count; the gate-count guard now covers the change-log head; the 121-vs-live distinction is stated in `archive/v5.0.0-records/upgradation/README.md`.
 - **R7 — records hygiene.** change-log §3 early bodies explicitly marked header-only (§2 basis updated); the `migration-prompt.md` §3 template tokens marked as shapes, not values.
 - **R8 — audit age.** `status/audit-age.json` records the audit date, commit, scope and request; `README.md` names the current audit.
 - **Verification.** Corpus gate suite **27/27 green**. Application toolchain not run (Node 20.20.2; app requires Node ≥ 22; no deps) — app-side items are outside the corpus scope.
@@ -717,7 +717,7 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 ### v5.5.111 — The Record Tiers Retired; the Corpus States Its Own Authority (UR-20261026-102) — 2026-10-26
 
 - 2026-10-26 · meta-prompt 5.2.0 · state=Enforcement · handoff=master-prompt:enforce · return=met
-- **Work order.** `upgradation/UR-20261026-102.md`, archived with the tier it retires. It is the last request
+- **Work order.** `archive/v5.0.0-records/upgradation/UR-20261026-102.md`, archived with the tier it retires. It is the last request
   record: its completion retires the record tiers it belongs to.
 - **Stage 2 — the authority order.** The corpus carried no statement of which of its three descriptions of one
   system wins, so a disagreement had no declared resolution. `spec/governance/directive-charter-how-to-use-
@@ -761,7 +761,7 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 ### v5.5.110 — The Reconciliation Ledger Covers the Faulted Areas; the Anchor Moves With the Code Track (UR-20261026-101) — 2026-10-26
 
 - 2026-10-26 · meta-prompt 5.2.0 · state=Enforcement · handoff=master-prompt:enforce · return=met
-- **Work order.** `upgradation/UR-20261026-101.md` — closes RT-10 and RT-11.
+- **Work order.** `archive/v5.0.0-records/upgradation/UR-20261026-101.md` — closes RT-10 and RT-11.
 - **RT-10 — the coverage gap.** The ledger reported 28 rows, all `match`, `code-gap: 0` — and not one of them covered module ownership, the disable path, dispatch ownership or refusal delivery, which is where every operator fault lived. A ledger with no row for a behaviour cannot detect that behaviour going wrong. REC-029 … REC-032 are added, one per area, each naming its `code_ref` and the record that established it; the counts block is recomputed from the row list.
 - **RT-11 — the anchor.** `verified_commit` was `7e8ca739` with **six commits since touching `apps/main`/`packages`**. `check-code-reconciliation` fails on exactly that, and it did not fail here only because the anchor is absent from a shallow local clone and the gate downgrades that to a warning. Anchored now at the last commit to touch those surfaces (`a3b093f9`), with `GAP_MANIFEST.md`, `README.md`, `status/audit-age.json` and `migration/migration-prompt.md` moved with it — the one-canonical-commit rule `UR-20261021-094` R1 established.
 - **Honesty of the re-anchor.** The 13 pre-existing `resolution` strings carried `Re-verified against HEAD <sha> — `; the sha is dropped and the substance kept. Re-pointing a ledger is not re-verifying 28 rows, and the ledger's `note` now says which act happened, why the re-anchor is sound, and that REC-029 … REC-032 are the rows verified at this anchor.
@@ -773,7 +773,7 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 ### v5.5.109 — A Module and Its Commands Are One Bound Pair; Command-Permission Authorization Documented (UR-20261026-100) — 2026-10-26
 
 - 2026-10-26 · meta-prompt 5.2.0 · state=Enforcement · handoff=master-prompt:enforce · return=met
-- **Work order.** `upgradation/UR-20261026-100.md` — closes RT-8 and RT-9.
+- **Work order.** `archive/v5.0.0-records/upgradation/UR-20261026-100.md` — closes RT-8 and RT-9.
 - **RT-8 — dispatch obeys ownership.** `assertPersonaOwnsCommand` logged `command-scope-owned-elsewhere` and answered anyway. It now throws `CommandScopeDeniedError` with the NEUTRAL `out-of-scope` cause when the resolver names a different profile: a stale, renamed or carried-over registration no longer lets the main bot answer a persona's module. Core and admin keep their `'shared'` short-circuit, and the holder still answers her own command. This reverses a deliberate earlier decision on the operator's ruling — the test that encoded the old behaviour was reversed rather than deleted, with a companion test proving the holder side.
 - **RT-9 — the authorization route documented.** `apps/main/docs/runbooks/command-permission-authorization.md` separates three things that look alike: the **install** flow (`bot=1`; no user token), the **connect** flow (`/auth/authorize?guild=…`; yields `applications.commands.permissions.update`), and the **static fallback** (`DISCORD_COMMAND_PERMISSIONS_TOKEN`; internal profile only, never refreshed, cannot serve a persona). It records the redirect registration, the per-persona `&app=<id>` case, the verification query and the `module-command-access-set applied=… removed=…` outcome line.
 - **Verification.** Corpus gate suite **30/30 green** after the change. `tsc` over the edited router: no error attributable to this change. The changed unit tests were **not executed** — Actions jobs are refused at start (`OI-8`, `UR-20261026-099`), and this sandbox cannot install the workspace.
@@ -784,7 +784,7 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 ### v5.5.108 — CI Enforcement Is Inert: Actions Jobs Refused at Start by an Account Billing Block (UR-20261026-099) — 2026-10-26
 
 - 2026-10-26 · meta-prompt 5.2.0 · state=Enforcement · handoff=master-prompt:enforce · return=met
-- **Work order.** `upgradation/UR-20261026-099.md` — raises RT-7 and records `OI-8`.
+- **Work order.** `archive/v5.0.0-records/upgradation/UR-20261026-099.md` — raises RT-7 and records `OI-8`.
 - **RT-7 — the block.** Every Actions job on `feature/dev` is refused at start. The annotation on both failing jobs reads, verbatim: "The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings". No workflow has executed since the newest successful run, **2026-10-23T18:57:48Z** (`docs-gates`, `9a681ce61`); every run from **2026-10-24T21:17:26Z** (`d15af679d`) onward fails with no job started.
 - **Why it matters.** `UR-20261021-095` was raised on the premise that a red CI blocked every deploy and never advanced production past `416864b`, with ACC-1 "CI is green on `feature/dev`". That criterion is not unmet but **unachievable** while jobs are refused, and this log recorded the request as Executed with `return=met`. The deploy blocker was never the code.
 - **Consequence adopted.** No further code change is to be pushed to `feature/dev` until a workflow run completes. Every commit after 2026-10-23 — the 2026-10-24/25 surfaces/paths/routing track, and the runtime-ownership track of `UR-20261026-097` / `UR-20261026-098` — is unverified by CI; their unit tests have never executed anywhere.
@@ -796,7 +796,7 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 ### v5.5.107 — A Private Refusal: the Refusal Notice Delivered as a Private Follow-Up (UR-20261026-098) — 2026-10-26
 
 - 2026-10-26 · meta-prompt 5.2.0 · state=Enforcement · handoff=master-prompt:enforce · return=met
-- **Work order.** `upgradation/UR-20261026-098.md` — closes RT-6 and supersedes RT-5's interim answer.
+- **Work order.** `archive/v5.0.0-records/upgradation/UR-20261026-098.md` — closes RT-6 and supersedes RT-5's interim answer.
 - **The obstacle.** The component registry acknowledges every page control with `deferUpdate` before the handler runs — a PUBLIC acknowledgement whose purpose is that the handler can then edit the existing message in place. `editReply` cannot change an existing message's ephemerality, so a notice riding that edit was public by construction, and asking for the private grammar on it produced exactly what the operator reported: no accent, and not hidden.
 - **RT-6 — the fix.** A follow-up is a NEW message, and a new message can be private. The refusal is now sent with `interaction.followUp?.(payload)` and declares `ephemeral: true` again, superseding RT-5's `ephemeral: false`.
 - **The guard's one exception.** `createReadOnlyInteraction` accepts `{ allowFollowUp }`; `reply` and `showModal` stay blocked, and `followUp` is blocked unless the caller opts in. The registry passes `handler.allowFollowUp` through, and the page controls declare it — so the exception is visible in a handler's declaration rather than implied by its behaviour.
@@ -809,7 +809,7 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 ### v5.5.106 — Runtime Ownership and Command-Path Truth: the Owner Memo Removed, the Occupied Predicate Fixed, the Persona Health Read Unified, Route B De-Registration Removed (UR-20261026-097) — 2026-10-26
 
 - 2026-10-26 · meta-prompt 5.2.0 · state=Enforcement · handoff=master-prompt:enforce · return=met
-- **Work order.** `upgradation/UR-20261026-097.md` — closes RT-1 … RT-5.
+- **Work order.** `archive/v5.0.0-records/upgradation/UR-20261026-097.md` — closes RT-1 … RT-5.
 - **Basis.** An operator test pass on two profiles in one guild reported contradictory readings across /dashboard, /health, /browse, /modules and /hello. The boot log settles the shape of it: `module-state … enabledBy=7a498256-… binding=7a498256-… resolvedOwner=7a498256-… agrees=true`. The stored state was consistent; four READERS of it were not. No finding here is data corruption, and none is fixed by repairing rows.
 - **RT-1 — the memo.** `holderOf` memoised the holder into a `Map` declared beside the page-data provider, so the answer was frozen for the life of the process — nothing invalidated it. It now reads fresh and logs a failed read (`page-data-owner-read-failed`) instead of silently answering `undefined`.
 - **RT-2 — the predicate.** `/browse` computed `occupied` as `!ownedBy(...)`, true both for "another profile holds it" and for "nobody holds it", and then named the internal profile for the "nobody" case — the "occupied by Dumby Profile" that the main bot could not take. `occupied` now requires a defined holder, and the label is built from that holder alone.
@@ -824,12 +824,12 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 ### v5.5.105 — Corpus Residual Closure: Provenance Anchor Corrected, the 2026-10-24/25 Re-Anchor Track Recorded, GAP_MANIFEST State Reconciled (UR-20261026-096) — 2026-10-26
 
 - 2026-10-26 · meta-prompt 5.2.0 · state=Enforcement · handoff=master-prompt:enforce · return=met
-- **Work order.** `upgradation/UR-20261026-096.md` — closes findings DOC-012 … DOC-016.
+- **Work order.** `archive/v5.0.0-records/upgradation/UR-20261026-096.md` — closes findings DOC-012 … DOC-016.
 - **Audit basis.** An independent full-scope audit of `docs/` at `feature/dev` @ `de3bde53910990e93c0956e2758126b3087c59b4`. The 30-gate suite is **30/30 green** on a complete checkout, so every finding closed here is semantic — invisible to a structural gate — not a gate failure.
 - **DOC-013 — the unrecorded track.** Three `docs(corpus)` re-anchor commits landed after the previous record and had none of their own: `8d7912617` (2026-10-24, routing fix), `d15af679d` (2026-10-24, paths fix) and `de3bde539` (2026-10-25, surfaces fix). Each re-pointed the same five files — `README.md`, `migration/migration-prompt.md`, `status/audit-age.json`, `status/code-reconciliation.json` and `GAP_MANIFEST.md` — and `de3bde539` moved them from `732ab46` to `7e8ca739`, the newest commit to touch `apps/main`. This entry is their record; the `Last recorded` line moves to 2026-10-26.
 - **DOC-012 — the anchor.** Section 5.1 named `732ab46` while the five documents it described named `7e8ca739`; corrected in this run's DOC-012 commit, with the v5.5.103 R1 bullet keeping its history and gaining a supersession clause.
 - **DOC-014 — the state.** `GAP_MANIFEST.md` stated State C, State B and an ACTIVE work order at once, and carried a third ref (`7a58779`). Its header now states one state consistent with `migration-ledger.md` — State C — Enforcement, work order closed — and its point-in-time notice carries `7e8ca739`.
-- **DOC-015 — the 101–104 gap.** The register in `upgradation/README.md` now accounts for `UR-20261019-101` … `104`, the code-track ids the corpus cites as authority and does not hold.
+- **DOC-015 — the 101–104 gap.** The register in `archive/v5.0.0-records/upgradation/README.md` now accounts for `UR-20261019-101` … `104`, the code-track ids the corpus cites as authority and does not hold.
 - **DOC-016 — the retired path.** The register's H1 no longer names the retired `docs/ur/` path its own quarantine note forbids quoting forward.
 - **Verification.** Corpus gate suite **30/30 green** after the changes, run from `docs/` as `for g in scripts/docs/check-*.mjs; do node "$g"; done`. No application code, workflow or deployment change is involved, so no app toolchain run is claimed.
 - **Return.** `met` (documentation scope).
@@ -839,7 +839,7 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 ### v5.5.104 — Production Readiness: CI Deploy-Blocker Cleared, Module-Deployment Approval API, Twill Client-Secret Required (UR-20261021-095) — 2026-10-21
 
 - 2026-10-21 · meta-prompt 5.2.0 · state=Enforcement · handoff=master-prompt:enforce · return=met
-- **Work order.** `upgradation/UR-20261021-095.md` — closes residuals PR-1 … PR-6.
+- **Work order.** `archive/v5.0.0-records/upgradation/UR-20261021-095.md` — closes residuals PR-1 … PR-6.
 - **PR-1 — the CI deploy-blocker.** Production runs from `feature/dev` with `checkSuites: true`, so a red CI blocked every deploy since `416864b`. The fail-fast gates job died at **Gate 3b**: the K8s ConfigMap still declared `SWASTIK_LIVE_VOLUME_PATH`, which the schema stopped owning (UR-20261019-101). Removed it from the ConfigMap, `.env.example`, docker-compose and the Railway testing env; `check-configmap-keys` is green.
 - **PR-2 — the stale manifest fixtures.** UR-20261019-103 removed `buildId` from the manifest, but fixtures in 4 unit files, 3 modules spec files, the flow fixture and 3 more still carried it, so the `.strict()` schema rejected them. Removed the field everywhere; the schema checks that a declared `buildId` is rejected; the two quote-coupled specs are now quote-agnostic.
 - **PR-3 — the flow suite.** UR-20261019-103 made the build signature mandatory, so `bootstrap` threw with no key armed. `tests/flow/flow-env.ts` arms an ephemeral keypair; the harness gains a `beforeBootstrap` hook; `module.flow.test.ts` signs its fixture and seeds the `developers` + `builds` rows the loader reads.
@@ -854,15 +854,15 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 ### v5.5.103 — Corpus Reconciliation: Re-grounded at HEAD After the Provenance/Signing Code Track (UR-20261021-094) — 2026-10-21
 
 - 2026-10-21 · meta-prompt 5.2.0 · state=Enforcement · handoff=master-prompt:enforce · return=met
-- **Work order.** `upgradation/UR-20261021-094.md` — implements R1 … R10 and closes findings DOC-1 … DOC-11.
+- **Work order.** `archive/v5.0.0-records/upgradation/UR-20261021-094.md` — implements R1 … R10 and closes findings DOC-1 … DOC-11.
 - **Context.** The code track UR-20261019-101 … UR-20261019-104 landed on `feature/dev` after the corpus was last reconciled at `416864b`, leaving the corpus's code-grounding claim untrue: its `verified_commit` was 27 commits behind HEAD and its freshness guard (`check-code-reconciliation`) fails on a full checkout.
-- **R1 — provenance re-anchored.** `status/code-reconciliation.json` re-anchored to `feature/dev` @ `732ab46`, `verified_at` 2026-10-21; `status/audit-age.json`, `GAP_MANIFEST.md`, `README.md` and `migration/migration-prompt.md` re-pointed to the same commit. **Superseded 2026-10-25:** `de3bde539` re-pointed those same five files to `7e8ca739`, the newest commit to touch `apps/main`, so `732ab46` is no longer a live pointer (DOC-012, `upgradation/UR-20261026-096.md`).
+- **R1 — provenance re-anchored.** `status/code-reconciliation.json` re-anchored to `feature/dev` @ `732ab46`, `verified_at` 2026-10-21; `status/audit-age.json`, `GAP_MANIFEST.md`, `README.md` and `migration/migration-prompt.md` re-pointed to the same commit. **Superseded 2026-10-25:** `de3bde539` re-pointed those same five files to `7e8ca739`, the newest commit to touch `apps/main`, so `732ab46` is no longer a live pointer (DOC-012, `archive/v5.0.0-records/upgradation/UR-20261026-096.md`).
 - **R2 — ledger rows reconciled.** REC-025 flipped `code-gap` → `match` (UR-20261019-103 enforces the D-4.10 floor: sidecar mandatory, artifact-hash floor always, signature layer mandatory); REC-005 / REC-021 corrected (the manifest requires `devId`; `buildId` is platform-issued, not author-declared); REC-012 corrected (`SWASTIK_LIVE_VOLUME_PATH` removed). Rows added: REC-026 (Option A — the image ships no modules), REC-027 (build-time `devId` injection), REC-028 (mandatory signature layer). 25 → 28 facts, 28 `match`.
 - **R3 — `buildId` reconciled across the corpus.** `spec/modules/module-anatomy-manifest.md` §11.2, `spec/modules/building-a-module-a-complete-worked-example.md`, `spec/request-layer/division-10-hello-world-standard-tier-module.md` and `documentation/guides/building-a-module.md` now state `buildId` is platform-issued and is not a manifest field; the two "code gap" asides (spec + guide) that described a schema the code has since matched are rewritten as reconciled.
-- **R4/R5 — records.** This entry; the UR-20261018-093 disposition moved to **Executed**; the stale live-count restatement removed from `upgradation/README.md`.
-- **R6/R7 — record + generated artefact.** `upgradation/UR-20261021-094.md` added; `_generated/tree.md` regenerated and the tree counts in `status/counts.json` refreshed.
+- **R4/R5 — records.** This entry; the UR-20261018-093 disposition moved to **Executed**; the stale live-count restatement removed from `archive/v5.0.0-records/upgradation/README.md`.
+- **R6/R7 — record + generated artefact.** `archive/v5.0.0-records/upgradation/UR-20261021-094.md` added; `_generated/tree.md` regenerated and the tree counts in `status/counts.json` refreshed.
 - **R8 — CI enforcement.** `.github/workflows/docs-gates.yml` now checks out with `fetch-depth: 0`, so the freshness/provenance guards in `check-code-reconciliation` and `check-side-docs` execute in CI instead of degrading to warnings.
-- **R9/R10 — hygiene.** `upgradation/README.md` records that record 043 is co-located in `UR-20261012-042.md`; `AGENTS.md`'s coverage-floors note corrected to the per-layer floors.
+- **R9/R10 — hygiene.** `archive/v5.0.0-records/upgradation/README.md` records that record 043 is co-located in `UR-20261012-042.md`; `AGENTS.md`'s coverage-floors note corrected to the per-layer floors.
 - **Verification.** Corpus gate suite **30/30 green**. The application toolchain was **not** run (no installed dependencies; the app requires Node ≥ 22) — the app-side surfaces remain as recorded in `GAP_MANIFEST.md`.
 - **Return.** `met` (corpus scope) — every DOC finding closed. OI-1 (human attestation) and the K8s apply remain honest standing items, not defects.
 
@@ -884,12 +884,12 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 ### v5.5.101 — UR-20261018-092 Implemented: Generated-Artefact & Ledger Freshness, Code-Grounding Re-Anchor, Provenance Truth & Ungated-Ledger Closure — 2026-10-18
 
 - 2026-10-18 · meta-prompt 5.2.0 · state=Enforcement · handoff=master-prompt:enforce · return=met
-- **Work order.** `upgradation/UR-20261018-092.md` — implements R1 … R8 and closes findings DR-1 … DR-12 plus enforcement findings FD-1/FD-2.
+- **Work order.** `archive/v5.0.0-records/upgradation/UR-20261018-092.md` — implements R1 … R8 and closes findings DR-1 … DR-12 plus enforcement findings FD-1/FD-2.
 - **R1/R2 (DR-1, DR-11) — generated artefact + single-sourced counts.** `_generated/tree.md` regenerated to the tree; new `scripts/docs/check-generated.mjs` fails on a stale listing. The tree counts are single-sourced: `status/counts.json` gains `tree_entries`/`tree_dirs`/`tree_files` (verified against the tree by `check-counts`), and `blueprint/structure.md` + `spec/architecture/directory-file-structure.md` carry `{{counts.tree_*}}` tokens; `check-side-docs` fails a hand-transcribed literal.
 - **R3/R4 (DR-2) — code-grounding re-anchored.** `status/code-reconciliation.json` re-anchored to `feature/dev` @ `416864b`, `verified_at` 2026-10-18; two rows added (REC-023 BCCM application scope; REC-024 persona-side BCCM push); the duplicate `verified_at` key removed. The persona-side BCCM push is now documented in `spec/operations/multi-identity-operation-twill-personas.md` §35.4.
 - **R5/R6 (DR-3, DR-4) — audit age + provenance truth.** `check-side-docs` now reads `status/audit-age.json` (making its own note true), requires its commit and branch to match the reconciliation ledger, and — with a git work tree — fails when the named branch does not resolve to the named commit. All provenance surfaces re-pointed to `416864b`.
 - **R7 (DR-5, DR-6, DR-7) — records & ledgers.** `migration-ledger.md` M74/M82 reconciled to one status; `spec/orientation/definitions.md` added to `status/section-order.json`; new `scripts/docs/check-section-order.mjs`; `status/classification.json` marked archival/non-asserted.
-- **R8 (DR-8, DR-9) — hygiene.** `adr/ADR-012` / `adr/ADR-013` carry reciprocal `supersedes`; new `scripts/docs/check-supersession.mjs`; the residual engine template tokens labelled "shape, not value".
+- **R8 (DR-8, DR-9) — hygiene.** `archive/v5.0.0-records/adr/ADR-012` / `archive/v5.0.0-records/adr/ADR-013` carry reciprocal `supersedes`; new `scripts/docs/check-supersession.mjs`; the residual engine template tokens labelled "shape, not value".
 - **DR-12/FD-1 — predicate reconciled.** `prompts/entry.md`, `migration/migration-prompt.md` (§0.0/§2/§3) and `migration/ledger-template.md` now state the work-order predicate the same way (ledger-driven), so state detection is deterministic again.
 - **FD-2 — code counts single-sourced.** `status/counts.json` gains `code_ts_files`/`code_src_ts_files`/`code_migrations` (verified by `check-counts`); `GAP_MANIFEST.md` carries `{{counts.*}}` tokens.
 - **DR-10 — coverage scope stated.** The `status/coverage-ledger.json` note records that the reader-facing trees (`blueprint/`, `documentation/`) are outside the coverage ledger.
@@ -921,7 +921,7 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   source files, 45 Knex migrations"; the tree holds 564 `.ts` and 56 migration files — the side
   document's code counts are stale and uncorroborated by any gate.
 - **§4 remediation (remediate-or-record).** The deviations are **recorded, not silently fixed**: the
-  corpus-audit findings DR-1 … DR-11 are formalised as `upgradation/UR-20261018-092.md` (raised this
+  corpus-audit findings DR-1 … DR-11 are formalised as `archive/v5.0.0-records/upgradation/UR-20261018-092.md` (raised this
   run; not yet implemented — per governance a request precedes its implementation), with FD-1 and
   FD-2 added. The one mechanical correction landed with the request is the tree-entry counts in
   `blueprint/structure.md` and `spec/architecture/directory-file-structure.md` (1,559→1,560 entries;
@@ -933,7 +933,7 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   recorded in `GAP_MANIFEST.md`.
 - **Return.** `met` (corpus scope) — the corpus is gate-green and internally consistent; the four
   unguarded surfaces the audit found (generated artefact, code-grounding, audit age, provenance
-  branch) are recorded for remediation under `upgradation/UR-20261018-092.md`. OI-1 (human
+  branch) are recorded for remediation under `archive/v5.0.0-records/upgradation/UR-20261018-092.md`. OI-1 (human
   attestation) and OI-3 (Docker/K8s) remain honest standing items, not defects.
 
 ---
@@ -949,7 +949,7 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
   - **M74** — persona/main-bot ownership model: `PROPOSED`, no code; awaiting the operator's confirmation of the model. **BLOCKED (operator).**
   - **M82** — module logos single-source: recorded `OPEN` with blocker "deploy packaging carrying each module's `assets/` into the volume" — but **M83 (DONE) records that it resolved exactly that blocker and executed the remedy** ("build carries assets; `LoadedModule.root` set in swastik-loader; the 7 PNGs move into their modules"). The M82 row is therefore **stale**: it is superseded by M83 and should be closed or re-scoped.
 - **No row closed this pass.** No code delta landed: the only non-`DONE` items are blocked (M74) or superseded (M82). Per R11, open rows get no change-log line.
-- **Verification.** Corpus gate suite run: **26/27** — `check-side-docs` **fails** (`blueprint/structure.md` claims 1,552 entries; the tree is 1,555). The docs finding is owned by `upgradation/UR-20261016-091.md`. The application toolchain (`tsc`/`vitest`) was **not** run (Node 20.20.2; the app requires Node ≥ 22; no installed dependencies).
+- **Verification.** Corpus gate suite run: **26/27** — `check-side-docs` **fails** (`blueprint/structure.md` claims 1,552 entries; the tree is 1,555). The docs finding is owned by `archive/v5.0.0-records/upgradation/UR-20261016-091.md`. The application toolchain (`tsc`/`vitest`) was **not** run (Node 20.20.2; the app requires Node ≥ 22; no installed dependencies).
 - **Return.** `unmet` — the migration's acceptance criteria are not met (items not all `DONE`; two remain blocked/superseded). Per §7 the documentation audit was **not** re-done (this protocol forbids it); the docs finding is routed to its own request record.
 - **Open question surfaced.** With the code work order effectively empty (M74 blocked on the operator; M82 superseded by M83), the chain may legitimately reclassify to **State C — Enforcement** once the operator dispositions those two items — the ledger's ACTIVE declaration rests solely on them.
 
@@ -2990,7 +2990,7 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 - 2026-10-11 · meta-prompt 5.2.0 · state=Migration · handoff=migration-prompt · return=met (docs)
 - Work order: `UR-20261011-012` (docs governance; corrects the drifted registers, pointers and side
   ledgers). **Documentation-only** — no `apps/main/src` file is touched.
-- **F1:** `upgradation/README.md` no longer claims the dynamic probe finds zero records; the register
+- **F1:** `archive/v5.0.0-records/upgradation/README.md` no longer claims the dynamic probe finds zero records; the register
   is restated as provenance-only and the count is read from the probe, never prose. **F2:** the UR
   count is no longer restated in prose. **F3/F8:** `AGENTS.md` names only live authority paths and the
   counted 15 ADRs. **F4:** `status/code-reconciliation.json` is re-pointed to HEAD `8355ba4f` and
@@ -3089,4 +3089,4 @@ Every carried residual now states its owner, status, and blocker — none is a s
 | OI-10 | The command queue persists **renames only** — an alias applied through the queue has no persisted home | engineering | **open — recorded, not fixed** | `bccm-batch-push-store.ts` writes `guild_command_renames` only when `action === 'rename'`, so an alias applied through the queue is reverted by a boot. A *disable* survives a restart by a different route — `guild_module_states` carries it — so the exposure is aliases, not disables. Recorded in `v5.5.69` as "STILL OPEN (recorded, not fixed)" but never carried into this register until now. |
 | OI-11 | Framework icon assets live in the **CORE** module, including first-party module logos | engineering | **open — recorded, not fixed** | The docs describe modules as independently developed with their own asset paths, so those icons belong to the modules, not to `module-emoji-upload.ts` in CORE. An ownership mismatch between the code and the specification, not a missing asset. Recorded in `v5.5.70` as "STILL OPEN (recorded, not fixed)" but never carried into this register until now. |
 | — | M18 `/modules` corrections & disable enforcement | engineering | **resolved (DONE)** | Disable enforcement present; `disable-behaviour.spec.ts` passes. |
-| — | M74 / M82 | operator | **M74 confirmed; M82 closed** | M74's ownership model (`upgradation/UR-20261012-059.md`) is confirmed by operator directive; its implementation is a code item outside the docs corpus. M82 closed — superseded by M83 (DONE). |
+| — | M74 / M82 | operator | **M74 confirmed; M82 closed** | M74's ownership model (`archive/v5.0.0-records/upgradation/UR-20261012-059.md`) is confirmed by operator directive; its implementation is a code item outside the docs corpus. M82 closed — superseded by M83 (DONE). |

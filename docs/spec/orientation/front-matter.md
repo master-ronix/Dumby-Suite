@@ -34,7 +34,7 @@ Renderer and buffer-embed presentation model (§20.8–§20.9), the RBAC Layer 6
 machine (§15.7), the Compatibility Ledger (§14.4), Global Data Emit as the fifth
 cross-module pattern (§14.1), the Twill persona model (§35), and envelope encryption
 (§32.7). The eleven cross-cutting decisions behind these changes are recorded as
-ADR-001 … ADR-011 in `adr/`; the source request records are registered frozen in
+ADR-001 … ADR-011 in `archive/v5.0.0-records/adr/`; the source request records are registered frozen in
 `upgradation/`.
 
 **How to navigate.** The corpus is three trees plus supporting directories:
@@ -44,7 +44,7 @@ ADR-001 … ADR-011 in `adr/`; the source request records are registered frozen 
 - `documentation/` — the **nodes**: the wiki and the API book — what each part is.
 - `spec/` — the **behavioural source**: what each mechanism must do, department by
   department.
-- `contracts/` — machine-readable interfaces; `status/` — the ledgers; `adr/` — the
+- `contracts/` — machine-readable interfaces; `status/` — the ledgers; `archive/v5.0.0-records/adr/` — the
   decision records; `archive/` — the quarantined legacy reference.
 
 The Table of Contents is the next file; the concept index and glossary are §0.3 and §47.

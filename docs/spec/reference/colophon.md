@@ -32,7 +32,7 @@ specification, with implementation status carried honestly by the per-section
 badges and the Audit Register rather than by prose. The three source request
 records behind the re-baseline are registered frozen under upgradation/, and the
 decisions that traded one good against another are recorded as ADR-001…ADR-011
-(docs/adr/).
+(archive/v5.0.0-records/adr/).
 
 A reader who takes nothing else from this document should take the shape underneath
 §0.4's opening diagram: one unified core enforcing consistency, one strict module

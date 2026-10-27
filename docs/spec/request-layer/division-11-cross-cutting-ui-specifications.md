@@ -31,7 +31,7 @@ All frames defined in this document are Discord Components V2, issued by the Ren
 
 The Components V2 format allows flexible and customizable layouts that are not possible with traditional Discord embeds. Banners are displayed as full-width media galleries, text sections use text display components with markdown formatting, and interactive elements (dropdowns, buttons) are embedded directly within the frame.
 
-Classic embeds (`EmbedBuilder`/`MessageEmbed`) are banned outright — see §1.8 for the four enforcement layers and ADR-001 (docs/adr/) for the migration window.
+Classic embeds (`EmbedBuilder`/`MessageEmbed`) are banned outright — see §1.8 for the four enforcement layers and ADR-001 (archive/v5.0.0-records/adr/) for the migration window.
 
 ### 11.2 Edit-in-Place — Universal Behaviour
 

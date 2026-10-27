@@ -21,10 +21,10 @@ only what a document contains but why it exists and what it is authoritative for
 **Corpus composition (defined once).** The corpus comprises **nine canonical documents** —
 `blueprint.md`, `directive.md`, `documentation.md` (the archived legacy record), `interface.md`,
 `directory.md`, `concept.md`, `change-log.md`, `definitions.md` (this index), and
-`master-prompt.md` — together with the `adr/` decision series and the `ur/` frozen request
+`master-prompt.md` — together with the `archive/v5.0.0-records/adr/` decision series and the `archive/v5.0.0-records/upgradation/` frozen request
 records. The consolidated re-baseline request's "twelve-document" figure enumerates its own
-target rows: the eight canonical documents it edits (all but this index), the `adr/` series,
-and the three `ur/` records — twelve in total. Where "nine" and "twelve" appear elsewhere, they
+target rows: the eight canonical documents it edits (all but this index), the `archive/v5.0.0-records/adr/` series,
+and the three `archive/v5.0.0-records/upgradation/` records — twelve in total. Where "nine" and "twelve" appear elsewhere, they
 resolve to this definition.
 
 ### 1. blueprint.md
@@ -106,8 +106,9 @@ and resolves known cross-document conflicts explicitly. **Purpose.** Transform t
 from a reference into an actionable construction plan.
 
 ### 9. adr/ — The Decision-Record Series
-**Definition.** The numbered ADR series (ADR-001 through ADR-011) recording the eleven
-cross-cutting design tensions the v5.0 program settled. **Intent.** Give every load-bearing
+**Definition.** The numbered ADR series (ADR-001 through ADR-016): the eleven cross-cutting
+design tensions the v5.0 program settled, recorded as ADR-001 … ADR-011, and the five
+later records, ADR-012 … ADR-016. **Intent.** Give every load-bearing
 design reversal a permanent citable home (context, decision, consequences). **Impact.** Each
 record cites its governing sections and the documents its decision binds. **Purpose.** Keep the
 suite's hardest judgment calls explicit, dated, and traceable.

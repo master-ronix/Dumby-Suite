@@ -7,7 +7,7 @@
     "branch": "feature/dev",
     "scope": "full-scope docs/ corpus audit + runtime-ownership code track + trigger-chain run",
     "findings": "RT-1 \u2026 RT-11 (UR-20261026-097, -098, -100, -101); RT-7 CI blocker carried as OI-8 (UR-20261026-099); DOC-012 \u2026 DOC-016 closed earlier the same day",
-    "request": "upgradation/UR-20261026-101.md",
+    "request": "archive/v5.0.0-records/upgradation/UR-20261026-101.md",
     "re_anchored": "2026-10-27 \u2014 re-anchored from 9c67e2cc to 7cc721a6 after Dependabot #62 (dependency-only: manifests and lockfile; no source under apps/main/src or packages/*/src), so the 2026-10-26 findings still hold at the new commit."
   },
   "ci_enforcement": {
