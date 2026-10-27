@@ -177,7 +177,7 @@ export function withModuleCapabilities(
   // A Proxy, not a copy: every other member (freeze, isFrozen, createChild, createScope) resolves
   // against the real container for a privileged tier, and is refused for the rest.
   return new Proxy(container as Container, {
-    get(target, property, receiver) {
+    get(target, property) {
       if (typeof property === 'string' && property in guarded) {
         return (guarded as Record<string, unknown>)[property];
       }
