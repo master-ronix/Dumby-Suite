@@ -142,7 +142,12 @@ family is a ledger entry and a semver bump rather than a silent break for every 
 - The control-plane dispatcher and catalogue: `apps/main/src/http/power-engine-dispatcher.ts`,
   `src/http/power-engine-catalog.ts`.
 
-Divergences are recorded in `status/code-reconciliation.json`.
+Divergences are recorded in `status/code-reconciliation.json`. The three this section's own path
+layout carries are `REC-036` (the info, MDIS and Swastik families are mounted at `/api/info`,
+`/mdis/*` and `/swastik/*`), `REC-037` (the control plane is mounted per action under
+`/admin/power-engine/*`, not as `POST /api/pep/{functionName}`) and `REC-038` (the gateway and
+operator paths are declared and not mounted). The mounted surface itself is enumerated in
+`contracts/openapi.yaml`.
 
 ## Contract
 None (conceptual).
@@ -150,7 +155,7 @@ None (conceptual).
 ## Acceptance
 ```acceptance
 - id: ACC-REF-0044-1
-  check: "The REST/MDIS endpoint families match contracts/openapi.yaml and carry the documented auth contexts"
+  check: "The OpenAPI contract exists and declares a paths block (a presence check; endpoint parity is not asserted by this test and is carried by REC-036, REC-037 and REC-038 in status/code-reconciliation.json)"
   test: tests/api/openapi-parity.spec.ts
 ```
 
