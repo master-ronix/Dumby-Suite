@@ -1,6 +1,6 @@
 {
   "$id": "docs/status/code-reconciliation.json",
-  "title": "Docs \u2194 Code reconciliation",
+  "title": "Docs ↔ Code reconciliation",
   "note": "Every row compares what the NEW documentation asserts against the actual source in master-ronix/Dumby-Suite (apps/main at be0d123c6aac72dfd76369864860220996245bc0, branch feature/dev). Standing rule: the specification is authority; where the code is narrower, the code is the gap to close. The anchor is the last commit to touch apps/main|packages, so no commit after it can move the code under a row without the freshness gate failing. This re-anchor follows five dependency merges, none of which changed a row's subject: a manifest and lockfile change moves no code that any row describes, so the rows are re-anchored, not re-derived.",
   "verified_commit": "be0d123c6aac72dfd76369864860220996245bc0",
   "verified_branch": "feature/dev",
@@ -14,25 +14,25 @@
   "facts": [
     {
       "id": "REC-001",
-      "area": "module manifest \u2014 releaseStatus",
+      "area": "module manifest — releaseStatus",
       "doc_claim": "releaseStatus is required and is 'private' | 'public' (spec/modules/module-anatomy-manifest.md)",
       "code_truth": "releaseStatus is required and is z.enum(['private','public'])",
       "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
       "verdict": "match",
-      "resolution": "Re-verified \u2014 the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
+      "resolution": "Re-verified — the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
     },
     {
       "id": "REC-002",
-      "area": "module manifest \u2014 visibility",
+      "area": "module manifest — visibility",
       "doc_claim": "the manifest carries a `visibility` enum (contracts/module-manifest.schema.json)",
       "code_truth": "the schema carries a required visibility enum (['public','unlisted','private'])",
       "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
       "verdict": "match",
-      "resolution": "Re-verified \u2014 the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
+      "resolution": "Re-verified — the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
     },
     {
       "id": "REC-003",
-      "area": "module manifest \u2014 crossModuleReads",
+      "area": "module manifest — crossModuleReads",
       "doc_claim": "contracts/module-manifest.schema.json declares crossModuleReads: array of { targetModule, accessor } (accessor must end 'ForCrossModuleRead')",
       "code_truth": "the schema carries crossModuleReads: array of { targetModule, accessor } where accessor must end 'ForCrossModuleRead'",
       "code_ref": "apps/main/src/module-system/manifest.schema.ts",
@@ -41,7 +41,7 @@
     },
     {
       "id": "REC-004",
-      "area": "module manifest \u2014 command rbacRequirement",
+      "area": "module manifest — command rbacRequirement",
       "doc_claim": "contracts/module-manifest.schema.json declares rbacRequirement on each command entry: enum ['RESTRICTED','MEMBER','HELPER','MOD','ADMIN','OWNER'] | null",
       "code_truth": "each command entry carries rbacRequirement: enum ['RESTRICTED','MEMBER','HELPER','MOD','ADMIN','OWNER'] | null",
       "code_ref": "apps/main/src/module-system/manifest.schema.ts",
@@ -50,12 +50,12 @@
     },
     {
       "id": "REC-005",
-      "area": "module manifest \u2014 required fields",
+      "area": "module manifest — required fields",
       "doc_claim": "required = ['name','version','description','tier','hardcoded','devId','visibility','releaseStatus'] (contracts/module-manifest.schema.json; buildId is platform-issued by Swastik, not an author-declared manifest field)",
-      "code_truth": "the schema requires name, version, description, tier, hardcoded, devId, visibility and releaseStatus \u2014 buildId is not a manifest field (it is platform-issued and read from the build-provenance sidecar)",
+      "code_truth": "the schema requires name, version, description, tier, hardcoded, devId, visibility and releaseStatus — buildId is not a manifest field (it is platform-issued and read from the build-provenance sidecar)",
       "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
       "verdict": "match",
-      "resolution": "Re-verified \u2014 UR-20261019-103 dropped the author-declared buildId from the SDK, the contract and the 8 manifests; the required set now matches the contract exactly."
+      "resolution": "Re-verified — UR-20261019-103 dropped the author-declared buildId from the SDK, the contract and the 8 manifests; the required set now matches the contract exactly."
     },
     {
       "id": "REC-006",
@@ -115,10 +115,10 @@
       "id": "REC-012",
       "area": "module storage",
       "doc_claim": "four per-tier volumes under MODULES_DIR plus swastik-staging",
-      "code_truth": "MODULES_DIR default /mnt/modules; SWASTIK_STAGING_VOLUME_PATH default /mnt/modules/swastik-staging; SWASTIK_QUARANTINE_PATH default ''; tiers admin|core|standard|marketplace (SWASTIK_LIVE_VOLUME_PATH was removed \u2014 tier routing comes from MODULES_DIR)",
+      "code_truth": "MODULES_DIR default /mnt/modules; SWASTIK_STAGING_VOLUME_PATH default /mnt/modules/swastik-staging; SWASTIK_QUARANTINE_PATH default ''; tiers admin|core|standard|marketplace (SWASTIK_LIVE_VOLUME_PATH was removed — tier routing comes from MODULES_DIR)",
       "code_ref": "apps/main/src/config/env.schema.ts",
       "verdict": "match",
-      "resolution": "Re-verified \u2014 commit 7bb6302c0 removed the vestigial SWASTIK_LIVE_VOLUME_PATH."
+      "resolution": "Re-verified — commit 7bb6302c0 removed the vestigial SWASTIK_LIVE_VOLUME_PATH."
     },
     {
       "id": "REC-013",
@@ -159,11 +159,11 @@
     {
       "id": "REC-017",
       "area": "DI container",
-      "doc_claim": "typed Symbol tokens, frozen core; all 22 core tokens named in spec/architecture/dependency-injection-service-container.md \u00a710.2",
+      "doc_claim": "typed Symbol tokens, frozen core; all 22 core tokens named in spec/architecture/dependency-injection-service-container.md §10.2",
       "code_truth": "22 CORE_TOKENS declared (Logger, Config, Db, EventBus, Cache, Queue, ModuleRegistry, PermissionResolver, Metrics, I18n, CommandRegistry, CommandRouter, Renderer, InteractionRegistry, CommandCeilingService, CollisionResolutionService, Personas, EventRouter, Scheduler, AdminEvalGate, OAuth2, MtpTokens)",
       "code_ref": "apps/main/src/di/tokens.ts",
       "verdict": "match",
-      "resolution": "Re-verified \u2014 the registry declares 22 core tokens (I18n added since the earlier 21-token count); the docs count and list now match the code."
+      "resolution": "Re-verified — the registry declares 22 core tokens (I18n added since the earlier 21-token count); the docs count and list now match the code."
     },
     {
       "id": "REC-018",
@@ -176,107 +176,107 @@
     },
     {
       "id": "REC-019",
-      "area": "module manifest \u2014 marketplaceCategory",
+      "area": "module manifest — marketplaceCategory",
       "doc_claim": "a closed five-value enum ('audio'|'community'|'security'|'integrations'|'utility')",
       "code_truth": "marketplaceCategory is a closed five-value enum ('audio'|'community'|'security'|'integrations'|'utility')",
       "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
       "verdict": "match",
-      "resolution": "Re-verified \u2014 the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
+      "resolution": "Re-verified — the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
     },
     {
       "id": "REC-020",
-      "area": "module manifest \u2014 depends/provides/services shapes",
+      "area": "module manifest — depends/provides/services shapes",
       "doc_claim": "arrays of structured objects ({token,version} / {token,contract} / {token,class,lifetime,deps})",
       "code_truth": "depends: array of {token,version}; provides: array of {token,contract}; services: array of {token,class,lifetime,deps}",
       "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
       "verdict": "match",
-      "resolution": "Re-verified \u2014 the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
+      "resolution": "Re-verified — the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
     },
     {
       "id": "REC-021",
-      "area": "module manifest \u2014 devId (buildId is platform-issued)",
+      "area": "module manifest — devId (buildId is platform-issued)",
       "doc_claim": "devId is required; buildId is platform-issued by Swastik and is not an author-declared manifest field",
       "code_truth": "devId is required; buildId is not a manifest field (UR-20261019-103 removed it from the SDK, the contract and the 8 manifests; the loader reads it from the build-provenance sidecar)",
       "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
       "verdict": "match",
-      "resolution": "Re-verified \u2014 the manifest carries devId; buildId moved to the platform-issued provenance sidecar."
+      "resolution": "Re-verified — the manifest carries devId; buildId moved to the platform-issued provenance sidecar."
     },
     {
       "id": "REC-022",
-      "area": "module manifest \u2014 required flag",
+      "area": "module manifest — required flag",
       "doc_claim": "default: false (two conflicting entries in one section)",
       "code_truth": "required: z.boolean().default(false)",
       "code_ref": "packages/swastik/src/manifest.ts ; apps/main/src/module-system/manifest.schema.ts",
       "verdict": "match",
-      "resolution": "Re-verified \u2014 the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
+      "resolution": "Re-verified — the manifest contract is now expressed by the shared swastik schema (v5.3.0 remediation)."
     },
     {
       "id": "REC-023",
-      "area": "BCCM \u2014 profile/application scope",
-      "doc_claim": "command cosmetics are keyed by the acting application, not by the guild alone (spec/operations/multi-identity-operation-twill-personas.md \u00a735.4)",
+      "area": "BCCM — profile/application scope",
+      "doc_claim": "command cosmetics are keyed by the acting application, not by the guild alone (spec/operations/multi-identity-operation-twill-personas.md §35.4)",
       "code_truth": "the BCCM store scopes every query by applicationId; migration 20260101000053 adds a not-null applicationId (default '') to guild_command_renames, guild_command_overrides, guild_command_queue and guild_command_daily_creates",
       "code_ref": "apps/main/src/commands/bccm-batch-push-store.ts ; apps/main/src/db/migrations/20260101000053_add_command_application_scope.ts",
       "verdict": "match",
-      "resolution": "Documented in v5.5.101 (spec \u00a735.4); the main bot's scope is the empty string, so every pre-existing row and behaviour is unchanged."
+      "resolution": "Documented in v5.5.101 (spec §35.4); the main bot's scope is the empty string, so every pre-existing row and behaviour is unchanged."
     },
     {
       "id": "REC-024",
-      "area": "BCCM \u2014 persona-side batch push",
-      "doc_claim": "each identity runs its own BCCM batch push against its own application scope (spec/operations/multi-identity-operation-twill-personas.md \u00a735.4)",
+      "area": "BCCM — persona-side batch push",
+      "doc_claim": "each identity runs its own BCCM batch push against its own application scope (spec/operations/multi-identity-operation-twill-personas.md §35.4)",
       "code_truth": "PersonaRuntimeDeps.runBccmPush is supplied by bootstrap and invoked per persona start; it runs runBccmBatchPush against the persona's own applicationId, so the main bot's push (which ignores the persona scope) never carries her queued cosmetics",
       "code_ref": "apps/main/src/personas/persona-runtime.ts ; apps/main/src/bootstrap/bootstrap.ts",
       "verdict": "match",
-      "resolution": "Documented in v5.5.101 (spec \u00a735.4); previously a landed behaviour with no documentation and no reconciliation row (UR-20261018-092 DR-2). Confirmed live 2026-10-18: the persona-side push ran on Railway (bccm-batch-push-complete dryRun=false)."
+      "resolution": "Documented in v5.5.101 (spec §35.4); previously a landed behaviour with no documentation and no reconciliation row (UR-20261018-092 DR-2). Confirmed live 2026-10-18: the persona-side push ran on Railway (bccm-batch-push-complete dryRun=false)."
     },
     {
       "id": "REC-025",
-      "area": "module load \u2014 build-provenance floor (\u00a715.8 / D-4.10)",
-      "doc_claim": "hash-bound provenance verification against the build record is the enforced floor, and the promoted artifact is verified before import (spec/governance/part-4-module-system-framework.md rule D-4.10; spec/modules/swastik-hot-reload-dynamic-module-management.md \u00a715.8/\u00a715.9)",
-      "code_truth": "the loader requires a build-provenance sidecar (no sidecar -> refuse), verifies the on-disk artifact hash against the builds row (L1, always), refuses a revoked build, and verifies the Ed25519 signature (L2, mandatory \u2014 no armed verifier -> refuse); bootstrap supplies the build store unconditionally and arms the verifier from BUILD_SIGNING_*",
+      "area": "module load — build-provenance floor (§15.8 / D-4.10)",
+      "doc_claim": "hash-bound provenance verification against the build record is the enforced floor, and the promoted artifact is verified before import (spec/governance/part-4-module-system-framework.md rule D-4.10; spec/modules/swastik-hot-reload-dynamic-module-management.md §15.8/§15.9)",
+      "code_truth": "the loader requires a build-provenance sidecar (no sidecar -> refuse), verifies the on-disk artifact hash against the builds row (L1, always), refuses a revoked build, and verifies the Ed25519 signature (L2, mandatory — no armed verifier -> refuse); bootstrap supplies the build store unconditionally and arms the verifier from BUILD_SIGNING_*",
       "code_ref": "apps/main/src/module-system/build-signing.ts ; apps/main/src/bootstrap/bootstrap.ts",
       "verdict": "match",
-      "resolution": "Resolved by UR-20261019-101/103 (re-verified): the D-4.10 hash-bound floor always runs when a build store is supplied, and the signature layer is mandatory \u2014 the loader no longer imports an unverified module. Previously recorded as a code-gap (fail-open); the floor now holds."
+      "resolution": "Resolved by UR-20261019-101/103 (re-verified): the D-4.10 hash-bound floor always runs when a build store is supplied, and the signature layer is mandatory — the loader no longer imports an unverified module. Previously recorded as a code-gap (fail-open); the floor now holds."
     },
     {
       "id": "REC-026",
-      "area": "module delivery \u2014 Option A (image ships no modules)",
-      "doc_claim": "first-party modules are delivered to their tier volumes and are not baked into the application image (spec/modules/swastik-hot-reload-dynamic-module-management.md; orchestration/master-prompt.md Phase 6: 'first-party modules are seeded onto their tier volumes \u2026 they are not committed into the source tree')",
+      "area": "module delivery — Option A (image ships no modules)",
+      "doc_claim": "first-party modules are delivered to their tier volumes and are not baked into the application image (spec/modules/swastik-hot-reload-dynamic-module-management.md; orchestration/master-prompt.md Phase 6: 'first-party modules are seeded onto their tier volumes … they are not committed into the source tree')",
       "code_truth": "the production image ships no modules; apps/main/scripts/build-modules.ts and push-modules.ts deliver them to the MODULES_DIR tier volumes; the seed/place/stage scripts are removed (UR-20261019-102 Option A)",
       "code_ref": "apps/main/package.json ; apps/main/scripts/build-modules.ts ; apps/main/scripts/push-modules.ts ; apps/main/Dockerfile",
       "verdict": "match",
-      "resolution": "Re-verified \u2014 the image carries no modules; delivery is build:modules -> push:modules to the tier volumes."
+      "resolution": "Re-verified — the image carries no modules; delivery is build:modules -> push:modules to the tier volumes."
     },
     {
       "id": "REC-027",
-      "area": "module manifest \u2014 devId is stamped at build time",
+      "area": "module manifest — devId is stamped at build time",
       "doc_claim": "a manifest names the developer (`devId`) and the exact uploaded version (spec/modules/module-anatomy-manifest.md)",
       "code_truth": "`build:modules --dev-id <id>` stamps the platform devId into every built manifest (UR-20261019-104 Path B); the author does not hand-write it",
       "code_ref": "apps/main/scripts/build-modules.ts",
       "verdict": "match",
-      "resolution": "Re-verified \u2014 devId is platform-injected at build time."
+      "resolution": "Re-verified — devId is platform-injected at build time."
     },
     {
       "id": "REC-028",
-      "area": "module load \u2014 signature layer is mandatory",
-      "doc_claim": "the runtime verifies a promoted module's provenance before import (spec/modules/swastik-hot-reload-dynamic-module-management.md \u00a715.8/\u00a715.9)",
+      "area": "module load — signature layer is mandatory",
+      "doc_claim": "the runtime verifies a promoted module's provenance before import (spec/modules/swastik-hot-reload-dynamic-module-management.md §15.8/§15.9)",
       "code_truth": "the loader refuses a module with no build-provenance sidecar, refuses a build with no builds row or a missing provenance column, refuses a hash mismatch, refuses a revoked build, and refuses when no signing verifier is armed (L2 mandatory); bootstrap arms the verifier from BUILD_SIGNING_KEY_ID + BUILD_SIGNING_PUBLIC_KEY/PRIVATE_KEY (UR-20261019-103)",
       "code_ref": "apps/main/src/module-system/swastik-loader.ts ; apps/main/src/bootstrap/bootstrap.ts",
       "verdict": "match",
-      "resolution": "Re-verified \u2014 every load-time provenance control is mandatory."
+      "resolution": "Re-verified — every load-time provenance control is mandatory."
     },
     {
       "id": "REC-029",
-      "area": "module ownership \u2014 one read for every surface",
+      "area": "module ownership — one read for every surface",
       "doc_claim": "every page and the install path read a module's holder from the ONE ownership resolver; no surface caches it or re-derives it (spec/modules/module-tiers-lifecycle.md)",
-      "code_truth": "page-data reads the holder fresh on every render \u2014 there is no process-lifetime memo; /browse marks a module occupied only when a DEFINED holder is not the acting profile; /health takes its held set from the ownership read for every profile, hosted or not; /modules and /dashboard use the same resolver",
+      "code_truth": "page-data reads the holder fresh on every render — there is no process-lifetime memo; /browse marks a module occupied only when a DEFINED holder is not the acting profile; /health takes its held set from the ownership read for every profile, hosted or not; /modules and /dashboard use the same resolver",
       "code_ref": "apps/main/src/rendering/page-data.ts",
       "verdict": "match",
-      "resolution": "Established by UR-20261026-097 (RT-1 \u2026 RT-3); the surfaces previously disagreed because four independent reads of one fact existed."
+      "resolution": "Established by UR-20261026-097 (RT-1 … RT-3); the surfaces previously disagreed because four independent reads of one fact existed."
     },
     {
       "id": "REC-030",
-      "area": "module disable \u2014 command removal is queued, never immediate",
-      "doc_claim": "\u00a717.7: a module disable's command removal never takes effect immediately at the registration layer; it is an entry in the shared guild command change queue",
+      "area": "module disable — command removal is queued, never immediate",
+      "doc_claim": "§17.7: a module disable's command removal never takes effect immediately at the registration layer; it is an entry in the shared guild command change queue",
       "code_truth": "a disable writes the disabled state, writes the @everyone deny override that hides the commands instantly, and enqueues the removal; there is no per-command delete path (the applied===0 fallback was removed)",
       "code_ref": "apps/main/src/bootstrap/bootstrap.ts; apps/main/src/commands/command-access.ts",
       "verdict": "match",
@@ -284,25 +284,25 @@
     },
     {
       "id": "REC-031",
-      "area": "command dispatch \u2014 a module and its commands belong to one profile",
+      "area": "command dispatch — a module and its commands belong to one profile",
       "doc_claim": "a guild-scoped module and its commands belong to one profile, and a profile that does not hold the module does not answer its commands",
-      "code_truth": "assertPersonaOwnsCommand refuses with CommandScopeDeniedError('owned-elsewhere') when the resolver names a different profile \u2014 a cause of its own, not the 'out-of-scope' catch-all that also serves a DM, the wrong guild for an admin command and an unresolved tier. core and admin short-circuit as 'shared'; the holder answers her own command. The renderer maps the cause to the OUT_OF_SCOPE notice reason code, which states that another profile holds the module.",
+      "code_truth": "assertPersonaOwnsCommand refuses with CommandScopeDeniedError('owned-elsewhere') when the resolver names a different profile — a cause of its own, not the 'out-of-scope' catch-all that also serves a DM, the wrong guild for an admin command and an unresolved tier. core and admin short-circuit as 'shared'; the holder answers her own command. The renderer maps the cause to the OUT_OF_SCOPE notice reason code, which states that another profile holds the module.",
       "code_ref": "apps/main/src/commands/command-router.ts",
       "verdict": "match",
       "resolution": "Established by UR-20261026-100 (RT-8) on the operator's ruling, and refined by UR-20261026-102, which split the cause out of 'out-of-scope' and added OUT_OF_SCOPE as the fifteenth reason code. It had logged and proceeded, which let a stale registration answer for the wrong profile."
     },
     {
       "id": "REC-032",
-      "area": "interaction \u2014 a refusal is answered privately",
+      "area": "interaction — a refusal is answered privately",
       "doc_claim": "a refusal is for the member who tried it, so it is delivered privately (spec/request-layer/division-2-interaction-lifecycle-buffer-notices-components.md)",
-      "code_truth": "the module-refusal notice is delivered with interaction.followUp \u2014 a new, private message \u2014 and declares ephemeral: true; the read-only guard permits followUp only for a handler that sets allowFollowUp, and keeps reply and showModal blocked",
+      "code_truth": "the module-refusal notice is delivered with interaction.followUp — a new, private message — and declares ephemeral: true; the read-only guard permits followUp only for a handler that sets allowFollowUp, and keeps reply and showModal blocked",
       "code_ref": "apps/main/src/interactions/core-frame.handlers.ts; apps/main/src/rendering/core-renderer.ts",
       "verdict": "match",
       "resolution": "Established by UR-20261026-098 (RT-6). Riding editReply on a publicly acknowledged interaction made the card private in grammar and public in fact."
     },
     {
       "id": "REC-033",
-      "area": "command dispatch \u2014 an absent command is explained, not called unknown",
+      "area": "command dispatch — an absent command is explained, not called unknown",
       "doc_claim": "a refusal tells the member the truth about WHY: a module another profile holds is reported as held elsewhere, a module switched off for the guild as switched off, and only a command the platform does not know as unknown (spec/request-layer/division-2-interaction-lifecycle-buffer-notices-components.md)",
       "code_truth": "a profile's registry is filtered to the modules she holds, so dispatch misses another profile's command; on a miss the router consults the unfiltered globalRegistry and answers MODULE_DISABLED when the module is off for the guild, OUT_OF_SCOPE when another profile holds it, and UNKNOWN_COMMAND only when the command is genuinely unknown. Core and admin short-circuit, because 'another profile holds it' about a shared command would be a lie.",
       "code_ref": "apps/main/src/commands/command-router.ts",
@@ -311,28 +311,55 @@
     },
     {
       "id": "REC-034",
-      "area": "module re-enable \u2014 both halves of a disable revert",
-      "doc_claim": "a disable has two halves, an instant permission restrict and a queued removal, and a re-enable reverses BOTH: the command is restored to its default permission state and the queued removal is revoked before its push (spec/request-layer/command-framework-routing-engine.md \u00a717.7)",
-      "code_truth": "an enable rewrites the @everyone command permission to allow \u2014 the command's default state, since Discord publishes no DELETE for command permissions \u2014 and enqueueModuleCommandChanges soft-deletes any pending row carrying the contradicting action for the same command keys, guild and application, before writing its own. pendingEntries returns rows in createdAt order so the replay is deterministic.",
+      "area": "module re-enable — both halves of a disable revert",
+      "doc_claim": "a disable has two halves, an instant permission restrict and a queued removal, and a re-enable reverses BOTH: the command is restored to its default permission state and the queued removal is revoked before its push (spec/request-layer/command-framework-routing-engine.md §17.7)",
+      "code_truth": "an enable rewrites the @everyone command permission to allow — the command's default state, since Discord publishes no DELETE for command permissions — and enqueueModuleCommandChanges soft-deletes any pending row carrying the contradicting action for the same command keys, guild and application, before writing its own. pendingEntries returns rows in createdAt order so the replay is deterministic.",
       "code_ref": "apps/main/src/bootstrap/bootstrap.ts; apps/main/src/commands/bccm-batch-push-store.ts",
       "verdict": "match",
       "resolution": "Established by RT-17 and RT-18. Before it, a module toggled twice inside the batch window left a pending removal beside a pending re-registration and the replay decided the outcome by row order."
     },
     {
       "id": "REC-035",
-      "area": "CI workflow hygiene \u2014 the check-workflows gate",
-      "doc_claim": "spec/governance/part-8-quality-delivery-acceptance.md rule D-8.4 item 4 and spec/lifecycle/ci-cd-pipeline.md \u00a740.6 describe a CI check that fails the build on an unpinned action, a secret on a command line, or a kubeconfig outside the temp-file/trap pattern",
+      "area": "CI workflow hygiene — the check-workflows gate",
+      "doc_claim": "spec/governance/part-8-quality-delivery-acceptance.md rule D-8.4 item 4 and spec/lifecycle/ci-cd-pipeline.md §40.6 describe a CI check that fails the build on an unpinned action, a secret on a command line, or a kubeconfig outside the temp-file/trap pattern",
       "code_truth": "no such check exists: `find . -name '*check-workflows*'` returns nothing, and the repository-root `scripts/` holds only package.json, post-merge.sh, src/ and tsconfig.json",
       "code_ref": "scripts/",
       "verdict": "code-gap",
       "resolution": "Recorded 2026-10-27 by UR-20261027-103 / DOC-007. The rule text now states that it is not implemented and that both invariants are a standing review obligation until the check lands at `scripts/check-workflows.mjs`. Implementing it is a code-track item."
+    },
+    {
+      "id": "REC-036",
+      "area": "HTTP path layout — the info, MDIS and Swastik families",
+      "doc_claim": "spec/reference/rest-api-webhooks-mdis-reference.md §44.2, §44.3 and §44.7 name GET /info, GET|PUT /api/modules/:name/config, POST /api/modules/:name/:action, PATCH /api/modules/:name/state, POST /api/swastik/register, POST /api/swastik/modules/:slug/upload and GET /api/swastik/modules/:slug/status",
+      "code_truth": "the server mounts GET /api/info (apps/main/src/http/routes/info.routes.ts:15), the MDIS family at /mdis/* (/mdis/catalog, /mdis/modules/:slug, /mdis/guilds/:guildId/installed|install|uninstall) and the Swastik family at /swastik/* (/swastik/developers/me, /swastik/developers/register, /swastik/modules/upload, /swastik/modules/:slug/builds/:buildId, /swastik/status); no /api/modules or /api/swastik route is registered anywhere in apps/main/src or packages/*/src",
+      "code_ref": "apps/main/src/http/routes/info.routes.ts ; apps/main/src/mdis/mdis.routes.ts",
+      "verdict": "code-gap",
+      "resolution": "Recorded 2026-10-27 by UR-20261027-104 / DOC-017. The contract now enumerates the mounted surface (contracts/openapi.yaml, 67 paths, verified 67/67 against the registrations) and documentation/api/endpoints.md is corrected to it; the specification keeps its own layout and this row is the gap between the two. Aligning the paths is a code-track item — either the routes move to the specified layout or the specification adopts the shipped one."
+    },
+    {
+      "id": "REC-037",
+      "area": "HTTP path layout — the Power Engine control plane",
+      "doc_claim": "spec/reference/rest-api-webhooks-mdis-reference.md §44.6 states that every one of Power Engine's seventeen control domains is reachable as an authenticated POST to /api/pep/{functionName}",
+      "code_truth": "the control plane is mounted as one route per action under /admin/power-engine/* (32 paths, e.g. /admin/power-engine/pauseQueue, /admin/power-engine/guild/:guildId/suspend), guarded by the internal API key (apps/main/src/http/server.ts:79-91) and dispatched through apps/main/src/http/power-engine-dispatcher.ts; no /api/pep route is registered anywhere",
+      "code_ref": "apps/main/src/http/routes/admin.routes.ts ; apps/main/src/http/power-engine-dispatcher.ts",
+      "verdict": "code-gap",
+      "resolution": "Recorded 2026-10-27 by UR-20261027-104 / DOC-017. The contract enumerates the 32 /admin/power-engine/* routes that exist; the single-dispatcher /api/pep/{functionName} shape the specification describes is not mounted. Choosing between them is a code-track decision and is not taken by this record."
+    },
+    {
+      "id": "REC-038",
+      "area": "HTTP path layout — endpoints declared and not mounted",
+      "doc_claim": "contracts/openapi.yaml previously declared POST /channels/, PUT /guilds/, POST /interactions/ (Discord gateway webhooks, HMAC-verified) and POST /admin/operators",
+      "code_truth": "no route for any of the four is registered in apps/main/src or packages/*/src; the gateway surfaces are not HTTP routes in this server, and operator management has no /admin/operators route",
+      "code_ref": "apps/main/src/http/server.ts",
+      "verdict": "code-gap",
+      "resolution": "Recorded 2026-10-27 by UR-20261027-104 / DOC-017. The four paths are removed from the contract and listed in its x-spec-divergence block rather than left standing as if served. Implementing them is a code-track item."
     }
   ],
   "counts": {
     "match": 34,
     "doc-incomplete": 0,
-    "code-gap": 1,
+    "code-gap": 4,
     "code-anchor-broken": 0,
-    "total": 35
+    "total": 38
   }
 }

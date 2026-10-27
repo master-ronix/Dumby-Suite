@@ -2,35 +2,165 @@ openapi: 3.1.0
 info:
   title: Dumby API
   version: 5.0.0
-  description: Single source for REST/webhook/MDIS endpoints. Health + admin + modules + swastik.
+  description: >-
+    The HTTP surface the shipped server mounts. Every path below is a route
+    registered under apps/main/src (or packages/*/src) at feature/dev c6c2c82a,
+    enumerated with
+    `rg -o "app\.(get|post|put|patch|delete)\(\s*'[^']+'" apps/main/src packages/*/src`.
+    Fastify `:param` segments are written as OpenAPI `{param}`; nothing else is
+    transformed. Where the specification names a different layout it is listed in
+    x-spec-divergence, and the gap is recorded in status/code-reconciliation.json
+    (REC-036, REC-037, REC-038). Paths under /admin, /mdis, /operational, /twill
+    and /internal require the internal API key
+    (apps/main/src/http/server.ts:79-91).
+  x-spec-divergence:
+    - "specified /info, /api/modules/:name/{config,state,:action}, /api/swastik/* -> shipped /api/info, /mdis/*, /swastik/* (REC-036)"
+    - "specified POST /api/pep/{functionName} -> shipped POST /admin/power-engine/<action> (REC-037)"
+    - "specified /channels/, /guilds/, /interactions/, /admin/operators -> not mounted (REC-038)"
 servers: [ { url: / } ]
-tags: [ {name: health}, {name: info}, {name: modules}, {name: swastik}, {name: admin}, {name: gateway} ]
+tags:
+  - { name: health, description: probes and metrics }
+  - { name: info, description: build info and assets }
+  - { name: auth, description: Discord OAuth2 and dashboard }
+  - { name: admin, description: control plane (internal key) }
+  - { name: modules, description: MDIS module config and state (internal key) }
+  - { name: swastik, description: developer, upload and module lifecycle (internal key) }
+  - { name: operational, description: runbooks and status (internal key) }
+  - { name: twill, description: persona registration (internal key) }
+  - { name: internal, description: internal signals (internal key) }
 paths:
-  /health/liveness:  { get: { tags:[health], summary: liveness probe } }
-  /health/readiness: { get: { tags:[health], summary: readiness probe (200 only after stage 18) } }
-  /health/startup:   { get: { tags:[health], summary: startup probe } }
-  /info:             { get: { tags:[info],   summary: build/version info } }
-  /metrics:          { get: { tags:[info],   summary: Prometheus metrics } }
-  /api/modules/{name}/config:
-    get:  { tags:[modules], summary: read module config }
-    put:  { tags:[modules], summary: write module config }
-  /api/modules/{name}/state:
-    patch:{ tags:[modules], summary: enable/disable module }
-  /api/modules/{name}/{action}:
-    post: { tags:[modules], summary: Power Engine action dispatch (honest 501 if unhandled) }
-  /api/swastik/register:
-    post: { tags:[swastik], summary: register developer (token-based) }
-  /api/swastik/modules/{slug}/upload:
-    post: { tags:[swastik], summary: upload module tarball (multipart, <=64MiB, zip-slip-safe) }
-  /api/swastik/modules/{slug}/status:
-    get:  { tags:[swastik], summary: build/promotion status }
-  /admin/operators:
-    post: { tags:[admin], summary: manage CLAI operators }
+  /admin/config:
+    get: { tags:[admin], summary: "effective configuration read" }
+  /admin/governance/developers/{devId}/approve:
+    post: { tags:[admin], summary: "/admin/governance/developers/:devId/approve" }
+  /admin/governance/developers/{devId}/decline:
+    post: { tags:[admin], summary: "/admin/governance/developers/:devId/decline" }
+  /admin/power-engine/audit/export:
+    post: { tags:[admin], summary: "Power Engine action: audit.export" }
+  /admin/power-engine/backups/create:
+    post: { tags:[admin], summary: "Power Engine action: backups.create" }
+  /admin/power-engine/cache/invalidate:
+    post: { tags:[admin], summary: "Power Engine action: cache.invalidate" }
+  /admin/power-engine/collisions/{guildId}:
+    get: { tags:[admin], summary: "Power Engine action: collisions.:guildId" }
+  /admin/power-engine/collisions/{guildId}/resolve:
+    post: { tags:[admin], summary: "Power Engine action: collisions.:guildId.resolve" }
+  /admin/power-engine/command-ceiling/{guildId}:
+    get: { tags:[admin], summary: "Power Engine action: command-ceiling.:guildId" }
+  /admin/power-engine/command-ceiling/{guildId}/guard:
+    post: { tags:[admin], summary: "Power Engine action: command-ceiling.:guildId.guard" }
+  /admin/power-engine/credentials/rotate:
+    post: { tags:[admin], summary: "Power Engine action: credentials.rotate" }
+  /admin/power-engine/economy/balance-adjust:
+    post: { tags:[admin], summary: "Power Engine action: economy.balance-adjust" }
+  /admin/power-engine/exitMaintenanceMode:
+    post: { tags:[admin], summary: "Power Engine action: exitMaintenanceMode" }
+  /admin/power-engine/feature-flags/toggle:
+    post: { tags:[admin], summary: "Power Engine action: feature-flags.toggle" }
+  /admin/power-engine/guild/{guildId}/restore:
+    post: { tags:[admin], summary: "Power Engine action: guild.:guildId.restore" }
+  /admin/power-engine/guild/{guildId}/suspend:
+    post: { tags:[admin], summary: "Power Engine action: guild.:guildId.suspend" }
+  /admin/power-engine/marketplace/review:
+    post: { tags:[admin], summary: "Power Engine action: marketplace.review" }
+  /admin/power-engine/module/{slug}/restore:
+    post: { tags:[admin], summary: "Power Engine action: module.:slug.restore" }
+  /admin/power-engine/module/{slug}/suspend:
+    post: { tags:[admin], summary: "Power Engine action: module.:slug.suspend" }
+  /admin/power-engine/notifications/broadcast:
+    post: { tags:[admin], summary: "Power Engine action: notifications.broadcast" }
+  /admin/power-engine/overrideRateLimit:
+    post: { tags:[admin], summary: "Power Engine action: overrideRateLimit" }
+  /admin/power-engine/pauseQueue:
+    post: { tags:[admin], summary: "Power Engine action: pauseQueue" }
+  /admin/power-engine/queryAuditLog:
+    get: { tags:[admin], summary: "Power Engine action: queryAuditLog" }
+  /admin/power-engine/rbac/role-assign:
+    post: { tags:[admin], summary: "Power Engine action: rbac.role-assign" }
+  /admin/power-engine/requeueDeadLetter:
+    post: { tags:[admin], summary: "Power Engine action: requeueDeadLetter" }
+  /admin/power-engine/restartShardGroup:
+    post: { tags:[admin], summary: "Power Engine action: restartShardGroup" }
+  /admin/power-engine/resumeQueue:
+    post: { tags:[admin], summary: "Power Engine action: resumeQueue" }
+  /admin/power-engine/revokeModuleSignature:
+    post: { tags:[admin], summary: "Power Engine action: revokeModuleSignature" }
+  /admin/power-engine/rollbackModuleVersion:
+    post: { tags:[admin], summary: "Power Engine action: rollbackModuleVersion" }
+  /admin/power-engine/sharding/rebalance:
+    post: { tags:[admin], summary: "Power Engine action: sharding.rebalance" }
+  /admin/power-engine/suspendCommand:
+    post: { tags:[admin], summary: "Power Engine action: suspendCommand" }
+  /admin/power-engine/suspendDeveloper:
+    post: { tags:[admin], summary: "Power Engine action: suspendDeveloper" }
+  /admin/power-engine/suspendGuild:
+    post: { tags:[admin], summary: "Power Engine action: suspendGuild" }
+  /admin/power-engine/tasks/schedule:
+    post: { tags:[admin], summary: "Power Engine action: tasks.schedule" }
+  /admin/power-engine/telemetry/config-update:
+    post: { tags:[admin], summary: "Power Engine action: telemetry.config-update" }
+  /admin/power-engine/triggerCoreRestart:
+    post: { tags:[admin], summary: "Power Engine action: triggerCoreRestart" }
+  /admin/power-engine/unsuspendGuild:
+    post: { tags:[admin], summary: "Power Engine action: unsuspendGuild" }
+  /admin/power-engine/webhooks/rotate-secret:
+    post: { tags:[admin], summary: "Power Engine action: webhooks.rotate-secret" }
+  /admin/system/maintenance-mode:
+    get: { tags:[admin], summary: "read/write maintenance mode" }
+    post: { tags:[admin], summary: "read/write maintenance mode" }
+  /api/info:
+    get: { tags:[info], summary: "build/version info (aggregate only)" }
+  /assets/dashboard-banner.png:
+    get: { tags:[info], summary: "dashboard banner asset" }
+  /assets/dumby-banner.png:
+    get: { tags:[info], summary: "default banner asset" }
+  /auth/authorize:
+    get: { tags:[auth], summary: "Discord OAuth2 authorize" }
+  /auth/callback:
+    get: { tags:[auth], summary: "Discord OAuth2 callback" }
+  /dashboard:
+    get: { tags:[auth], summary: "dashboard entry" }
+  /health/liveness:
+    get: { tags:[health], summary: "liveness probe" }
+  /health/readiness:
+    get: { tags:[health], summary: "readiness probe" }
+  /health/startup:
+    get: { tags:[health], summary: "startup probe" }
+  /internal/deploy:
+    post: { tags:[internal], summary: "module deploy signal (internal only)" }
   /internal/reload:
-    post: { tags:[swastik], summary: "internal hot-swap signal (module=<name>); internal-only" }
-  /channels/:
-    post: { tags:[gateway], summary: Discord gateway webhook (HMAC-verified) }
-  /guilds/:
-    put:  { tags:[gateway], summary: Discord gateway webhook (HMAC-verified) }
-  /interactions/:
-    post: { tags:[gateway], summary: Discord interactions endpoint (HMAC-verified) }
+    post: { tags:[internal], summary: "module hot-swap signal (internal only)" }
+  /mdis/catalog:
+    get: { tags:[modules], summary: "MDIS: catalog" }
+  /mdis/guilds/{guildId}/install:
+    post: { tags:[modules], summary: "MDIS: guilds guildId install" }
+  /mdis/guilds/{guildId}/installed:
+    get: { tags:[modules], summary: "MDIS: guilds guildId installed" }
+  /mdis/guilds/{guildId}/uninstall:
+    post: { tags:[modules], summary: "MDIS: guilds guildId uninstall" }
+  /mdis/modules/{slug}:
+    get: { tags:[modules], summary: "MDIS: modules slug" }
+  /metrics:
+    get: { tags:[info], summary: "Prometheus text format" }
+  /oauth/callback:
+    get: { tags:[auth], summary: "Discord OAuth2 callback (alias)" }
+  /openapi.yaml:
+    get: { tags:[info], summary: "this contract" }
+  /operational/runbooks:
+    get: { tags:[operational], summary: "Operational: runbooks" }
+  /operational/status:
+    get: { tags:[operational], summary: "Operational: status" }
+  /swastik/developers/me:
+    get: { tags:[swastik], summary: "Swastik: developers me" }
+  /swastik/developers/register:
+    post: { tags:[swastik], summary: "Swastik: developers register" }
+  /swastik/modules/upload:
+    post: { tags:[swastik], summary: "Swastik: modules upload" }
+  /swastik/modules/{slug}/builds/{buildId}:
+    get: { tags:[swastik], summary: "Swastik: modules slug builds buildId" }
+  /swastik/status:
+    get: { tags:[swastik], summary: "Swastik: status" }
+  /twill/personas:
+    get: { tags:[twill], summary: "Twill: personas" }
+  /twill/registrars:
+    get: { tags:[twill], summary: "Twill: registrars" }
