@@ -172,7 +172,11 @@ export function makeProcessStanding(deps: ProcessStandingDeps): ProcessStandingR
         enabledAt: null,
       };
     } catch (err) {
-      logger.warn('process-standing-unreadable', { moduleId, guildId: null, error: String(err) });
+      logger.warn('process-standing-unreadable', {
+        moduleId,
+        guildId: 'fleet',
+        error: String(err),
+      });
       return {
         moduleId,
         guildId: null,

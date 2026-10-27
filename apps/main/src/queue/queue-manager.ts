@@ -31,10 +31,16 @@ export interface QueueManagerOptions {
 
 export interface RegisterQueueOptions<T = unknown> {
   name: string;
-  /** MB-4 — a processor may take an `AbortSignal`; one that ignores it still runs, just uncancellably. */
-  processor:
-    | Processor<T>
-    | ((job: { data: T; id?: string }, token?: string, signal?: AbortSignal) => Promise<unknown>);
+  processor: Processor<T>;
+  /**
+   * MB-4 — the same processor, with the cooperative signal. Opt-in, so `Processor<T>` inference at the
+   * call site is untouched and an existing processor keeps its signature.
+   */
+  processorWithSignal?: (
+    job: { data: T; id?: string },
+    token?: string,
+    signal?: AbortSignal,
+  ) => Promise<unknown>;
   concurrency?: number;
   minConcurrency?: number;
   maxConcurrency?: number;
