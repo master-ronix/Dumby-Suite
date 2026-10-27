@@ -3,7 +3,7 @@
   "note": "Records when the corpus was last independently audited and against which commit, so audit staleness is visible the same way provenance staleness is. Read by check-side-docs (provenance rule) against the reconciliation ledger.",
   "last_audit": {
     "date": "2026-10-26",
-    "commit": "c2c7a21ff7ef79fb1f20a132b9466965e4d42718",
+    "commit": "9c67e2cc35f07543a6883e58fdb204da18e6be5e",
     "branch": "feature/dev",
     "scope": "full-scope docs/ corpus audit + runtime-ownership code track + trigger-chain run",
     "findings": "RT-1 \u2026 RT-11 (UR-20261026-097, -098, -100, -101); RT-7 CI blocker carried as OI-8 (UR-20261026-099); DOC-012 \u2026 DOC-016 closed earlier the same day",

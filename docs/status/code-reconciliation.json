@@ -1,10 +1,10 @@
 {
   "$id": "docs/status/code-reconciliation.json",
   "title": "Docs \u2194 Code reconciliation",
-  "note": "Every row compares what the NEW documentation asserts against the actual source in master-ronix/Dumby-Suite (apps/main at c2c7a21ff7ef79fb1f20a132b9466965e4d42718, branch feature/dev). Standing rule: the specification is authority; where the code is narrower, the code is the gap to close. The anchor is the last commit to touch apps/main|packages, so no commit after it can move the code under a row without the freshness gate failing. REC-034 was added at the previous anchor, for the re-enable revert that the queue and the permission write gained. This re-anchor carries two CI repairs (RT-21 formatting, RT-22 a test that omitted the profile identity). Neither changed a claim: the code was right in both cases, and REC-031's subject is unaffected. The other rows were re-anchored, not re-derived: no commit in the range touched the code they describe.",
-  "verified_commit": "c2c7a21ff7ef79fb1f20a132b9466965e4d42718",
+  "note": "Every row compares what the NEW documentation asserts against the actual source in master-ronix/Dumby-Suite (apps/main at 9c67e2cc35f07543a6883e58fdb204da18e6be5e, branch feature/dev). Standing rule: the specification is authority; where the code is narrower, the code is the gap to close. The anchor is the last commit to touch apps/main|packages, so no commit after it can move the code under a row without the freshness gate failing. REC-034 was added at the previous anchor, for the re-enable revert that the queue and the permission write gained. This re-anchor carries two CI repairs (RT-21 formatting, RT-22 a test that omitted the profile identity). Neither changed a claim: the code was right in both cases, and REC-031's subject is unaffected. The other rows were re-anchored, not re-derived: no commit in the range touched the code they describe.",
+  "verified_commit": "9c67e2cc35f07543a6883e58fdb204da18e6be5e",
   "verified_branch": "feature/dev",
-  "verified_at": "2026-10-27T00:47:43Z",
+  "verified_at": "2026-10-27T00:55:03Z",
   "verdicts": [
     "match",
     "doc-incomplete",
