@@ -322,10 +322,10 @@
       "id": "REC-035",
       "area": "CI workflow hygiene — the check-workflows gate",
       "doc_claim": "spec/governance/part-8-quality-delivery-acceptance.md rule D-8.4 item 4 and spec/lifecycle/ci-cd-pipeline.md §40.6 describe a CI check that fails the build on an unpinned action, a secret on a command line, or a kubeconfig outside the temp-file/trap pattern",
-      "code_truth": "no such check exists: `find . -name '*check-workflows*'` returns nothing, and the repository-root `scripts/` holds only package.json, post-merge.sh, src/ and tsconfig.json",
-      "code_ref": "scripts/",
-      "verdict": "code-gap",
-      "resolution": "Recorded 2026-10-27 by UR-20261027-103 / DOC-007. The rule text now states that it is not implemented and that both invariants are a standing review obligation until the check lands at `scripts/check-workflows.mjs`. Implementing it is a code-track item."
+      "code_truth": "the check exists at scripts/check-workflows.mjs and is wired into .github/workflows/ci.yml as Gate 3c, which runs on every push. It fails the build on an action that is not pinned to a 40-hex commit SHA, on a ${{ secrets.* }} interpolation inside a run: block, and on a kubeconfig written outside the temp-file/trap pattern. On the tree at this commit it reports 26 action references, all SHA-pinned, no secret on a command line, and no kubeconfig written outside the pattern.",
+      "code_ref": "scripts/check-workflows.mjs ; .github/workflows/ci.yml",
+      "verdict": "match",
+      "resolution": "Implemented 2026-10-27 under UR-20261027-105's follow-up. The rule text is restored to the claim it was written as, and the gap it carried (OI-12) is closed."
     },
     {
       "id": "REC-036",
@@ -374,9 +374,9 @@
     }
   ],
   "counts": {
-    "match": 34,
+    "match": 35,
     "doc-incomplete": 1,
-    "code-gap": 5,
+    "code-gap": 4,
     "code-anchor-broken": 0,
     "total": 40
   }
