@@ -91,8 +91,10 @@ describe('OI-11 — module artwork is owned by the module', () => {
 
   test('the one documented exception is exactly one module', () => {
     // If a second module starts borrowing a core icon, this fails and the exception is re-examined.
+    // "Borrowing" means declaring a logo (`ui.icon`) whose artwork it does not ship. A module with no
+    // `ui` at all — hello-world — has no logo and borrows nothing.
     const borrowing = modules()
-      .filter((module) => module.ui.iconAsset === undefined)
+      .filter((module) => module.ui.icon !== undefined && module.ui.iconAsset === undefined)
       .map((module) => module.slug);
     expect(borrowing).toEqual([...EXCEPTIONS].filter((slug) => borrowing.includes(slug)));
   });
