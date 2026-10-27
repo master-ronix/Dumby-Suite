@@ -1,10 +1,10 @@
 {
   "$id": "docs/status/code-reconciliation.json",
   "title": "Docs \u2194 Code reconciliation",
-  "note": "Every row compares what the NEW documentation asserts against the actual source in master-ronix/Dumby-Suite (apps/main at 9c67e2cc35f07543a6883e58fdb204da18e6be5e, branch feature/dev). Standing rule: the specification is authority; where the code is narrower, the code is the gap to close. The anchor is the last commit to touch apps/main|packages, so no commit after it can move the code under a row without the freshness gate failing. REC-034 was added at the previous anchor, for the re-enable revert that the queue and the permission write gained. This re-anchor carries two CI repairs (RT-21 formatting, RT-22 a test that omitted the profile identity). Neither changed a claim: the code was right in both cases, and REC-031's subject is unaffected. The other rows were re-anchored, not re-derived: no commit in the range touched the code they describe.",
-  "verified_commit": "9c67e2cc35f07543a6883e58fdb204da18e6be5e",
+  "note": "Every row compares what the NEW documentation asserts against the actual source in master-ronix/Dumby-Suite (apps/main at 7cc721a65c3136eecc5fc8483084a885db024e89, branch feature/dev). Standing rule: the specification is authority; where the code is narrower, the code is the gap to close. The anchor is the last commit to touch apps/main|packages, so no commit after it can move the code under a row without the freshness gate failing. REC-034 was added at the previous anchor, for the re-enable revert that the queue and the permission write gained. This re-anchor carries two CI repairs (RT-21 formatting, RT-22 a test that omitted the profile identity). Neither changed a claim: the code was right in both cases, and REC-031's subject is unaffected. The other rows were re-anchored, not re-derived: no commit in the range touched the code they describe. This re-anchor carries 7cc721a6, the squash of Dependabot #62 (40 minor and patch updates): it changes package manifests, pnpm-lock.yaml and pnpm-workspace.yaml only \u2014 no file under apps/main/src or packages/*/src \u2014 so the rows are re-anchored again, not re-derived.",
+  "verified_commit": "7cc721a65c3136eecc5fc8483084a885db024e89",
   "verified_branch": "feature/dev",
-  "verified_at": "2026-10-27T00:55:03Z",
+  "verified_at": "2026-10-27T03:35:28Z",
   "verdicts": [
     "match",
     "doc-incomplete",
