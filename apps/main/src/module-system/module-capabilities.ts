@@ -189,7 +189,12 @@ export function withModuleCapabilities(
       if (privileged) return value.bind(target);
       // Anything else on the container is privileged: refuse it rather than leak a bound method.
       return () => {
-        throw new ModuleCapabilityDeniedError(moduleId, tier, `Container.${property}`, null);
+        throw new ModuleCapabilityDeniedError(
+          moduleId,
+          tier,
+          `Container.${String(property)}`,
+          null,
+        );
       };
     },
     set(_target, property) {
