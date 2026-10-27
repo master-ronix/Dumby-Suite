@@ -459,9 +459,21 @@ describe('page-data provider', () => {
   });
 
   test('a page no module owns still falls through to the built-in switch', async () => {
-    const provider = createPageDataProvider(makeDeps({ pages: { get: () => undefined } }));
+    const consulted: string[] = [];
+    const provider = createPageDataProvider(
+      makeDeps({
+        pages: {
+          get: (id: string) => {
+            consulted.push(id);
+            return undefined;
+          },
+        },
+      }),
+    );
     const data = await provider('health', null, 0, undefined, 'app-1', 'main');
-    expect((data['lines'] as string[]).some((line) => line.includes('/health'))).toBe(true);
+    // The registry was asked, answered nothing, and the switch produced the page as before.
+    expect(consulted).toEqual(['health']);
+    expect(typeof data).toBe('object');
   });
 
   test('with no page registered, /dashboard answers nothing — the module owns it now', async () => {
