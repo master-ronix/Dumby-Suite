@@ -1,6 +1,19 @@
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
+  // UR-20261027-106 — a module owns its page, and the page must be testable. `apps/main` does not
+  // depend on module packages (they load from volumes at runtime), and adding that edge is a lockfile
+  // change. An alias straight at the module's `.ts` file is the way in: vitest transforms it like any
+  // other source, and the page imports only `@workspace/swastik`, so nothing else has to resolve.
+  resolve: {
+    alias: {
+      '@module-dashboard-page': fileURLToPath(
+        new URL('../../packages/modules/dashboard/src/pages/dashboard.page.ts', import.meta.url),
+      ),
+    },
+  },
+  server: { fs: { allow: ['..'] } },
   test: {
     include: ['tests/unit/**/*.test.ts'],
     exclude: [
