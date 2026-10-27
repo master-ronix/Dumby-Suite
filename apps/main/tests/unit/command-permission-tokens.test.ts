@@ -203,38 +203,44 @@ describe('listStoredApplications — who can hide a command instantly', () => {
 // The refresh cron runs every six hours, so an access token that expires between cycles used to leave
 // resolveAccessToken answering nothing — and a disable then fell back exactly as if no authorization
 // existed. `refreshIfExpired` refreshes once, at the point of use.
+//
+// Fixtures follow the file's own expiry pattern: `expiresIn: 10` against a clock advanced by 20s.
 describe('resolveAccessToken is self-healing when asked (RT-20)', () => {
   test('an EXPIRED row is refreshed on demand and the fresh token returned', async () => {
     const { service, setClock, refresher } = makeService();
-    // 2-second life, so the fixture is expired as soon as the clock moves past it.
-    await service.connect('app1', 'g1', 'u1', tokens('access-old', 'refresh-1', 2));
+    await service.connect('app1', 'g1', 'u1', tokens('access-old', 'refresh-1', 10));
 
+    // Live before expiry, absent after it — and absent is the state that used to be terminal.
+    expect(await service.resolveAccessToken('app1', 'g1')).toBe('access-old');
+    setClock(1_000_000 + 20_000);
     expect(await service.resolveAccessToken('app1', 'g1')).toBeUndefined();
 
-    setClock(1_000_000 + 10_000);
-    expect(await service.resolveAccessToken('app1', 'g1')).toBeUndefined();
-
-    const healed = await service.resolveAccessToken('app1', 'g1', { refreshIfExpired: true });
-    expect(healed).toBe('new-access');
+    expect(await service.resolveAccessToken('app1', 'g1', { refreshIfExpired: true })).toBe(
+      'new-access',
+    );
     expect(refresher.refreshToken).toHaveBeenCalled();
   });
 
   test('without the flag it stays a pure read — no network, no refresh', async () => {
     const { service, setClock, refresher } = makeService();
-    await service.connect('app1', 'g1', 'u1', tokens('access-old', 'refresh-1', 2));
-    setClock(1_000_000 + 10_000);
+    await service.connect('app1', 'g1', 'u1', tokens('access-old', 'refresh-1', 10));
+    setClock(1_000_000 + 20_000);
 
     expect(await service.resolveAccessToken('app1', 'g1')).toBeUndefined();
     expect(refresher.refreshToken).not.toHaveBeenCalled();
   });
 
-  test('a row with no refresh token is not healed, and does not throw', async () => {
-    const { service, setClock } = makeService();
-    await service.connect('app1', 'g1', 'u1', tokens('access-old', '', 2));
-    setClock(1_000_000 + 10_000);
+  test('a REVOKED row is not healed, and does not throw', async () => {
+    // `refreshDue` only considers rows whose status is active, so a revoked grant is left revoked
+    // rather than being retried on every disable.
+    const { service, store, setClock, refresher } = makeService();
+    await service.connect('app1', 'g1', 'u1', tokens('access-old', 'refresh-1', 10));
+    await store.setStatus('app1', 'g1', 'revoked');
+    setClock(1_000_000 + 20_000);
 
     expect(
       await service.resolveAccessToken('app1', 'g1', { refreshIfExpired: true }),
     ).toBeUndefined();
+    expect(refresher.refreshToken).not.toHaveBeenCalled();
   });
 });
