@@ -482,6 +482,79 @@ describe('page-data provider', () => {
     expect(data).toEqual({});
   });
 
+  // UR-20261027-106 — the host side of read.guilds(): the API is the authority on membership, the
+  // cache is a snapshot, and the page must be able to say which answered. These two cases are the
+  // live and cache branches, and they exist because the coverage floor caught them uncovered.
+  test('read.guilds() reports the API count when the fetch answers', async () => {
+    const client = {
+      ...fakeClient,
+      guilds: {
+        cache: fakeClient.guilds.cache,
+        fetch: async () => ({ size: 3 }),
+      },
+    };
+    let seen: unknown;
+    const provider = createPageDataProvider(
+      makeDeps({
+        getClient: () => client,
+        pages: {
+          get: (id: string) =>
+            id === 'health'
+              ? {
+                  id,
+                  moduleId: 'health',
+                  page: {
+                    id,
+                    render: async (_ctx: unknown, read: { guilds(): Promise<unknown> }) => {
+                      seen = await read.guilds();
+                      return {};
+                    },
+                  },
+                }
+              : undefined,
+        },
+      }),
+    );
+    await provider('health', null, 0, undefined, 'app-1', 'main');
+    expect(seen).toEqual({ total: 3, members: 7, source: 'live' });
+  });
+
+  test('read.guilds() falls back to the cached snapshot when the fetch fails', async () => {
+    const client = {
+      ...fakeClient,
+      guilds: {
+        cache: fakeClient.guilds.cache,
+        fetch: async () => {
+          throw new Error('api down');
+        },
+      },
+    };
+    let seen: unknown;
+    const provider = createPageDataProvider(
+      makeDeps({
+        getClient: () => client,
+        pages: {
+          get: (id: string) =>
+            id === 'health'
+              ? {
+                  id,
+                  moduleId: 'health',
+                  page: {
+                    id,
+                    render: async (_ctx: unknown, read: { guilds(): Promise<unknown> }) => {
+                      seen = await read.guilds();
+                      return {};
+                    },
+                  },
+                }
+              : undefined,
+        },
+      }),
+    );
+    await provider('health', null, 0, undefined, 'app-1', 'main');
+    expect(seen).toEqual({ total: 2, members: 7, source: 'cache' });
+  });
+
   test('marketplace lists available modules without an in-content title', async () => {
     const provider = createPageDataProvider(makeDeps());
     const data = await provider('browse', null, 0, undefined, 'app-1', 'main');
