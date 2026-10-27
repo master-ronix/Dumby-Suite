@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.117
+version: 5.5.118
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -145,7 +145,7 @@ migration prompt version) · `state` (Greenfield | Migration | Enforcement) · `
 | v5.4.0 — Dashboard MODULE_ERROR fix | 2026-10-08 | live log |
 | v5.5.0 — Dashboard controls / attribution / icons | 2026-10-08 | 25 gates green |
 | v5.5.1 — UR-005 build fix | 2026-10-08 | push |
-| v5.5.2 … v5.5.117 — the per-request patch series | 2026-10-11 … 2026-10-27 | change-log §3 (this file) |
+| v5.5.2 … v5.5.118 — the per-request patch series | 2026-10-11 … 2026-10-27 | change-log §3 (this file) |
 
 > §2 lists the **master / milestone tracks**. The per-request patch series after v5.5.1
 > (v5.5.2 … v5.5.99) is enumerated in §3; the front-matter `version` is the highest released
@@ -521,6 +521,19 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 - **R8 — audit age.** `status/audit-age.json` records the audit date, commit, scope and request; `README.md` names the current audit.
 - **Verification.** Corpus gate suite **27/27 green**. Application toolchain not run (Node 20.20.2; app requires Node ≥ 22; no deps) — app-side items are outside the corpus scope.
 - **Return.** `met` (corpus scope) — every AU finding closed; OI-1 (human attestation) and OI-3 (Docker/K8s) remain honest standing items, not defects.
+
+---
+
+### v5.5.118 — Dependabot Targeted a Branch Whose Gates Are Red (RT-25) — 2026-10-27
+
+- 2026-10-27 · meta-prompt 5.2.0 · state=Enforcement · handoff=master-prompt:enforce · return=met
+- **Work order.** None. The record tiers were retired by `UR-20261026-102`, which directs that work after it is recorded here.
+- **The report.** Five Dependabot branches against `feature/dev`.
+- **RT-25 — the wrong base.** `.github/dependabot.yml` declared no `target-branch`, so every update targeted the **default** branch. `main` sits ~181 commits behind `feature/dev` and its own Gates are red (`7a587799`: `Gates (D-8.4 strict sequence)` = failure), so each of the five PRs inherits that failure. Their red CI said nothing about the bumps — and a green result there would still never have reached a deploy, because Railway ships `feature/dev`.
+- **The fix.** `target-branch: feature/dev` on both ecosystems. Future updates are raised against the branch CI gates and the deploy ships. The five open PRs are retargeted to `feature/dev` so they are evaluated against a green base.
+- **What was deliberately NOT done.** The bumps were not applied by hand. `pnpm install --lockfile-only` cannot resolve this workspace here: the V8 collector dies at 2 GB with no swap, twice, with different failure modes, so `pnpm-lock.yaml` cannot be regenerated faithfully — and a hand-edited lockfile fails `pnpm install --frozen-lockfile` in Gate 1, which is worse than not applying it. Dependabot re-resolves its own lockfile when it rebases; that is the mechanism that can, and it is the one to use.
+- **Triage of the five.** `#57` is 35 minor/patch updates and the only merge candidate. `#58` (vite 7→8), `#59` (zod 3→4), `#60` (recharts 2→3) and `#61` (`@vitest/coverage-v8` 4→5) are **majors** needing code migration, not dependency merges. `#61` is incoherent as raised: a coverage provider's major must match its runner's, and `vitest` stays at `^4.1.10`.
+- **Return.** `met` for the configuration; the bumps are deferred to Dependabot's own rebase against `feature/dev`.
 
 ---
 

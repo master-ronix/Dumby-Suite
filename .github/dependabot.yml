@@ -7,6 +7,8 @@ version: 2
 updates:
   - package-ecosystem: github-actions
     directory: /
+    # Same reason: the workflows that matter are the ones CI runs from `feature/dev`.
+    target-branch: feature/dev
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
@@ -16,6 +18,11 @@ updates:
 
   - package-ecosystem: npm
     directory: /
+    # THE DEPLOY BRANCH, not the default one. `feature/dev` is what Railway ships and what CI
+    # gates; `main` is the older default and sits ~181 commits behind. Updates raised against
+    # `main` were therefore evaluated against a base whose own Gates were red, and a green result
+    # there would still never have reached a deploy.
+    target-branch: feature/dev
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
