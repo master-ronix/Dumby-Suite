@@ -54,15 +54,35 @@ const EVENT_BUS_GROUP = {
   message: 'Repositories must not emit events. Move event emission to the service layer.',
 };
 
+// POLICY (operator directive, 2026-10-27): every module is isolated. No module imports another
+// module's code, and the "forCrossModuleRead accessor" escape hatch this message used to advertise is
+// gone — it was never implemented, and it contradicted the policy it claimed to qualify. Two modules
+// that must share something share DATA on the global data emit channel
+// (packages/swastik/src/capabilities.ts, GlobalDataEmit). They never reach into each other.
 const crossModuleGroup = (selfPackageName) => ({
   group: moduleDirs
     .map(packageNameOf)
     .filter((name) => name !== selfPackageName)
-    .map((name) => `${name}/*`),
+    .map((name) => `${name}/*`)
+    .concat(moduleDirs.map(packageNameOf).filter((name) => name !== selfPackageName)),
   message:
-    'Cross-module imports are forbidden except through a declared *.forCrossModuleRead accessor ' +
-    'or the module manifest. See Cluster Bridge.',
+    'Modules are isolated: a module may not import another module. Share data through the global ' +
+    'data emit channel (GlobalDataEmit) instead — never through an import, a shared file or a direct ' +
+    'call.',
 });
+
+// POLICY (operator directive, 2026-10-27): a module never reaches the internal core base. `@workspace/
+// dumby` is the framework itself — the database, the command registry, the scheduler, the queue, the
+// internal event bus. Core and Admin modules may reach those at runtime (the guarded container grants
+// it); a module package still may not import the core base's source, because a build-time import is a
+// capability that never goes through the guard.
+const CORE_BASE_BAN = {
+  group: ['@workspace/dumby', '@workspace/dumby/*'],
+  message:
+    'A module may not import the internal core base. Core modules reach it through the guarded ' +
+    'container they are handed at load time; standard and marketplace modules cannot reach it at ' +
+    'all. Share data through the global data emit channel.',
+};
 
 const restrictedImports = (patterns) => [
   'error',
@@ -74,18 +94,30 @@ const perModuleBlocks = moduleDirs.flatMap((dir) => {
   return [
     {
       files: [`packages/modules/${dir}/**/*.ts`],
-      rules: { 'no-restricted-imports': restrictedImports([crossModule]) },
+      rules: { 'no-restricted-imports': restrictedImports([CORE_BASE_BAN, crossModule]) },
     },
     {
       files: [`packages/modules/${dir}/commands/**/*.ts`],
-      rules: { 'no-restricted-imports': restrictedImports([crossModule, REPOSITORY_GROUP]) },
+      rules: {
+        'no-restricted-imports': restrictedImports([
+          CORE_BASE_BAN,
+          crossModule,
+          REPOSITORY_GROUP,
+        ]),
+      },
     },
     {
       files: [
         `packages/modules/${dir}/repositories/**/*.ts`,
         `packages/modules/${dir}/*.repository.ts`,
       ],
-      rules: { 'no-restricted-imports': restrictedImports([crossModule, EVENT_BUS_GROUP]) },
+      rules: {
+        'no-restricted-imports': restrictedImports([
+          CORE_BASE_BAN,
+          crossModule,
+          EVENT_BUS_GROUP,
+        ]),
+      },
     },
   ];
 });
