@@ -1164,17 +1164,32 @@ export function createPageDataProvider(deps: PageDataDeps): (
       const read = makePageReadModel({
         // Mapped to the read-model's own shape rather than handing over the manifest: the registry's
         // entry is a union of per-tier manifest shapes, and a module has no business seeing the rest.
+        // Mapped to the read-model's own shape, field by field. The registry's manifest is a union of
+        // per-tier shapes with 20-odd fields; a module has no business seeing them, and handing the
+        // union over does not satisfy the narrower contract anyway.
         listModules: () =>
-          moduleRegistry.all().map((entry) => ({
-            name: entry.manifest.name,
-            tier: entry.manifest.tier,
-            description: entry.manifest.description,
-            ...(entry.manifest.ui !== undefined ? { ui: entry.manifest.ui } : {}),
-            commands: entry.manifest.commands.map((command) => ({
-              name: command.name,
-              description: command.description,
-            })),
-          })),
+          moduleRegistry.all().map((entry) => {
+            const manifest = entry.manifest;
+            const ui = manifest.ui;
+            return {
+              name: String(manifest.name),
+              tier: String(manifest.tier),
+              description: String(manifest.description),
+              ...(ui !== undefined
+                ? {
+                    ui: {
+                      ...(ui.displayName !== undefined ? { displayName: ui.displayName } : {}),
+                      ...(ui.icon !== undefined ? { icon: ui.icon } : {}),
+                      ...(ui.accent !== undefined ? { accent: ui.accent } : {}),
+                    },
+                  }
+                : {}),
+              commands: manifest.commands.map((command) => ({
+                name: String(command.name),
+                description: String(command.description),
+              })),
+            };
+          }),
         isEnabled: async (slug) => (await enabledStates(guildId)).get(slug) ?? true,
         installedAt: async (slug) => {
           if (guildId === null) return undefined;
