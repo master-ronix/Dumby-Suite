@@ -82,7 +82,9 @@ describe('dashboard module page — the composition that moved out of page-data.
   // regression no other test could see, because nothing else asserts the module's export surface.
   test('the module exports the `pages` array the loader registers', () => {
     const index = readFileSync(
-      fileURLToPath(new URL('../../../packages/modules/dashboard/src/index.ts', import.meta.url)),
+      fileURLToPath(
+        new URL('../../../../packages/modules/dashboard/src/index.ts', import.meta.url),
+      ),
       'utf8',
     );
     expect(index).toMatch(/export const pages = \[/);
