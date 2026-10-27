@@ -34,6 +34,7 @@ import { loadPolicyLockfile } from '../module-system/policy-lockfile.js';
 import { ModuleLoader } from '../module-system/loader.js';
 import { defaultEnabledForTier, resolveModuleEnabled } from '../module-system/tier-rules.js';
 import { makeModuleEnablement } from '../module-system/enablement.js';
+import type { PageRegistry } from '../module-system/page-registry.js';
 import { ProcessRegistry } from '../module-system/process-registry.js';
 
 /**
@@ -872,9 +873,14 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   // §1.7 — page data is gathered at dispatch. Declared before the router so the provider's client
   // getter closes over the client the live branch assigns later.
   let discordClient: Client | undefined;
+  // UR-20261027-106 — pages a MODULE owns answer before the switch below. The loader is constructed
+  // further down (it needs the module registry), so the registry is late-bound like every other gate
+  // in this function rather than reordering the boot.
+  let pageRegistryRef: PageRegistry | undefined;
   const pageDataProvider = createPageDataProvider({
-    // UR-20261027-106 — pages a MODULE owns answer before the switch below.
-    pages: moduleLoader.pages,
+    pages: {
+      get: (pageId: string) => pageRegistryRef?.get(pageId),
+    } as unknown as PageRegistry,
     // Q1-Q4 — /health reports the PROFILE that ran it: her client, her registry, her start time. The
     // runtime is constructed far below this point, so the read is late-bound; before it exists, the
     // host's own view is the honest answer rather than a guess.
@@ -1662,6 +1668,8 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     securityPolicy,
     new PostgresDeveloperRegistry(db.knex),
   );
+  // UR-20261027-106 — arm the page registry now that the loader exists.
+  pageRegistryRef = moduleLoader.pages;
   moduleLoader.setModuleContextResolver(moduleContextResolver);
   // UR-20261012-072 — the config service is built before the loader, so the notifier is attached
   // here. A per-guild module config write now reaches the module's `onConfigChange` (§11.7).
