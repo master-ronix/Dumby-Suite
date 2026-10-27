@@ -165,6 +165,7 @@
 - documentation/api/endpoints.md
 - documentation/api/errors.md
 - documentation/api/events.md
+- documentation/features/README.md
 - documentation/features/core-command-surface.md
 - documentation/features/data-and-state.md
 - documentation/features/module-system.md
@@ -172,6 +173,7 @@
 - documentation/features/permissions-rbac.md
 - documentation/features/renderer-presentation.md
 - documentation/features/testing-and-flow.md
+- documentation/guides/README.md
 - documentation/guides/building-a-module.md
 - documentation/guides/getting-started.md
 - documentation/index.md

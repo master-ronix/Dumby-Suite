@@ -24,6 +24,7 @@
       "events.md"
     ],
     "documentation/features": [
+      "README.md",
       "core-command-surface.md",
       "data-and-state.md",
       "module-system.md",
@@ -33,6 +34,7 @@
       "testing-and-flow.md"
     ],
     "documentation/guides": [
+      "README.md",
       "building-a-module.md",
       "getting-started.md"
     ],
