@@ -91,6 +91,12 @@ jobs:
       - name: Gate 3b — ConfigMap ↔ ENV_KEYS drift guard
         run: node apps/main/scripts/check-configmap-keys.mjs
 
+      - name: Gate 3c — workflow hygiene (D-8.4 item 4)
+        # SHA pinning, no secret on a command line, no kubeconfig outside the temp-file/trap
+        # pattern. scripts/check-workflows.mjs is the enforcement D-8.4 item 4 named; it did not
+        # exist until this commit, so the rule carried a recorded gap (REC-035 / OI-12).
+        run: node scripts/check-workflows.mjs
+
       - name: Fetch libicu60 (embedded-postgres initdb needs it; ubuntu-24.04 ships ICU 74)
         # The bundled @embedded-postgres linux-x64 initdb is linked against ICU 60, which the
         # ubuntu-24.04 archives do not carry. Fetch the focal library files (checksum-pinned) and
