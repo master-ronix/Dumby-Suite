@@ -230,6 +230,29 @@ describe('resolveAccessToken is self-healing when asked (RT-20)', () => {
     expect(refresher.refreshToken).not.toHaveBeenCalled();
   });
 
+  test('an UNREADABLE credential is reported, not thrown (covers the read catch)', async () => {
+    const { service, values } = makeService();
+    await service.connect('app1', 'g1', 'u1', tokens('access-old', 'refresh-1', 10));
+    // Drop the sealed access credential: the row still looks active, but the value is gone.
+    values.delete('cred-1');
+
+    expect(await service.resolveAccessToken('app1', 'g1')).toBeUndefined();
+  });
+
+  test('a FAILING refresh is contained, not propagated (covers the refresh catch)', async () => {
+    const { service, store, setClock } = makeService();
+    await service.connect('app1', 'g1', 'u1', tokens('access-old', 'refresh-1', 10));
+    setClock(1_000_000 + 20_000);
+    store.listRefreshable = async () => {
+      throw new Error('database down');
+    };
+
+    // A disable must not fail because the refresh failed: it degrades to no Bearer.
+    expect(
+      await service.resolveAccessToken('app1', 'g1', { refreshIfExpired: true }),
+    ).toBeUndefined();
+  });
+
   test('a REVOKED row is not healed, and does not throw', async () => {
     // `refreshDue` only considers rows whose status is active, so a revoked grant is left revoked
     // rather than being retried on every disable.
@@ -242,5 +265,46 @@ describe('resolveAccessToken is self-healing when asked (RT-20)', () => {
       await service.resolveAccessToken('app1', 'g1', { refreshIfExpired: true }),
     ).toBeUndefined();
     expect(refresher.refreshToken).not.toHaveBeenCalled();
+  });
+});
+
+// RT-24 — the branches the token work added or left bare. Coverage for branches sat at 64.98% against
+// a 65% floor, which is a 0.02pp gap: this module's uncovered arms are cheap to reach, and each one is
+// a real state rather than a synthetic path.
+describe('the remaining token-store branches (RT-24)', () => {
+  test('listStoredApplications reports each application once, sorted', async () => {
+    const { service } = makeService();
+    await service.connect('app-b', 'g1', 'u1', tokens('a', 'r', 604800));
+    await service.connect('app-b', 'g2', 'u1', tokens('a', 'r', 604800));
+    await service.connect('app-a', 'g1', 'u1', tokens('a', 'r', 604800));
+
+    expect(await service.listStoredApplications()).toEqual(['app-a', 'app-b']);
+  });
+
+  test('a refresh that does not rotate the refresh token keeps the existing credential', async () => {
+    const { service, store } = makeService({
+      refresher: { refreshToken: async () => ({ accessToken: 'new-access', expiresIn: 604800 }) },
+    });
+    await service.connect('app1', 'g8', 'u1', tokens('access-old', 'refresh-1', 10));
+    const before = (await store.findByApplicationGuild('app1', 'g8')).refreshCredentialId;
+
+    expect((await service.refreshDue()).refreshed).toBe(1);
+    expect((await store.findByApplicationGuild('app1', 'g8')).refreshCredentialId).toBe(before);
+    expect(await service.resolveAccessToken('app1', 'g8')).toBe('new-access');
+  });
+
+  test('a non-revocation refresh failure marks the row expired, not revoked', async () => {
+    const { service, store } = makeService({
+      refresher: {
+        refreshToken: async () => {
+          throw new Error('network');
+        },
+      },
+    });
+    await service.connect('app1', 'g9', 'u1', tokens('access-old', 'refresh-1', 10));
+
+    const result = await service.refreshDue();
+    expect(result.revoked).toBe(0);
+    expect(await store.findByApplicationGuild('app1', 'g9')).toMatchObject({ status: 'expired' });
   });
 });
