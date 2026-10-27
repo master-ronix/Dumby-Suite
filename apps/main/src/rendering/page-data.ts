@@ -11,7 +11,6 @@ import { defaultEnabledForTier } from '../module-system/tier-rules.js';
 import { MAIN_PROFILE_ID, profileLabel } from '../personas/profile-label.js';
 import { commandMarkerIcon, moduleIcon } from './module-icons.js';
 import {
-  effectiveCommandName,
   resolveCommandStatuses,
   resolveEffectiveCommandNames,
 } from '../commands/command-renames.js';
