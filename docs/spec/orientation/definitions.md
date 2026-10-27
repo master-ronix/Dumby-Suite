@@ -105,7 +105,7 @@ documents; every specification loaded on demand). **Impact.** Defines a phase-ga
 and resolves known cross-document conflicts explicitly. **Purpose.** Transform the specification
 from a reference into an actionable construction plan.
 
-### 9. adr/ — The Decision-Record Series
+### 9. archive/v5.0.0-records/adr/ — The Decision-Record Series
 **Definition.** The numbered ADR series (ADR-001 through ADR-016): the eleven cross-cutting
 design tensions the v5.0 program settled, recorded as ADR-001 … ADR-011, and the five
 later records, ADR-012 … ADR-016. **Intent.** Give every load-bearing
@@ -113,7 +113,7 @@ design reversal a permanent citable home (context, decision, consequences). **Im
 record cites its governing sections and the documents its decision binds. **Purpose.** Keep the
 suite's hardest judgment calls explicit, dated, and traceable.
 
-### 10. ur/ — The Frozen Request Records
+### 10. archive/v5.0.0-records/upgradation/ — The Frozen Request Records
 **Definition.** The register of the authoritative request records of the v5.0 program: the
 consolidated re-baseline request (UR-20260918-001) and the three frozen source records it
 consolidates. **Intent.** Hold the provenance of the re-baseline in one place. **Impact.** Makes
