@@ -27,6 +27,7 @@ function sources(over: Partial<PageReadModelSources> = {}): PageReadModelSources
     commandNames: async () => new Map([['hello', 'hello-renamed']]),
     commandStatus: async () => 'enabled',
     markerIcon: async () => 'dumby_modules',
+    moduleIcon: (iconName) => (iconName === undefined ? 'dumby_module' : `<:${iconName}:1>`),
     ...over,
   };
 }
@@ -72,6 +73,9 @@ describe('PageReadModel — a module asks for facts, never for a handle', () => 
     const read = makePageReadModel(sources());
     expect([...(await read.commandNames())]).toEqual([['hello', 'hello-renamed']]);
     expect(await read.markerIcon()).toBe('dumby_modules');
+    // A declared icon resolves to the application's own emoji reference; an absent one falls back.
+    expect(await read.moduleIcon('dumby_health')).toBe('<:dumby_health:1>');
+    expect(await read.moduleIcon(undefined)).toBe('dumby_module');
   });
 
   test('an absent install row stays absent rather than becoming a zero timestamp', async () => {

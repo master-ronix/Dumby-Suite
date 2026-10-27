@@ -64,6 +64,15 @@ export interface ModulePageReadModel {
   commandStatus(name: string): Promise<"enabled" | "disabled">;
   /** The emoji name a module page uses as its command marker. */
   markerIcon(): Promise<string>;
+  /**
+   * The rendered reference for a declared `ui.icon`, as the application serving this page owns it —
+   * `<:name:id>` — or the declared name itself when the application has not uploaded that emoji.
+   *
+   * A module names the icon; the framework resolves it. The emoji registry, the upload lifecycle and
+   * the per-application ownership of an emoji all stay behind this call, which is why a page can
+   * render an icon without touching the core base.
+   */
+  moduleIcon(iconName: string | undefined): Promise<string>;
 }
 
 export interface ModulePage {

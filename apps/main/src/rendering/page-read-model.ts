@@ -37,6 +37,8 @@ export interface PageReadModelSources {
   readonly commandStatus: (name: string) => Promise<'enabled' | 'disabled'>;
   /** The emoji name a module page uses as its command marker. */
   readonly markerIcon: () => Promise<string>;
+  /** The rendered reference for a declared `ui.icon`, resolved for the application serving the page. */
+  readonly moduleIcon: (iconName: string | undefined) => string;
 }
 
 export function makePageReadModel(sources: PageReadModelSources): ModulePageReadModel {
@@ -61,5 +63,8 @@ export function makePageReadModel(sources: PageReadModelSources): ModulePageRead
     commandNames: () => sources.commandNames(),
     commandStatus: (name) => sources.commandStatus(name),
     markerIcon: () => sources.markerIcon(),
+    async moduleIcon(iconName) {
+      return sources.moduleIcon(iconName);
+    },
   };
 }

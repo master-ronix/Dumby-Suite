@@ -1208,6 +1208,7 @@ export function createPageDataProvider(deps: PageDataDeps): (
           ((await resolveCommandStatuses(db.knex, guildId)).get(name) ?? 'enabled') as
             'enabled' | 'disabled',
         markerIcon: async () => commandMarkerIcon(applicationId),
+        moduleIcon: (iconName) => moduleIcon(iconName, applicationId),
       });
       const rendered = await registered.page.render(
         { guildId, applicationId, profileId: actingProfileId, page },
