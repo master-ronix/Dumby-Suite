@@ -15,9 +15,17 @@ const m = JSON.parse(readFileSync('manifest.json', 'utf8'));
 if (m.counts_source !== 'status/counts.json') { console.error('FAIL: manifest.counts_source not wired'); process.exit(1); }
 
 const checks = [];
-if (existsSync('adr')) {
-  const n = readdirSync('adr').filter(f => /^ADR-\d+\.md$/.test(f)).length;
-  checks.push(['adrs', c.adrs, n, 'adr/ADR-*.md files']);
+// DOC-019 — the series moved to archive/v5.0.0-records/adr in 28d568a. This was an
+// `if (existsSync('adr'))` guard, so after the move `adrs` silently stopped being
+// verified while the gate still printed OK. A missing directory is now a FAILURE:
+// a count with no reachable source is not a verified count.
+if (!existsSync('archive/v5.0.0-records/adr')) {
+  console.error('FAIL: archive/v5.0.0-records/adr is missing — counts.adrs cannot be verified');
+  process.exit(1);
+}
+{
+  const n = readdirSync('archive/v5.0.0-records/adr').filter(f => /^ADR-\d+\.md$/.test(f)).length;
+  checks.push(['adrs', c.adrs, n, 'archive/v5.0.0-records/adr/ADR-*.md files']);
 }
 if (existsSync('contracts/commands.json')) {
   const d = JSON.parse(readFileSync('contracts/commands.json', 'utf8'));

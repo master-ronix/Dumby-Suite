@@ -8,7 +8,7 @@
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
-const DIRS = ['blueprint/', 'documentation/', 'spec/', 'contracts/', 'status/', 'adr/',
+const DIRS = ['blueprint/', 'documentation/', 'spec/', 'contracts/', 'status/', 'archive/v5.0.0-records/adr/',
   'archive/', '_inbox/', '_generated/', '_meta/', 'orchestration/', 'migration/',
   'upgradation/', 'prompts/', 'scripts/'];
 const EXT = /\.(md|json|ya?ml)$/;

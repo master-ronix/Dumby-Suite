@@ -4,7 +4,7 @@
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
-const DIRS = ['blueprint', 'documentation', 'spec', 'adr', 'upgradation'];
+const DIRS = ['blueprint', 'documentation', 'spec', 'archive/v5.0.0-records/adr', 'upgradation'];
 const walk = (d) => {
   const out = [];
   if (!existsSync(d)) return out;

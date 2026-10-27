@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
-const files = execSync("find spec blueprint documentation adr upgradation -name '*.md' 2>/dev/null || true").toString().trim().split('\n').filter(Boolean);
+const files = execSync("find spec blueprint documentation archive/v5.0.0-records/adr upgradation -name '*.md' 2>/dev/null || true").toString().trim().split('\n').filter(Boolean);
 let bad = 0;
 for (const f of files) {
   const t = readFileSync(f,'utf8');

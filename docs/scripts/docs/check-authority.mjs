@@ -3,7 +3,7 @@
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
-const DIRS = ['blueprint', 'documentation', 'spec', 'adr'];
+const DIRS = ['blueprint', 'documentation', 'spec', 'archive/v5.0.0-records/adr'];
 const A = JSON.parse(readFileSync('status/authority.json', 'utf8'));
 const walk = (d) => {
   const out = [];
