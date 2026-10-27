@@ -333,8 +333,8 @@
       "doc_claim": "spec/reference/rest-api-webhooks-mdis-reference.md §44.2, §44.3 and §44.7 name GET /info, GET|PUT /api/modules/:name/config, POST /api/modules/:name/:action, PATCH /api/modules/:name/state, POST /api/swastik/register, POST /api/swastik/modules/:slug/upload and GET /api/swastik/modules/:slug/status",
       "code_truth": "the server mounts GET /api/info (apps/main/src/http/routes/info.routes.ts:15), the MDIS family at /mdis/* (/mdis/catalog, /mdis/modules/:slug, /mdis/guilds/:guildId/installed|install|uninstall) and the Swastik family at /swastik/* (/swastik/developers/me, /swastik/developers/register, /swastik/modules/upload, /swastik/modules/:slug/builds/:buildId, /swastik/status); no /api/modules or /api/swastik route is registered anywhere in apps/main/src or packages/*/src",
       "code_ref": "apps/main/src/http/routes/info.routes.ts ; apps/main/src/mdis/mdis.routes.ts",
-      "verdict": "code-gap",
-      "resolution": "Recorded 2026-10-27 by UR-20261027-104 / DOC-017. The contract now enumerates the mounted surface (contracts/openapi.yaml, 67 paths, verified 67/67 against the registrations) and documentation/api/endpoints.md is corrected to it; the specification keeps its own layout and this row is the gap between the two. Aligning the paths is a code-track item — either the routes move to the specified layout or the specification adopts the shipped one."
+      "verdict": "match",
+      "resolution": "Closed 2026-10-27 (operator decision): the specification ADOPTS the shipped layout. §44.2 now states GET /api/info; §44.3 states the /mdis/* family; §44.7 states the /swastik/* family. The code did not move."
     },
     {
       "id": "REC-037",
@@ -342,8 +342,8 @@
       "doc_claim": "spec/reference/rest-api-webhooks-mdis-reference.md §44.6 states that every one of Power Engine's seventeen control domains is reachable as an authenticated POST to /api/pep/{functionName}",
       "code_truth": "the control plane is mounted as one route per action under /admin/power-engine/* (32 paths, e.g. /admin/power-engine/pauseQueue, /admin/power-engine/guild/:guildId/suspend), guarded by the internal API key (apps/main/src/http/server.ts:79-91) and dispatched through apps/main/src/http/power-engine-dispatcher.ts; no /api/pep route is registered anywhere",
       "code_ref": "apps/main/src/http/routes/admin.routes.ts ; apps/main/src/http/power-engine-dispatcher.ts",
-      "verdict": "code-gap",
-      "resolution": "Recorded 2026-10-27 by UR-20261027-104 / DOC-017. The contract enumerates the 32 /admin/power-engine/* routes that exist; the single-dispatcher /api/pep/{functionName} shape the specification describes is not mounted. Choosing between them is a code-track decision and is not taken by this record."
+      "verdict": "match",
+      "resolution": "Closed 2026-10-27 (operator decision): the specification ADOPTS the shipped layout. §44.6 now states one route per action under /admin/power-engine/{action}, not a parameterised /api/pep/{functionName}."
     },
     {
       "id": "REC-038",
@@ -351,8 +351,8 @@
       "doc_claim": "contracts/openapi.yaml previously declared POST /channels/, PUT /guilds/, POST /interactions/ (Discord gateway webhooks, HMAC-verified) and POST /admin/operators",
       "code_truth": "no route for any of the four is registered in apps/main/src or packages/*/src; the gateway surfaces are not HTTP routes in this server, and operator management has no /admin/operators route",
       "code_ref": "apps/main/src/http/server.ts",
-      "verdict": "code-gap",
-      "resolution": "Recorded 2026-10-27 by UR-20261027-104 / DOC-017. The four paths are removed from the contract and listed in its x-spec-divergence block rather than left standing as if served. Implementing them is a code-track item."
+      "verdict": "match",
+      "resolution": "Closed 2026-10-27 (operator decision): the four gateway endpoints the contract once declared (/channels/, /guilds/, /interactions/, /admin/operators) are not mounted and are no longer specified; the contract enumerates only what the server registers, and the parity test enforces both directions."
     },
     {
       "id": "REC-039",
@@ -383,9 +383,9 @@
     }
   ],
   "counts": {
-    "match": 35,
+    "match": 38,
     "doc-incomplete": 1,
-    "code-gap": 5,
+    "code-gap": 2,
     "code-anchor-broken": 0,
     "total": 41
   }

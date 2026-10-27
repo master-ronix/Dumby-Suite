@@ -56,7 +56,7 @@ GET /health/liveness   → returns 200 once observability is up (Stage 04)
 GET /health/startup    → returns 200 once the gateway is connected (Stage 15)
 GET /health/readiness  → returns 200 once all required modules are healthy (Stage 18)
 GET /metrics           → Prometheus text format — the metric families of §27.3
-GET /info              → framework version (generated from package.json at build time, never
+GET /api/info          → framework version (generated from package.json at build time, never
                          a hardcoded literal), loaded module count by tier, the shard range
                          this pod owns, the fleet's total guild count, and runtime versions
                          (Node.js, discord.js) — unauthenticated, and deliberately free of
@@ -68,14 +68,17 @@ GET /info              → framework version (generated from package.json at bui
 The MDIS endpoint shapes, specified in full at §16.5:
 
 ```
-GET   /api/modules/:name/config   → current guild config for this module
-PUT   /api/modules/:name/config   → update, validated against the module's own
-                                    dashboardSchema-declared fields
-POST  /api/modules/:name/:action  → module-defined custom actions
-PATCH /api/modules/:name/state    → enable/disable — a SEPARATE endpoint from /config,
-                                    writing to guild_module_states, never conflated with
-                                    config
+GET   /mdis/modules/:slug                        → one module's manifest, as the catalogue
+                                                   reports it
+GET   /mdis/catalog                              → the module catalogue
+GET   /mdis/guilds/:guildId/installed            → what this guild holds, by the ownership read
+POST  /mdis/guilds/:guildId/install              → install a module into the guild
+POST  /mdis/guilds/:guildId/uninstall            → remove it
 ```
+
+Enablement is a SEPARATE concern from configuration: it writes `guild_module_states` and is never
+conflated with a module's own config. The framework serves it through the modules surface, not as a
+sub-resource of `/mdis`.
 
 ### 44.4 Outbound HTTP Client
 
@@ -93,19 +96,23 @@ rollback. The payload is signed with the same HMAC discipline the inbound contra
 ### 44.6 Power Engine REST API
 
 Every one of Power Engine's seventeen control domains is reachable as an authenticated POST to
-`/api/pep/{functionName}`, with a request body validated against that function's own typed
-parameter schema — the identical schema CLAI's terminal validates against. The dispatcher
-lives at `apps/main/src/http/power-engine-dispatcher.ts`, and the catalogue at
+`/admin/power-engine/{action}` — one route per action, not one parameterised route — with a request
+body validated against that function's own typed parameter schema, the identical schema CLAI's
+terminal validates against. The routes are registered in
+`apps/main/src/http/routes/admin.routes.ts` behind the internal API key; the dispatcher lives at
+`apps/main/src/http/power-engine-dispatcher.ts` and the catalogue at
 `src/http/power-engine-catalog.ts`.
 
 ### 44.7 Swastik Developer & Upload API
 
 ```
-POST /api/swastik/register                 → developer registration
-POST /api/swastik/modules/:slug/upload     → module package + manifest upload,
-                                             Authorization: Bearer {devId}
-GET  /api/swastik/modules/:slug/status     → validation/staging/promotion status for the
-                                             developer's own most recent upload
+POST /swastik/developers/register              → developer registration
+GET  /swastik/developers/me                    → the caller's developer identity
+POST /swastik/modules/upload                   → module package + manifest upload,
+                                                 Authorization: Bearer {devId}
+GET  /swastik/status                           → validation/staging/promotion status for the
+                                                 developer's own most recent upload
+GET  /swastik/modules/:slug/builds/:buildId    → one build's record
 ```
 
 ### 44.8 Versioned API Families
