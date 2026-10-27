@@ -151,10 +151,7 @@ export class CommandPermissionTokenService {
   }
 
   /** The live access token, as the store currently holds it. Touches no network. */
-  private async readUsable(
-    applicationId: string,
-    guildId: string,
-  ): Promise<string | undefined> {
+  private async readUsable(applicationId: string, guildId: string): Promise<string | undefined> {
     const record = await this.store.findByApplicationGuild(applicationId, guildId);
     if (record === undefined || record.status !== 'active') return undefined;
     if (record.accessTokenExpiresAt.getTime() <= this.now()) return undefined;

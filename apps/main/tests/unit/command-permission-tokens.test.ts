@@ -233,6 +233,8 @@ describe('resolveAccessToken is self-healing when asked (RT-20)', () => {
     await service.connect('app1', 'g1', 'u1', tokens('access-old', '', 2));
     setClock(1_000_000 + 10_000);
 
-    expect(await service.resolveAccessToken('app1', 'g1', { refreshIfExpired: true })).toBeUndefined();
+    expect(
+      await service.resolveAccessToken('app1', 'g1', { refreshIfExpired: true }),
+    ).toBeUndefined();
   });
 });
