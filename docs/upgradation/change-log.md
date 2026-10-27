@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.116
+version: 5.5.117
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -145,7 +145,7 @@ migration prompt version) · `state` (Greenfield | Migration | Enforcement) · `
 | v5.4.0 — Dashboard MODULE_ERROR fix | 2026-10-08 | live log |
 | v5.5.0 — Dashboard controls / attribution / icons | 2026-10-08 | 25 gates green |
 | v5.5.1 — UR-005 build fix | 2026-10-08 | push |
-| v5.5.2 … v5.5.116 — the per-request patch series | 2026-10-11 … 2026-10-26 | change-log §3 (this file) |
+| v5.5.2 … v5.5.117 — the per-request patch series | 2026-10-11 … 2026-10-27 | change-log §3 (this file) |
 
 > §2 lists the **master / milestone tracks**. The per-request patch series after v5.5.1
 > (v5.5.2 … v5.5.99) is enumerated in §3; the front-matter `version` is the highest released
@@ -521,6 +521,18 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 - **R8 — audit age.** `status/audit-age.json` records the audit date, commit, scope and request; `README.md` names the current audit.
 - **Verification.** Corpus gate suite **27/27 green**. Application toolchain not run (Node 20.20.2; app requires Node ≥ 22; no deps) — app-side items are outside the corpus scope.
 - **Return.** `met` (corpus scope) — every AU finding closed; OI-1 (human attestation) and OI-3 (Docker/K8s) remain honest standing items, not defects.
+
+---
+
+### v5.5.117 — Three Red CI Runs: the Format Gate and a Test That Forgot Its Identity (RT-21, RT-22) — 2026-10-27
+
+- 2026-10-27 · meta-prompt 5.2.0 · state=Enforcement · handoff=master-prompt:enforce · return=met
+- **Work order.** None. The record tiers were retired by `UR-20261026-102`, which directs that work after it is recorded here.
+- **The report.** CI failed on `0c7393c6`, `4f749e70` and `4d3e781b`. Each was reported here as "in progress", which is not a result — and that is how three red commits shipped unnoticed. The process failure belongs in the record with the defects: a green local corpus gate suite says nothing about CI Gates 1–5, and "still running" must be followed up, not filed.
+- **RT-21 — Gate 3, the format gate (`4d3e781b`).** Two files from the token work were not Prettier-clean: `readUsable`'s signature fits on one line, and one `expect(...)` call ran past 100 columns. Cosmetic, and fixed with `prettier --write`; `prettier --check .` over `apps/main` is clean.
+- **RT-22 — Gate 4, one failing test (`0c7393c6`, `4f749e70`).** The RT-15 test asserted `OUT_OF_SCOPE` for a persona while omitting `residentPersonaId`. `explainAbsentCommand` compares the resolved owner against `residentPersonaId ?? 'main'`, so without it the router believed it WAS the main bot, the owner matched, the correct answer was nothing, and the test saw `UNKNOWN_COMMAND`. **The code was right and the test was wrong** — it now sets the profile identity and asserts the notice a persona actually gets. 1457 of 1458 tests passed on the failing run, so the blast radius was one assertion.
+- **Verification.** `prettier --check .` clean over `apps/main`. The test fix is reasoned, not executed here — this sandbox cannot install the workspace, so CI Gate 4 is its verification.
+- **Return.** `met`.
 
 ---
 
