@@ -28,7 +28,7 @@ Modules are free to act without asking, and the framework grants authority only 
 
 ### 10.4 Isolation Through Structure, Not Discipline
 
-Module isolation is enforced by the build itself failing, not by reviewer discipline. ESLint rules prevent cross-module imports. Zod schema namespacing prevents configuration key collisions. The DI container prevents modules from accessing services they have not declared as dependencies. The ServiceLocator's tier-based access control prevents Marketplace modules from accessing Admin-tier services. These are not guidelines that rely on developers remembering to follow them — they are structural enforcement mechanisms that make violation impossible without changing the build configuration.
+Module isolation is enforced by the build itself failing, not by reviewer discipline. ESLint rules prevent cross-module imports and imports of the core base. Zod schema namespacing prevents configuration key collisions. A guarded container hands each module only the capabilities its tier holds — Standard and Marketplace hold the baseline eight and are refused the rest at the point of use — so a module cannot reach the database, the command registry, the scheduler or the internal event bus. Sharing happens on the global data emit channel and nowhere else. These are not guidelines that rely on developers remembering to follow them — they are structural enforcement mechanisms that make violation impossible without changing the build configuration. (Declared-dependency enforcement — a module reaching only the services its manifest declares — is not implemented; the manifest's `provides`/`services` fields are declared and never wired.)
 
 ### 10.5 Security Built In, Not Bolted On
 

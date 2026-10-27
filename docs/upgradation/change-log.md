@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.127
+version: 5.5.128
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -80,8 +80,8 @@ completed step's record is missing.
 
 ## 9. Record
 
-> **Population status:** §1–§5 are populated. §3 carries the version history through v5.5.127 and
-> the 2026-10-27 module-boundary change. The corpus gate suite is **29 gates, all green** at HEAD.
+> **Population status:** §1–§5 are populated. §3 carries the version history through v5.5.128 and
+> the 2026-10-27 module-process pass. The corpus gate suite is **29 gates, all green** at HEAD.
 
 ### 1. Scope & Method
 
@@ -521,6 +521,23 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 - **R8 — audit age.** `status/audit-age.json` records the audit date, commit, scope and request; `README.md` names the current audit.
 - **Verification.** Corpus gate suite **27/27 green**. Application toolchain not run (Node 20.20.2; app requires Node ≥ 22; no deps) — app-side items are outside the corpus scope.
 - **Return.** `met` (corpus scope) — every AU finding closed; OI-1 (human attestation) and OI-3 (Docker/K8s) remain honest standing items, not defects.
+
+---
+
+### v5.5.128 — Module Processes: Owner, Scope and Stop Signal (MB-4) — 2026-10-27
+
+- 2026-10-27 · meta-prompt 5.2.0 · state=Enforcement · handoff=master-prompt:enforce · return=met
+- 2026-10-27 · master-prompt 5.2.0 · enforce · subsystem=module-system · verdict=COMPLETE
+- **Work order.** `UR-20261027-105` — `MB-4`, which the first run of that record specified and did not implement. It is implemented here after the operator settled its four decisions, and the record is amended to v1.1 rather than a second record being raised.
+- **The defect.** A module's *processes* were not held to the model its commands and modules already live in. The gates disagreed with each other: command dispatch failed **closed** per guild, the event router and the job gate failed **open**, and a cron task asked a fleet-wide question (“does ANY guild want it?”) that nothing else asks. A process carried no provenance — no profile, no guild, no enabler, no moment — and disabling a module stopped the **next** tick while the running one finished, which is the opposite of the directive.
+- **One standing read.** `module-system/process-standing.ts` answers, once, for every process surface: may this module run this work, for this profile, in this guild, and who enabled it and when. It **fails closed** — an unreadable state row answers `state-unreadable` and refuses, the same asymmetry `enablement.ts` documents for commands. Core and Admin never consult the row (§13.2).
+- **The register.** `module-system/process-registry.ts` holds one row per live process with the tuple a command carries — `{moduleId, name, kind, profileId, profileKind, guildId, trigger, enabledBy, enabledAt, startedAt, state}` — plus a cooperative `AbortSignal`. A descriptor missing a field is refused; an unknown enabler is recorded as `provenanceComplete: false`, which is the difference between “we looked and there is nothing” and “we never looked”.
+- **The stop signal.** `BaseTask.execute(signal?)` and `BaseProcessor.process(job, signal?)` are optional, so no existing task or processor changes shape. `Scheduler` keeps one controller per task and gains `terminateModule` / `resumeModule`; `QueueManager` keeps one per in-flight job. Both are wired in `bootstrap.ts` to a single registry and a single standing read, late-bound like the gates they replace.
+- **Scope.** A cron task declares its profile and either a guild or an explicit `fleetWide` opt-in; fleet-wide is no longer the default reading of “the module's schedule stops”.
+- **What it cannot do, stated plainly.** JavaScript cannot pre-empt a running function. Termination is therefore cooperative: the signal fires immediately, the scheduler stops re-arming, and a task that ignores the signal finishes its current await. The contract says so in `base-processor.ts` rather than promising a kill it cannot deliver.
+- **`REC-039` narrowed.** The two overview pages that claimed a ServiceLocator with tier-based access control and declared-dependency enforcement now state what exists: the guarded container enforces the tier boundary at the point of use, and declared-dependency enforcement is not implemented — the manifest's `provides`/`services` are declared and never wired.
+- **Verification.** CI is the verifier (no dependency tree in the run environment). Run `40491107554` on the pushed tip — **success** across all three jobs: Gate 1 typecheck, Gate 2 lint, Gate 3 format, **Gate 4 with `tests/unit/module-process.test.ts` (14 tests) and `module-capabilities.test.ts` (21 tests) green among 140 passing files**, Gate 5/5b build, the Integration suite (166 files) and the Docker build. Three gates caught real faults on the way — `TS7006` and `TS2322` from the wiring, and three of the new tests that would have passed vacuously because they drove a one-minute cron with a 30 ms wait. Each was fixed before this entry.
+- **Return.** `met` for `MB-1` … `MB-4`. The record is complete; `REC-036` … `REC-038` (the specification's HTTP layout) remain open code-track decisions and are not this entry's work.
 
 ---
 
