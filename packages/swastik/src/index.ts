@@ -4,9 +4,9 @@ export type {
   ModuleManifest,
   ModuleTier,
   SwastikModule,
-} from "./manifest.js";
-export { defineModule, moduleTiers, moduleManifestSchema } from "./manifest.js";
-export { validateManifest } from "./validate.js";
+} from './manifest.js';
+export { defineModule, moduleTiers, moduleManifestSchema } from './manifest.js';
+export { validateManifest } from './validate.js';
 export type {
   CommandContext,
   ExecutionIdentity,
@@ -16,25 +16,21 @@ export type {
   CommandPageData,
   CommandPermissionsDeclaration,
   CommandRbacRequirement,
-} from "./commands.js";
-export { defineCommand } from "./commands.js";
+} from './commands.js';
+export { defineCommand } from './commands.js';
 export {
   assertCatalogCoversEvents,
   defineEvent,
   EventCatalogError,
   type EventCatalogEntry,
-} from "./events.js";
-export type {
-  ModuleEntryPoint,
-  ModuleExecutionContext,
-  ModuleContextStore,
-} from "./context.js";
+} from './events.js';
+export type { ModuleEntryPoint, ModuleExecutionContext, ModuleContextStore } from './context.js';
 export {
   currentModuleContext,
   installModuleContextStore,
   requireModuleContext,
   runWithModuleContext,
-} from "./context.js";
+} from './context.js';
 export {
   baselineCapabilities,
   coreOnlyCapabilities,
@@ -45,11 +41,13 @@ export {
   type ModuleCapability,
   type ModuleRuntime,
   type ModuleRuntimeExtras,
-} from "./capabilities.js";
+} from './capabilities.js';
 export {
   definePage,
+  type ActingProfileFacts,
   type ModulePage,
   type ModulePageContext,
   type ModulePageReadModel,
   type ModuleSummary,
-} from "./pages.js";
+  type SubsystemState,
+} from './pages.js';
