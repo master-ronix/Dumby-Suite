@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.122
+version: 5.5.123
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -13,7 +13,7 @@ authority_scope: [history]
 # DUMBY Documentation — Unified Change Log
 
 > **One project. One continuous history.**
-> Last recorded: 2026-10-26
+> Last recorded: 2026-10-27
 
 ---
 
@@ -145,7 +145,7 @@ migration prompt version) · `state` (Greenfield | Migration | Enforcement) · `
 | v5.4.0 — Dashboard MODULE_ERROR fix | 2026-10-08 | live log |
 | v5.5.0 — Dashboard controls / attribution / icons | 2026-10-08 | 25 gates green |
 | v5.5.1 — UR-005 build fix | 2026-10-08 | push |
-| v5.5.2 … v5.5.122 — the per-request patch series | 2026-10-11 … 2026-10-27 | change-log §3 (this file) |
+| v5.5.2 … v5.5.123 — the per-request patch series | 2026-10-11 … 2026-10-27 | change-log §3 (this file) |
 
 > §2 lists the **master / milestone tracks**. The per-request patch series after v5.5.1
 > (v5.5.2 … v5.5.99) is enumerated in §3; the front-matter `version` is the highest released
@@ -521,6 +521,29 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 - **R8 — audit age.** `status/audit-age.json` records the audit date, commit, scope and request; `README.md` names the current audit.
 - **Verification.** Corpus gate suite **27/27 green**. Application toolchain not run (Node 20.20.2; app requires Node ≥ 22; no deps) — app-side items are outside the corpus scope.
 - **Return.** `met` (corpus scope) — every AU finding closed; OI-1 (human attestation) and OI-3 (Docker/K8s) remain honest standing items, not defects.
+
+---
+
+### v5.5.123 — The Re-Raised Batch Lands, One Rebase at a Time (RT-30) — 2026-10-27
+
+- 2026-10-27 · meta-prompt 5.2.0 · state=Enforcement · handoff=master-prompt:enforce · return=met
+- **Work order.** None. The record tiers were retired by `UR-20261026-102`, which directs that work after it is recorded here.
+- **RT-30 — five updates, five merges, four rebases.** After RT-29 cut the branch set back, Dependabot re-raised against `feature/dev` — visible in the new heads as `dependabot/npm_and_yarn/feature/dev/…`, which is the proof that `target-branch` took effect once `main` carried the configuration. All five arrived green on the first try, which none of the previous batch ever did. They were merged one at a time, and **each merge required a Dependabot rebase before the next**: every update rewrites `pnpm-lock.yaml`, and that one file conflicts against every other pending update regardless of which dependency subtree it touches, so the batch serialises no matter how it is ordered.
+- **What landed**, each as its own squash commit on `feature/dev`:
+
+  | PR | Change | Commit |
+  |---|---|---|
+  | `#63` | the `vitest-major` group — `vitest` and `@vitest/coverage-v8` together, 2 updates | `c07cf131` |
+  | `#64` | `@vitejs/plugin-react` 5.2.0 → 6.1.2 | `37b7e83e` |
+  | `#65` | `@types/node` 25.9.5 → 26.6.5 | `f8cea4b3` |
+  | `#66` | `@hookform/resolvers` 3.10.0 → 6.0.0 | `a36b597b` |
+  | `#67` | `dotenv` 16.6.1 → 18.0.9 | `be0d123c` |
+
+  `#63` is the `vitest-major` group doing its job: the runner and its coverage provider moved together, so the incoherence that `#61` represented cannot recur.
+- **Verification.** Every merge was gated on the pull request's own `Gates (D-8.4 strict sequence)`, `Integration (live Postgres + Redis)` and `Docker build` all reporting success against `feature/dev` — the first time this backlog was ever verifiable, because the base is now a branch whose CI is green.
+- **The anchor.** Five commits touching `apps/main` moved it, so it is re-anchored to `be0d123c` with all five carriers. No row's subject changed: a manifest and lockfile change moves no code that any row describes.
+- **Still outstanding.** `OI-9` stands. `recharts` 3, `vite` 8 and `zod` 4 were closed unmerged at RT-29 and will be re-raised; they remain migrations, not merges.
+- **Return.** `met`.
 
 ---
 
