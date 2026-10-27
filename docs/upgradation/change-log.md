@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.125
+version: 5.5.126
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -80,8 +80,8 @@ completed step's record is missing.
 
 ## 9. Record
 
-> **Population status:** §1–§5 are populated. §3 carries the version history through v5.5.125 and
-> the 2026-10-27 citation-integrity pass. The corpus gate suite is **29 gates, all green** at HEAD.
+> **Population status:** §1–§5 are populated. §3 carries the version history through v5.5.126 and
+> the 2026-10-27 enforcement pass. The corpus gate suite is **29 gates, all green** at HEAD.
 
 ### 1. Scope & Method
 
@@ -521,6 +521,23 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 - **R8 — audit age.** `status/audit-age.json` records the audit date, commit, scope and request; `README.md` names the current audit.
 - **Verification.** Corpus gate suite **27/27 green**. Application toolchain not run (Node 20.20.2; app requires Node ≥ 22; no deps) — app-side items are outside the corpus scope.
 - **Return.** `met` (corpus scope) — every AU finding closed; OI-1 (human attestation) and OI-3 (Docker/K8s) remain honest standing items, not defects.
+
+---
+
+### v5.5.126 — Enforcement Pass: Contract Truth and Gate Scope (DOC-017 … DOC-024) — 2026-10-27
+
+- 2026-10-27 · meta-prompt 5.2.0 · state=Enforcement · handoff=master-prompt:enforce · return=met
+- 2026-10-27 · master-prompt 5.2.0 · enforce · subsystem=docs-corpus · verdict=COMPLETE
+- **Work order.** `UR-20261027-104` — raised by the 2026-10-27 corpus enforcement audit, on this branch, at `c6c2c82`.
+- **The finding class.** The 29-gate suite was green at `c6c2c82`, and so was CI (run `40475495976`, all three jobs). Both were verified, not assumed — and both are why eight defects survived: a green suite proves what the gates look at, and six of them had been looking at a directory that no longer exists. A green pipeline proves the code compiles and the tests that exist pass; it says nothing about whether the contract describes the routes the server mounts.
+- **`DOC-017` — a contract for a surface that does not exist.** `contracts/openapi.yaml` called itself the single source for the REST/webhook/MDIS surface; eleven of its sixteen paths had no route anywhere in the repository (`/info`, `/api/modules/{name}/{config,state,{action}}`, `/api/swastik/{register,modules/{slug}/upload,modules/{slug}/status}`, `/admin/operators`, `/channels/`, `/guilds/`, `/interactions/`), and the MDIS, Twill, operational, Power Engine, OAuth and deploy families the server does mount were absent from it. It now enumerates the **67** routes registered under `apps/main/src` and `packages/*/src`, verified 67/67 against the registrations with zero unmatched on either side. The specification keeps its own layout — it is the authority, and this ledger's standing rule is that the code is the gap to close — so the divergence is recorded rather than smoothed over: `REC-036` (info/MDIS/Swastik), `REC-037` (`/api/pep/{functionName}` vs the per-action `/admin/power-engine/*`), `REC-038` (the gateway and operator paths, not mounted), plus an `x-spec-divergence` block in the contract naming each shape. `documentation/api/endpoints.md` is corrected to the mounted surface.
+- **`DOC-018`, `DOC-019` — six gates that had stopped looking.** `28d568a` moved the ADR series into `archive/v5.0.0-records/adr/` and repointed some gates but not these scope lists: `check-terminology`, `check-facts`, `check-authority`, `check-normative-markers`, `check-edges` and the `find` in `check-frontmatter` still named `adr`. Every walker begins `if (!existsSync(d)) return out;`, so the retired name was a silent skip and the **16 normative ADR records** were not scanned by any of them, while each gate printed `OK`. `check-counts` had the same shape as `if (existsSync('adr'))`, so `counts.adrs` had stopped being compared to any source — the summary line itself said so: "18 keys; 17 verified against source". Both are fixed; a missing directory is now a failure rather than a skip, the file counts rise by exactly 16 (139 → 155, 141 → 158 including this record), and the counts summary reads 18 of 18.
+- **`DOC-020`, `DOC-021` — a ledger stating a superseded present.** `status/audit-age.json` asserted, in the present tense, that the D-8.4 sequence fails at Gate 4 with four tests red, on a reading taken before `42c256bfa` went green; and its `last_audit` still named the 2026-10-26 audit while a 2026-10-27 audit had raised and run `UR-20261027-103`. The ledger now names this run and this record, states the CI position at HEAD (run `40475495976` on `c6c2c82`: Gates, Integration and Docker build all green), and keeps the 2026-10-26 reading as dated history, superseded — not deleted, and no longer claimed as current.
+- **`DOC-022` — an acceptance check its test cannot fail.** `ACC-REF-0044-1` claimed the REST/MDIS families match the contract and carry the documented auth contexts. Its named test asserts two substrings (`openapi:`, `paths:`) and never inspects an auth context, so it could not fail for any of the eleven divergences above. The check now describes the presence test it is; the parity invariant lives in `REC-036` … `REC-038`. Strengthening the test is a code-track item.
+- **`DOC-023`, `DOC-024` — two statements about the corpus itself.** `definitions.md` sections 9 and 10 were headed with the retired ADR and request directory names, two directories that do not exist, while their bodies cite the archive paths — which also left `UR-20261027-103`'s `ACC-4` unmet, because its search was for a backticked literal and a heading does not match. Both headings now name the archive paths and the two coverage-ledger rows are retitled to match. And §5.1 stopped at `UR-20261026-101`, leaving the two most recent records — including the one still live in the tree — looking undisposed; both now have rows.
+- **Deliberately not touched.** The specification's own path layout (`/api/pep/{functionName}`, `/api/modules/*`, `/api/swastik/*`, `/info`). It is the authority and the divergence is the recorded gap; rewriting the spec to match the code would invert the precedence order this corpus states once and cites everywhere.
+- **Verification.** Documentation gates **29/29 green** after every commit in the series and at the final HEAD; `check-counts` at 18/18, `check-code-reconciliation` at 38 facts (34 `match`, 4 `code-gap`), contract/code parity 67/67. The application toolchain (`tsc` / `vitest`) was **not run**: no dependency tree is installed in this environment and no file under `apps/main/` or `packages/` was changed. `verified_commit` stays `be0d123c` for that reason.
+- **Return.** `met` for the corpus scope. `DOC-022` leaves a code-track item and a narrowed claim; `DOC-017`'s three `code-gap` rows are recorded, not closed.
 
 ---
 
