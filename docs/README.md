@@ -64,7 +64,7 @@ the application `tsc` / `vitest` (the app typecheck is a separate gate). Per-fil
 document says otherwise.
 
 **Last independent audit.** 2026-10-26, against `feature/dev` @ `9c67e2cc`, re-anchored to
-`be0d123c` on 2026-10-27 after Dependabot `#62` (dependency-only: manifests and lockfile, no
+`be0d123c` on 2026-10-27 after Dependabot `#63`–`#67` (dependency-only: manifests and lockfile, no
 source) — a full-scope corpus
 audit + runtime-ownership code track whose findings (RT-1 … RT-11) are formalised as
 `archive/v5.0.0-records/upgradation/UR-20261026-097.md`, `-098`, `-100` and `-101`; the prior audit's findings (DR-1 … DR-12,
