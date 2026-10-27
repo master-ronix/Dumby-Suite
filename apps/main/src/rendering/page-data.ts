@@ -1153,6 +1153,32 @@ export function createPageDataProvider(deps: PageDataDeps): (
         actingProfile: actingProfileFacts,
         heldModules: heldModulesForPage,
         shardCount: () => config.get('SHARD_COUNT'),
+        guilds: async () => {
+          const acting = actingProfile?.(applicationId);
+          const client = (acting?.client ?? getClient()) as
+            | {
+                guilds?: {
+                  cache: { size: number };
+                  fetch?: () => Promise<{ size?: unknown } | undefined>;
+                };
+              }
+            | undefined;
+          const cache = client?.guilds?.cache;
+          const members = sumMembers(cache as never);
+          let total = cache?.size ?? 0;
+          let source: 'live' | 'cache' = 'cache';
+          try {
+            const fetched = await client?.guilds?.fetch?.();
+            if (fetched !== undefined && typeof fetched.size === 'number') {
+              total = fetched.size;
+              source = 'live';
+            }
+          } catch (err) {
+            logger.warn('page-data-guild-fetch-unavailable', { applicationId, error: String(err) });
+          }
+          const known = cache !== undefined && cache.size > 0;
+          return { total, ...(known ? { members } : {}), source };
+        },
       });
       const rendered = await registered.page.render(
         { guildId, applicationId, profileId: actingProfileId, page },

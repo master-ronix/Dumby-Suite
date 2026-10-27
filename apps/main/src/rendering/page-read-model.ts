@@ -1,5 +1,6 @@
 import type {
   ActingProfileFacts,
+  GuildCounts,
   ModulePageReadModel,
   ModuleSummary,
   SubsystemState,
@@ -52,6 +53,8 @@ export interface PageReadModelSources {
   readonly heldModules: () => Promise<readonly string[]>;
   /** The configured shard count — narrow on purpose. */
   readonly shardCount: () => number;
+  /** Guild and member counts, and which source answered. */
+  readonly guilds: () => Promise<GuildCounts>;
 }
 
 export function makePageReadModel(sources: PageReadModelSources): ModulePageReadModel {
@@ -87,5 +90,6 @@ export function makePageReadModel(sources: PageReadModelSources): ModulePageRead
     async shardCount() {
       return sources.shardCount();
     },
+    guilds: () => sources.guilds(),
   };
 }

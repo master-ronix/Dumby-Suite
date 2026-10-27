@@ -84,9 +84,24 @@ export interface ModulePageReadModel {
    * the whole configuration surface, which is the boundary this contract exists to hold.
    */
   shardCount(): Promise<number>;
+  /**
+   * The guild and member counts this profile sees, and WHICH source answered. The Discord API is the
+   * authority on membership; the cache is a snapshot taken at login and can lag, which is how a bot in
+   * three guilds once reported four. A page must be able to say which it used.
+   */
+  guilds(): Promise<GuildCounts>;
 }
 
 export type SubsystemState = 'connected' | 'unavailable';
+
+export interface GuildCounts {
+  /** Guilds this profile is in. */
+  readonly total: number;
+  /** Members across them; `undefined` when the cache has not filled — not zero. */
+  readonly members?: number;
+  /** `'live'` when the API answered, `'cache'` when the snapshot did. */
+  readonly source: 'live' | 'cache';
+}
 
 export interface ActingProfileFacts {
   /** `'main'`, or the persona's id. */
