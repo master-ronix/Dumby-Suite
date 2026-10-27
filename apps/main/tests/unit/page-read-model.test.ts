@@ -36,6 +36,7 @@ function sources(over: Partial<PageReadModelSources> = {}): PageReadModelSources
       loadedModules: [],
     }),
     heldModules: async () => [],
+    shardCount: () => 2,
     ...over,
   };
 }
@@ -88,6 +89,8 @@ describe('PageReadModel — a module asks for facts, never for a handle', () => 
     expect(await read.probe()).toEqual({ database: 'connected', redis: 'connected' });
     expect((await read.actingProfile()).gatewayPingMs).toBe(42);
     expect(await read.heldModules()).toEqual([]);
+    // A narrow config read: the shard count and nothing else from the configuration surface.
+    expect(await read.shardCount()).toBe(2);
   });
 
   test('an absent install row stays absent rather than becoming a zero timestamp', async () => {

@@ -1152,6 +1152,7 @@ export function createPageDataProvider(deps: PageDataDeps): (
         probe: probeSubsystems,
         actingProfile: actingProfileFacts,
         heldModules: heldModulesForPage,
+        shardCount: () => config.get('SHARD_COUNT'),
       });
       const rendered = await registered.page.render(
         { guildId, applicationId, profileId: actingProfileId, page },

@@ -79,6 +79,11 @@ export interface ModulePageReadModel {
   actingProfile(): Promise<ActingProfileFacts>;
   /** The modules this profile HOLDS in the page's guild — the ownership read, not what is loaded. */
   heldModules(): Promise<readonly string[]>;
+  /**
+   * The configured shard count. A narrow read on purpose: a general `setting(key)` would hand a module
+   * the whole configuration surface, which is the boundary this contract exists to hold.
+   */
+  shardCount(): Promise<number>;
 }
 
 export type SubsystemState = 'connected' | 'unavailable';

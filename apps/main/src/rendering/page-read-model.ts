@@ -50,6 +50,8 @@ export interface PageReadModelSources {
   readonly actingProfile: () => ActingProfileFacts;
   /** The modules this profile holds in the page's guild. */
   readonly heldModules: () => Promise<readonly string[]>;
+  /** The configured shard count — narrow on purpose. */
+  readonly shardCount: () => number;
 }
 
 export function makePageReadModel(sources: PageReadModelSources): ModulePageReadModel {
@@ -82,5 +84,8 @@ export function makePageReadModel(sources: PageReadModelSources): ModulePageRead
       return sources.actingProfile();
     },
     heldModules: () => sources.heldModules(),
+    async shardCount() {
+      return sources.shardCount();
+    },
   };
 }
