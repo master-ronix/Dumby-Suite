@@ -1059,6 +1059,10 @@ describe('a command absent from a profile registry is explained, not called unkn
   test('another profile holds the module -> OUT_OF_SCOPE, the same answer the holder gives', async () => {
     const router = new CommandRouter(empty(), logger2, {
       globalRegistry: full(),
+      // The router must know WHICH profile it serves: `explainAbsentCommand` compares the resolved
+      // owner against `residentPersonaId ?? 'main'`. Without it the router believes it IS the main
+      // bot, the owner matches, and the honest answer is UNKNOWN_COMMAND.
+      residentPersonaId: 'p-1',
       resolveCommandOwner: async () => 'main',
       isModuleEnabledInGuild: async () => true,
     } as never);
