@@ -4,6 +4,8 @@ import type { ConfigService } from '../config/config.service.js';
 import type { DbClient } from '../db/client.js';
 import type { Logger } from '../logging/logger.js';
 import type { ModuleRegistry } from '../module-system/registry.js';
+import type { PageRegistry } from '../module-system/page-registry.js';
+import { makePageReadModel } from './page-read-model.js';
 import { MARKETPLACE_MODULE_CAP, MODULES_PAGE_SIZE } from '../shared/constants/index.js';
 import { defaultEnabledForTier } from '../module-system/tier-rules.js';
 import { MAIN_PROFILE_ID, profileLabel } from '../personas/profile-label.js';
@@ -82,6 +84,12 @@ export interface PageDataDeps {
    */
   resolveOwner?: ((guildId: string, moduleSlug: string) => Promise<string | undefined>) | undefined;
   moduleRegistry: ModuleRegistry;
+  /**
+   * UR-20261027-106 — pages a MODULE owns. Consulted before this file's own switch, so a module that
+   * declares a page takes over its own surface and the host stops authoring it. Absent, every page
+   * falls back to the built-in switch — which is what the tests of those pages rely on.
+   */
+  pages?: PageRegistry | undefined;
   db: DbClient;
   redis: Redis;
   config: ConfigService;
@@ -1148,6 +1156,38 @@ export function createPageDataProvider(deps: PageDataDeps): (
     // effect (which did pass it) reported correctly. Two renders of one page disagreed.
     actingProfileId: string,
   ): Promise<PageData> => {
+    // UR-20261027-106 — a module that owns its page answers first. The read-model is built from the
+    // closures below, scoped to this request's guild and profile, so a module asks for a fact and
+    // never receives a handle, a connection or a table name.
+    const registered = deps.pages?.get(moduleId);
+    if (registered !== undefined) {
+      const read = makePageReadModel({
+        listModules: () => moduleRegistry.all().map((entry) => entry.manifest),
+        isEnabled: async (slug) => (await enabledStates(guildId)).get(slug) ?? true,
+        installedAt: async (slug) => {
+          if (guildId === null) return undefined;
+          const row = (await db
+            .knex('guild_module_states')
+            .select('createdAt')
+            .where({ guildId, moduleSlug: slug })
+            .whereNull('deletedAt')
+            .first()) as unknown as { createdAt?: unknown } | undefined;
+          const parsed = Date.parse(String(row?.createdAt));
+          return Number.isNaN(parsed) ? undefined : parsed;
+        },
+        ownedByCaller: (slug) => ownedBy(guildId, slug, 'standard', actingProfileId),
+        commandNames: () => resolveEffectiveCommandNames(db.knex, guildId),
+        commandStatus: async (name) =>
+          ((await resolveCommandStatuses(db.knex, guildId)).get(name) ?? 'enabled') as
+            'enabled' | 'disabled',
+        markerIcon: async () => commandMarkerIcon(applicationId),
+      });
+      const rendered = await registered.page.render(
+        { guildId, applicationId, profileId: actingProfileId, page },
+        read,
+      );
+      return rendered as PageData;
+    }
     switch (moduleId) {
       case 'health':
         return health(applicationId, guildId);
