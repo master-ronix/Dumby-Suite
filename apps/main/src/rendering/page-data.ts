@@ -1162,7 +1162,19 @@ export function createPageDataProvider(deps: PageDataDeps): (
     const registered = deps.pages?.get(moduleId);
     if (registered !== undefined) {
       const read = makePageReadModel({
-        listModules: () => moduleRegistry.all().map((entry) => entry.manifest),
+        // Mapped to the read-model's own shape rather than handing over the manifest: the registry's
+        // entry is a union of per-tier manifest shapes, and a module has no business seeing the rest.
+        listModules: () =>
+          moduleRegistry.all().map((entry) => ({
+            name: entry.manifest.name,
+            tier: entry.manifest.tier,
+            description: entry.manifest.description,
+            ...(entry.manifest.ui !== undefined ? { ui: entry.manifest.ui } : {}),
+            commands: entry.manifest.commands.map((command) => ({
+              name: command.name,
+              description: command.description,
+            })),
+          })),
         isEnabled: async (slug) => (await enabledStates(guildId)).get(slug) ?? true,
         installedAt: async (slug) => {
           if (guildId === null) return undefined;
