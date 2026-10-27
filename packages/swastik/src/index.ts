@@ -35,3 +35,14 @@ export {
   requireModuleContext,
   runWithModuleContext,
 } from "./context.js";
+export {
+  baselineCapabilities,
+  coreOnlyCapabilities,
+  moduleCapabilities,
+  type GlobalDataDelivery,
+  type GlobalDataEmit,
+  type JsonValue,
+  type ModuleCapability,
+  type ModuleRuntime,
+  type ModuleRuntimeExtras,
+} from "./capabilities.js";

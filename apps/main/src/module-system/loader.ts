@@ -18,6 +18,9 @@ import type { EventRouter } from '../events/event-router.js';
 import type { Scheduler } from '../queue/scheduler.js';
 import { runWithModuleContext } from '@workspace/swastik';
 import type { ModuleContextResolver } from './execution-context.js';
+import { withModuleCapabilities } from './module-capabilities.js';
+import { makeGlobalDataEmit, makeUnavailableGlobalData } from './global-data-emit.js';
+import type { InternalEventBus } from '../events/event-bus.js';
 
 /** The first guild id among an event's arguments (a Message, GuildMember, …). */
 function guildIdFromArgs(args: readonly unknown[]): string | null {
@@ -275,7 +278,21 @@ export class ModuleLoader {
             }
           }
         }
-        await mod.onLoad?.(this.container);
+        // POLICY (operator directive, 2026-10-27) — a module is handed a GUARDED container, never the
+        // core base. Core/Admin hold every capability; Standard/Marketplace hold the baseline and are
+        // refused, loudly, at the point of use. The global data emit channel is the only sanctioned
+        // way to share anything with another module.
+        const bus = this.container.tryResolve<InternalEventBus>(CORE_TOKENS.EventBus);
+        const globalData =
+          bus === undefined
+            ? makeUnavailableGlobalData(name)
+            : makeGlobalDataEmit(name, { bus, logger: this.logger });
+        const runtime = withModuleCapabilities(this.container, {
+          moduleId: name,
+          tier: mod.manifest.tier,
+          globalData,
+        });
+        await mod.onLoad?.(runtime);
       } catch (err) {
         this.logger.error('module-load-failed', { module: name, error: String(err) });
         // UR-20261012-072 — §11.7: cleanup on an unrecoverable error. The framework is giving up on
