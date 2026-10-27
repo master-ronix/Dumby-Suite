@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.124
+version: 5.5.125
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -80,8 +80,8 @@ completed step's record is missing.
 
 ## 9. Record
 
-> **Population status:** §1–§5 are populated. §3 carries the version history through v5.5.104 and
-> the 2026-10-21 production-readiness pass. The corpus gate suite is **29 gates, all green** at HEAD.
+> **Population status:** §1–§5 are populated. §3 carries the version history through v5.5.125 and
+> the 2026-10-27 citation-integrity pass. The corpus gate suite is **29 gates, all green** at HEAD.
 
 ### 1. Scope & Method
 
@@ -145,7 +145,7 @@ migration prompt version) · `state` (Greenfield | Migration | Enforcement) · `
 | v5.4.0 — Dashboard MODULE_ERROR fix | 2026-10-08 | live log |
 | v5.5.0 — Dashboard controls / attribution / icons | 2026-10-08 | 25 gates green |
 | v5.5.1 — UR-005 build fix | 2026-10-08 | push |
-| v5.5.2 … v5.5.124 — the per-request patch series | 2026-10-11 … 2026-10-27 | change-log §3 (this file) |
+| v5.5.2 … v5.5.125 — the per-request patch series | 2026-10-11 … 2026-10-27 | change-log §3 (this file) |
 
 > §2 lists the **master / milestone tracks**. The per-request patch series after v5.5.1
 > (v5.5.2 … v5.5.99) is enumerated in §3; the front-matter `version` is the highest released
@@ -521,6 +521,27 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 - **R8 — audit age.** `status/audit-age.json` records the audit date, commit, scope and request; `README.md` names the current audit.
 - **Verification.** Corpus gate suite **27/27 green**. Application toolchain not run (Node 20.20.2; app requires Node ≥ 22; no deps) — app-side items are outside the corpus scope.
 - **Return.** `met` (corpus scope) — every AU finding closed; OI-1 (human attestation) and OI-3 (Docker/K8s) remain honest standing items, not defects.
+
+---
+
+### v5.5.125 — Citation Integrity (DOC-001 … DOC-013) — 2026-10-27
+
+- 2026-10-27 · meta-prompt 5.2.0 · state=Enforcement · handoff=master-prompt:enforce · return=met
+- **Work order.** `UR-20261027-103` — raised by the 2026-10-27 corpus audit, on this branch, at `0d749a9f`.
+- **The finding class.** The 29-gate suite was green at `0d749a9f`, and stayed green through every commit below. No gate validates a backticked corpus path outside a request record, so a sweep written for this run resolved every backticked corpus-prefixed token against the tree: **263 do not resolve.** 66 were in the live corpus, 167 under `archive/`, 30 under `_inbox/`. The frozen zones are finding `DOC-012`, deferred by policy. The 66 live ones, plus three defects found by reading, are `DOC-001` … `DOC-013`.
+- **`DOC-001` — the retired adr directory path.** `28d568a` moved the ADR series into `archive/v5.0.0-records/adr/` and repointed the gates, the coverage ledger, the manifest assets and the generated tree. It did not sweep the prose. 18 live occurrences are repointed, including two comments inside `check-corpus-boundary.mjs` that said the series was in `docs/adr/` while the code twelve lines below read the archive.
+- **`DOC-002` — the retired request-record path.** Same cause, same commit: the README's audit-provenance paragraph, `status/audit-age.json`'s `request` field and 23 lines of this file cited `upgradation/UR-*.md` and `upgradation/README.md`. All repointed. The live `upgradation/` directory stays the drop point for new records, which is why `UR-20261027-103` lives there.
+- **`DOC-003` — the retired `ur/` path, quoted forward.** The frozen register forbids it in as many words; `spec/orientation/definitions.md` and `orchestration/master-prompt.md` did it anyway. The `D3` sweep recorded in `v5.5.104` covered three files and missed these two, so `D3` is now complete.
+- **`DOC-006`, `DOC-009` — verify-blocks that verified nothing.** Four "How To Verify This Section Against the Code" entries named a `.github/` under `apps/main/`, which does not exist, while `ci-cd-pipeline.md:115` stated in the same parenthesis the rule that makes that path wrong. Kubernetes and Terraform citations omitted the `apps/main/` prefix and so resolved to the repository-root `deploy/`, which holds the Railway runbook. All repointed. The same entries said "five workflows" where six exist; corrected in four files.
+- **`DOC-007` — a MUST rule whose discharge did not exist.** `D-8.4` item 4 attributed SHA-pinning and secrets enforcement to `scripts/check-workflows.mjs`. No such file exists. The rule now states that the check is not implemented, keeps the invariant, and carries the gap as `REC-035` (`code-gap`) in `status/code-reconciliation.json`. Implementing it is a code-track item — a docs change cannot supply the script, the CI wiring or the test.
+- **`DOC-008` — a phantom regression test.** The threat model's block cited `apps/main/tests/unit/m9-hmac-rfc4231.test.ts`; nothing matching `*hmac*` exists. It now cites the coverage that does exist, `apps/main/tests/integration/security-controls.spec.ts` (`ACC-OPS-0032-3`), and says plainly that it is a presence assertion rather than an RFC 4231 vector test.
+- **`DOC-004`, `DOC-005` — the re-anchor record.** `status/audit-age.json` named `be0d123c` in one field and `7cc721a6` in the field beside it; `git show 435e1b3` shows a one-line diff where the commit field moved and the prose did not. The README credited the same re-anchor to `#62` where the commit names `#63`–`#67`. Both now state the whole chain.
+- **`DOC-011`, `DOC-013` — statements about the corpus's own extent and currency.** `definitions.md` defined the ADR series as `ADR-001 … ADR-011` where the series holds sixteen, and this file said its §3 history ran through `v5.5.104` where it ran through `v5.5.124`. Both corrected; the eleven stays as the count of decisions the v5.0 program itself settled.
+- **`DOC-010` — two index links with no landing page.** `documentation/index.md` linked `api/` through its `README.md` and `features/` and `guides/` through bare directories that had no `README.md`. Both now have one, in the same front-mattered style.
+- **`DOC-012` — the frozen records.** 197 retired-path citations remain under `archive/` and `_inbox/`. Not fixed, deliberately: `archive/v4.5.1/README.md` declares that tree frozen and the register forbids modifying the source records, so correcting them would rewrite the provenance the archive exists to keep.
+- **Deliberately not touched.** This file's historical mention of `scripts/docs/check-supersession.mjs` at `:892`. That script was created and later retired; the entry records both facts and repointing it would falsify the history.
+- **Verification.** Documentation gates **29/29 green** after every commit in the series, and green at the final HEAD. The application toolchain (`tsc` / `vitest`) was **not run** — no dependencies are installed in this environment and no file under `apps/main/` or `packages/` was changed. `verified_commit` stays `be0d123c`: no commit in this series touched the code surfaces, which is the condition `check-code-reconciliation` enforces.
+- **Return.** `met` for the corpus scope. `DOC-007` and `DOC-008` leave a code-track item and a narrowed claim respectively; neither is claimed as a code fix.
 
 ---
 
@@ -3087,6 +3108,7 @@ Every carried residual now states its owner, status, and blocker — none is a s
 | OI-8 | CI enforcement inert — Actions jobs refused at start | operator | **resolved** | Account billing was cleared. Run `40401729675` on `42c256bfa` is green across all twenty gate steps, the Integration suite against live Postgres and Redis, and the Docker build — the first green CI on `feature/dev` since 2026-10-23. Every commit after that date is now CI-verified as part of the tree. |
 | OI-9 | Three **major** dependency updates open — `vite` 7→8, `zod` 3→4 (runtime, both `apps/main` and `packages/swastik`), `recharts` 2→3 | operator | **open — deferred** | The owner will do these as separate migrations on a machine with pnpm and Node ≥ 22. They cannot be applied or verified from the corpus sandbox: `pnpm install --lockfile-only` cannot resolve the workspace (V8 collector dies at 2 GB with no swap), so `pnpm-lock.yaml` cannot be regenerated faithfully and a hand-edited lockfile fails the frozen-lockfile install in Gate 1. `@vitest/coverage-v8` 4→5 was incoherent as raised and is now grouped with `vitest` (RT-26). The grouped minor/patch PR `#62` did land (`7cc721a6`, RT-28) and `#61` was closed; `#58`, `#59` and `#60` were then closed and their branches deleted in the branch-set cut-back (RT-29), so the three majors remain open work with no PR standing for them. |
 | OI-10 | The command queue persists **renames only** — an alias applied through the queue has no persisted home | engineering | **open — recorded, not fixed** | `bccm-batch-push-store.ts` writes `guild_command_renames` only when `action === 'rename'`, so an alias applied through the queue is reverted by a boot. A *disable* survives a restart by a different route — `guild_module_states` carries it — so the exposure is aliases, not disables. Recorded in `v5.5.69` as "STILL OPEN (recorded, not fixed)" but never carried into this register until now. |
+| OI-12 | No CI check enforces the workflow-hygiene invariants (SHA pinning, secrets hygiene) | engineering | **open — recorded, not fixed** | `D-8.4` item 4 named `scripts/check-workflows.mjs` as the enforcing gate; no such file exists (`find . -name '*check-workflows*'` returns nothing). The rule text now states that it is not implemented and `REC-035` carries the gap as `code-gap` in `status/code-reconciliation.json`. Both invariants are a standing review obligation until the check lands. Recorded 2026-10-27 by `UR-20261027-103` / `DOC-007`. |
 | OI-11 | Framework icon assets live in the **CORE** module, including first-party module logos | engineering | **open — recorded, not fixed** | The docs describe modules as independently developed with their own asset paths, so those icons belong to the modules, not to `module-emoji-upload.ts` in CORE. An ownership mismatch between the code and the specification, not a missing asset. Recorded in `v5.5.70` as "STILL OPEN (recorded, not fixed)" but never carried into this register until now. |
 | — | M18 `/modules` corrections & disable enforcement | engineering | **resolved (DONE)** | Disable enforcement present; `disable-behaviour.spec.ts` passes. |
 | — | M74 / M82 | operator | **M74 confirmed; M82 closed** | M74's ownership model (`archive/v5.0.0-records/upgradation/UR-20261012-059.md`) is confirmed by operator directive; its implementation is a code item outside the docs corpus. M82 closed — superseded by M83 (DONE). |
