@@ -1,4 +1,9 @@
-import type { ModulePageReadModel, ModuleSummary } from '@workspace/swastik';
+import type {
+  ActingProfileFacts,
+  ModulePageReadModel,
+  ModuleSummary,
+  SubsystemState,
+} from '@workspace/swastik';
 
 /**
  * UR-20261027-106 — the host side of the module page contract.
@@ -39,6 +44,12 @@ export interface PageReadModelSources {
   readonly markerIcon: () => Promise<string>;
   /** The rendered reference for a declared `ui.icon`, resolved for the application serving the page. */
   readonly moduleIcon: (iconName: string | undefined) => string;
+  /** Reachability of the two shared subsystems, as the framework measured it. */
+  readonly probe: () => Promise<{ database: SubsystemState; redis: SubsystemState }>;
+  /** The profile this page reports for — her runtime, not the host's. */
+  readonly actingProfile: () => ActingProfileFacts;
+  /** The modules this profile holds in the page's guild. */
+  readonly heldModules: () => Promise<readonly string[]>;
 }
 
 export function makePageReadModel(sources: PageReadModelSources): ModulePageReadModel {
@@ -66,5 +77,10 @@ export function makePageReadModel(sources: PageReadModelSources): ModulePageRead
     async moduleIcon(iconName) {
       return sources.moduleIcon(iconName);
     },
+    probe: () => sources.probe(),
+    async actingProfile() {
+      return sources.actingProfile();
+    },
+    heldModules: () => sources.heldModules(),
   };
 }

@@ -61,7 +61,7 @@ export interface ModulePageReadModel {
   /** The command names this guild actually resolves to, keyed by the declared name. */
   commandNames(): Promise<ReadonlyMap<string, string>>;
   /** The per-guild status of a declared command name. */
-  commandStatus(name: string): Promise<"enabled" | "disabled">;
+  commandStatus(name: string): Promise<'enabled' | 'disabled'>;
   /** The emoji name a module page uses as its command marker. */
   markerIcon(): Promise<string>;
   /**
@@ -73,16 +73,34 @@ export interface ModulePageReadModel {
    * render an icon without touching the core base.
    */
   moduleIcon(iconName: string | undefined): Promise<string>;
+  /** Reachability of the two shared subsystems, as the framework measured them for this render. */
+  probe(): Promise<{ readonly database: SubsystemState; readonly redis: SubsystemState }>;
+  /** The PROFILE this page reports for — her runtime, not the host's. */
+  actingProfile(): Promise<ActingProfileFacts>;
+  /** The modules this profile HOLDS in the page's guild — the ownership read, not what is loaded. */
+  heldModules(): Promise<readonly string[]>;
+}
+
+export type SubsystemState = 'connected' | 'unavailable';
+
+export interface ActingProfileFacts {
+  /** `'main'`, or the persona's id. */
+  readonly profileId: string;
+  /** When this profile's runtime started, epoch ms; absent for the internal profile, the host. */
+  readonly startedAt?: number;
+  /** Is this profile's gateway connected? */
+  readonly gatewayReady: boolean;
+  /** Gateway latency in ms, when the client reports one. */
+  readonly gatewayPingMs?: number;
+  /** The module slugs this profile's runtime has LOADED — a different fact from what it holds. */
+  readonly loadedModules: readonly string[];
 }
 
 export interface ModulePage {
   /** The page id the command returns. */
   readonly id: string;
   /** Build the page. The shape is the renderer's page data; the SDK keeps it opaque. */
-  render(
-    context: ModulePageContext,
-    read: ModulePageReadModel,
-  ): Promise<unknown>;
+  render(context: ModulePageContext, read: ModulePageReadModel): Promise<unknown>;
 }
 
 export function definePage(page: ModulePage): ModulePage {

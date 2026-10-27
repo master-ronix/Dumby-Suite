@@ -28,6 +28,14 @@ function sources(over: Partial<PageReadModelSources> = {}): PageReadModelSources
     commandStatus: async () => 'enabled',
     markerIcon: async () => 'dumby_modules',
     moduleIcon: (iconName) => (iconName === undefined ? 'dumby_module' : `<:${iconName}:1>`),
+    probe: async () => ({ database: 'connected', redis: 'connected' }),
+    actingProfile: () => ({
+      profileId: 'main',
+      gatewayReady: true,
+      gatewayPingMs: 42,
+      loadedModules: [],
+    }),
+    heldModules: async () => [],
     ...over,
   };
 }
@@ -76,6 +84,10 @@ describe('PageReadModel — a module asks for facts, never for a handle', () => 
     // A declared icon resolves to the application's own emoji reference; an absent one falls back.
     expect(await read.moduleIcon('dumby_health')).toBe('<:dumby_health:1>');
     expect(await read.moduleIcon(undefined)).toBe('dumby_module');
+    // The framework answers reachability; the module never holds a connection.
+    expect(await read.probe()).toEqual({ database: 'connected', redis: 'connected' });
+    expect((await read.actingProfile()).gatewayPingMs).toBe(42);
+    expect(await read.heldModules()).toEqual([]);
   });
 
   test('an absent install row stays absent rather than becoming a zero timestamp', async () => {

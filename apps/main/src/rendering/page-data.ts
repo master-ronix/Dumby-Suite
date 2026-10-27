@@ -1062,6 +1062,43 @@ export function createPageDataProvider(deps: PageDataDeps): (
     // UR-20261027-106 — a module that owns its page answers first. The read-model is built from the
     // closures below, scoped to this request's guild and profile, so a module asks for a fact and
     // never receives a handle, a connection or a table name.
+    // UR-20261027-106 — the facts a module page asks for that are not a table read.
+    const probeSubsystems = async (): Promise<{
+      database: 'connected' | 'unavailable';
+      redis: 'connected' | 'unavailable';
+    }> => {
+      let database: 'connected' | 'unavailable' = 'unavailable';
+      try {
+        await db.knex.raw('select 1');
+        database = 'connected';
+      } catch {
+        // Unreachable is an answer, not an error: the page reports it rather than failing.
+      }
+      let redisState: 'connected' | 'unavailable' = 'unavailable';
+      try {
+        await redis.ping();
+        redisState = 'connected';
+      } catch {
+        // As above.
+      }
+      return { database, redis: redisState };
+    };
+    const actingProfileFacts = () => {
+      const acting = actingProfile?.(applicationId);
+      const client = (acting?.client ?? getClient()) as
+        { isReady?: () => boolean; ws?: { ping: number } } | undefined;
+      return {
+        profileId: actingProfileId,
+        ...(acting?.startedAt !== undefined ? { startedAt: acting.startedAt } : {}),
+        gatewayReady: client?.isReady?.() === true,
+        ...(client?.ws !== undefined ? { gatewayPingMs: Math.round(client.ws.ping) } : {}),
+        loadedModules: acting?.moduleSlugs ?? [],
+      };
+    };
+    const heldModulesForPage = async (): Promise<readonly string[]> => {
+      if (deps.heldModulesInGuild === undefined || guildId === null) return [];
+      return [...(await deps.heldModulesInGuild(guildId, applicationId))];
+    };
     const registered = deps.pages?.get(moduleId);
     if (registered !== undefined) {
       const read = makePageReadModel({
@@ -1112,6 +1149,9 @@ export function createPageDataProvider(deps: PageDataDeps): (
             'enabled' | 'disabled',
         markerIcon: async () => commandMarkerIcon(applicationId),
         moduleIcon: (iconName) => moduleIcon(iconName, applicationId),
+        probe: probeSubsystems,
+        actingProfile: actingProfileFacts,
+        heldModules: heldModulesForPage,
       });
       const rendered = await registered.page.render(
         { guildId, applicationId, profileId: actingProfileId, page },
