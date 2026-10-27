@@ -201,7 +201,7 @@ the Renderer, so a user cannot append query parameters or retarget a link.
 - The internal-auth guard: `apps/main/src/http/internal-auth.ts`.
 - The path-containment guard: `apps/main/src/shared/utils/path-guard.ts`.
 - The envelope encryption: `apps/main/src/crypto/envelope.ts`, `src/crypto/envelope-scope.ts`.
-- The HMAC regression test: `apps/main/tests/unit/m9-hmac-rfc4231.test.ts`.
+- The HMAC coverage: `apps/main/tests/integration/security-controls.spec.ts` (`ACC-OPS-0032-3` — asserts that webhook payloads are HMAC-verified; a presence assertion, not an RFC 4231 vector test).
 
 Divergences are recorded in `status/code-reconciliation.json`.
 
