@@ -34,6 +34,34 @@ import { loadPolicyLockfile } from '../module-system/policy-lockfile.js';
 import { ModuleLoader } from '../module-system/loader.js';
 import { defaultEnabledForTier, resolveModuleEnabled } from '../module-system/tier-rules.js';
 import { makeModuleEnablement } from '../module-system/enablement.js';
+import { ProcessRegistry } from '../module-system/process-registry.js';
+
+/**
+ * MB-4 — until the enablement read exists (it is built further below), a module-owned process is
+ * REFUSED rather than allowed. Fail closed: a skipped tick is recoverable, work for a module nobody
+ * has authorised is not. A process with no module owner is never gated, so core housekeeping tasks
+ * such as `audit-partition-maintenance` are unaffected.
+ */
+function unwiredStanding(
+  moduleId: string,
+  guildId: string | null,
+  profileId: string,
+): ProcessStanding {
+  return {
+    moduleId,
+    guildId,
+    profileId,
+    allowed: false,
+    reason: 'state-unreadable',
+    enabledBy: null,
+    enabledAt: null,
+  };
+}
+import {
+  makeProcessStanding,
+  type ProcessStandingReader,
+  type ProcessStanding,
+} from '../module-system/process-standing.js';
 import {
   createModuleContextStore,
   makeModuleContextResolver,
@@ -222,7 +250,28 @@ export async function bootstrapWorker(): Promise<void> {
   progress.advanceTo('CACHE_CONNECT');
   const redis = new Redis(config.get('REDIS_URL'));
   const lockStore = new RedisLockStore(redis);
-  const scheduler = new Scheduler({ logger, lockStore });
+  // MB-4 — the process register and the one standing read. Both are late-bound: the enablement read
+  // is built after the module registry exists.
+  const processRegistry = new ProcessRegistry({ logger });
+  let workerSchedulerStanding: ProcessStandingReader | undefined;
+  const schedulerStanding: ProcessStandingReader = {
+    forGuild: (scope) =>
+      workerSchedulerStanding
+        ? workerSchedulerStanding.forGuild(scope)
+        : Promise.resolve(unwiredStanding(scope.moduleId, scope.guildId, scope.profileId)),
+    forFleet: (moduleId, profileId) =>
+      workerSchedulerStanding
+        ? workerSchedulerStanding.forFleet(moduleId, profileId)
+        : Promise.resolve(unwiredStanding(moduleId, null, profileId)),
+  };
+  const scheduler = new Scheduler({
+    logger,
+    lockStore,
+    registry: processRegistry,
+    standing: schedulerStanding,
+    profileId: 'main',
+    profileKind: 'main',
+  });
   scheduler.register({
     name: 'audit-partition-maintenance',
     cron: '0 3 1 * *',
@@ -252,6 +301,10 @@ export async function bootstrapWorker(): Promise<void> {
     defaultConcurrency: config.get('QUEUE_CONCURRENCY_DEFAULT'),
     isModuleEnabled: (moduleId, guildId) =>
       workerQueueGate ? workerQueueGate(moduleId, guildId) : Promise.resolve(true),
+    registry: processRegistry,
+    standing: schedulerStanding,
+    profileId: 'main',
+    profileKind: 'main',
   });
   container.registerValue(CORE_TOKENS.Queue, queue);
 
@@ -277,6 +330,12 @@ export async function bootstrapWorker(): Promise<void> {
   });
   workerQueueGate = (moduleId, guildId) =>
     workerEnablement.isModuleEnabledForGuild(guildId, moduleId);
+  // MB-4 — the process standing read, armed with the same enablement the queue gate uses.
+  workerSchedulerStanding = makeProcessStanding({
+    enablement: workerEnablement,
+    moduleRegistry,
+    logger,
+  });
   const buildStore = new PostgresBuildStore(db.knex);
   // §15.8/§15.9 — the hash floor (L1) is ALWAYS enforced against the build row. The signature layer
   // (L2) is OPTIONAL and COORDINATED: armed only when a BUILD_SIGNING_* key is configured, so it adds
@@ -446,11 +505,28 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   // UR-20261012-069 — a disabled module's cron must not fire. Late-bound, because the enablement read
   // is defined further below.
   let schedulerModuleGate: ((moduleId: string) => Promise<boolean>) | undefined;
+  // MB-4 — the process register and the one standing read, late-bound like the gate above.
+  const processRegistry = new ProcessRegistry({ logger });
+  let mainSchedulerStanding: ProcessStandingReader | undefined;
+  const schedulerStanding: ProcessStandingReader = {
+    forGuild: (scope) =>
+      mainSchedulerStanding
+        ? mainSchedulerStanding.forGuild(scope)
+        : Promise.resolve(unwiredStanding(scope.moduleId, scope.guildId, scope.profileId)),
+    forFleet: (moduleId, profileId) =>
+      mainSchedulerStanding
+        ? mainSchedulerStanding.forFleet(moduleId, profileId)
+        : Promise.resolve(unwiredStanding(moduleId, null, profileId)),
+  };
   const scheduler = new Scheduler({
     logger,
     lockStore,
     isModuleEnabledAnywhere: (moduleId) =>
       schedulerModuleGate ? schedulerModuleGate(moduleId) : Promise.resolve(true),
+    registry: processRegistry,
+    standing: schedulerStanding,
+    profileId: 'main',
+    profileKind: 'main',
   });
   // §24.2.1 — the monthly audit-partition lifecycle (create next month's, drop expired by drop-only).
   scheduler.register({
@@ -482,6 +558,10 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     defaultConcurrency: config.get('QUEUE_CONCURRENCY_DEFAULT'),
     isModuleEnabled: (moduleId, guildId) =>
       queueModuleGate ? queueModuleGate(moduleId, guildId) : Promise.resolve(true),
+    registry: processRegistry,
+    standing: schedulerStanding,
+    profileId: 'main',
+    profileKind: 'main',
   });
   container.registerValue(CORE_TOKENS.Queue, queue);
 
@@ -917,6 +997,27 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   moduleEnabledGate = (moduleId, guildId) => isModuleEnabledForGuild(guildId, moduleId);
   queueModuleGate = moduleEnabledGate;
   schedulerModuleGate = isModuleEnabledAnywhere;
+  // MB-4 — the process standing read, on the same enablement read as every other gate.
+  mainSchedulerStanding = makeProcessStanding({
+    enablement: { isModuleEnabledForGuild, isModuleEnabledAnywhere, enabledByForGuild },
+    moduleRegistry,
+    logger,
+    readProvenance: async (guildId, moduleId) => {
+      const row = await (
+        db.knex as unknown as (t: string) => {
+          where(c: Record<string, unknown>): {
+            whereNull(c: string): { first<T>(): Promise<T | undefined> };
+          };
+        }
+      )('guild_module_states')
+        .where({ guildId, moduleSlug: moduleId })
+        .whereNull('deletedAt')
+        .first<{ enabledBy?: string | null; updatedAt?: Date | string | null }>();
+      return row === undefined || row === null
+        ? undefined
+        : { enabledBy: row.enabledBy ?? null, updatedAt: row.updatedAt ?? null };
+    },
+  });
   // UR-20261012-078 — now that the enablement read exists, arm the ownership read's gate.
   moduleEnabledForOwnership = isModuleEnabledForGuild;
 

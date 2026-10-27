@@ -2,6 +2,8 @@ import { Queue, Worker, QueueEvents, type Processor, type ConnectionOptions } fr
 import type { Redis } from 'ioredis';
 import type { Logger } from '../logging/logger.js';
 import { DlqMonitor, QueueAutoscaler } from './autoscaler.js';
+import type { ProcessRegistry, ProcessHandle } from '../module-system/process-registry.js';
+import type { ProcessStandingReader } from '../module-system/process-standing.js';
 
 export interface QueueManagerOptions {
   connection: Redis;
@@ -14,11 +16,25 @@ export interface QueueManagerOptions {
    * defined after the queue manager is constructed. Absent, or a job with no guild, runs as before.
    */
   isModuleEnabled?: (moduleId: string, guildId: string) => Promise<boolean>;
+  /**
+   * MB-4 (UR-20261027-105) — the one standing read, which FAILS CLOSED where `isModuleEnabled` fails
+   * open. Present, it takes precedence: a job for a module the guild has disabled does no work, and an
+   * unreadable state row skips rather than runs.
+   */
+  standing?: ProcessStandingReader;
+  /** MB-4 — the process register, so every job carries the same provenance tuple a command does. */
+  registry?: ProcessRegistry;
+  /** The profile this worker belongs to — `'main'`, or a persona's id. */
+  profileId?: string;
+  profileKind?: 'main' | 'persona';
 }
 
 export interface RegisterQueueOptions<T = unknown> {
   name: string;
-  processor: Processor<T>;
+  /** MB-4 — a processor may take an `AbortSignal`; one that ignores it still runs, just uncancellably. */
+  processor:
+    | Processor<T>
+    | ((job: { data: T; id?: string }, token?: string, signal?: AbortSignal) => Promise<unknown>);
   concurrency?: number;
   minConcurrency?: number;
   maxConcurrency?: number;
@@ -52,10 +68,29 @@ interface QueueEntry {
 
 export class QueueManager {
   private readonly entries = new Map<string, QueueEntry>();
+  /** MB-4 — one controller per in-flight job, so a disable can ask it to stop. */
+  private readonly inFlight = new Map<string, AbortController>();
   private readonly dlqMonitor = new DlqMonitor(10);
   private dlqTimer: NodeJS.Timeout | null = null;
 
   constructor(private readonly options: QueueManagerOptions) {}
+
+  /**
+   * MB-4 — the disable path for queued work. Aborts every in-flight job's cooperative signal and marks
+   * their rows terminated. Queued-but-unstarted jobs are not drained here: the gate refuses them when
+   * they are dequeued, which is cheaper and survives a restart.
+   */
+  terminateModule(moduleId: string, reason = 'module-disabled'): number {
+    let aborted = 0;
+    for (const [jobId, controller] of this.inFlight) {
+      controller.abort(reason);
+      this.inFlight.delete(jobId);
+      aborted += 1;
+    }
+    this.options.registry?.terminateModule(moduleId, reason);
+    if (aborted > 0) this.options.logger.info('jobs-terminated', { moduleId, aborted, reason });
+    return aborted;
+  }
 
   registerQueue<T = unknown>(opts: RegisterQueueOptions<T>): Queue<T> {
     const connection = this.options.connection as unknown as ConnectionOptions;
@@ -77,8 +112,31 @@ export class QueueManager {
     const gated: Processor<T> = async (job, token) => {
       const moduleId = opts.moduleId;
       const guildId = guildIdFromJobData(job.data);
+      const standingReader = this.options.standing;
+      let provenance: { enabledBy: string | null; enabledAt: Date | null } = {
+        enabledBy: null,
+        enabledAt: null,
+      };
+
       if (moduleId !== undefined && guildId !== undefined) {
-        if (!(await this.moduleEnabled(moduleId, guildId))) {
+        if (standingReader !== undefined) {
+          // MB-4 — one read, fail CLOSED. An unreadable row skips the job and says why.
+          const standing = await standingReader.forGuild({
+            moduleId,
+            guildId,
+            profileId: this.options.profileId ?? 'main',
+          });
+          if (!standing.allowed) {
+            this.options.logger.debug('job-skipped-module-disabled', {
+              queue: opts.name,
+              moduleId,
+              guildId,
+              reason: standing.reason,
+            });
+            return;
+          }
+          provenance = { enabledBy: standing.enabledBy, enabledAt: standing.enabledAt };
+        } else if (!(await this.moduleEnabled(moduleId, guildId))) {
           this.options.logger.debug('job-skipped-module-disabled', {
             queue: opts.name,
             moduleId,
@@ -87,7 +145,39 @@ export class QueueManager {
           return;
         }
       }
-      return opts.processor(job, token);
+
+      const controller = new AbortController();
+      const handle: ProcessHandle | undefined =
+        moduleId === undefined
+          ? undefined
+          : this.options.registry?.begin({
+              moduleId,
+              name: opts.name,
+              kind: 'job',
+              profileId: this.options.profileId ?? 'main',
+              profileKind: this.options.profileKind ?? 'main',
+              guildId: guildId ?? null,
+              trigger: 'queue',
+              enabledBy: provenance.enabledBy,
+              enabledAt: provenance.enabledAt,
+            });
+      this.inFlight.set(String(job.id ?? ''), controller);
+      try {
+        const result = await (
+          opts.processor as (
+            j: { data: T; id?: string },
+            tok?: string,
+            sig?: AbortSignal,
+          ) => Promise<unknown>
+        )(job, token, controller.signal);
+        handle?.end('completed');
+        return result;
+      } catch (err) {
+        handle?.end('completed', 'threw');
+        throw err;
+      } finally {
+        this.inFlight.delete(String(job.id ?? ''));
+      }
     };
     const worker = new Worker<T>(opts.name, gated, { connection, concurrency });
     worker.on('failed', (job, err) => {
