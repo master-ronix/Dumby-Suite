@@ -126,7 +126,7 @@ modules; and a migration guide covering breaking changes and their mitigations.
 
 - The commit hooks and lint-staged config: `apps/main/.husky/`.
 - The changeset config: `apps/main/.changeset/config.json`.
-- The issue and PR templates: `apps/main/.github/`.
+- The issue and PR templates: `.github/`.
 
 Divergences are recorded in `status/code-reconciliation.json`.
 

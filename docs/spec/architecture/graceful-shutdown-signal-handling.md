@@ -135,5 +135,5 @@ None (conceptual).
 ## Named entities
 
 **classes, interfaces & symbols:** `Precision`, `Swastik-driven`, `dumby.system.unhandledRejection`
-**files & artifacts:** `deploy/k8s/base/deployment.yaml`
+**files & artifacts:** `apps/main/deploy/k8s/base/deployment.yaml`
 

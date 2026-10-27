@@ -916,7 +916,7 @@ Maintain local command set.
 
 #### [From §41 (Infrastructure & Deployment)] Roadmap note — custom-metrics autoscaling via KEDA.
 
-> **Roadmap note — custom-metrics autoscaling via KEDA.** The current HPA (`deploy/k8s/base/hpa.yaml`) scales on resource metrics only. A queue-depth-driven alternative — a KEDA `ScaledObject` reacting to BullMQ queue depth and Node event-loop lag — would scale on real backpressure rather than CPU utilization, which poorly represents a gateway-and-queue workload. Impact: Medium; feasibility: Medium.
+> **Roadmap note — custom-metrics autoscaling via KEDA.** The current HPA (`apps/main/deploy/k8s/base/hpa.yaml`) scales on resource metrics only. A queue-depth-driven alternative — a KEDA `ScaledObject` reacting to BullMQ queue depth and Node event-loop lag — would scale on real backpressure rather than CPU utilization, which poorly represents a gateway-and-queue workload. Impact: Medium; feasibility: Medium.
 
 #### [From §41 (Infrastructure & Deployment)] Design consideration — content-addressed artifact identity.
 

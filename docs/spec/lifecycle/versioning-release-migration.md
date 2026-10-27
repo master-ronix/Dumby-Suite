@@ -67,7 +67,7 @@ is no "just delete the row" shortcut that bypasses the audit trail.
 ### 42.5 How To Verify This Section Against the Code
 
 - The changeset config and accumulated changesets: `apps/main/.changeset/`.
-- The release workflow: `apps/main/.github/workflows/release.yml`.
+- The release workflow: `.github/workflows/release.yml`.
 - The migration runner: `apps/main/scripts/migrate.ts`, `src/db/knexfile.ts`.
 
 Divergences are recorded in `status/code-reconciliation.json`.

@@ -20,7 +20,7 @@ Status, `Design Consideration`, and `§X Addition` entries for this department.
 
 The standing rule is fail-fast validation at startup, security-by-default, and explicit contracts. Swastik is currently misaligned with these principles (trust-based checks, late failures); the target is shift-left, fail-fast, crypto-verified validation across the Swastik pipeline.
 
-Docker Compose (`apps/main/docker-compose.yml`) exposes ports 8080/8081/8082, while the Kubernetes base manifests (`deploy/k8s/base/configmap.yaml`, `deploy/k8s/base/service.yaml`) use 3000/9090/9091. This discrepancy exists because the K8s ConfigMap is production-shaped. Operators must use the documented port mapping when curling health endpoints locally vs. in-cluster. Ports should be env-driven (`API_PORT`, `HEALTH_PORT`) to avoid hardcoding.
+Docker Compose (`apps/main/docker-compose.yml`) exposes ports 8080/8081/8082, while the Kubernetes base manifests (`apps/main/deploy/k8s/base/configmap.yaml`, `apps/main/deploy/k8s/base/service.yaml`) use 3000/9090/9091. This discrepancy exists because the K8s ConfigMap is production-shaped. Operators must use the documented port mapping when curling health endpoints locally vs. in-cluster. Ports should be env-driven (`API_PORT`, `HEALTH_PORT`) to avoid hardcoding.
 
 Developer registration via `entry/swastik.ts` must implement a formal licensing gate beyond the `approvalStatus` column. The workflow must include license validation and multi-state approval (pending → license-verified → approved/rejected). The current `approvalStatus` column alone does not constitute a formal approval workflow with licensing verification.
 

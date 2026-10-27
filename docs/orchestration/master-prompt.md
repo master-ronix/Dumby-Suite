@@ -556,14 +556,14 @@ First-party modules are seeded onto their tier volumes (`modules-core` for the C
 
 **Deliver:**
 - Unit, integration, happy-path smoke, and E2E tests per the directive's pyramid and per-layer coverage floors
-- `.github/` at the repository root — five workflows (the strict fail-fast CI sequence per D-8.4 among them), with CODEOWNERS, templates, and the root `dependabot.yml`. The directory MUST NOT exist under `apps/main/` — GitHub Actions cannot read it there. Actions are SHA-pinned and secrets never travel on command lines (read the directive's CI policy)
+- `.github/` at the repository root — six workflows (the strict fail-fast CI sequence per D-8.4 among them), with CODEOWNERS, templates, and the root `dependabot.yml`. The directory MUST NOT exist under `apps/main/` — GitHub Actions cannot read it there. Actions are SHA-pinned and secrets never travel on command lines (read the directive's CI policy)
 - Secret scanning, dependency review, SBOM
 - Docker multi-stage build per D-8.6
 - K8s manifests per D-8.7 (Kustomize base + overlays, terminationGracePeriodSeconds, probes, HPA, non-root, no automounted token)
 - Terraform environment roots
 - Operational runbooks per blueprint §43
 
-**Verify (structural):** All files exist; the five workflow definitions are valid and live at the repository root; Docker and K8s manifests parse.
+**Verify (structural):** All files exist; the six workflow definitions are valid and live at the repository root; Docker and K8s manifests parse.
 **Verify (behavioral):**
 - Full CI sequence is green end-to-end on a real run — verified from the run itself, not the badge
 - Per-layer coverage floors are met — verified from the coverage report, not the CI badge

@@ -128,7 +128,7 @@ Commits), changesets ^2.
 **Rule (MUST).** Docker multi-stage builds; Kubernetes as the primary
 production target; Terraform for PostgreSQL, Redis, and cluster provisioning;
 sealed Kubernetes Secrets (or Vault/cloud manager) — never plaintext in
-manifests or committed env files; GitHub Actions with the five workflows of
+manifests or committed env files; GitHub Actions with the six workflows of
 blueprint §40, living at the repository root `.github/` — the monorepo has
 exactly one CI surface.
 

@@ -112,9 +112,9 @@ outside the temp-file/trap pattern.
 
 ### 40.7 How To Verify This Section Against the Code
 
-- The five workflows: `apps/main/.github/workflows/` (note: GitHub Actions reads the root
-  `.github/`, so a nested location is inert).
-- The CODEOWNERS file: `apps/main/.github/CODEOWNERS`.
+- The six workflows: `.github/workflows/` (note: GitHub Actions reads the root
+  `.github/`, so a nested `apps/main/.github/` is inert).
+- The CODEOWNERS file: `.github/CODEOWNERS`.
 - The supply-chain gate: `pnpm-workspace.yaml` (`minimumReleaseAge`).
 
 Divergences are recorded in `status/code-reconciliation.json`.
