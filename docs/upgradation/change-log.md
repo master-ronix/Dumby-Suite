@@ -3,7 +3,7 @@ id: CHANGELOG
 title: Unified Change Log
 kind: index
 status: normative
-version: 5.5.123
+version: 5.5.124
 chain_role: record
 preceded_by: prompts/meta-prompt.md | orchestration/master-prompt.md | migration/migration-prompt.md
 change_log: upgradation/change-log.md
@@ -145,7 +145,7 @@ migration prompt version) · `state` (Greenfield | Migration | Enforcement) · `
 | v5.4.0 — Dashboard MODULE_ERROR fix | 2026-10-08 | live log |
 | v5.5.0 — Dashboard controls / attribution / icons | 2026-10-08 | 25 gates green |
 | v5.5.1 — UR-005 build fix | 2026-10-08 | push |
-| v5.5.2 … v5.5.123 — the per-request patch series | 2026-10-11 … 2026-10-27 | change-log §3 (this file) |
+| v5.5.2 … v5.5.124 — the per-request patch series | 2026-10-11 … 2026-10-27 | change-log §3 (this file) |
 
 > §2 lists the **master / milestone tracks**. The per-request patch series after v5.5.1
 > (v5.5.2 … v5.5.99) is enumerated in §3; the front-matter `version` is the highest released
@@ -521,6 +521,20 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 - **R8 — audit age.** `status/audit-age.json` records the audit date, commit, scope and request; `README.md` names the current audit.
 - **Verification.** Corpus gate suite **27/27 green**. Application toolchain not run (Node 20.20.2; app requires Node ≥ 22; no deps) — app-side items are outside the corpus scope.
 - **Return.** `met` (corpus scope) — every AU finding closed; OI-1 (human attestation) and OI-3 (Docker/K8s) remain honest standing items, not defects.
+
+---
+
+### v5.5.124 — The Register Registers Again (RT-31) — 2026-10-27
+
+- 2026-10-27 · meta-prompt 5.2.0 · state=Enforcement · handoff=master-prompt:enforce · return=met
+- **Work order.** None. The record tiers were retired by `UR-20261026-102`, which directs that work after it is recorded here.
+- **RT-31 — a carried-items register that had stopped carrying items.** Asked to enumerate every live residual, the answer could not be read off `§5`: two genuine residuals were marked **"STILL OPEN (recorded, not fixed)"** inside §3 history and had never become `OI-` rows. They are invisible unless someone greps the history, which is the same failure the ledger had before `UR-20261026-101` — a register that does not register.
+  - **`OI-10`** — the command queue persists **renames only**. `bccm-batch-push-store.ts` writes `guild_command_renames` only when `action === 'rename'`, so an alias applied through the queue is reverted by a boot. A disable survives a restart by another route (`guild_module_states`), so the exposure is aliases. Verified live in the current source, not taken from the old note.
+  - **`OI-11`** — the framework's icon assets live in the CORE module's `module-emoji-upload.ts`, including first-party module logos, while the docs say a module owns its assets. An ownership mismatch, not a missing asset.
+- **RT-32 — two registers, one stale.** `§5` (legacy) and `§5.2` (authoritative) both listed `OI-1 … OI-7`, and `§5` stopped at `OI-7`, so `OI-8` and `OI-9` were never in it. Worse, `§5.1` still asserted that "the branch-divergence decision remains open (OI-7)" while both tables recorded `OI-7` as **resolved**. `§5` is now marked superseded by `§5.2` and the `§5.1` line states the resolved disposition.
+- **What was not claimed.** `OI-10` and `OI-11` are **not fixed** — they are now honestly carried, with owners and blockers. Fixing them is code work with its own record.
+- **Verification.** Docs-only: no anchor move, `verified_commit` stays `be0d123c`. Documentation gates on CI are the verification of the corpus edits.
+- **Return.** `met`.
 
 ---
 
@@ -3024,6 +3038,8 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 
 ### 5. Open Items Carried Forward
 
+> **Superseded by §5.2, which is authoritative.** This table predates `OI-8` and `OI-9` and has no blocker column, so it silently stopped listing live work: two residuals marked "STILL OPEN" in §3 (`v5.5.69`, `v5.5.70`) were never carried here at all. Where this table and §5.2 disagree, §5.2 wins. Retained for history only.
+
 | Id | Item | Owner | Status |
 |---|---|---|---|
 | OI-1 | Human attestation of the corpus (`review_state` / `last_verified_commit`) | Dumby Core Engineering | open (policy-stated; UR-20261008-001 / UR-20261010-001 R4) |
@@ -3039,7 +3055,7 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 | Request | Disposition |
 |---|---|
 | UR-20261008-001 — human-attestation | Superseded-in-scope by UR-20261010-001 R4; the attestation **policy** is now stated (docs/README.md). The review pass itself remains open (OI-1). |
-| UR-20261009-001 — corpus re-anchoring (`main` @ `9e29e855`) | Executed-in-substance at `feature/dev` by UR-20261010-001 (R1/R2/R3). The branch-divergence decision remains open (OI-7). |
+| UR-20261009-001 — corpus re-anchoring (`main` @ `9e29e855`) | Executed-in-substance at `feature/dev` by UR-20261010-001 (R1/R2/R3). The branch-divergence decision is **resolved** — see `OI-7` in §5.2. |
 | UR-20261009-002 — hardening / migration / rebrand | Executed (docs + code) across v5.3–v5.5; the interactive residuals are tracked (OI-5). |
 | UR-20261010-001 — corpus residual closure | Executed 2026-10-10 (see the entry above). |
 | UR-20261015-090 — corpus audit residual closure | Executed 2026-10-15 (see the `v5.5.95` entry above). Findings DA-1 … DA-12 closed; see §5.2. |
@@ -3070,5 +3086,7 @@ Every carried residual now states its owner, status, and blocker — none is a s
 | OI-7 | Branch-divergence decision (`main` vs `feature/dev`) | operator | **resolved** | Dual-branch model recorded: `feature/dev` is the development branch, `main` the deployment branch; every change lands on `feature/dev` first and is promoted to `main`. |
 | OI-8 | CI enforcement inert — Actions jobs refused at start | operator | **resolved** | Account billing was cleared. Run `40401729675` on `42c256bfa` is green across all twenty gate steps, the Integration suite against live Postgres and Redis, and the Docker build — the first green CI on `feature/dev` since 2026-10-23. Every commit after that date is now CI-verified as part of the tree. |
 | OI-9 | Three **major** dependency updates open — `vite` 7→8, `zod` 3→4 (runtime, both `apps/main` and `packages/swastik`), `recharts` 2→3 | operator | **open — deferred** | The owner will do these as separate migrations on a machine with pnpm and Node ≥ 22. They cannot be applied or verified from the corpus sandbox: `pnpm install --lockfile-only` cannot resolve the workspace (V8 collector dies at 2 GB with no swap), so `pnpm-lock.yaml` cannot be regenerated faithfully and a hand-edited lockfile fails the frozen-lockfile install in Gate 1. `@vitest/coverage-v8` 4→5 was incoherent as raised and is now grouped with `vitest` (RT-26). The grouped minor/patch PR `#62` did land (`7cc721a6`, RT-28) and `#61` was closed; `#58`, `#59` and `#60` were then closed and their branches deleted in the branch-set cut-back (RT-29), so the three majors remain open work with no PR standing for them. |
+| OI-10 | The command queue persists **renames only** — an alias applied through the queue has no persisted home | engineering | **open — recorded, not fixed** | `bccm-batch-push-store.ts` writes `guild_command_renames` only when `action === 'rename'`, so an alias applied through the queue is reverted by a boot. A *disable* survives a restart by a different route — `guild_module_states` carries it — so the exposure is aliases, not disables. Recorded in `v5.5.69` as "STILL OPEN (recorded, not fixed)" but never carried into this register until now. |
+| OI-11 | Framework icon assets live in the **CORE** module, including first-party module logos | engineering | **open — recorded, not fixed** | The docs describe modules as independently developed with their own asset paths, so those icons belong to the modules, not to `module-emoji-upload.ts` in CORE. An ownership mismatch between the code and the specification, not a missing asset. Recorded in `v5.5.70` as "STILL OPEN (recorded, not fixed)" but never carried into this register until now. |
 | — | M18 `/modules` corrections & disable enforcement | engineering | **resolved (DONE)** | Disable enforcement present; `disable-behaviour.spec.ts` passes. |
 | — | M74 / M82 | operator | **M74 confirmed; M82 closed** | M74's ownership model (`upgradation/UR-20261012-059.md`) is confirmed by operator directive; its implementation is a code item outside the docs corpus. M82 closed — superseded by M83 (DONE). |
