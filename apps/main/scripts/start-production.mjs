@@ -20,6 +20,7 @@
  * Plain JS so it runs in the production runtime image (no tsx, no `src/`).
  */
 import { spawn, spawnSync } from 'node:child_process';
+import { createServer } from 'node:http';
 import { once } from 'node:events';
 import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -78,6 +79,34 @@ async function waitForSwastik() {
     await sleep(1000);
   }
   return false;
+}
+
+/**
+ * UR-20261027-107 — hold the platform's port from the first second, not after the seed.
+ *
+ * The platform scans for an open port within a fixed window and kills the instance if it finds none.
+ * This script used to open the port only after migrate (120 s) + waiting for Swastik (60 s) + the seed
+ * budget (180 s) — 360 s worst case against a scan window the operator's log measured at 321 s. The
+ * instance was killed mid-seed, the tier volumes therefore stayed empty, `volumesPopulated()` never
+ * short-circuited, and every restart re-seeded: a livelock that reported itself as "Timed Out".
+ *
+ * So the port is bound HERE, answers 503 while the seed runs, and is released immediately before the
+ * bot starts. The ordering the seed depends on — modules present before the loader runs — is
+ * unchanged, which is why this is a holder rather than a reordering.
+ */
+const apiPort = Number(process.env.PORT ?? process.env.API_PORT ?? 8080);
+const portHolder = createServer((_req, res) => {
+  res.writeHead(503, { 'content-type': 'text/plain', 'retry-after': '5' });
+  res.end('starting: seeding modules\n');
+});
+let portHeld = false;
+try {
+  portHolder.listen(apiPort, '0.0.0.0');
+  await once(portHolder, 'listening');
+  portHeld = true;
+  console.log(`start-production: holding port ${apiPort} while the seed runs`);
+} catch (err) {
+  console.error(`start-production: could not hold port ${apiPort} (continuing): ${String(err)}`);
 }
 
 let swastik;
@@ -151,6 +180,13 @@ if (swastik !== undefined) {
     new Promise((resolve) => setTimeout(resolve, 5_000)),
   ]);
   swastik = undefined;
+}
+
+// 3c. Hand the port to the bot. The holder must be fully closed before the bot binds, or the bot's
+// listen fails with EADDRINUSE and the instance dies for a different reason than the one being fixed.
+if (portHeld) {
+  await new Promise((resolve) => portHolder.close(() => resolve()));
+  console.log(`start-production: released port ${apiPort} for the bot`);
 }
 
 // 4. The bot. Started unconditionally.

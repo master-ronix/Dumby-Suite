@@ -371,13 +371,22 @@
       "code_ref": "apps/main/src/rendering/page-data.ts ; apps/main/src/interactions/core-frame.handlers.ts ; packages/modules/dashboard/src/index.ts",
       "verdict": "code-gap",
       "resolution": "Recorded 2026-10-27 by UR-20261027-105. The doctrine says a module owns its code and a core module is a module like any other; today 'core module' is a manifest label over host code, which is the inversion the operator flagged. Extracting each page's gathering and each interaction handler into its own module, behind the capability surface (MB-1), is the code-track item; /dashboard is the reference slice."
+    },
+    {
+      "id": "REC-041",
+      "area": "Deployment startup — the port is opened only after the module seed",
+      "doc_claim": "spec/lifecycle/ci-cd-pipeline.md and the deploy pipeline describe a service that becomes reachable on its platform port and then seeds the tier volumes; start-production.mjs states its own contract as 'the bot starts UNCONDITIONALLY'",
+      "code_truth": "apps/main/Dockerfile:84 runs scripts/start-production.mjs, which ordered migrate (spawnSync timeout 120000) -> spawn Swastik -> waitForSwastik (up to 60 x 1s) -> seed deployer and push seven bundles (SEED_BUDGET_MS 180000) -> only then spawn the bot, which is the process that binds API_PORT. Worst case before any bind is 360 s. The operator's deploy log shows the platform giving up at 321 s: 'Port scan timeout reached, failed to detect open port 8080' at 09:29:20 after seeding began at 09:23:59, then a restart at 09:38:43 that seeded again from browse - because volumesPopulated() never short-circuited on an empty volume.",
+      "code_ref": "apps/main/scripts/start-production.mjs ; apps/main/Dockerfile ; apps/main/src/config/env.schema.ts",
+      "verdict": "code-gap",
+      "resolution": "Fixed 2026-10-27 (UR-20261027-107): the script now binds a holder server on PORT before the seed and releases it immediately before spawning the bot, so the platform sees an open port while the seed runs and the seed-before-loader ordering is unchanged."
     }
   ],
   "counts": {
     "match": 35,
     "doc-incomplete": 1,
-    "code-gap": 4,
+    "code-gap": 5,
     "code-anchor-broken": 0,
-    "total": 40
+    "total": 41
   }
 }
