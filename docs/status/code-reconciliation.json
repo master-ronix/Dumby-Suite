@@ -317,13 +317,22 @@
       "code_ref": "apps/main/src/bootstrap/bootstrap.ts; apps/main/src/commands/bccm-batch-push-store.ts",
       "verdict": "match",
       "resolution": "Established by RT-17 and RT-18. Before it, a module toggled twice inside the batch window left a pending removal beside a pending re-registration and the replay decided the outcome by row order."
+    },
+    {
+      "id": "REC-035",
+      "area": "CI workflow hygiene \u2014 the check-workflows gate",
+      "doc_claim": "spec/governance/part-8-quality-delivery-acceptance.md rule D-8.4 item 4 and spec/lifecycle/ci-cd-pipeline.md \u00a740.6 describe a CI check that fails the build on an unpinned action, a secret on a command line, or a kubeconfig outside the temp-file/trap pattern",
+      "code_truth": "no such check exists: `find . -name '*check-workflows*'` returns nothing, and the repository-root `scripts/` holds only package.json, post-merge.sh, src/ and tsconfig.json",
+      "code_ref": "scripts/",
+      "verdict": "code-gap",
+      "resolution": "Recorded 2026-10-27 by UR-20261027-103 / DOC-007. The rule text now states that it is not implemented and that both invariants are a standing review obligation until the check lands at `scripts/check-workflows.mjs`. Implementing it is a code-track item."
     }
   ],
   "counts": {
     "match": 34,
     "doc-incomplete": 0,
-    "code-gap": 0,
+    "code-gap": 1,
     "code-anchor-broken": 0,
-    "total": 34
+    "total": 35
   }
 }

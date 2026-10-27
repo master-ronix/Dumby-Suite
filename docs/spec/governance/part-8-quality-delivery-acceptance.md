@@ -82,9 +82,12 @@ provenance binding.
    it on exit.
 3. Dependabot is configured at the repository root for the `github-actions`
    and `npm` ecosystems on a weekly schedule.
-4. `scripts/check-workflows.mjs` runs in CI and asserts both invariants
-   above — SHA pinning and secrets hygiene — failing the build on any
-   violation.
+4. A CI check asserts both invariants above — SHA pinning and secrets
+   hygiene — failing the build on any violation. **Status: not implemented.**
+   No such check exists in the tree; its intended home is
+   `scripts/check-workflows.mjs`, and the gap is recorded in
+   `status/code-reconciliation.json` as REC-035. Until it lands, both
+   invariants are a standing review obligation, not a machine-enforced one.
 
 ### D-8.5 — The 12-Step Release Workflow
 

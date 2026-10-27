@@ -106,9 +106,11 @@ arguments (they surface in process listings and CI logs). Kubernetes credentials
 on the runner: a deploy step materializes its kubeconfig in a temp file, applies it, and
 removes it in an exit trap within the same step. GitHub Actions are pinned by full commit SHA —
 never by tag or branch — and a dependabot config keeps both package dependencies and pinned
-actions current. A CI check (`check-workflows.mjs`) fails the build on any workflow that
+actions current. A CI check is specified to fail the build on any workflow that
 violates these conventions — an unpinned action, a secret on a command line, or a kubeconfig
-outside the temp-file/trap pattern.
+outside the temp-file/trap pattern. That check (`check-workflows.mjs`) is **not yet present in
+the tree**; the gap is recorded in `status/code-reconciliation.json` as REC-035, and until it
+lands the conventions above are a standing review obligation.
 
 ### 40.7 How To Verify This Section Against the Code
 
