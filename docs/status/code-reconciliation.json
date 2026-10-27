@@ -1,10 +1,10 @@
 {
   "$id": "docs/status/code-reconciliation.json",
   "title": "Docs ↔ Code reconciliation",
-  "note": "Every row compares what the NEW documentation asserts against the actual source in master-ronix/Dumby-Suite (apps/main at be0d123c6aac72dfd76369864860220996245bc0, branch feature/dev). Standing rule: the specification is authority; where the code is narrower, the code is the gap to close. The anchor is the last commit to touch apps/main|packages, so no commit after it can move the code under a row without the freshness gate failing. This re-anchor follows five dependency merges, none of which changed a row's subject: a manifest and lockfile change moves no code that any row describes, so the rows are re-anchored, not re-derived.",
-  "verified_commit": "be0d123c6aac72dfd76369864860220996245bc0",
+  "note": "Every row compares what the NEW documentation asserts against the actual source in master-ronix/Dumby-Suite (apps/main at 580c93cf79acb16ecfc4e13e58e282264eb8bce5, branch feature/dev). Standing rule: the specification is authority; where the code is narrower, the code is the gap to close. The anchor is the last commit to touch apps/main|packages, so no commit after it can move the code under a row without the freshness gate failing. This re-anchor follows five dependency merges, none of which changed a row's subject: a manifest and lockfile change moves no code that any row describes, so the rows are re-anchored, not re-derived. Re-anchored 2026-10-27 to the module-boundary code change (UR-20261027-105): the loader, the module-system and the swastik surface moved, so every row was re-read against the new anchor; no existing row's subject changed, and REC-039 is added for the isolation claim.",
+  "verified_commit": "580c93cf79acb16ecfc4e13e58e282264eb8bce5",
   "verified_branch": "feature/dev",
-  "verified_at": "2026-10-27T04:36:07Z",
+  "verified_at": "2026-10-27T09:57:08Z",
   "verdicts": [
     "match",
     "doc-incomplete",
@@ -353,13 +353,22 @@
       "code_ref": "apps/main/src/http/server.ts",
       "verdict": "code-gap",
       "resolution": "Recorded 2026-10-27 by UR-20261027-104 / DOC-017. The four paths are removed from the contract and listed in its x-spec-divergence block rather than left standing as if served. Implementing them is a code-track item."
+    },
+    {
+      "id": "REC-039",
+      "area": "Module isolation — the claimed ServiceLocator tier-based access control",
+      "doc_claim": "documentation/overview/trust-security-reliability.md and documentation/overview/engineering-philosophy.md state that the ServiceLocator's tier-based access control prevents Marketplace modules from accessing Admin-tier services, and that it prevents a module from accessing services it has not declared as dependencies",
+      "code_truth": "there is no ServiceLocator in the code. Until c6859e0 the loader handed every module the raw DI container with all 22 core tokens, so a marketplace module could resolve core.Db and core.CommandRegistry exactly as a core module could. Since c6859e0 the loader hands a guarded container that enforces a tier -> capability map (standard/marketplace hold the baseline eight and are refused the rest), so tier-based refusal now exists — but declared-dependency enforcement does not: the manifest's provides/services fields are declared and never wired",
+      "code_ref": "apps/main/src/module-system/module-capabilities.ts ; apps/main/src/module-system/loader.ts ; packages/swastik/src/capabilities.ts",
+      "verdict": "doc-incomplete",
+      "resolution": "Recorded 2026-10-27 by UR-20261027-105 / MB-1. The tier-based half is now real and enforced at load time (guarded container, ModuleCapabilityDeniedError); the declared-dependency half is not, and wiring provides/services would create the cross-module coupling the same directive forbids — so the prose should be narrowed to what exists rather than the code widened to match it."
     }
   ],
   "counts": {
     "match": 34,
-    "doc-incomplete": 0,
+    "doc-incomplete": 1,
     "code-gap": 4,
     "code-anchor-broken": 0,
-    "total": 38
+    "total": 39
   }
 }
