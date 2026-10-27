@@ -3091,6 +3091,8 @@ Dates marked `—` are not recorded in the corpus; they are left blank rather th
 | UR-20261026-099 — CI enforcement inert (account billing block) | **Recorded 2026-10-26** (see the `v5.5.108` entry). RT-7 raised; closes only when an Actions job executes (operator). |
 | UR-20261026-100 — a module and its commands are one bound pair; command-permission authorization documented | **Executed 2026-10-26** (see the `v5.5.109` entry). Findings RT-8, RT-9 closed. |
 | UR-20261026-101 — the reconciliation ledger covers the faulted areas; the anchor moves with the code track | **Executed 2026-10-26** (see the `v5.5.110` entry). Findings RT-10, RT-11 closed. |
+| UR-20261026-102 — corpus consolidation: settle the record tiers into the normative corpus and retire them | **Executed 2026-10-26** (see the `v5.5.111` entry). The record tiers are retired and archived; the corpus states its own authority. |
+| UR-20261027-103 — citation integrity: repoint every retired record path and every phantom code reference | **Executed 2026-10-27** (see the `v5.5.125` entry). Findings DOC-001 … DOC-013 closed, DOC-012 deferred by policy (the frozen `archive/` and `_inbox/` records). |
 
 ### 5.2 Residual dispositions (UR-20261015-090 R9)
 
