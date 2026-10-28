@@ -542,6 +542,9 @@ describe('page-data provider', () => {
                         guildState: await (
                           read['guildState'] as (s: string) => Promise<boolean | undefined>
                         )('not-a-module'),
+                        ownedBy: await (read['ownedByCaller'] as (s: string) => Promise<boolean>)(
+                          'not-a-module',
+                        ),
                         label: await (read['profileLabel'] as (p: string) => Promise<string>)(
                           'main',
                         ),
@@ -561,6 +564,8 @@ describe('page-data provider', () => {
     expect(seen['enabledByDefault']).toBe(false);
     expect(seen['holder']).toBeUndefined();
     expect(seen['guildState']).toBeUndefined();
+    // An unknown slug still answers the ownership question, with the standard tier as the fallback.
+    expect(typeof seen['ownedBy']).toBe('boolean');
     expect(seen['label']).toBe('Dumby Profile');
   });
 
