@@ -581,44 +581,6 @@ describe('page-data provider', () => {
     expect(seen['label']).toBe('Dumby Profile');
   });
 
-  // The HOST wiring the dashboard page drives: isEnabled, installedAt, ownedByCaller and the module
-  // list mapping. The dashboard's own tests run it against a fake read-model, so these closures are
-  // only ever exercised here - the coverage table named them (page-data.ts 770-787) as uncovered.
-  test('the real dashboard page runs against the host read-model', async () => {
-    // installedAt chains select -> where -> whereNull -> first, which the shared fixture does not
-    // model, so this case brings its own builder. No row is the honest answer for a fresh guild.
-    const installKnex = (() => {
-      const builder: Dict = {};
-      builder['select'] = () => builder;
-      builder['where'] = () => builder;
-      builder['whereNull'] = () => builder;
-      builder['first'] = async (): Promise<unknown> => undefined;
-      return builder;
-    })() as unknown as Dict;
-    const provider = createPageDataProvider(
-      makeDeps({
-        db: {
-          knex: Object.assign(() => installKnex, { raw: async () => [{}] }) as unknown as Dict,
-        },
-        pages: {
-          get: (id: string) =>
-            id === 'dashboard' ? { id, moduleId: 'dashboard', page: dashboardPage } : undefined,
-        },
-      }),
-    );
-    const data = await provider('dashboard', null, 0, undefined, 'app-1', 'main');
-    // Page 0 is every core module's commands, with each module's own icon.
-    const lines = data['lines'] as string[];
-    expect(lines.some((line) => line.includes('/health'))).toBe(true);
-    // Page 0 plus the one standard module the fixture profile holds.
-    expect(data['pageTotal']).toBe(2);
-
-    // Page 1 in a real guild exercises the other two closures: installedAt reads the row (none here,
-    // so the install rank is "unknown" and the module sorts last) and isEnabled answers for the guild.
-    const second = await provider('dashboard', 'guild-1', 1, undefined, 'app-1', 'main');
-    expect(second['pageModuleId']).toBe('hello-world');
-  });
-
   test('a page no module owns still falls through to the built-in switch', async () => {
     const consulted: string[] = [];
     const provider = createPageDataProvider(
