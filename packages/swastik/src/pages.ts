@@ -97,9 +97,24 @@ export interface ModulePageReadModel {
    * profile's.
    */
   hostProcess(): Promise<HostProcessFacts>;
+  /**
+   * The pending command-queue actions for the page's guild, oldest first. The queue is core
+   * infrastructure; a module asks what is pending, not how the table is shaped.
+   */
+  pendingQueue(): Promise<readonly PendingQueueEntry[]>;
 }
 
 export type SubsystemState = 'connected' | 'unavailable';
+
+export interface PendingQueueEntry {
+  /** The command this action will apply to. */
+  readonly commandKey: string;
+  /** `'rename'` when the payload carries no action — the queue's own default. */
+  readonly action: string;
+  readonly newName?: string;
+  readonly alias?: string;
+  readonly disable?: boolean;
+}
 
 export interface HostProcessFacts {
   /** Seconds the process has been up. */

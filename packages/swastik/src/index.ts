@@ -47,6 +47,7 @@ export {
   type ActingProfileFacts,
   type GuildCounts,
   type HostProcessFacts,
+  type PendingQueueEntry,
   type ModulePage,
   type ModulePageContext,
   type ModulePageReadModel,

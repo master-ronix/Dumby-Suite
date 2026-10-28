@@ -2,6 +2,7 @@ import type {
   ActingProfileFacts,
   GuildCounts,
   HostProcessFacts,
+  PendingQueueEntry,
   ModulePageReadModel,
   ModuleSummary,
   SubsystemState,
@@ -58,6 +59,8 @@ export interface PageReadModelSources {
   readonly guilds: () => Promise<GuildCounts>;
   /** The host process's own numbers — a module cannot read them itself. */
   readonly hostProcess: () => HostProcessFacts;
+  /** The pending command-queue actions for this page's guild. */
+  readonly pendingQueue: () => Promise<readonly PendingQueueEntry[]>;
 }
 
 export function makePageReadModel(sources: PageReadModelSources): ModulePageReadModel {
@@ -97,5 +100,6 @@ export function makePageReadModel(sources: PageReadModelSources): ModulePageRead
     async hostProcess() {
       return sources.hostProcess();
     },
+    pendingQueue: () => sources.pendingQueue(),
   };
 }

@@ -1,6 +1,7 @@
 import { describe, expect, test, vi } from 'vitest';
 import { createPageDataProvider, type PageDataDeps } from '../../src/rendering/page-data.js';
 import { healthPage } from '@module-health-page';
+import { queuePage } from '@module-queue-page';
 
 type Dict = Record<string, unknown>;
 
@@ -73,7 +74,11 @@ const fakeClient = {
  * composition lives in packages/modules/health.
  */
 const healthPages = {
-  get: (id: string) => (id === 'health' ? { id, moduleId: 'health', page: healthPage } : undefined),
+  get: (id: string) => {
+    if (id === 'health') return { id, moduleId: 'health', page: healthPage };
+    if (id === 'queue') return { id, moduleId: 'queue', page: queuePage };
+    return undefined;
+  },
 };
 
 function makeDeps(over: Dict = {}): PageDataDeps {

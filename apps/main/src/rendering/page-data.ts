@@ -579,48 +579,6 @@ export function createPageDataProvider(deps: PageDataDeps): (
     };
   }
 
-  async function queue(guildId: string | null): Promise<PageData> {
-    let entries: readonly string[] = [];
-    if (guildId !== null) {
-      try {
-        const rows = await db
-          .knex('guild_command_queue')
-          .where({ guildId, status: 'pending' })
-          .whereNull('deletedAt')
-          .orderBy('scheduledFor', 'asc')
-          .select('commandKey', 'payload');
-        entries = rows.map((row, index) => {
-          const row2 = row as { commandKey?: unknown; payload?: unknown };
-          const entry = (row2.payload ?? {}) as Record<string, unknown>;
-          const parts = [`#${index + 1}`, `Action: ${String(entry['action'] ?? 'rename')}`];
-          parts.push(`Command: ${String(row2.commandKey ?? '')}`);
-          if (entry['newName'] !== undefined) parts.push(`New Name: ${String(entry['newName'])}`);
-          if (entry['alias'] !== undefined) parts.push(`Alias: ${String(entry['alias'])}`);
-          if (entry['disable'] !== undefined) parts.push(`Disable: ${String(entry['disable'])}`);
-          parts.push('Status: Queued');
-          return parts.join('   |   ');
-        });
-      } catch (err) {
-        logger.warn('page-data-queue-unavailable', { guildId, error: String(err) });
-      }
-    }
-    const pending = entries.length;
-    return {
-      title: 'Pending Command Queue Actions',
-      groups: [
-        {
-          name: 'Batch',
-          rows: [
-            ['Window', 'changes are batched and pushed within the 12–13 hour window (§15.8)'],
-            ['Total queued', String(pending)],
-            ['Next batch push', 'within 12–13h'],
-          ],
-        },
-      ],
-      lines: pending === 0 ? ['No pending queue actions.'] : entries,
-    };
-  }
-
   async function permit(applicationId: string): Promise<PageData> {
     const lines: string[] = ['Choose a module command to manage grant access:', ''];
     for (const entry of moduleRegistry.all()) {
@@ -970,6 +928,35 @@ export function createPageDataProvider(deps: PageDataDeps): (
         actingProfile: actingProfileFacts,
         heldModules: heldModulesForPage,
         shardCount: () => config.get('SHARD_COUNT'),
+        pendingQueue: async () => {
+          if (guildId === null) return [];
+          try {
+            const rows = (await db
+              .knex('guild_command_queue')
+              .where({ guildId, status: 'pending' })
+              .whereNull('deletedAt')
+              .orderBy('scheduledFor', 'asc')
+              .select('commandKey', 'payload')) as unknown as {
+              commandKey?: unknown;
+              payload?: unknown;
+            }[];
+            return rows.map((row) => {
+              const entry = (row.payload ?? {}) as Record<string, unknown>;
+              return {
+                commandKey: String(row.commandKey ?? ''),
+                action: String(entry['action'] ?? 'rename'),
+                ...(entry['newName'] !== undefined ? { newName: String(entry['newName']) } : {}),
+                ...(entry['alias'] !== undefined ? { alias: String(entry['alias']) } : {}),
+                ...(entry['disable'] !== undefined ? { disable: Boolean(entry['disable']) } : {}),
+              };
+            });
+          } catch (err) {
+            // An unreadable queue is reported as empty AND logged: the page says nothing is pending,
+            // and the log is where the reason lives.
+            logger.warn('page-data-queue-unavailable', { guildId, error: String(err) });
+            return [];
+          }
+        },
         hostProcess: () => {
           const memory = process.memoryUsage();
           return {
@@ -1014,8 +1001,6 @@ export function createPageDataProvider(deps: PageDataDeps): (
     switch (moduleId) {
       case 'persona':
         return persona(moduleId, guildId, query, applicationId);
-      case 'queue':
-        return queue(guildId);
       case 'permit':
         return permit(applicationId);
       case 'browse':
