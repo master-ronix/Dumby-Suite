@@ -88,6 +88,8 @@ function makeDeps(over: Dict = {}): PageDataDeps {
     // default. A fixture that omits it makes every module read as unheld, which is not a state the
     // production resolver can produce for an enabled module.
     resolveOwner: async () => 'main',
+    // UR-20261027-106 — the module owns /health, so every health case dispatches to its page.
+    pages: healthPages,
     getClient: () => undefined,
     moduleRegistry: registry,
     db: { knex },
