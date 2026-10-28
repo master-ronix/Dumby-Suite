@@ -671,7 +671,12 @@ export function createPageDataProvider(deps: PageDataDeps): (
           const parsed = Date.parse(String(row?.createdAt));
           return Number.isNaN(parsed) ? undefined : parsed;
         },
-        ownedByCaller: (slug) => ownedBy(guildId, slug, 'standard', actingProfileId),
+        ownedByCaller: (slug) => {
+          // The module's OWN tier, not a fixed 'standard': core is shared and owned by nobody, so
+          // passing 'standard' for a core module reported it unowned and /modules listed nothing.
+          const entry = moduleRegistry.all().find((candidate) => candidate.manifest.name === slug);
+          return ownedBy(guildId, slug, entry?.manifest.tier ?? 'standard', actingProfileId);
+        },
         commandNames: () => resolveEffectiveCommandNames(db.knex, guildId),
         commandStatus: async (name) =>
           ((await resolveCommandStatuses(db.knex, guildId)).get(name) ?? 'enabled') as

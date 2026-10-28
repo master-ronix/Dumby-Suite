@@ -61,13 +61,9 @@ const ctx = (page = 0) => ({ guildId: 'g1', applicationId: 'app-1', profileId: '
 describe('modules module page — the composition that moved out of page-data.ts', () => {
   test('core is always listed, admin never is', async () => {
     const data = await modulesPage.render(ctx(), readModel());
-    expect(data.modules.map((module) => module.id)).toEqual([
-      'health',
-      'dashboard',
-      'hello-world',
-      'shop',
-    ]);
-    expect(data.total).toBe(4);
+    // shop is marketplace: never enabled by default, so it is not listed until the guild enables it.
+    expect(data.modules.map((module) => module.id)).toEqual(['health', 'dashboard', 'hello-world']);
+    expect(data.total).toBe(3);
   });
 
   test('a module this profile does not hold is absent', async () => {
@@ -80,7 +76,7 @@ describe('modules module page — the composition that moved out of page-data.ts
       ctx(),
       readModel({ 'hello-world': { guildRow: false }, health: { guildRow: false } }),
     );
-    expect(data.modules.map((module) => module.id)).toEqual(['health', 'dashboard', 'shop']);
+    expect(data.modules.map((module) => module.id)).toEqual(['health', 'dashboard']);
   });
 
   test('the display name is the declared one, else the title-cased id', async () => {
