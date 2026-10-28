@@ -6,6 +6,7 @@ import { permitPage } from '@module-permit-page';
 import { browsePage } from '@module-browse-page';
 import { dashboardPage } from '@module-dashboard-page';
 import { modulesPage } from '@module-modules-page';
+import { personaPage } from '@module-persona-page';
 
 type Dict = Record<string, unknown>;
 
@@ -84,6 +85,7 @@ const healthPages = {
     if (id === 'permit') return { id, moduleId: 'permit', page: permitPage };
     if (id === 'browse') return { id, moduleId: 'browse', page: browsePage };
     if (id === 'modules') return { id, moduleId: 'modules', page: modulesPage };
+    if (id === 'persona') return { id, moduleId: 'persona', page: personaPage };
     return undefined;
   },
 };

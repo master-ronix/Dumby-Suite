@@ -26,6 +26,9 @@ export default defineConfig({
       '@module-modules-page': fileURLToPath(
         new URL('../../packages/modules/modules/src/pages/modules.page.ts', import.meta.url),
       ),
+      '@module-persona-page': fileURLToPath(
+        new URL('../../packages/modules/persona/src/pages/persona.page.ts', import.meta.url),
+      ),
     },
   },
   server: { fs: { allow: ['..'] } },
