@@ -885,15 +885,18 @@ export function createPageDataProvider(deps: PageDataDeps): (
       try {
         await db.knex.raw('select 1');
         database = 'connected';
-      } catch {
-        // Unreachable is an answer, not an error: the page reports it rather than failing.
+      } catch (err) {
+        // Unreachable is an answer, not an error: the page reports it rather than failing. It is still
+        // worth a log line - the old host page emitted one here and losing it would make an outage
+        // invisible to anything reading the logs rather than the page.
+        logger.warn('page-data-db-unavailable', { error: String(err) });
       }
       let redisState: 'connected' | 'unavailable' = 'unavailable';
       try {
         await redis.ping();
         redisState = 'connected';
-      } catch {
-        // As above.
+      } catch (err) {
+        logger.warn('page-data-redis-unavailable', { error: String(err) });
       }
       return { database, redis: redisState };
     };
