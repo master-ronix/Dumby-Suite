@@ -597,7 +597,8 @@ describe('page-data provider', () => {
     // Page 0 is every core module's commands, with each module's own icon.
     const lines = data['lines'] as string[];
     expect(lines.some((line) => line.includes('/health'))).toBe(true);
-    expect(data['pageTotal']).toBe(1);
+    // Page 0 plus the one standard module the fixture profile holds.
+    expect(data['pageTotal']).toBe(2);
   });
 
   test('a page no module owns still falls through to the built-in switch', async () => {
