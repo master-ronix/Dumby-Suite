@@ -621,7 +621,11 @@ export function createPageDataProvider(deps: PageDataDeps): (
           dmBehavior: typeof row['dmBehavior'] === 'string' ? row['dmBehavior'] : '',
           shardAllocation: typeof row['shardAllocation'] === 'number' ? row['shardAllocation'] : 0,
           status: typeof row['status'] === 'string' ? row['status'] : '',
-          hasOAuth: row['hasOAuth'] === true,
+          // The sealed secret never leaves the data layer — only whether one exists.
+          hasOAuth:
+            row['oauthClientSecretSealed'] !== null && row['oauthClientSecretSealed'] !== undefined,
+          // Whether the OAuth leg has EVER completed: the only honest proof the redirect URL is set.
+          oauthVerified: row['oauthVerifiedAt'] !== null && row['oauthVerifiedAt'] !== undefined,
         }));
     };
 
