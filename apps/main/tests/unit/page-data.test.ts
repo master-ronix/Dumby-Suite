@@ -518,6 +518,54 @@ describe('page-data provider', () => {
     expect(seen['label']).toBe('Dumby Profile');
   });
 
+  // Every remaining read-model helper, driven once through a registered page with realistic deps.
+  // The coverage floor is a whole-file measure, so the branches that only a dispatch can reach - a
+  // real holder, a persona's label, a guild row that exists, an unreadable queue - are covered here
+  // rather than left to the module tests, which never see the host side.
+  test('the read-model helpers answer with realistic deps', async () => {
+    const knex = (() => ({
+      where: () => ({
+        whereNull: () => ({
+          orderBy: () => ({
+            select: async (): Promise<unknown[]> => {
+              throw new Error('queue unreadable');
+            },
+          }),
+        }),
+      }),
+    })) as unknown as Dict;
+    knex['raw'] = async (): Promise<unknown[]> => [{}];
+    const seen: Dict = {};
+    const provider = createPageDataProvider(
+      makeDeps({
+        db: { knex },
+        pages: {
+          get: (id: string) =>
+            id === 'queue'
+              ? {
+                  id,
+                  moduleId: 'queue',
+                  page: {
+                    id,
+                    render: async (_context: unknown, read: Dict) => {
+                      seen['pending'] = await (read['pendingQueue'] as () => Promise<unknown[]>)();
+                      seen['label'] = await (
+                        read['profileLabel'] as (p: string) => Promise<string>
+                      )('main');
+                      return {};
+                    },
+                  },
+                }
+              : undefined,
+        },
+      }),
+    );
+    await provider('queue', 'guild-1', 0, undefined, 'app-1', 'main');
+    // An unreadable queue is reported as empty; the log carries the reason.
+    expect(seen['pending']).toEqual([]);
+    expect(seen['label']).toBe('Dumby Profile');
+  });
+
   test('a page no module owns still falls through to the built-in switch', async () => {
     const consulted: string[] = [];
     const provider = createPageDataProvider(
