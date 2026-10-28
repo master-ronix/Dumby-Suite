@@ -22,8 +22,8 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
-import { existsSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { main as seedDeployer } from './seed-first-party-deployer.mjs';
 import { main as pushModules } from './push-modules-lite.mjs';
@@ -95,9 +95,16 @@ async function waitForSwastik() {
  * unchanged, which is why this is a holder rather than a reordering.
  */
 const apiPort = Number(process.env.PORT ?? process.env.API_PORT ?? 8080);
-const portHolder = createServer((_req, res) => {
-  res.writeHead(503, { 'content-type': 'text/plain', 'retry-after': '5' });
-  res.end('starting: seeding modules\n');
+const portHolder = createServer((req, res) => {
+  // The platform's health probe must see 200 while the seed runs: a 503 opens the port but fails the
+  // health check, which marks the deploy failed after the retries — the second half of the same
+  // outage. Everything else is honestly told to retry.
+  const isProbe = (req.url ?? '').startsWith('/health');
+  res.writeHead(isProbe ? 200 : 503, {
+    'content-type': 'text/plain',
+    ...(isProbe ? {} : { 'retry-after': '5' }),
+  });
+  res.end(isProbe ? 'ok\n' : 'starting: seeding modules\n');
 });
 let portHeld = false;
 try {
@@ -111,8 +118,53 @@ try {
 
 let swastik;
 
-if (volumesPopulated()) {
-  console.log(`start-production: ${modulesDir} already populated; skipping the module seed`);
+/**
+ * UR-20261028-109 — a populated volume is not a CURRENT volume.
+ *
+ * `volumesPopulated()` skipped the seed forever once the volume held any module, so the bundles on it
+ * were frozen at whatever version first populated it. That was survivable while the host served every
+ * page itself; it became fatal when the host's pages were deleted and the module bundles were the only
+ * copy — the volume's dashboard predated `pages`, so /dashboard resolved to nothing and rendered an
+ * empty embed.
+ *
+ * So the seed also runs when a BUILT module is absent from the volumes or carries a different version.
+ * The seed stays idempotent: an unchanged bundle is not re-pushed.
+ */
+function modulesStale() {
+  const buildRoot = resolve('dist-modules');
+  if (!existsSync(buildRoot)) return false;
+  for (const slug of readdirSync(buildRoot)) {
+    const builtManifest = join(buildRoot, slug, 'manifest.json');
+    if (!existsSync(builtManifest)) continue;
+    let builtVersion;
+    try {
+      builtVersion = JSON.parse(readFileSync(builtManifest, 'utf8')).version;
+    } catch {
+      continue;
+    }
+    const deployed = TIER_VOLUMES.map((volume) =>
+      join(modulesDir, volume, slug, 'manifest.json'),
+    ).find((path) => existsSync(path));
+    if (deployed === undefined) {
+      console.log(`start-production: ${slug} is built but not on any volume; seeding`);
+      return true;
+    }
+    try {
+      if (JSON.parse(readFileSync(deployed, 'utf8')).version !== builtVersion) {
+        console.log(`start-production: ${slug} on the volume is stale; seeding`);
+        return true;
+      }
+    } catch {
+      return true;
+    }
+  }
+  return false;
+}
+
+if (volumesPopulated() && !modulesStale()) {
+  console.log(
+    `start-production: ${modulesDir} already populated and current; skipping the module seed`,
+  );
 } else {
   const seedStartedAt = Date.now();
   const remainingBudget = () => Math.max(5_000, SEED_BUDGET_MS - (Date.now() - seedStartedAt));
