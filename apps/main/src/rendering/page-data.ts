@@ -6,7 +6,7 @@ import type { Logger } from '../logging/logger.js';
 import type { ModuleRegistry } from '../module-system/registry.js';
 import type { PageRegistry } from '../module-system/page-registry.js';
 import { makePageReadModel } from './page-read-model.js';
-import { MARKETPLACE_MODULE_CAP, MODULES_PAGE_SIZE } from '../shared/constants/index.js';
+import { MODULES_PAGE_SIZE } from '../shared/constants/index.js';
 import { defaultEnabledForTier } from '../module-system/tier-rules.js';
 import { MAIN_PROFILE_ID, profileLabel } from '../personas/profile-label.js';
 import { commandMarkerIcon, moduleIcon } from './module-icons.js';
