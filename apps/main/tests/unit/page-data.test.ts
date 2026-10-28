@@ -499,6 +499,17 @@ describe('page-data provider', () => {
                         tierDefault: await (read['tierDefault'] as (s: string) => Promise<boolean>)(
                           'not-a-module',
                         ),
+                        // The same unknown slug through the other ownership helpers: each has its own
+                        // "no such module" branch, and the coverage floor counts them one by one.
+                        enabledByDefault: await (
+                          read['enabledByDefault'] as (s: string) => Promise<boolean>
+                        )('not-a-module'),
+                        holder: await (
+                          read['holder'] as (s: string) => Promise<string | undefined>
+                        )('not-a-module'),
+                        guildState: await (
+                          read['guildState'] as (s: string) => Promise<boolean | undefined>
+                        )('not-a-module'),
                         label: await (read['profileLabel'] as (p: string) => Promise<string>)(
                           'main',
                         ),
@@ -515,6 +526,9 @@ describe('page-data provider', () => {
     expect(seen['query']).toBe('hello');
     // A slug the registry does not know has no tier default, and the internal profile is named.
     expect(seen['tierDefault']).toBe(false);
+    expect(seen['enabledByDefault']).toBe(false);
+    expect(seen['holder']).toBeUndefined();
+    expect(seen['guildState']).toBeUndefined();
     expect(seen['label']).toBe('Dumby Profile');
   });
 
