@@ -61,6 +61,10 @@ export interface PageReadModelSources {
   readonly hostProcess: () => HostProcessFacts;
   /** The pending command-queue actions for this page's guild. */
   readonly pendingQueue: () => Promise<readonly PendingQueueEntry[]>;
+  /** Who holds a module here — `undefined` means nobody, not the main bot. */
+  readonly holder: (slug: string) => Promise<string | undefined>;
+  /** Is this module enabled by DEFAULT for the acting profile? Depends on ownership. */
+  readonly enabledByDefault: (slug: string) => Promise<boolean>;
 }
 
 export function makePageReadModel(sources: PageReadModelSources): ModulePageReadModel {
@@ -101,5 +105,7 @@ export function makePageReadModel(sources: PageReadModelSources): ModulePageRead
       return sources.hostProcess();
     },
     pendingQueue: () => sources.pendingQueue(),
+    holder: (slug) => sources.holder(slug),
+    enabledByDefault: (slug) => sources.enabledByDefault(slug),
   };
 }

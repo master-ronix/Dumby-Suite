@@ -39,6 +39,8 @@ function sources(over: Partial<PageReadModelSources> = {}): PageReadModelSources
     shardCount: () => 2,
     guilds: async () => ({ total: 3, members: 120, source: 'live' as const }),
     pendingQueue: async () => [],
+    holder: async (slug: string) => (slug === 'hello-world' ? 'p-1' : undefined),
+    enabledByDefault: async (slug: string) => slug === 'hello-world',
     hostProcess: () => ({
       uptimeSeconds: 10,
       nodeVersion: 'v20.20.2',
@@ -102,6 +104,10 @@ describe('PageReadModel — a module asks for facts, never for a handle', () => 
     expect(await read.guilds()).toEqual({ total: 3, members: 120, source: 'live' });
     expect((await read.hostProcess()).nodeVersion).toBe('v20.20.2');
     expect(await read.pendingQueue()).toEqual([]);
+    // `undefined` is nobody, not the main bot — the distinction the catalogue depends on.
+    expect(await read.holder('hello-world')).toBe('p-1');
+    expect(await read.holder('health')).toBeUndefined();
+    expect(await read.enabledByDefault('hello-world')).toBe(true);
   });
 
   test('an absent install row stays absent rather than becoming a zero timestamp', async () => {

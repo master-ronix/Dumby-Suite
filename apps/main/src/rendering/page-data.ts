@@ -912,6 +912,12 @@ export function createPageDataProvider(deps: PageDataDeps): (
         actingProfile: actingProfileFacts,
         heldModules: heldModulesForPage,
         shardCount: () => config.get('SHARD_COUNT'),
+        holder: (slug) => holderOf(guildId, slug),
+        enabledByDefault: async (slug) => {
+          const entry = moduleRegistry.all().find((candidate) => candidate.manifest.name === slug);
+          if (entry === undefined) return false;
+          return defaultEnabledForProfile(entry.manifest.tier, slug, guildId, actingProfileId);
+        },
         pendingQueue: async () => {
           if (guildId === null) return [];
           try {

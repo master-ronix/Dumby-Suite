@@ -102,6 +102,19 @@ export interface ModulePageReadModel {
    * infrastructure; a module asks what is pending, not how the table is shaped.
    */
   pendingQueue(): Promise<readonly PendingQueueEntry[]>;
+  /**
+   * WHO holds a module in this page's guild — `'main'`, a persona's id, or `undefined` when nobody
+   * does. `undefined` is NOT the main bot: the ownership read answers `'main'` explicitly when the
+   * resident bot holds it, and a page that conflated the two would name the bot as the holder of a
+   * module it never claimed.
+   */
+  holder(slug: string): Promise<string | undefined>;
+  /**
+   * Is this module enabled by DEFAULT for the acting profile? Not the same as the guild's state: a
+   * standard module is enabled by default only for the profile that got there first, so this answer
+   * depends on ownership. Core and Admin are shared and always on; marketplace never defaults on.
+   */
+  enabledByDefault(slug: string): Promise<boolean>;
 }
 
 export type SubsystemState = 'connected' | 'unavailable';
