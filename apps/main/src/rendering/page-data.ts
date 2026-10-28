@@ -687,6 +687,67 @@ export function createPageDataProvider(deps: PageDataDeps): (
         actingProfile: actingProfileFacts,
         heldModules: heldModulesForPage,
         shardCount: () => config.get('SHARD_COUNT'),
+        personaBindings: async () => {
+          if (guildId === null) return [];
+          try {
+            const rows = (await db
+              .knex('guild_persona_bindings')
+              .where({ guildId })
+              .whereNull('deletedAt')) as ReadonlyArray<{
+              moduleSlug?: unknown;
+              personaId?: unknown;
+            }>;
+            return rows
+              .filter(
+                (row) => typeof row.moduleSlug === 'string' && typeof row.personaId === 'string',
+              )
+              .map((row) => ({
+                moduleSlug: row.moduleSlug as string,
+                personaId: row.personaId as string,
+              }));
+          } catch (err) {
+            // An unreadable binding table is reported as none, and logged: the page says nobody is
+            // bound, and the log says why.
+            logger.warn('page-data-persona-bindings-unavailable', { guildId, error: String(err) });
+            return [];
+          }
+        },
+        registeredPersonas: async () => {
+          if (guildId === null) return [];
+          const bindings = await (async () => {
+            const rows = (await db
+              .knex('guild_persona_bindings')
+              .where({ guildId })
+              .whereNull('deletedAt')) as ReadonlyArray<{ personaId?: unknown }>;
+            return [...new Set(rows.map((row) => String(row.personaId ?? '')).filter(Boolean))];
+          })();
+          const rows = (await db
+            .knex('persona_identities')
+            .whereNull('deletedAt')
+            .andWhere(
+              (builder: {
+                where: (column: string, value: string) => void;
+                orWhereIn: (column: string, values: string[]) => void;
+              }) => {
+                builder.where('boundGuildId', guildId);
+                if (bindings.length > 0) builder.orWhereIn('id', bindings);
+              },
+            )) as ReadonlyArray<Record<string, unknown>>;
+          return rows
+            .filter((row) => typeof row['id'] === 'string' && typeof row['name'] === 'string')
+            .map((row) => ({
+              id: row['id'] as string,
+              name: row['name'] as string,
+              discordApplicationId:
+                typeof row['discordApplicationId'] === 'string' ? row['discordApplicationId'] : '',
+              boundGuildId: typeof row['boundGuildId'] === 'string' ? row['boundGuildId'] : '',
+              dmBehavior: typeof row['dmBehavior'] === 'string' ? row['dmBehavior'] : '',
+              shardAllocation:
+                typeof row['shardAllocation'] === 'number' ? row['shardAllocation'] : 0,
+              status: typeof row['status'] === 'string' ? row['status'] : '',
+              hasOAuth: row['hasOAuth'] === true,
+            }));
+        },
         holder: (slug) => holderOf(guildId, slug),
         guildState: async (slug) => (await enabledStates(guildId)).get(slug),
         tierDefault: async (slug) => {

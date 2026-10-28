@@ -48,6 +48,8 @@ export {
   type GuildCounts,
   type HostProcessFacts,
   type PendingQueueEntry,
+  type PersonaBinding,
+  type PersonaRecord,
   type ModulePage,
   type ModulePageContext,
   type ModulePageReadModel,
@@ -55,4 +57,4 @@ export {
   type SubsystemState,
 } from './pages.js';
 
-export { modulePageNavigation, romanNumeral, type PageSlide } from "./paging.js";
+export { modulePageNavigation, romanNumeral, type PageSlide } from './paging.js';

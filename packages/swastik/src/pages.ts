@@ -132,9 +132,35 @@ export interface ModulePageReadModel {
   guildState(slug: string): Promise<boolean | undefined>;
   /** The tier's default for the GUILD, when it has no row: core and admin on, marketplace off. */
   tierDefault(slug: string): Promise<boolean>;
+  /**
+   * The guild's persona bindings: which module is bound to which persona here. A module bound to a
+   * persona is owned by that persona in this guild; every other module belongs to the resident bot.
+   */
+  personaBindings(): Promise<readonly PersonaBinding[]>;
+  /**
+   * The personas this guild knows — registered here, or named by a binding. `boundGuildId` is exactly
+   * "the personas this guild registered", which is not the same set as "personas bound to a module".
+   */
+  registeredPersonas(): Promise<readonly PersonaRecord[]>;
 }
 
 export type SubsystemState = 'connected' | 'unavailable';
+
+export interface PersonaBinding {
+  readonly moduleSlug: string;
+  readonly personaId: string;
+}
+
+export interface PersonaRecord {
+  readonly id: string;
+  readonly name: string;
+  readonly discordApplicationId: string;
+  readonly boundGuildId: string;
+  readonly dmBehavior: string;
+  readonly shardAllocation: number;
+  readonly status: string;
+  readonly hasOAuth: boolean;
+}
 
 export interface PendingQueueEntry {
   /** The command this action will apply to. */

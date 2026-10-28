@@ -44,6 +44,19 @@ function sources(over: Partial<PageReadModelSources> = {}): PageReadModelSources
     profileLabel: async (profileId: string) => (profileId === 'main' ? 'Dumby Profile' : 'Magma'),
     guildState: async (slug: string) => (slug === 'hello-world' ? false : undefined),
     tierDefault: async (slug: string) => slug !== 'browse',
+    personaBindings: async () => [{ moduleSlug: 'hello-world', personaId: 'p-1' }],
+    registeredPersonas: async () => [
+      {
+        id: 'p-1',
+        name: 'Magma',
+        discordApplicationId: 'app-2',
+        boundGuildId: 'g1',
+        dmBehavior: 'ignore',
+        shardAllocation: 0,
+        status: 'active',
+        hasOAuth: true,
+      },
+    ],
     hostProcess: () => ({
       uptimeSeconds: 10,
       nodeVersion: 'v20.20.2',
@@ -116,6 +129,9 @@ describe('PageReadModel — a module asks for facts, never for a handle', () => 
     expect(await read.guildState('hello-world')).toBe(false);
     expect(await read.guildState('health')).toBeUndefined();
     expect(await read.tierDefault('browse')).toBe(false);
+    // Which module a persona holds, and who this guild knows — two different questions.
+    expect(await read.personaBindings()).toEqual([{ moduleSlug: 'hello-world', personaId: 'p-1' }]);
+    expect((await read.registeredPersonas())[0]?.name).toBe('Magma');
   });
 
   test('an absent install row stays absent rather than becoming a zero timestamp', async () => {

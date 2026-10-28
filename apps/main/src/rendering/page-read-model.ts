@@ -3,6 +3,8 @@ import type {
   GuildCounts,
   HostProcessFacts,
   PendingQueueEntry,
+  PersonaBinding,
+  PersonaRecord,
   ModulePageReadModel,
   ModuleSummary,
   SubsystemState,
@@ -71,6 +73,10 @@ export interface PageReadModelSources {
   readonly guildState: (slug: string) => Promise<boolean | undefined>;
   /** The tier's default for the guild, when it has no row. */
   readonly tierDefault: (slug: string) => Promise<boolean>;
+  /** Which module is bound to which persona in this guild. */
+  readonly personaBindings: () => Promise<readonly PersonaBinding[]>;
+  /** The personas this guild knows — registered here, or named by a binding. */
+  readonly registeredPersonas: () => Promise<readonly PersonaRecord[]>;
 }
 
 export function makePageReadModel(sources: PageReadModelSources): ModulePageReadModel {
@@ -116,5 +122,7 @@ export function makePageReadModel(sources: PageReadModelSources): ModulePageRead
     profileLabel: (profileId) => sources.profileLabel(profileId),
     guildState: (slug) => sources.guildState(slug),
     tierDefault: (slug) => sources.tierDefault(slug),
+    personaBindings: () => sources.personaBindings(),
+    registeredPersonas: () => sources.registeredPersonas(),
   };
 }
