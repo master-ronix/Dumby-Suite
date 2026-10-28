@@ -398,6 +398,12 @@ export interface BootstrapOverrides {
   /** Inject a Redis instance (cache/queue/locks/pub-sub) — used by the flow suite. */
   readonly redis?: Redis;
   readonly queueRedis?: Redis;
+  /**
+   * UR-20261028-110 — release the port held during bootstrap, immediately before the API server
+   * listens. The entry point holds the port from the first millisecond so a platform port scan finds
+   * it; this hands it over. Absent (tests, flow suite) nothing is held and nothing is released.
+   */
+  readonly releasePort?: () => Promise<void>;
 }
 
 /** The live wiring a booted process exposes, so a flow test can assert and drive shutdown. */
@@ -2697,6 +2703,9 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   apiServer.addHook('onRequest', async () => inFlightTracker.increment());
   apiServer.addHook('onResponse', async () => inFlightTracker.decrement());
   apiServer.addHook('onError', async () => inFlightTracker.decrement());
+  // The port has been held since the first millisecond of the process (UR-20261028-110). Release it
+  // now, immediately before the real server binds: exactly one owner at any time, no gap.
+  await overrides.releasePort?.();
   await apiServer.listen({ port: config.get('API_PORT'), host: config.get('API_BIND_HOST') });
 
   registerShutdownSignalHandlers({
