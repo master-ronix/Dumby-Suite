@@ -344,42 +344,52 @@ export function createPageDataProvider(deps: PageDataDeps): (
     // UR-20261027-106 — the facts a module page asks for that are not a table read.
     const registeredPersonasFor = async (): Promise<readonly PersonaRecord[]> => {
       if (guildId === null) return [];
-      const bindings = await (async () => {
+      try {
+        const bindings = await (async () => {
+          const rows = (await db
+            .knex('guild_persona_bindings')
+            .where({ guildId })
+            .whereNull('deletedAt')) as ReadonlyArray<{ personaId?: unknown }>;
+          return [...new Set(rows.map((row) => String(row.personaId ?? '')).filter(Boolean))];
+        })();
         const rows = (await db
-          .knex('guild_persona_bindings')
-          .where({ guildId })
-          .whereNull('deletedAt')) as ReadonlyArray<{ personaId?: unknown }>;
-        return [...new Set(rows.map((row) => String(row.personaId ?? '')).filter(Boolean))];
-      })();
-      const rows = (await db
-        .knex('persona_identities')
-        .whereNull('deletedAt')
-        .andWhere(
-          (builder: {
-            where: (column: string, value: string) => void;
-            orWhereIn: (column: string, values: string[]) => void;
-          }) => {
-            builder.where('boundGuildId', guildId);
-            if (bindings.length > 0) builder.orWhereIn('id', bindings);
-          },
-        )) as ReadonlyArray<Record<string, unknown>>;
-      return rows
-        .filter((row) => typeof row['id'] === 'string' && typeof row['name'] === 'string')
-        .map((row) => ({
-          id: row['id'] as string,
-          name: row['name'] as string,
-          discordApplicationId:
-            typeof row['discordApplicationId'] === 'string' ? row['discordApplicationId'] : '',
-          boundGuildId: typeof row['boundGuildId'] === 'string' ? row['boundGuildId'] : '',
-          dmBehavior: typeof row['dmBehavior'] === 'string' ? row['dmBehavior'] : '',
-          shardAllocation: typeof row['shardAllocation'] === 'number' ? row['shardAllocation'] : 0,
-          status: typeof row['status'] === 'string' ? row['status'] : '',
-          // The sealed secret never leaves the data layer — only whether one exists.
-          hasOAuth:
-            row['oauthClientSecretSealed'] !== null && row['oauthClientSecretSealed'] !== undefined,
-          // Whether the OAuth leg has EVER completed: the only honest proof the redirect URL is set.
-          oauthVerified: row['oauthVerifiedAt'] !== null && row['oauthVerifiedAt'] !== undefined,
-        }));
+          .knex('persona_identities')
+          .whereNull('deletedAt')
+          .andWhere(
+            (builder: {
+              where: (column: string, value: string) => void;
+              orWhereIn: (column: string, values: string[]) => void;
+            }) => {
+              builder.where('boundGuildId', guildId);
+              if (bindings.length > 0) builder.orWhereIn('id', bindings);
+            },
+          )) as ReadonlyArray<Record<string, unknown>>;
+        return rows
+          .filter((row) => typeof row['id'] === 'string' && typeof row['name'] === 'string')
+          .map((row) => ({
+            id: row['id'] as string,
+            name: row['name'] as string,
+            discordApplicationId:
+              typeof row['discordApplicationId'] === 'string' ? row['discordApplicationId'] : '',
+            boundGuildId: typeof row['boundGuildId'] === 'string' ? row['boundGuildId'] : '',
+            dmBehavior: typeof row['dmBehavior'] === 'string' ? row['dmBehavior'] : '',
+            shardAllocation:
+              typeof row['shardAllocation'] === 'number' ? row['shardAllocation'] : 0,
+            status: typeof row['status'] === 'string' ? row['status'] : '',
+            // The sealed secret never leaves the data layer — only whether one exists.
+            hasOAuth:
+              row['oauthClientSecretSealed'] !== null &&
+              row['oauthClientSecretSealed'] !== undefined,
+            // Whether the OAuth leg has EVER completed: the only honest proof the redirect URL is set.
+            oauthVerified: row['oauthVerifiedAt'] !== null && row['oauthVerifiedAt'] !== undefined,
+          }));
+      } catch (err) {
+        // An unreadable persona table is reported as nobody registered AND logged: the page falls
+        // back to the main bot alone, and the log carries the reason. Losing this line would make a
+        // broken registration table invisible to anything reading logs rather than the page.
+        logger.warn('page-data-persona-unavailable', { guildId, reason: String(err) });
+        return [];
+      }
     };
 
     const probeSubsystems = async (): Promise<{
