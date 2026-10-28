@@ -4,6 +4,7 @@ import { healthPage } from '@module-health-page';
 import { queuePage } from '@module-queue-page';
 import { permitPage } from '@module-permit-page';
 import { browsePage } from '@module-browse-page';
+import { dashboardPage } from '@module-dashboard-page';
 
 type Dict = Record<string, unknown>;
 
@@ -578,6 +579,25 @@ describe('page-data provider', () => {
     // An unreadable queue is reported as empty; the log carries the reason.
     expect(seen['pending']).toEqual([]);
     expect(seen['label']).toBe('Dumby Profile');
+  });
+
+  // The HOST wiring the dashboard page drives: isEnabled, installedAt, ownedByCaller and the module
+  // list mapping. The dashboard's own tests run it against a fake read-model, so these closures are
+  // only ever exercised here - the coverage table named them (page-data.ts 770-787) as uncovered.
+  test('the real dashboard page runs against the host read-model', async () => {
+    const provider = createPageDataProvider(
+      makeDeps({
+        pages: {
+          get: (id: string) =>
+            id === 'dashboard' ? { id, moduleId: 'dashboard', page: dashboardPage } : undefined,
+        },
+      }),
+    );
+    const data = await provider('dashboard', null, 0, undefined, 'app-1', 'main');
+    // Page 0 is every core module's commands, with each module's own icon.
+    const lines = data['lines'] as string[];
+    expect(lines.some((line) => line.includes('/health'))).toBe(true);
+    expect(data['pageTotal']).toBe(1);
   });
 
   test('a page no module owns still falls through to the built-in switch', async () => {
