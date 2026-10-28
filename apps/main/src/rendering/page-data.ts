@@ -9,7 +9,6 @@ import { makePageReadModel } from './page-read-model.js';
 // The paging helpers now live in the package a module can import; re-exported here because the
 // interaction handlers import them from this module.
 export { modulePageNavigation, romanNumeral } from '@workspace/swastik';
-import { MODULES_PAGE_SIZE } from '../shared/constants/index.js';
 import { defaultEnabledForTier } from '../module-system/tier-rules.js';
 import { MAIN_PROFILE_ID, profileLabel } from '../personas/profile-label.js';
 import { commandMarkerIcon, moduleIcon } from './module-icons.js';
@@ -99,13 +98,6 @@ export interface PageDataDeps {
 }
 
 type PageData = Readonly<Record<string, unknown>>;
-/** The display name for a module id: `hello-world` becomes `Hello World`. */
-const titleCaseId = (id: string): string =>
-  id
-    .split(/[-_]/)
-    .map((part) => (part.length > 0 ? part[0]!.toUpperCase() + part.slice(1) : part))
-    .join(' ');
-
 /**
  * §1.7 — the host side of the page-data channel. A module cannot see the running system, so every
  * value a page reports about it is gathered here, at dispatch, and handed to the handler. Only
