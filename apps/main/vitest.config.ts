@@ -23,6 +23,9 @@ export default defineConfig({
       '@module-browse-page': fileURLToPath(
         new URL('../../packages/modules/browse/src/pages/browse.page.ts', import.meta.url),
       ),
+      '@module-modules-page': fileURLToPath(
+        new URL('../../packages/modules/modules/src/pages/modules.page.ts', import.meta.url),
+      ),
     },
   },
   server: { fs: { allow: ['..'] } },

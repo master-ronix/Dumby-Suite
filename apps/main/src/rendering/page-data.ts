@@ -6,6 +6,9 @@ import type { Logger } from '../logging/logger.js';
 import type { ModuleRegistry } from '../module-system/registry.js';
 import type { PageRegistry } from '../module-system/page-registry.js';
 import { makePageReadModel } from './page-read-model.js';
+// The paging helpers now live in the package a module can import; re-exported here because the
+// interaction handlers import them from this module.
+export { modulePageNavigation, romanNumeral } from '@workspace/swastik';
 import { MODULES_PAGE_SIZE } from '../shared/constants/index.js';
 import { defaultEnabledForTier } from '../module-system/tier-rules.js';
 import { MAIN_PROFILE_ID, profileLabel } from '../personas/profile-label.js';
@@ -127,54 +130,6 @@ const titleCaseId = (id: string): string =>
  */
 /** How many available modules the /browse MAIN view lists before Discover takes over. */
 export const BROWSE_MAIN_LIMIT = 15;
-
-export function romanNumeral(value: number): string {
-  if (!Number.isFinite(value) || value < 1) return String(value);
-  const table: Array<[number, string]> = [
-    [1000, 'M'],
-    [500, 'D'],
-    [100, 'C'],
-    [50, 'L'],
-    [10, 'X'],
-    [5, 'V'],
-    [1, 'I'],
-  ];
-  let remaining = Math.floor(value);
-  let out = '';
-  for (const [size, glyph] of table) {
-    while (remaining >= size) {
-      out += glyph;
-      remaining -= size;
-    }
-  }
-  return out;
-}
-
-export function modulePageNavigation(
-  pageTotal: number,
-  total: number,
-  pageSize: number,
-): readonly {
-  id: string;
-  name: string;
-  description: string;
-  page: number;
-}[] {
-  // Page 0 is Home. The slides cover 1..pageTotal-1, numbered from I: numbering the first listing
-  // page as a slide made Home and "Slide I" the same destination with the same modules on it, which
-  // is the duplication reported twice.
-  return Array.from({ length: Math.max(0, pageTotal - 1) }, (_, offset) => {
-    const index = offset + 1;
-    const first = index * pageSize + 1;
-    const last = Math.min((index + 1) * pageSize, total);
-    return {
-      id: `page-${index + 1}`,
-      name: `Slide ${romanNumeral(offset + 1)}`,
-      description: first === last ? `Module ${first}` : `Modules ${first}–${last}`,
-      page: index,
-    };
-  });
-}
 
 export function createPageDataProvider(deps: PageDataDeps): (
   moduleId: string,
@@ -613,61 +568,6 @@ export function createPageDataProvider(deps: PageDataDeps): (
   // item 17 — /modules lists installed/enabled modules, one page at a time (UR-20261011-009). The
   // page renders as content blocks (a Section per module, each with an inline Info control); `lines`
   // remains for the condensed (M/C) fallback.
-  async function installedModules(
-    page: number,
-    guildId: string | null,
-    applicationId: string,
-    actingProfileId: string,
-  ): Promise<PageData> {
-    // UR-20261012-061 — what THIS PROFILE holds, not what the guild has. Core is shared and always
-    // listed; a standard/marketplace module appears only for the profile that claimed it, and only
-    // when it is enabled. Installing a module in the main bot no longer makes it appear here.
-    const enabledBySlug = await enabledStates(guildId);
-    const heldFlags = await Promise.all(
-      moduleRegistry
-        .all()
-        .map((entry) =>
-          ownedBy(guildId, entry.manifest.name, entry.manifest.tier, actingProfileId),
-        ),
-    );
-    const enabledModules = moduleRegistry.all().filter((entry, i) => {
-      const tier = entry.manifest.tier;
-      if (tier === 'admin') return false;
-      if (heldFlags[i] !== true) return false;
-      if (tier === 'core') return true;
-      return enabledBySlug.get(entry.manifest.name) ?? defaultEnabledForTier(tier);
-    });
-    const total = enabledModules.length;
-    const pageTotal = Math.max(1, Math.ceil(total / MODULES_PAGE_SIZE));
-    const current = Math.min(Math.max(page, 0), pageTotal - 1);
-    const slice = enabledModules.slice(
-      current * MODULES_PAGE_SIZE,
-      (current + 1) * MODULES_PAGE_SIZE,
-    );
-    const modules = slice.map((entry) => ({
-      id: entry.manifest.name,
-      name: entry.manifest.ui?.displayName ?? titleCaseId(entry.manifest.name),
-      tier: entry.manifest.tier,
-      description: entry.manifest.description,
-      icon: moduleIcon(entry.manifest.ui?.icon, applicationId),
-    }));
-    const lines = modules.map((m) => `${m.icon} ${m.name} (${m.tier}) — ${m.description}`);
-    // item 6 / item 17 — the DIAL's entries are the PAGES, not the modules.
-    //
-    // This surface pages the modules directly, so a member moves between page slides, not between
-    // module pages: an option per module would offer targets that do not exist. Each option names its
-    // page and the range of modules on it, which is what the page actually shows.
-    const navigation = modulePageNavigation(pageTotal, total, MODULES_PAGE_SIZE);
-    return {
-      title: 'Installed Modules',
-      lines,
-      modules,
-      page: current,
-      pageTotal,
-      total,
-      navigation,
-    };
-  }
 
   return async (
     moduleId: string,
@@ -885,8 +785,6 @@ export function createPageDataProvider(deps: PageDataDeps): (
     switch (moduleId) {
       case 'persona':
         return persona(moduleId, guildId, query, applicationId);
-      case 'modules':
-        return installedModules(page, guildId, applicationId, actingProfileId);
       default:
         return {};
     }

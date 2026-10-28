@@ -31,3 +31,11 @@ export async function onReady(): Promise<void> {
 export async function onUnload(): Promise<void> {
   state = 'loading';
 }
+
+// UR-20261027-106 — the module OWNS its page. The loader registers `pages`; the host consults the
+// registry before its own switch, so this composition is what renders /modules.
+import { modulesPage } from './pages/modules.page.js';
+
+export { modulesPage, type ModulesPageData, type ModulesPageEntry } from './pages/modules.page.js';
+
+export const pages = [modulesPage];

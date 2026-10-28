@@ -54,3 +54,5 @@ export {
   type ModuleSummary,
   type SubsystemState,
 } from './pages.js';
+
+export { modulePageNavigation, romanNumeral, type PageSlide } from "./paging.js";
