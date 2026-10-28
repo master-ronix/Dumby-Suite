@@ -585,8 +585,21 @@ describe('page-data provider', () => {
   // list mapping. The dashboard's own tests run it against a fake read-model, so these closures are
   // only ever exercised here - the coverage table named them (page-data.ts 770-787) as uncovered.
   test('the real dashboard page runs against the host read-model', async () => {
+    // installedAt chains select -> where -> whereNull -> first, which the shared fixture does not
+    // model, so this case brings its own builder. No row is the honest answer for a fresh guild.
+    const installKnex = (() => {
+      const builder: Dict = {};
+      builder['select'] = () => builder;
+      builder['where'] = () => builder;
+      builder['whereNull'] = () => builder;
+      builder['first'] = async (): Promise<unknown> => undefined;
+      return builder;
+    })() as unknown as Dict;
     const provider = createPageDataProvider(
       makeDeps({
+        db: {
+          knex: Object.assign(() => installKnex, { raw: async () => [{}] }) as unknown as Dict,
+        },
         pages: {
           get: (id: string) =>
             id === 'dashboard' ? { id, moduleId: 'dashboard', page: dashboardPage } : undefined,
