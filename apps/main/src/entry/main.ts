@@ -13,7 +13,7 @@ import { startLivenessHolder } from './liveness-holder.js';
  * so exactly one thing owns the port at any moment.
  */
 async function main(): Promise<void> {
-  const port = Number(process.env.PORT ?? process.env.API_PORT ?? 8080);
+  const port = Number(process.env['PORT'] ?? process.env['API_PORT'] ?? 8080);
   const holder = await startLivenessHolder(port);
 
   try {
