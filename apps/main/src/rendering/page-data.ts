@@ -272,25 +272,6 @@ export function createPageDataProvider(deps: PageDataDeps): (
     return owner !== undefined && owner === actingProfileId;
   };
 
-  interface PersonaProfile {
-    readonly id: string;
-    readonly name: string;
-    readonly isMain: boolean;
-    readonly applicationId: string;
-    readonly shards: string;
-    readonly dmBehavior: string;
-    readonly statusKind: string;
-    readonly statusLabel: string;
-    /** UR-20261012-031 — whether the persona's bot is actually in this guild. */
-    readonly present: boolean;
-    /** Whether an OAuth2 client secret is registered, so the invite can also authorize. */
-    readonly hasOAuth: boolean;
-    /** The invite URL for this persona ('' when it cannot be built). */
-    readonly inviteUrl: string;
-    readonly moduleCount: number;
-    readonly commandCount: number;
-  }
-
   /**
    * UR-20261012-026 — the /persona board. The page opens on the profile of the persona that is
    * actually running the command in this guild (the persona bound to this module, else the resident
