@@ -4,6 +4,7 @@ import { healthPage } from '@module-health-page';
 import { queuePage } from '@module-queue-page';
 import { permitPage } from '@module-permit-page';
 import { browsePage } from '@module-browse-page';
+import { dashboardPage } from '@module-dashboard-page';
 
 type Dict = Record<string, unknown>;
 
@@ -86,11 +87,40 @@ const healthPages = {
 };
 
 function makeDeps(over: Dict = {}): PageDataDeps {
-  const knex = (() => ({
-    where: () => ({
-      whereNull: () => ({ orderBy: () => ({ select: async (): Promise<unknown[]> => [] }) }),
-    }),
-  })) as unknown as Dict;
+  // ONE chainable, thenable builder that answers every shape the host uses. The old stub modelled a
+  // single chain (where -> whereNull -> orderBy -> select), so `installedAt`'s
+  // select -> where -> whereNull -> first threw instead of returning "no row" - which is how a
+  // coverage test kept failing for reasons that had nothing to do with what it asserted.
+  const builder = (): Dict => {
+    const node: Dict = {};
+    for (const method of [
+      'where',
+      'whereNull',
+      'orWhereNull',
+      'whereIn',
+      'orWhereIn',
+      'orderBy',
+      'select',
+      'andWhere',
+      'limit',
+      'offset',
+      'groupBy',
+      'leftJoin',
+      'join',
+      'insert',
+      'update',
+      'del',
+      'returning',
+    ]) {
+      node[method] = () => node;
+    }
+    // Terminal reads: no row, and an empty result set.
+    node['first'] = async (): Promise<unknown> => undefined;
+    node['then'] = (resolve: (value: unknown[]) => unknown): unknown =>
+      Promise.resolve([]).then(resolve);
+    return node;
+  };
+  const knex = (() => builder()) as unknown as Dict;
   knex['raw'] = async (): Promise<unknown[]> => [{}];
   return {
     // The REAL resolver answers 'main' for an enabled module with no enabler recorded — the tier
@@ -578,6 +608,29 @@ describe('page-data provider', () => {
     // An unreadable queue is reported as empty; the log carries the reason.
     expect(seen['pending']).toEqual([]);
     expect(seen['label']).toBe('Dumby Profile');
+  });
+
+  // The HOST wiring the dashboard page drives: isEnabled, installedAt, ownedByCaller and the module
+  // list mapping. The dashboard's own tests run it against a fake read-model, so these closures are
+  // exercised only here - the coverage table named them (page-data.ts 770-787) as uncovered.
+  test('the real dashboard page runs against the host read-model', async () => {
+    const provider = createPageDataProvider(
+      makeDeps({
+        pages: {
+          get: (id: string) =>
+            id === 'dashboard' ? { id, moduleId: 'dashboard', page: dashboardPage } : undefined,
+        },
+      }),
+    );
+    const first = await provider('dashboard', null, 0, undefined, 'app-1', 'main');
+    const lines = first['lines'] as string[];
+    expect(lines.some((line) => line.includes('/health'))).toBe(true);
+    // Page 0 plus the one standard module the fixture's profile holds.
+    expect(first['pageTotal']).toBe(2);
+
+    // Page 1 in a real guild reaches installedAt (no row, so the module sorts last) and isEnabled.
+    const second = await provider('dashboard', 'guild-1', 1, undefined, 'app-1', 'main');
+    expect(second['pageModuleId']).toBe('hello-world');
   });
 
   test('a page no module owns still falls through to the built-in switch', async () => {
