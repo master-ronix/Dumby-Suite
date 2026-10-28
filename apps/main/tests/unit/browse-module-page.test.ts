@@ -40,7 +40,9 @@ function readModel(states: Record<string, State> = {}): ModulePageReadModel {
     list: async () => modules,
     installState: async () => true,
     installedAt: async () => undefined,
-    ownedByCaller: async (slug) => state(slug).mine ?? true,
+    // Default: nobody holds it, so the catalogue offers it — the fixture must not make every
+    // module look already-held, which is what hid three failures behind one wrong default.
+    ownedByCaller: async (slug) => state(slug).mine ?? false,
     commandNames: async () => new Map(),
     commandStatus: async () => 'enabled',
     markerIcon: async () => 'MARKER',
@@ -120,7 +122,13 @@ describe('browse module page — the composition that moved out of page-data.ts'
   });
 
   test('an empty catalogue says so', async () => {
-    const data = await browsePage.render(ctx, readModel({ shop: { guildRow: true, mine: true } }));
+    const data = await browsePage.render(
+      ctx,
+      readModel({
+        'hello-world': { guildRow: true, mine: true },
+        shop: { guildRow: true, mine: true },
+      }),
+    );
     expect(data.lines).toEqual(['No marketplace modules are available to install.']);
   });
 
