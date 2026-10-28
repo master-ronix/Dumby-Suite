@@ -479,6 +479,45 @@ describe('page-data provider', () => {
     ]);
   });
 
+  // The dispatch's own branches, which the module's composition tests cannot reach: the query is
+  // carried into the context, and the ownership helpers answer for a slug the registry does not know.
+  test('the search query reaches a registered page, and the helpers answer for unknown slugs', async () => {
+    let seen: Dict = {};
+    const provider = createPageDataProvider(
+      makeDeps({
+        pages: {
+          get: (id: string) =>
+            id === 'browse'
+              ? {
+                  id,
+                  moduleId: 'browse',
+                  page: {
+                    id,
+                    render: async (context: unknown, read: Dict) => {
+                      seen = {
+                        query: (context as Dict)['query'],
+                        tierDefault: await (read['tierDefault'] as (s: string) => Promise<boolean>)(
+                          'not-a-module',
+                        ),
+                        label: await (read['profileLabel'] as (p: string) => Promise<string>)(
+                          'main',
+                        ),
+                      };
+                      return {};
+                    },
+                  },
+                }
+              : undefined,
+        },
+      }),
+    );
+    await provider('browse', null, 0, 'hello', 'app-1', 'main');
+    expect(seen['query']).toBe('hello');
+    // A slug the registry does not know has no tier default, and the internal profile is named.
+    expect(seen['tierDefault']).toBe(false);
+    expect(seen['label']).toBe('Dumby Profile');
+  });
+
   test('a page no module owns still falls through to the built-in switch', async () => {
     const consulted: string[] = [];
     const provider = createPageDataProvider(
