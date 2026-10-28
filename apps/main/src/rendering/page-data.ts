@@ -104,15 +104,6 @@ interface Group {
   readonly status?: string;
 }
 
-const mb = (bytes: number): string => `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-
-const formatUptime = (seconds: number): string => {
-  const days = Math.floor(seconds / 86400);
-  const hours = Math.floor((seconds % 86400) / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  return `${days}d ${hours}h ${minutes}m`;
-};
-
 /** The display name for a module id: `hello-world` becomes `Hello World`. */
 const titleCaseId = (id: string): string =>
   id
@@ -261,175 +252,6 @@ export function createPageDataProvider(deps: PageDataDeps): (
     } catch {
       return 0;
     }
-  }
-
-  async function health(applicationId: string, guildId: string | null): Promise<PageData> {
-    // Q1-Q4 — the page is the ACTING profile's. Her client, her registry, her guilds, her uptime; the
-    // host's own numbers are kept and LABELLED, because one process serves every profile and a
-    // persona has no memory of her own to report.
-    const acting = actingProfile?.(applicationId);
-    const client = (acting?.client ?? getClient()) as HealthClient | undefined;
-    const memory = process.memoryUsage();
-
-    let dbStatus = 'Unavailable';
-    try {
-      await db.knex.raw('select 1');
-      dbStatus = 'Connected';
-    } catch (err) {
-      logger.warn('page-data-db-unavailable', { error: String(err) });
-    }
-    let redisStatus = 'Unavailable';
-    try {
-      await redis.ping();
-      redisStatus = 'Connected';
-    } catch (err) {
-      logger.warn('page-data-redis-unavailable', { error: String(err) });
-    }
-
-    // HER modules: the core set, which every profile shares, plus exactly the modules she holds.
-    // Filtering the module registry rather than the command registry — only this one carries tiers.
-    //
-    // The held set is the OWNERSHIP read, for EVERY profile — hosted or not.
-    //
-    // A hosted profile used to answer from her runtime's registry (`acting.moduleSlugs`) while
-    // /modules and /dashboard answered from ownership, so the two could disagree for as long as her
-    // runtime had not been refreshed: /health said 0 standard modules while /dashboard drew her a page
-    // for one. Her runtime registry is refreshed by `refreshCommands`, which returns early when her
-    // client is not connected — so the divergence was not momentary, it lasted until the next reload.
-    // Inventory is ownership; the runtime registry is what is LOADED, which is a different fact.
-    let held: ReadonlySet<string>;
-    if (deps.heldModulesInGuild !== undefined && guildId !== null) {
-      held = await deps.heldModulesInGuild(guildId, applicationId);
-    } else if (acting?.moduleSlugs !== undefined) {
-      held = new Set(acting.moduleSlugs);
-    } else {
-      held = new Set<string>();
-    }
-    const modules = moduleRegistry
-      .all()
-      .filter(
-        (entry) =>
-          entry.manifest.tier === 'core' ||
-          entry.manifest.tier === 'admin' ||
-          held.has(entry.manifest.name),
-      );
-    const byTier = (tier: string): number =>
-      modules.filter((entry) => entry.manifest.tier === tier).length;
-
-    const gatewayReady = client?.isReady?.() === true;
-    const discordRows: Array<readonly [string, string]> = [];
-    if (client?.ws !== undefined) {
-      discordRows.push(['Gateway Ping', `${Math.round(client.ws.ping)}ms`]);
-    }
-    discordRows.push(['Gateway Status', gatewayReady ? 'Connected' : 'Disconnected']);
-    discordRows.push(['Shard Count', String(config.get('SHARD_COUNT'))]);
-
-    // UR-20261011-008 — each subsystem carries a status, so the health page can lead with an
-    // at-a-glance overall state and mark a degraded subsystem in place.
-    const groups: Group[] = [
-      { name: 'Discord API', status: gatewayReady ? 'ok' : 'down', rows: discordRows },
-      {
-        // Q1 — SHARED, and named so. Memory, heap and the Node runtime belong to the one process that
-        // serves every profile; a persona has none of her own, and reporting them as hers would be a
-        // number that cannot mean what it says.
-        name: 'Host Process (shared)',
-        status: 'ok',
-        rows: [
-          ['Host Uptime', formatUptime(process.uptime())],
-          ['Node.js Version', process.version],
-          ['Memory Usage', mb(memory.rss)],
-          ['Heap Used', mb(memory.heapUsed)],
-          ['Heap Total', mb(memory.heapTotal)],
-        ],
-      },
-      // Q4 — HER uptime, beside the host's, each labelled: a persona's runtime starts when she is
-      // hosted, which is not when the process started.
-      ...(acting?.startedAt !== undefined
-        ? [
-            {
-              name: 'Profile Runtime',
-              status: 'ok',
-              rows: [['Uptime', formatUptime((Date.now() - acting.startedAt) / 1000)] as const],
-            },
-          ]
-        : []),
-      {
-        name: 'Modules',
-        status: 'ok',
-        rows: [
-          ['Total Loaded', String(modules.length)],
-          ['Core-tier', String(byTier('core'))],
-          ['Standard-tier', String(byTier('standard'))],
-          ['Marketplace-tier', String(byTier('marketplace'))],
-          ['Admin-tier', String(byTier('admin'))],
-        ],
-      },
-      {
-        name: 'Database',
-        status: dbStatus === 'Connected' ? 'ok' : 'down',
-        rows: [['PostgreSQL Status', dbStatus]],
-      },
-      {
-        name: 'Cache',
-        status: redisStatus === 'Connected' ? 'ok' : 'down',
-        rows: [['Redis Status', redisStatus]],
-      },
-    ];
-
-    if (client !== undefined) {
-      // Q2 — FETCHED, not read from the cache. `guilds.cache.size` is a snapshot taken at login and
-      // can lag real membership, which is how a bot in 3 guilds reported 4. The API is the authority;
-      // the cache is the fallback for when the fetch fails, and the page says which it used.
-      // The GUILD COUNT and the MEMBER COUNT come from different places, because they are different
-      // facts. `guilds.fetch()` resolves OAuth2Guild objects, which carry no `memberCount` — summing
-      // them produced `NaN`, which is what the page showed. The API is the authority on membership;
-      // the cache is the only thing that knows member counts.
-      let guildCount = client.guilds?.cache.size ?? 0;
-      let memberCount = sumMembers(client.guilds?.cache);
-      let source = 'cache';
-      try {
-        const fetched = (await client.guilds?.fetch?.()) as { size?: unknown } | undefined;
-        if (fetched !== undefined && typeof fetched.size === 'number') {
-          guildCount = fetched.size;
-          source = 'live';
-        }
-      } catch (err) {
-        logger.warn('page-data-guild-fetch-unavailable', { applicationId, error: String(err) });
-      }
-      // A cache that has not filled yet is not a zero — say so rather than printing 0.
-      const membersKnown = client.guilds !== undefined && client.guilds.cache.size > 0;
-      groups.push({
-        name: 'Guilds & Users',
-        status: 'ok',
-        rows: [
-          ['Total Guilds', String(guildCount)],
-          ['Total Users', membersKnown ? String(memberCount) : 'not yet cached'],
-          ['Source', source === 'live' ? 'Discord API' : 'Cached snapshot'],
-        ],
-      });
-    }
-
-    // The overall state is the worst subsystem: a critical subsystem (the Discord gateway or the
-    // database) down is `down`; a non-critical one (the cache) down is `degraded`; else `operational`.
-    const criticalDown = groups.some(
-      (group) =>
-        group.status === 'down' && (group.name === 'Discord API' || group.name === 'Database'),
-    );
-    const anyDown = groups.some((group) => group.status === 'down');
-    const status = criticalDown ? 'down' : anyDown ? 'degraded' : 'operational';
-    const statusLabel =
-      status === 'operational' ? 'Operational' : status === 'degraded' ? 'Degraded' : 'Down';
-
-    // The summary is the OUTCOME, not a second copy of the groups. It used to repeat the uptime, the
-    // Node version, the module count and the guild count — every one of which the groups below state
-    // in full, with their own status. A page that says everything twice reads as a mess.
-    return {
-      title: 'System Health',
-      status,
-      statusLabel,
-      summary: statusLabel,
-      groups,
-    };
   }
 
   /**
@@ -1195,8 +1017,6 @@ export function createPageDataProvider(deps: PageDataDeps): (
       return rendered as PageData;
     }
     switch (moduleId) {
-      case 'health':
-        return health(applicationId, guildId);
       case 'persona':
         return persona(moduleId, guildId, query, applicationId);
       case 'queue':

@@ -1,5 +1,6 @@
 import { describe, expect, test, vi } from 'vitest';
 import { createPageDataProvider, type PageDataDeps } from '../../src/rendering/page-data.js';
+import { healthPage } from '@module-health-page';
 
 type Dict = Record<string, unknown>;
 
@@ -64,6 +65,15 @@ const fakeClient = {
         fn(fn(init, { memberCount: 3 }), { memberCount: 4 }),
     },
   },
+};
+
+/**
+ * UR-20261027-106 — /health is a MODULE page now. Every health case below runs through the provider
+ * with the module's page registered, so the assertions still describe the page's output while the
+ * composition lives in packages/modules/health.
+ */
+const healthPages = {
+  get: (id: string) => (id === 'health' ? { id, moduleId: 'health', page: healthPage } : undefined),
 };
 
 function makeDeps(over: Dict = {}): PageDataDeps {

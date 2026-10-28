@@ -11,6 +11,9 @@ export default defineConfig({
       '@module-dashboard-page': fileURLToPath(
         new URL('../../packages/modules/dashboard/src/pages/dashboard.page.ts', import.meta.url),
       ),
+      '@module-health-page': fileURLToPath(
+        new URL('../../packages/modules/health/src/pages/health.page.ts', import.meta.url),
+      ),
     },
   },
   server: { fs: { allow: ['..'] } },
