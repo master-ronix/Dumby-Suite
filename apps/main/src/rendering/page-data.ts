@@ -751,6 +751,7 @@ export function createPageDataProvider(deps: PageDataDeps): (
               name: String(manifest.name),
               tier: String(manifest.tier),
               description: String(manifest.description),
+              ...(manifest.devId !== undefined ? { devId: String(manifest.devId) } : {}),
               ...(ui !== undefined
                 ? {
                     ui: {

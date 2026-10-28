@@ -42,7 +42,8 @@ export interface ModuleSummary {
   readonly commands: readonly {
     readonly name: string;
     readonly description: string;
-  }[];
+  }[]; /** The developer who published it — what the Discover search matches on. */
+  readonly devId?: string;
 }
 
 /**
