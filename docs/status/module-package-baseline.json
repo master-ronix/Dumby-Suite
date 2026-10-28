@@ -1,0 +1,16 @@
+{
+  "note": "Module-package gaps that exist at the time the gate was introduced (UR-20261028-108). The gate fails on any NEW gap; this list may only shrink. Each entry names the module and the surface.",
+  "recorded_at": "2026-10-28",
+  "gaps": [
+    {
+      "module": "browse",
+      "kind": "page-id-mismatch",
+      "detail": "browse.command.ts declares pages: ['marketplace'] but the module's page id is 'browse'. The host keys pages by command id, so the surface works; the declaration is stale."
+    },
+    {
+      "module": "hello-world",
+      "kind": "page-id-mismatch",
+      "detail": "hello.command.ts declares pages: ['greeting'] and no module exports a page with that id. Pre-existing: hello-world has no page surface."
+    }
+  ]
+}

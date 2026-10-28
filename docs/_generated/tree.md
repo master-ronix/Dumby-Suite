@@ -338,6 +338,7 @@
 - status/coverage-ledger.json
 - status/entities.json
 - status/facts.json
+- status/module-package-baseline.json
 - status/reconciliation.json
 - status/section-order.json
 - status/terminology.json

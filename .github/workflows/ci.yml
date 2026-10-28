@@ -97,6 +97,14 @@ jobs:
         # exist until this commit, so the rule carried a recorded gap (REC-035 / OI-12).
         run: node scripts/check-workflows.mjs
 
+      - name: Gate 3d — module packages declare what they export
+        # UR-20261028-108. Nothing asserted that a module's DECLARED surfaces reach the loader, so a
+        # module could declare commands in its manifest and export none, or declare pages: ['x'] on a
+        # command while no module exported a page with that id — and every gate stayed green while
+        # /dashboard rendered an empty embed. The gate ratchets: gaps recorded in
+        # docs/status/module-package-baseline.json are reported, any NEW gap fails the build.
+        run: node scripts/check-module-packages.mjs
+
       - name: Fetch libicu60 (embedded-postgres initdb needs it; ubuntu-24.04 ships ICU 74)
         # The bundled @embedded-postgres linux-x64 initdb is linked against ICU 60, which the
         # ubuntu-24.04 archives do not carry. Fetch the focal library files (checksum-pinned) and
