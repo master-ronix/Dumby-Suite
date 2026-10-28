@@ -640,6 +640,69 @@ describe('page-data provider', () => {
     expect(second['pageModuleId']).toBe('hello-world');
   });
 
+  // personaBindings() and registeredPersonas() are host closures only a dispatch reaches. Rows, not
+  // empty sets: an empty result skips the filter/map bodies the coverage floor counts.
+  test('the persona reads answer with rows', async () => {
+    const rows: Record<string, unknown[]> = {
+      guild_persona_bindings: [{ moduleSlug: 'hello-world', personaId: 'p-1' }],
+      persona_identities: [
+        {
+          id: 'p-1',
+          name: 'Magma',
+          discordApplicationId: 'app-2',
+          boundGuildId: 'g1',
+          dmBehavior: 'ignore',
+          shardAllocation: 0,
+          status: 'active',
+          hasOAuth: true,
+        },
+      ],
+    };
+    const knex = ((table: string) => {
+      const node: Dict = {};
+      for (const method of ['where', 'whereNull', 'andWhere', 'orWhereIn']) {
+        node[method] = (arg?: unknown): Dict => {
+          // andWhere takes a callback that builds the grouped predicate.
+          if (typeof arg === 'function') (arg as (builder: unknown) => void)(node);
+          return node;
+        };
+      }
+      node['then'] = (resolve: (value: unknown[]) => unknown): unknown =>
+        Promise.resolve(rows[table] ?? []).then(resolve);
+      return node;
+    }) as unknown as Dict;
+    knex['raw'] = async (): Promise<unknown[]> => [{}];
+
+    let seen: Dict = {};
+    const provider = createPageDataProvider(
+      makeDeps({
+        db: { knex },
+        pages: {
+          get: (id: string) =>
+            id === 'persona'
+              ? {
+                  id,
+                  moduleId: 'persona',
+                  page: {
+                    id,
+                    render: async (_context: unknown, read: Dict) => {
+                      seen = {
+                        bindings: await (read['personaBindings'] as () => Promise<unknown[]>)(),
+                        personas: await (read['registeredPersonas'] as () => Promise<unknown[]>)(),
+                      };
+                      return {};
+                    },
+                  },
+                }
+              : undefined,
+        },
+      }),
+    );
+    await provider('persona', 'guild-1', 0, undefined, 'app-1', 'main');
+    expect(seen['bindings']).toEqual([{ moduleSlug: 'hello-world', personaId: 'p-1' }]);
+    expect((seen['personas'] as { name: string }[])[0]?.name).toBe('Magma');
+  });
+
   test('a page no module owns still falls through to the built-in switch', async () => {
     const consulted: string[] = [];
     const provider = createPageDataProvider(
