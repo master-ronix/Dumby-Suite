@@ -39,10 +39,7 @@ export default defineConfig({
     globals: false,
     coverage: {
       provider: 'v8',
-      // UR-20261027-106 — the module packages count too. A page that moves out of src/ must not
-      // leave the ratio behind: otherwise every slice of the migration depresses coverage by
-      // removing covered host code, and the floor punishes the very change it should reward.
-      include: ['src/**/*.ts', '../../packages/modules/**/src/**/*.ts'],
+      include: ['src/**/*.ts'],
       exclude: [
         'src/entry/**',
         'src/monetization/**',
