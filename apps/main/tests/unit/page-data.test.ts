@@ -599,6 +599,11 @@ describe('page-data provider', () => {
     expect(lines.some((line) => line.includes('/health'))).toBe(true);
     // Page 0 plus the one standard module the fixture profile holds.
     expect(data['pageTotal']).toBe(2);
+
+    // Page 1 in a real guild exercises the other two closures: installedAt reads the row (none here,
+    // so the install rank is "unknown" and the module sorts last) and isEnabled answers for the guild.
+    const second = await provider('dashboard', 'guild-1', 1, undefined, 'app-1', 'main');
+    expect(second['pageModuleId']).toBe('hello-world');
   });
 
   test('a page no module owns still falls through to the built-in switch', async () => {
