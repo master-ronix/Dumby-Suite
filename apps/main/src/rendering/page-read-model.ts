@@ -1,6 +1,7 @@
 import type {
   ActingProfileFacts,
   GuildCounts,
+  HostProcessFacts,
   ModulePageReadModel,
   ModuleSummary,
   SubsystemState,
@@ -55,6 +56,8 @@ export interface PageReadModelSources {
   readonly shardCount: () => number;
   /** Guild and member counts, and which source answered. */
   readonly guilds: () => Promise<GuildCounts>;
+  /** The host process's own numbers — a module cannot read them itself. */
+  readonly hostProcess: () => HostProcessFacts;
 }
 
 export function makePageReadModel(sources: PageReadModelSources): ModulePageReadModel {
@@ -91,5 +94,8 @@ export function makePageReadModel(sources: PageReadModelSources): ModulePageRead
       return sources.shardCount();
     },
     guilds: () => sources.guilds(),
+    async hostProcess() {
+      return sources.hostProcess();
+    },
   };
 }

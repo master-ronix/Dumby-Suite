@@ -90,9 +90,28 @@ export interface ModulePageReadModel {
    * three guilds once reported four. A page must be able to say which it used.
    */
   guilds(): Promise<GuildCounts>;
+  /**
+   * The host process's own numbers. A module CANNOT read these itself: its tsconfig carries no Node
+   * types, because a module is environment-neutral — it declares surfaces, it does not touch the host
+   * runtime. So the framework reports them, and the page labels them as SHARED rather than the
+   * profile's.
+   */
+  hostProcess(): Promise<HostProcessFacts>;
 }
 
 export type SubsystemState = 'connected' | 'unavailable';
+
+export interface HostProcessFacts {
+  /** Seconds the process has been up. */
+  readonly uptimeSeconds: number;
+  /** e.g. `v20.20.2`. */
+  readonly nodeVersion: string;
+  readonly memory: {
+    readonly rss: number;
+    readonly heapUsed: number;
+    readonly heapTotal: number;
+  };
+}
 
 export interface GuildCounts {
   /** Guilds this profile is in. */

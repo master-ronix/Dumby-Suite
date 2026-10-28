@@ -1153,6 +1153,14 @@ export function createPageDataProvider(deps: PageDataDeps): (
         actingProfile: actingProfileFacts,
         heldModules: heldModulesForPage,
         shardCount: () => config.get('SHARD_COUNT'),
+        hostProcess: () => {
+          const memory = process.memoryUsage();
+          return {
+            uptimeSeconds: process.uptime(),
+            nodeVersion: process.version,
+            memory: { rss: memory.rss, heapUsed: memory.heapUsed, heapTotal: memory.heapTotal },
+          };
+        },
         guilds: async () => {
           const acting = actingProfile?.(applicationId);
           const client = (acting?.client ?? getClient()) as

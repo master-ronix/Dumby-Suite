@@ -38,6 +38,11 @@ function sources(over: Partial<PageReadModelSources> = {}): PageReadModelSources
     heldModules: async () => [],
     shardCount: () => 2,
     guilds: async () => ({ total: 3, members: 120, source: 'live' as const }),
+    hostProcess: () => ({
+      uptimeSeconds: 10,
+      nodeVersion: 'v20.20.2',
+      memory: { rss: 1, heapUsed: 2, heapTotal: 3 },
+    }),
     ...over,
   };
 }
@@ -94,6 +99,7 @@ describe('PageReadModel — a module asks for facts, never for a handle', () => 
     expect(await read.shardCount()).toBe(2);
     // The API is the authority on membership; the cache is the snapshot, and the page says which.
     expect(await read.guilds()).toEqual({ total: 3, members: 120, source: 'live' });
+    expect((await read.hostProcess()).nodeVersion).toBe('v20.20.2');
   });
 
   test('an absent install row stays absent rather than becoming a zero timestamp', async () => {

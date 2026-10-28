@@ -46,6 +46,7 @@ export {
   definePage,
   type ActingProfileFacts,
   type GuildCounts,
+  type HostProcessFacts,
   type ModulePage,
   type ModulePageContext,
   type ModulePageReadModel,

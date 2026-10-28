@@ -2,7 +2,8 @@ import { healthCommand } from './commands/health.command.js';
 
 export const MODULE_SLUG = 'health';
 
-export const MODULE_DESCRIPTION = 'Displays comprehensive system health and diagnostic information.';
+export const MODULE_DESCRIPTION =
+  'Displays comprehensive system health and diagnostic information.';
 
 /** §1.7 (UR-11) — the module's schema-declared commands; the loader registers them. */
 export const commands = [healthCommand];
@@ -31,3 +32,11 @@ export async function onReady(): Promise<void> {
 export async function onUnload(): Promise<void> {
   state = 'loading';
 }
+
+// UR-20261027-106 — the module OWNS its page. The loader registers `pages`; the host consults the
+// registry before its own switch, so this composition is what renders /health.
+import { healthPage } from './pages/health.page.js';
+
+export { healthPage, type HealthPageData } from './pages/health.page.js';
+
+export const pages = [healthPage];
