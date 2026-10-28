@@ -65,6 +65,8 @@ export interface PageReadModelSources {
   readonly holder: (slug: string) => Promise<string | undefined>;
   /** Is this module enabled by DEFAULT for the acting profile? Depends on ownership. */
   readonly enabledByDefault: (slug: string) => Promise<boolean>;
+  /** How to name a profile on a surface — "Dumby Profile", or the persona's registered name. */
+  readonly profileLabel: (profileId: string) => Promise<string>;
 }
 
 export function makePageReadModel(sources: PageReadModelSources): ModulePageReadModel {
@@ -107,5 +109,6 @@ export function makePageReadModel(sources: PageReadModelSources): ModulePageRead
     pendingQueue: () => sources.pendingQueue(),
     holder: (slug) => sources.holder(slug),
     enabledByDefault: (slug) => sources.enabledByDefault(slug),
+    profileLabel: (profileId) => sources.profileLabel(profileId),
   };
 }

@@ -115,6 +115,11 @@ export interface ModulePageReadModel {
    * depends on ownership. Core and Admin are shared and always on; marketplace never defaults on.
    */
   enabledByDefault(slug: string): Promise<boolean>;
+  /**
+   * How to NAME a profile on a surface: "Dumby Profile" for the internal one, or the persona's own
+   * registered name. A page must never invent a holder, and never show a raw id to a member.
+   */
+  profileLabel(profileId: string): Promise<string>;
 }
 
 export type SubsystemState = 'connected' | 'unavailable';

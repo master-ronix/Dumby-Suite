@@ -913,6 +913,11 @@ export function createPageDataProvider(deps: PageDataDeps): (
         heldModules: heldModulesForPage,
         shardCount: () => config.get('SHARD_COUNT'),
         holder: (slug) => holderOf(guildId, slug),
+        profileLabel: async (profileId) =>
+          profileLabel(
+            profileId,
+            profileId === MAIN_PROFILE_ID ? undefined : await personaNameOf(profileId),
+          ),
         enabledByDefault: async (slug) => {
           const entry = moduleRegistry.all().find((candidate) => candidate.manifest.name === slug);
           if (entry === undefined) return false;
