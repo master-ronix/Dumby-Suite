@@ -42,6 +42,8 @@ function sources(over: Partial<PageReadModelSources> = {}): PageReadModelSources
     holder: async (slug: string) => (slug === 'hello-world' ? 'p-1' : undefined),
     enabledByDefault: async (slug: string) => slug === 'hello-world',
     profileLabel: async (profileId: string) => (profileId === 'main' ? 'Dumby Profile' : 'Magma'),
+    guildState: async (slug: string) => (slug === 'hello-world' ? false : undefined),
+    tierDefault: async (slug: string) => slug !== 'browse',
     hostProcess: () => ({
       uptimeSeconds: 10,
       nodeVersion: 'v20.20.2',
@@ -110,6 +112,10 @@ describe('PageReadModel — a module asks for facts, never for a handle', () => 
     expect(await read.holder('health')).toBeUndefined();
     expect(await read.enabledByDefault('hello-world')).toBe(true);
     expect(await read.profileLabel('p-1')).toBe('Magma');
+    // No row is not the same as a row that says disabled.
+    expect(await read.guildState('hello-world')).toBe(false);
+    expect(await read.guildState('health')).toBeUndefined();
+    expect(await read.tierDefault('browse')).toBe(false);
   });
 
   test('an absent install row stays absent rather than becoming a zero timestamp', async () => {

@@ -20,6 +20,9 @@ export default defineConfig({
       '@module-permit-page': fileURLToPath(
         new URL('../../packages/modules/permit/src/pages/permit.page.ts', import.meta.url),
       ),
+      '@module-browse-page': fileURLToPath(
+        new URL('../../packages/modules/browse/src/pages/browse.page.ts', import.meta.url),
+      ),
     },
   },
   server: { fs: { allow: ['..'] } },

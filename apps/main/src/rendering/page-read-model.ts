@@ -67,6 +67,10 @@ export interface PageReadModelSources {
   readonly enabledByDefault: (slug: string) => Promise<boolean>;
   /** How to name a profile on a surface — "Dumby Profile", or the persona's registered name. */
   readonly profileLabel: (profileId: string) => Promise<string>;
+  /** The guild's stored state — `undefined` means no row, which is not `false`. */
+  readonly guildState: (slug: string) => Promise<boolean | undefined>;
+  /** The tier's default for the guild, when it has no row. */
+  readonly tierDefault: (slug: string) => Promise<boolean>;
 }
 
 export function makePageReadModel(sources: PageReadModelSources): ModulePageReadModel {
@@ -110,5 +114,7 @@ export function makePageReadModel(sources: PageReadModelSources): ModulePageRead
     holder: (slug) => sources.holder(slug),
     enabledByDefault: (slug) => sources.enabledByDefault(slug),
     profileLabel: (profileId) => sources.profileLabel(profileId),
+    guildState: (slug) => sources.guildState(slug),
+    tierDefault: (slug) => sources.tierDefault(slug),
   };
 }

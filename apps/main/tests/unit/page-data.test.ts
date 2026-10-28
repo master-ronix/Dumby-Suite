@@ -3,6 +3,7 @@ import { createPageDataProvider, type PageDataDeps } from '../../src/rendering/p
 import { healthPage } from '@module-health-page';
 import { queuePage } from '@module-queue-page';
 import { permitPage } from '@module-permit-page';
+import { browsePage } from '@module-browse-page';
 
 type Dict = Record<string, unknown>;
 
@@ -79,6 +80,7 @@ const healthPages = {
     if (id === 'health') return { id, moduleId: 'health', page: healthPage };
     if (id === 'queue') return { id, moduleId: 'queue', page: queuePage };
     if (id === 'permit') return { id, moduleId: 'permit', page: permitPage };
+    if (id === 'browse') return { id, moduleId: 'browse', page: browsePage };
     return undefined;
   },
 };

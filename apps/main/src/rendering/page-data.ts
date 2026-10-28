@@ -610,129 +610,6 @@ export function createPageDataProvider(deps: PageDataDeps): (
     return holder === undefined ? actingProfileId === MAIN_PROFILE_ID : holder === actingProfileId;
   }
 
-  async function marketplace(
-    query: string | undefined,
-    guildId: string | null,
-    applicationId: string,
-    actingProfileId: string,
-  ): Promise<PageData> {
-    const all = moduleRegistry.all();
-    // UR-20261011-010/011 — the catalogue lists what a guild can INSTALL or RE-ENABLE: marketplace
-    // modules not enabled for the guild, and standard modules the guild has disabled
-    // ("Previously Installed", §13.2). Core/Admin are never listed.
-    const enabledBySlug = await enabledStates(guildId);
-    // UR-20261012-061 — the catalogue shows what THIS profile may install, PLUS what another profile
-    // holds (marked as occupied, so the operator is told rather than shown a control that refuses).
-    const candidates = all.filter((entry) => {
-      const tier = entry.manifest.tier;
-      return tier === 'marketplace' || tier === 'standard';
-    });
-    const ownedFlags = await Promise.all(
-      candidates.map((entry) =>
-        ownedBy(guildId, entry.manifest.name, entry.manifest.tier, actingProfileId),
-      ),
-    );
-    // Resolve the ownership-aware defaults BEFORE filtering: the predicate is synchronous, and the
-    // standard tier's default now depends on who holds the module.
-    const tierDefault = await Promise.all(
-      candidates.map((entry) =>
-        defaultEnabledForProfile(
-          entry.manifest.tier,
-          entry.manifest.name,
-          guildId,
-          actingProfileId,
-        ),
-      ),
-    );
-    const available = candidates.filter((entry, i) => {
-      const slug = entry.manifest.name;
-      const enabled = enabledBySlug.get(slug) ?? tierDefault[i] === true;
-      if (!enabled) return true; // installable, or re-enableable
-      // Enabled: offer it only when this profile does NOT hold it — i.e. when it is occupied.
-      return ownedFlags[i] !== true;
-    });
-    // item 5b — the Discover search matches what a member can actually type: the module's NAME (its
-    // id — the only handle a build publishes), its DISPLAY name, its developer, and its description.
-    const q = (query ?? '').trim().toLowerCase();
-    const matched =
-      q === ''
-        ? available
-        : available.filter((entry) =>
-            [
-              entry.manifest.name,
-              entry.manifest.ui?.displayName ?? '',
-              entry.manifest.devId,
-              entry.manifest.description,
-            ]
-              .join(' ')
-              .toLowerCase()
-              .includes(q),
-          );
-    // The main view is a SHORT list of what is available — the rest is what Discover is for.
-    const shown = matched.slice(0, q === '' ? BROWSE_MAIN_LIMIT : MARKETPLACE_MODULE_CAP);
-    const modules = await Promise.all(
-      shown.map(async (entry) => {
-        const slug = entry.manifest.name;
-        const tier = entry.manifest.tier;
-        const holder = await holderOf(guildId, slug);
-        // Occupied: held by ANOTHER profile AND live for the guild. Three different questions, and
-        // they must not be conflated:
-        //   * `holder` is WHO holds it — `undefined` means NOBODY, which is not the main bot and must
-        //     never be named as one. `holder === undefined` used to be the proxy for "the main bot"
-        //     (an enabled-but-unbound module answered undefined); the ownership read answers `'main'`
-        //     explicitly now, so that proxy is gone.
-        //   * `enabled` (above) is the PER-PROFILE default — it decides whether this profile is offered
-        //     the module at all, and ownership makes it false for a module someone else holds.
-        //   * `guildEnabled` is the GUILD's own state — a row, or the tier default. A module the guild
-        //     has DISABLED is not occupied by anyone; it is available for anyone to re-enable.
-        const guildEnabled = enabledBySlug.get(slug) ?? defaultEnabledForTier(tier);
-        // `!mine` alone was WRONG: it is true both for "another profile holds it" and for "nobody
-        // holds it", so an unheld module was reported as occupied and the label then had to invent a
-        // holder — the "occupied by Dumby Profile" that the main bot could not take.
-        const mine = await ownedBy(guildId, slug, tier, actingProfileId);
-        const occupied = !mine && holder !== undefined && guildEnabled;
-        // item 4 — NO note here. "Previously installed — select to re-enable" and "Occupied by …" as
-        // subtext under every description is what made the listing read as clutter; the fact belongs
-        // in the private notice the member gets when they act on it.
-        return {
-          id: slug,
-          name: entry.manifest.ui?.displayName ?? slug,
-          tier,
-          description: entry.manifest.description,
-          icon: moduleIcon(entry.manifest.ui?.icon, applicationId),
-          // The option's EMOJI is built from this, so the module's own logo can label its option.
-          ...(entry.manifest.ui?.icon !== undefined ? { iconName: entry.manifest.ui.icon } : {}),
-          // A NAME, not a role: "Dumby Profile", or the persona's own registered name.
-          // `holder` is defined here — the `occupied` predicate guarantees it — so there is no
-          // "nobody" left to coerce into the internal profile.
-          ...(occupied && holder !== undefined
-            ? {
-                occupied: true,
-                occupiedBy: profileLabel(
-                  holder,
-                  holder === MAIN_PROFILE_ID ? undefined : await personaNameOf(holder),
-                ),
-              }
-            : {}),
-          // A disabled STANDARD module is "Previously Installed": selecting it re-enables it. Carried
-          // as a STATE, not as subtext — the listing stays clean and the private notice says it.
-          ...(!occupied && tier === 'standard' && !guildEnabled
-            ? { previouslyInstalled: true }
-            : {}),
-        };
-      }),
-    );
-    const lines: string[] =
-      modules.length === 0
-        ? [
-            q === ''
-              ? 'No marketplace modules are available to install.'
-              : `No modules match "${query ?? ''}".`,
-          ]
-        : modules.map((m) => `${m.icon} ${m.name} — ${m.description}`);
-    return { lines, modules, query: query ?? '', total: matched.length };
-  }
-
   // item 17 — /modules lists installed/enabled modules, one page at a time (UR-20261011-009). The
   // page renders as content blocks (a Section per module, each with an inline Info control); `lines`
   // remains for the condensed (M/C) fallback.
@@ -913,6 +790,11 @@ export function createPageDataProvider(deps: PageDataDeps): (
         heldModules: heldModulesForPage,
         shardCount: () => config.get('SHARD_COUNT'),
         holder: (slug) => holderOf(guildId, slug),
+        guildState: async (slug) => (await enabledStates(guildId)).get(slug),
+        tierDefault: async (slug) => {
+          const entry = moduleRegistry.all().find((candidate) => candidate.manifest.name === slug);
+          return entry === undefined ? false : defaultEnabledForTier(entry.manifest.tier);
+        },
         profileLabel: async (profileId) =>
           profileLabel(
             profileId,
@@ -988,7 +870,13 @@ export function createPageDataProvider(deps: PageDataDeps): (
         },
       });
       const rendered = await registered.page.render(
-        { guildId, applicationId, profileId: actingProfileId, page },
+        {
+          guildId,
+          applicationId,
+          profileId: actingProfileId,
+          page,
+          ...(query !== undefined ? { query } : {}),
+        },
         read,
       );
       return rendered as PageData;
@@ -996,8 +884,6 @@ export function createPageDataProvider(deps: PageDataDeps): (
     switch (moduleId) {
       case 'persona':
         return persona(moduleId, guildId, query, applicationId);
-      case 'browse':
-        return marketplace(query, guildId, applicationId, actingProfileId);
       case 'modules':
         return installedModules(page, guildId, applicationId, actingProfileId);
       default:

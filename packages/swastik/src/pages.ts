@@ -27,6 +27,8 @@ export interface ModulePageContext {
   readonly profileId: string;
   /** 1-based page index within the module's own pager. */
   readonly page: number;
+  /** The member's search text, when the surface has one — /browse's Discover query. */
+  readonly query?: string;
 }
 
 /** A module as the read-model reports it — manifest facts only, no database row. */
@@ -120,6 +122,15 @@ export interface ModulePageReadModel {
    * registered name. A page must never invent a holder, and never show a raw id to a member.
    */
   profileLabel(profileId: string): Promise<string>;
+  /**
+   * The GUILD's own stored state for a module — the `guild_module_states` row — and `undefined` when
+   * there is no row. Lossless on purpose: `undefined` ("never touched here") and `false` ("the guild
+   * disabled it") are different facts, and a catalogue that conflated them would label a module
+   * disabled-by-choice as merely unavailable.
+   */
+  guildState(slug: string): Promise<boolean | undefined>;
+  /** The tier's default for the GUILD, when it has no row: core and admin on, marketplace off. */
+  tierDefault(slug: string): Promise<boolean>;
 }
 
 export type SubsystemState = 'connected' | 'unavailable';
