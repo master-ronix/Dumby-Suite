@@ -5,6 +5,7 @@ import type { DbClient } from '../db/client.js';
 import type { Logger } from '../logging/logger.js';
 import type { ModuleRegistry } from '../module-system/registry.js';
 import type { PageRegistry } from '../module-system/page-registry.js';
+import type { PersonaRecord } from '@workspace/swastik';
 import { makePageReadModel } from './page-read-model.js';
 // The paging helpers now live in the package a module can import; re-exported here because the
 // interaction handlers import them from this module.
