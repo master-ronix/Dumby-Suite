@@ -588,6 +588,42 @@ export function createPageDataProvider(deps: PageDataDeps): (
     // closures below, scoped to this request's guild and profile, so a module asks for a fact and
     // never receives a handle, a connection or a table name.
     // UR-20261027-106 — the facts a module page asks for that are not a table read.
+    const registeredPersonasFor = async (): Promise<readonly PersonaRecord[]> => {
+      if (guildId === null) return [];
+      const bindings = await (async () => {
+        const rows = (await db
+          .knex('guild_persona_bindings')
+          .where({ guildId })
+          .whereNull('deletedAt')) as ReadonlyArray<{ personaId?: unknown }>;
+        return [...new Set(rows.map((row) => String(row.personaId ?? '')).filter(Boolean))];
+      })();
+      const rows = (await db
+        .knex('persona_identities')
+        .whereNull('deletedAt')
+        .andWhere(
+          (builder: {
+            where: (column: string, value: string) => void;
+            orWhereIn: (column: string, values: string[]) => void;
+          }) => {
+            builder.where('boundGuildId', guildId);
+            if (bindings.length > 0) builder.orWhereIn('id', bindings);
+          },
+        )) as ReadonlyArray<Record<string, unknown>>;
+      return rows
+        .filter((row) => typeof row['id'] === 'string' && typeof row['name'] === 'string')
+        .map((row) => ({
+          id: row['id'] as string,
+          name: row['name'] as string,
+          discordApplicationId:
+            typeof row['discordApplicationId'] === 'string' ? row['discordApplicationId'] : '',
+          boundGuildId: typeof row['boundGuildId'] === 'string' ? row['boundGuildId'] : '',
+          dmBehavior: typeof row['dmBehavior'] === 'string' ? row['dmBehavior'] : '',
+          shardAllocation: typeof row['shardAllocation'] === 'number' ? row['shardAllocation'] : 0,
+          status: typeof row['status'] === 'string' ? row['status'] : '',
+          hasOAuth: row['hasOAuth'] === true,
+        }));
+    };
+
     const probeSubsystems = async (): Promise<{
       database: 'connected' | 'unavailable';
       redis: 'connected' | 'unavailable';
@@ -687,6 +723,28 @@ export function createPageDataProvider(deps: PageDataDeps): (
         actingProfile: actingProfileFacts,
         heldModules: heldModulesForPage,
         shardCount: () => config.get('SHARD_COUNT'),
+        residentProfileId: async () => {
+          const resident = config.get('PERSONA_ID');
+          if (resident === '') return MAIN_PROFILE_ID;
+          const rows = await registeredPersonasFor();
+          return rows.some((entry) => entry.id === resident) ? resident : MAIN_PROFILE_ID;
+        },
+        botIdentity: async () => {
+          const client = getClient();
+          return {
+            name: client?.user?.username ?? 'Main Bot',
+            applicationId: client?.application?.id ?? '',
+            online: client?.isReady?.() === true,
+          };
+        },
+        isMember: async (applicationId) => {
+          if (guildId === null || isMember === undefined) return false;
+          return isMember(guildId, applicationId);
+        },
+        inviteUrl: async (applicationId, withOAuth) => {
+          if (guildId === null || personaInvite === undefined) return '';
+          return personaInvite({ applicationId, guildId, withOAuth });
+        },
         personaBindings: async () => {
           if (guildId === null) return [];
           try {
@@ -712,42 +770,7 @@ export function createPageDataProvider(deps: PageDataDeps): (
             return [];
           }
         },
-        registeredPersonas: async () => {
-          if (guildId === null) return [];
-          const bindings = await (async () => {
-            const rows = (await db
-              .knex('guild_persona_bindings')
-              .where({ guildId })
-              .whereNull('deletedAt')) as ReadonlyArray<{ personaId?: unknown }>;
-            return [...new Set(rows.map((row) => String(row.personaId ?? '')).filter(Boolean))];
-          })();
-          const rows = (await db
-            .knex('persona_identities')
-            .whereNull('deletedAt')
-            .andWhere(
-              (builder: {
-                where: (column: string, value: string) => void;
-                orWhereIn: (column: string, values: string[]) => void;
-              }) => {
-                builder.where('boundGuildId', guildId);
-                if (bindings.length > 0) builder.orWhereIn('id', bindings);
-              },
-            )) as ReadonlyArray<Record<string, unknown>>;
-          return rows
-            .filter((row) => typeof row['id'] === 'string' && typeof row['name'] === 'string')
-            .map((row) => ({
-              id: row['id'] as string,
-              name: row['name'] as string,
-              discordApplicationId:
-                typeof row['discordApplicationId'] === 'string' ? row['discordApplicationId'] : '',
-              boundGuildId: typeof row['boundGuildId'] === 'string' ? row['boundGuildId'] : '',
-              dmBehavior: typeof row['dmBehavior'] === 'string' ? row['dmBehavior'] : '',
-              shardAllocation:
-                typeof row['shardAllocation'] === 'number' ? row['shardAllocation'] : 0,
-              status: typeof row['status'] === 'string' ? row['status'] : '',
-              hasOAuth: row['hasOAuth'] === true,
-            }));
-        },
+        registeredPersonas: registeredPersonasFor,
         holder: (slug) => holderOf(guildId, slug),
         guildState: async (slug) => (await enabledStates(guildId)).get(slug),
         tierDefault: async (slug) => {

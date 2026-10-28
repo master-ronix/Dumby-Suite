@@ -142,6 +142,25 @@ export interface ModulePageReadModel {
    * "the personas this guild registered", which is not the same set as "personas bound to a module".
    */
   registeredPersonas(): Promise<readonly PersonaRecord[]>;
+  /**
+   * The identity this PROCESS runs as: a persona's id when it is a dedicated persona process, `'main'`
+   * otherwise. Not "the persona registered for this guild" — that was the bug that opened /persona on
+   * a persona's profile when the main bot ran it.
+   */
+  residentProfileId(): Promise<string>;
+  /** The resident bot's own identity: its name, its application id, and whether it is connected. */
+  botIdentity(): Promise<{
+    readonly name: string;
+    readonly applicationId: string;
+    readonly online: boolean;
+  }>;
+  /**
+   * Is this application present in the page's guild? A persona is ACTIVE only when its bot has been
+   * invited and is there; presence that cannot be resolved is reported as absent, never assumed.
+   */
+  isMember(applicationId: string): Promise<boolean>;
+  /** The invite URL for a persona's application, or `''` when there is no guild or no builder. */
+  inviteUrl(applicationId: string, withOAuth: boolean): Promise<string>;
 }
 
 export type SubsystemState = 'connected' | 'unavailable';
@@ -160,6 +179,12 @@ export interface PersonaRecord {
   readonly shardAllocation: number;
   readonly status: string;
   readonly hasOAuth: boolean;
+  /**
+   * Whether this persona's OAuth leg has EVER completed. Discord exposes no API to read an
+   * application's registered redirect URIs, so a successful exchange is the only honest proof the
+   * redirect URL is configured. The fact, not a presentation of it.
+   */
+  readonly oauthVerified: boolean;
 }
 
 export interface PendingQueueEntry {

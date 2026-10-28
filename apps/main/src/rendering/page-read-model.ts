@@ -77,6 +77,14 @@ export interface PageReadModelSources {
   readonly personaBindings: () => Promise<readonly PersonaBinding[]>;
   /** The personas this guild knows — registered here, or named by a binding. */
   readonly registeredPersonas: () => Promise<readonly PersonaRecord[]>;
+  /** The identity this process runs as — `'main'`, or a dedicated persona's id. */
+  readonly residentProfileId: () => Promise<string>;
+  /** The resident bot's own name, application id and connection state. */
+  readonly botIdentity: () => Promise<{ name: string; applicationId: string; online: boolean }>;
+  /** Is this application present in the page's guild? */
+  readonly isMember: (applicationId: string) => Promise<boolean>;
+  /** The invite URL for a persona's application, or '' when there is no guild or builder. */
+  readonly inviteUrl: (applicationId: string, withOAuth: boolean) => Promise<string>;
 }
 
 export function makePageReadModel(sources: PageReadModelSources): ModulePageReadModel {
@@ -124,5 +132,9 @@ export function makePageReadModel(sources: PageReadModelSources): ModulePageRead
     tierDefault: (slug) => sources.tierDefault(slug),
     personaBindings: () => sources.personaBindings(),
     registeredPersonas: () => sources.registeredPersonas(),
+    residentProfileId: () => sources.residentProfileId(),
+    botIdentity: () => sources.botIdentity(),
+    isMember: (applicationId) => sources.isMember(applicationId),
+    inviteUrl: (applicationId, withOAuth) => sources.inviteUrl(applicationId, withOAuth),
   };
 }

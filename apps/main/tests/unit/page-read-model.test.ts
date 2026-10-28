@@ -45,6 +45,10 @@ function sources(over: Partial<PageReadModelSources> = {}): PageReadModelSources
     guildState: async (slug: string) => (slug === 'hello-world' ? false : undefined),
     tierDefault: async (slug: string) => slug !== 'browse',
     personaBindings: async () => [{ moduleSlug: 'hello-world', personaId: 'p-1' }],
+    residentProfileId: async () => 'main',
+    botIdentity: async () => ({ name: 'Dumby', applicationId: 'app-1', online: true }),
+    isMember: async () => true,
+    inviteUrl: async () => 'https://discord.test/invite',
     registeredPersonas: async () => [
       {
         id: 'p-1',
@@ -55,6 +59,7 @@ function sources(over: Partial<PageReadModelSources> = {}): PageReadModelSources
         shardAllocation: 0,
         status: 'active',
         hasOAuth: true,
+        oauthVerified: true,
       },
     ],
     hostProcess: () => ({
@@ -132,6 +137,10 @@ describe('PageReadModel — a module asks for facts, never for a handle', () => 
     // Which module a persona holds, and who this guild knows — two different questions.
     expect(await read.personaBindings()).toEqual([{ moduleSlug: 'hello-world', personaId: 'p-1' }]);
     expect((await read.registeredPersonas())[0]?.name).toBe('Magma');
+    expect(await read.residentProfileId()).toBe('main');
+    expect((await read.botIdentity()).online).toBe(true);
+    expect(await read.isMember('app-2')).toBe(true);
+    expect(await read.inviteUrl('app-2', true)).toBe('https://discord.test/invite');
   });
 
   test('an absent install row stays absent rather than becoming a zero timestamp', async () => {
