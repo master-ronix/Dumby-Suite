@@ -96,7 +96,6 @@ export interface PageDataDeps {
 }
 
 type PageData = Readonly<Record<string, unknown>>;
-type Rows = ReadonlyArray<readonly [string, string]>;
 /** The display name for a module id: `hello-world` becomes `Hello World`. */
 const titleCaseId = (id: string): string =>
   id
