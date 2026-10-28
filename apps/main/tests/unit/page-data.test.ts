@@ -4,7 +4,6 @@ import { healthPage } from '@module-health-page';
 import { queuePage } from '@module-queue-page';
 import { permitPage } from '@module-permit-page';
 import { browsePage } from '@module-browse-page';
-import { dashboardPage } from '@module-dashboard-page';
 
 type Dict = Record<string, unknown>;
 
