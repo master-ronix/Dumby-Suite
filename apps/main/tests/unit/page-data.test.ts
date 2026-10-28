@@ -747,6 +747,61 @@ describe('page-data provider', () => {
     expect(seen[1]).toEqual([]);
   });
 
+  // The four identity closures /persona needs: the resident profile, the bot's own identity, guild
+  // presence, and the invite URL. Only a dispatch reaches them, so they are covered here.
+  test('the identity reads answer with and without a guild', async () => {
+    const seen: Dict[] = [];
+    const provider = createPageDataProvider(
+      makeDeps({
+        config: {
+          get: (key: string) => (key === 'SHARD_COUNT' ? 2 : key === 'PERSONA_ID' ? '' : undefined),
+        },
+        personaInvite: ({ applicationId }: { applicationId: string }) =>
+          `https://discord.test/${applicationId}`,
+        isMember: async () => true,
+        pages: {
+          get: (id: string) =>
+            id === 'persona'
+              ? {
+                  id,
+                  moduleId: 'persona',
+                  page: {
+                    id,
+                    render: async (_context: unknown, read: Dict) => {
+                      seen.push({
+                        resident: await (read['residentProfileId'] as () => Promise<string>)(),
+                        bot: await (
+                          read['botIdentity'] as () => Promise<{ name: string; online: boolean }>
+                        )(),
+                        member: await (read['isMember'] as (a: string) => Promise<boolean>)(
+                          'app-2',
+                        ),
+                        invite: await (
+                          read['inviteUrl'] as (a: string, o: boolean) => Promise<string>
+                        )('app-2', true),
+                      });
+                      return {};
+                    },
+                  },
+                }
+              : undefined,
+        },
+      }),
+    );
+
+    // A DM: no guild, so presence is false and the invite is empty.
+    await provider('persona', null, 0, undefined, 'app-1', 'main');
+    expect(seen[0]?.['resident']).toBe('main');
+    expect(seen[0]?.['member']).toBe(false);
+    expect(seen[0]?.['invite']).toBe('');
+    expect(typeof (seen[0]?.['bot'] as { name: string }).name).toBe('string');
+
+    // A guild: presence is asked, and the invite is built.
+    await provider('persona', 'guild-1', 0, undefined, 'app-1', 'main');
+    expect(seen[1]?.['member']).toBe(true);
+    expect(seen[1]?.['invite']).toBe('https://discord.test/app-2');
+  });
+
   test('a page no module owns still falls through to the built-in switch', async () => {
     const consulted: string[] = [];
     const provider = createPageDataProvider(
