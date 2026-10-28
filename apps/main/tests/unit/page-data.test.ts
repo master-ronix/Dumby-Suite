@@ -703,6 +703,50 @@ describe('page-data provider', () => {
     expect((seen['personas'] as { name: string }[])[0]?.name).toBe('Magma');
   });
 
+  // The other two branches of the persona reads: no guild, and an unreadable binding table.
+  test('the persona reads answer none without a guild, and log when the table throws', async () => {
+    const throwing = (() => {
+      const node: Dict = {};
+      for (const method of ['where', 'whereNull', 'andWhere', 'orWhereIn']) {
+        node[method] = (): Dict => {
+          throw new Error('bindings unreadable');
+        };
+      }
+      return node;
+    })() as unknown as Dict;
+    const knex = (() => throwing) as unknown as Dict;
+    knex['raw'] = async (): Promise<unknown[]> => [{}];
+
+    const seen: unknown[] = [];
+    const provider = createPageDataProvider(
+      makeDeps({
+        db: { knex },
+        pages: {
+          get: (id: string) =>
+            id === 'persona'
+              ? {
+                  id,
+                  moduleId: 'persona',
+                  page: {
+                    id,
+                    render: async (_context: unknown, read: Dict) => {
+                      seen.push(await (read['personaBindings'] as () => Promise<unknown[]>)());
+                      return {};
+                    },
+                  },
+                }
+              : undefined,
+        },
+      }),
+    );
+    // No guild: no query at all.
+    await provider('persona', null, 0, undefined, 'app-1', 'main');
+    expect(seen[0]).toEqual([]);
+    // A guild whose binding table throws: reported as none, and logged.
+    await provider('persona', 'guild-1', 0, undefined, 'app-1', 'main');
+    expect(seen[1]).toEqual([]);
+  });
+
   test('a page no module owns still falls through to the built-in switch', async () => {
     const consulted: string[] = [];
     const provider = createPageDataProvider(
