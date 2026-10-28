@@ -2,6 +2,7 @@ import { describe, expect, test, vi } from 'vitest';
 import { createPageDataProvider, type PageDataDeps } from '../../src/rendering/page-data.js';
 import { healthPage } from '@module-health-page';
 import { queuePage } from '@module-queue-page';
+import { permitPage } from '@module-permit-page';
 
 type Dict = Record<string, unknown>;
 
@@ -77,6 +78,7 @@ const healthPages = {
   get: (id: string) => {
     if (id === 'health') return { id, moduleId: 'health', page: healthPage };
     if (id === 'queue') return { id, moduleId: 'queue', page: queuePage };
+    if (id === 'permit') return { id, moduleId: 'permit', page: permitPage };
     return undefined;
   },
 };

@@ -2,7 +2,8 @@ import { permitCommand } from './commands/permit.command.js';
 
 export const MODULE_SLUG = 'permit';
 
-export const MODULE_DESCRIPTION = 'Manage guild-side grants — permits, whitelists, blacklists, cooldowns, and rate limits.';
+export const MODULE_DESCRIPTION =
+  'Manage guild-side grants — permits, whitelists, blacklists, cooldowns, and rate limits.';
 
 /** §1.7 (UR-11) — the module's schema-declared commands; the loader registers them. */
 export const commands = [permitCommand];
@@ -31,3 +32,11 @@ export async function onReady(): Promise<void> {
 export async function onUnload(): Promise<void> {
   state = 'loading';
 }
+
+// UR-20261027-106 — the module OWNS its page. The loader registers `pages`; the host consults the
+// registry before its own switch, so this composition is what renders /permit.
+import { permitPage } from './pages/permit.page.js';
+
+export { permitPage, type PermitPageData } from './pages/permit.page.js';
+
+export const pages = [permitPage];

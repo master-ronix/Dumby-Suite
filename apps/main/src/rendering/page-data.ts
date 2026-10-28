@@ -579,22 +579,6 @@ export function createPageDataProvider(deps: PageDataDeps): (
     };
   }
 
-  async function permit(applicationId: string): Promise<PageData> {
-    const lines: string[] = ['Choose a module command to manage grant access:', ''];
-    for (const entry of moduleRegistry.all()) {
-      const icon = moduleIcon(entry.manifest.ui?.icon, applicationId);
-      for (const command of entry.manifest.commands) {
-        lines.push(`${icon} /${command.name}   ${entry.manifest.name} — ${command.description}`);
-      }
-    }
-    lines.push(
-      '',
-      '§8.4 — grants resolve role > group > set, most-specific-wins, and never override Layers 1–3,',
-      'the bot-capability check, or the RESTRICTED floor. Layer 6 ranks are evaluated, never written.',
-    );
-    return { title: 'Grant Access — Step 1: Select Command', lines };
-  }
-
   // item 6 — page 0 is the main dashboard (every core-tier module's commands, combined); page 1..n
   // is each STANDARD-tier module's own page. A core-tier module never gets its own page.
   // items 4/5/8 — every module command list carries the module icon asset beside it (the main page
@@ -1001,8 +985,6 @@ export function createPageDataProvider(deps: PageDataDeps): (
     switch (moduleId) {
       case 'persona':
         return persona(moduleId, guildId, query, applicationId);
-      case 'permit':
-        return permit(applicationId);
       case 'browse':
         return marketplace(query, guildId, applicationId, actingProfileId);
       case 'modules':

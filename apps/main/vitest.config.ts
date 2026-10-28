@@ -17,6 +17,9 @@ export default defineConfig({
       '@module-queue-page': fileURLToPath(
         new URL('../../packages/modules/queue/src/pages/queue.page.ts', import.meta.url),
       ),
+      '@module-permit-page': fileURLToPath(
+        new URL('../../packages/modules/permit/src/pages/permit.page.ts', import.meta.url),
+      ),
     },
   },
   server: { fs: { allow: ['..'] } },
