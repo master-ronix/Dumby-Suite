@@ -3,7 +3,7 @@
 **Generated:** 2026-10-06 · **Re-stated:** 2026-10-18
 **Protocol:** `docs/orchestration/master-prompt.md` §3 (Codebase State Detection & Audit Protocol)
 **Repository:** `master-ronix/Dumby-Suite`
-**Branch / ref:** `feature/dev` @ `d29194d6c4345c359d3e29bbd32953e196d1e9a0`
+**Branch / ref:** `feature/dev` @ `f0f400d169f67f3432aa8cdfa030e05c61056225`
 **Codebase state:** State C — Enforcement (code present; migration work order closed)
 **Entry procedure followed:** `docs/prompts/entry.md` → `orchestration/master-prompt.md` (enforcement mode)
 **Run mode:** State C — Enforcement: audit (§3) → remediation (§4) → enforcement (§6), corpus-wide.
