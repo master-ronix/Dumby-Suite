@@ -168,7 +168,8 @@ export function personaBlocks(
       readonly label: string;
       readonly value: string;
       readonly description: string;
-      readonly emoji: { readonly id: string; readonly name: string } | { readonly name: string };
+      readonly emoji:
+        { readonly id: string; readonly name: string } | { readonly name: string } | string;
     }
     const options: Option[] = profiles.map((p) => ({
       label: p.name.length > 0 ? p.name : p.id,
