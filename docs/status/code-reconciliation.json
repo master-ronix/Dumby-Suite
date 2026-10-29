@@ -389,13 +389,21 @@
       "code_ref": "apps/main/src/module-system/swastik-loader.ts ; apps/main/src/module-system/loader.ts ; apps/main/src/rendering/page-data.ts",
       "verdict": "match",
       "resolution": "Fixed 2026-10-28: the loader copies `pages`, and scripts/check-module-packages.mjs (Gate 3d) now requires that every surface any module exports - commands, jobs, events, tasks, pages - is copied by the volume loader. Confirmed on the live instance: /dashboard renders its seven commands."
+    },
+    {
+      "id": "REC-043",
+      "area": "Module-specific renderer schema living in the framework",
+      "doc_claim": "A module owns its surface end to end: it declares the data it needs, composes its page, and carries its own renderer schema. The framework renders what the module hands it (UR-20261027-106, extended by the operator 2026-10-29: 'no renderer schema ... in modules' is the complaint).",
+      "code_truth": "Three module-specific block builders live in apps/main/src/rendering/ and are imported by the framework's command router, which picks between them with a hardcoded nested ternary on the page shape: rendering/persona-blocks.ts (269 lines), rendering/health-blocks.ts (182), rendering/modules-blocks.ts (68) - 519 lines. Each imports the framework's emoji constants and customEmojiRef directly, so the schema and the emoji resolution both sit in the host while the module supplies only data.",
+      "code_ref": "apps/main/src/commands/command-router.ts:32-35,570-625 ; apps/main/src/rendering/health-blocks.ts ; apps/main/src/rendering/persona-blocks.ts ; apps/main/src/rendering/modules-blocks.ts",
+      "verdict": "code-gap"
     }
   ],
   "counts": {
     "match": 40,
     "doc-incomplete": 1,
-    "code-gap": 1,
+    "code-gap": 2,
     "code-anchor-broken": 0,
-    "total": 42
+    "total": 43
   }
 }
