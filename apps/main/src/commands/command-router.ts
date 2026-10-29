@@ -220,7 +220,7 @@ export interface CommandRouterOptions {
      * router assembling that page's blocks. Optional: a caller that omits it renders the page without
      * admin controls rather than failing to compile.
      */
-    caller?: { readonly isAdmin?: boolean } | undefined,
+    caller: { readonly isAdmin?: boolean },
   ) => Promise<Readonly<Record<string, unknown>>>;
   /**
    * §6.7 — performs the side effects a handler declares. Keyed by effect kind; an undeclared kind
