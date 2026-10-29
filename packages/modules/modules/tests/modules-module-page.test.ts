@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { modulesPage } from '@module-modules-page';
+import { modulesPage } from '../src/pages/modules.page.js';
 import type { ModulePageReadModel, ModuleSummary } from '@workspace/swastik';
 
 /**
@@ -38,7 +38,11 @@ function readModel(states: Record<string, State> = {}): ModulePageReadModel {
     markerIcon: async () => 'MARKER',
     moduleIcon: async (iconName) => (iconName === undefined ? 'FALLBACK' : `[${iconName}]`),
     probe: async () => ({ database: 'connected', redis: 'connected' }),
-    actingProfile: async () => ({ profileId: 'main', gatewayReady: true, loadedModules: [] }),
+    actingProfile: async () => ({
+      profileId: 'main',
+      gatewayReady: true,
+      loadedModules: [],
+    }),
     heldModules: async () => [],
     shardCount: async () => 1,
     guilds: async () => ({ total: 0, source: 'cache' }),
@@ -71,7 +75,9 @@ async function renderData(
   context: ReturnType<typeof ctx>,
   read: ModulePageReadModel,
 ): Promise<Record<string, unknown>> {
-  const result = (await modulesPage.render(context, read)) as { data: Record<string, unknown> };
+  const result = (await modulesPage.render(context, read)) as {
+    data: Record<string, unknown>;
+  };
   return result.data;
 }
 
@@ -91,7 +97,10 @@ describe('modules module page — the composition that moved out of page-data.ts
   test('a standard module the guild disabled is absent, a core one is not', async () => {
     const data = await renderData(
       ctx(),
-      readModel({ 'hello-world': { guildRow: false }, health: { guildRow: false } }),
+      readModel({
+        'hello-world': { guildRow: false },
+        health: { guildRow: false },
+      }),
     );
     expect(data.modules.map((module) => module.id)).toEqual(['health', 'dashboard']);
   });

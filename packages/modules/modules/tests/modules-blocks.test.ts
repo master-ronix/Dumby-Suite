@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { modulesBlocks } from '@module-modules-blocks';
+import { modulesBlocks } from '../src/blocks/modules.blocks.js';
 
 type Any = Record<string, unknown>;
 

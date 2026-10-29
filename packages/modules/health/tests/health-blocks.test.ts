@@ -1,10 +1,10 @@
 import { describe, expect, test } from 'vitest';
-import { healthBlocks } from '@module-health-blocks';
+import { healthBlocks } from '../src/blocks/health.blocks.js';
 import {
   customEmojiParts,
   customEmojiRef,
   registerModuleEmoji,
-} from '../../src/rendering/module-icons.js';
+} from '../../../../apps/main/src/rendering/module-icons.js';
 
 // UR-20261029-113 — the builder no longer reaches into the framework for emoji ids: the page hands it
 // the resolvers. These are the same two functions the page receives at dispatch.
@@ -139,7 +139,10 @@ describe('healthBlocks tolerates malformed group data', () => {
 
   test('a malformed row inside a valid group is dropped, not rendered as junk', () => {
     const blocks = healthBlocks(
-      { status: 'ok', groups: [{ name: 'G', rows: [['only-one'], ['a', 'b']] }] },
+      {
+        status: 'ok',
+        groups: [{ name: 'G', rows: [['only-one'], ['a', 'b']] }],
+      },
       'u1',
       emoji,
       emojiParts,
@@ -169,8 +172,16 @@ describe('every health column carries its own mark', () => {
               ['Gateway Status', 'Connected'],
             ],
           },
-          { name: 'Host Process (shared)', status: 'ok', rows: [['Host Uptime', '0d 0h 5m']] },
-          { name: 'Profile Runtime', status: 'ok', rows: [['Uptime', '0d 0h 3m']] },
+          {
+            name: 'Host Process (shared)',
+            status: 'ok',
+            rows: [['Host Uptime', '0d 0h 5m']],
+          },
+          {
+            name: 'Profile Runtime',
+            status: 'ok',
+            rows: [['Uptime', '0d 0h 3m']],
+          },
         ],
       },
       'u1',
@@ -189,7 +200,10 @@ describe('every health column carries its own mark', () => {
 
   test('a row with no mark still renders — an unknown label is not an error', () => {
     const blocks = healthBlocks(
-      { status: 'ok', groups: [{ name: 'Mystery', rows: [['Something New', '1']] }] },
+      {
+        status: 'ok',
+        groups: [{ name: 'Mystery', rows: [['Something New', '1']] }],
+      },
       'u1',
       emoji,
       emojiParts,

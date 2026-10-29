@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { browsePage } from '@module-browse-page';
+import { browsePage } from '../src/pages/browse.page.js';
 import type { ModulePageReadModel, ModuleSummary } from '@workspace/swastik';
 
 /**
@@ -48,7 +48,11 @@ function readModel(states: Record<string, State> = {}): ModulePageReadModel {
     markerIcon: async () => 'MARKER',
     moduleIcon: async (iconName) => (iconName === undefined ? 'FALLBACK' : `[${iconName}]`),
     probe: async () => ({ database: 'connected', redis: 'connected' }),
-    actingProfile: async () => ({ profileId: 'main', gatewayReady: true, loadedModules: [] }),
+    actingProfile: async () => ({
+      profileId: 'main',
+      gatewayReady: true,
+      loadedModules: [],
+    }),
     heldModules: async () => [],
     shardCount: async () => 1,
     guilds: async () => ({ total: 0, source: 'cache' }),
@@ -66,7 +70,12 @@ function readModel(states: Record<string, State> = {}): ModulePageReadModel {
   };
 }
 
-const ctx = { guildId: 'g1', applicationId: 'app-1', profileId: 'main', page: 0 };
+const ctx = {
+  guildId: 'g1',
+  applicationId: 'app-1',
+  profileId: 'main',
+  page: 0,
+};
 
 describe('browse module page — the composition that moved out of page-data.ts', () => {
   test('core modules are never listed', async () => {
@@ -96,7 +105,9 @@ describe('browse module page — the composition that moved out of page-data.ts'
   test('a module another profile holds is occupied, and named', async () => {
     const data = await browsePage.render(
       ctx,
-      readModel({ 'hello-world': { guildRow: true, mine: false, holder: 'p-1' } }),
+      readModel({
+        'hello-world': { guildRow: true, mine: false, holder: 'p-1' },
+      }),
     );
     const hello = data.modules.find((module) => module.id === 'hello-world');
     expect(hello?.occupied).toBe(true);

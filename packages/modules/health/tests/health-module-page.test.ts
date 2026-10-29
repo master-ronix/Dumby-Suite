@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { healthPage } from '@module-health-page';
+import { healthPage } from '../src/pages/health.page.js';
 import type { ModulePageReadModel, ModuleSummary } from '@workspace/swastik';
 
 /**
@@ -62,7 +62,9 @@ async function renderData(
   context: typeof ctx,
   read: ModulePageReadModel,
 ): Promise<Record<string, unknown>> {
-  const result = (await healthPage.render(context, read)) as { data: Record<string, unknown> };
+  const result = (await healthPage.render(context, read)) as {
+    data: Record<string, unknown>;
+  };
   return result.data;
 }
 
@@ -100,7 +102,9 @@ describe('health module page — the composition that moved out of page-data.ts'
   test('a critical subsystem down makes the page Down, not Degraded', async () => {
     const data = await renderData(
       ctx,
-      readModel({ probe: async () => ({ database: 'unavailable', redis: 'connected' }) }),
+      readModel({
+        probe: async () => ({ database: 'unavailable', redis: 'connected' }),
+      }),
     );
     expect(data.status).toBe('down');
     expect(group(data, 'Database')?.status).toBe('down');
@@ -109,7 +113,9 @@ describe('health module page — the composition that moved out of page-data.ts'
   test('a non-critical subsystem down degrades the page', async () => {
     const data = await renderData(
       ctx,
-      readModel({ probe: async () => ({ database: 'connected', redis: 'unavailable' }) }),
+      readModel({
+        probe: async () => ({ database: 'connected', redis: 'unavailable' }),
+      }),
     );
     expect(data.status).toBe('degraded');
     expect(data.statusLabel).toBe('Degraded');

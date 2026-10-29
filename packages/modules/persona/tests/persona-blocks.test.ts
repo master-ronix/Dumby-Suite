@@ -1,11 +1,14 @@
 import { describe, expect, test } from 'vitest';
-import { personaBlocks } from '@module-persona-blocks';
+import { personaBlocks } from '../src/blocks/persona.blocks.js';
 import {
   customEmojiParts,
   customEmojiRef,
   registerModuleEmoji,
-} from '../../src/rendering/module-icons.js';
-import { registerModuleEmoji, resetModuleEmojis } from '../../src/rendering/module-icons.js';
+} from '../../../../apps/main/src/rendering/module-icons.js';
+import {
+  registerModuleEmoji,
+  resetModuleEmojis,
+} from '../../../../apps/main/src/rendering/module-icons.js';
 
 type Any = Record<string, unknown>;
 
@@ -58,7 +61,10 @@ const data = {
         { name: 'health', icon: '', commands: ['health'] },
       ],
     },
-    { tier: 'standard', modules: [{ name: 'hello-world', icon: '', commands: ['hello'] }] },
+    {
+      tier: 'standard',
+      modules: [{ name: 'hello-world', icon: '', commands: ['hello'] }],
+    },
   ],
   note: 'Persona creation and configuration are handled through the Twill registration API.',
 };

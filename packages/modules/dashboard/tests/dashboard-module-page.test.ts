@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, test, expect } from 'vitest';
-import { dashboardPage } from '@module-dashboard-page';
+import { dashboardPage } from '../src/pages/dashboard.page.js';
 import type { ModulePageReadModel, ModuleSummary } from '@workspace/swastik';
 
 /**
@@ -51,7 +51,12 @@ function readModel(
   };
 }
 
-const ctx = (page: number) => ({ guildId: 'g1', applicationId: 'app-1', profileId: 'main', page });
+const ctx = (page: number) => ({
+  guildId: 'g1',
+  applicationId: 'app-1',
+  profileId: 'main',
+  page,
+});
 
 const fixtures: ModuleFixture[] = [
   {
@@ -60,7 +65,11 @@ const fixtures: ModuleFixture[] = [
     commands: [{ name: 'health', description: 'h' }],
     iconName: 'dumby_health',
   },
-  { slug: 'dashboard', tier: 'core', commands: [{ name: 'dashboard', description: 'd' }] },
+  {
+    slug: 'dashboard',
+    tier: 'core',
+    commands: [{ name: 'dashboard', description: 'd' }],
+  },
   {
     slug: 'hello-world',
     tier: 'standard',

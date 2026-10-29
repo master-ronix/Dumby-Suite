@@ -1,7 +1,10 @@
 import { test, expect, describe } from 'vitest';
-import { CoreRenderer, derivePageSections } from '../../src/rendering/core-renderer.js';
-import { dialNavSelect } from '../../src/rendering/dashboard-nav.js';
-import { modulesBlocks } from '@module-modules-blocks';
+import {
+  CoreRenderer,
+  derivePageSections,
+} from '../../../../apps/main/src/rendering/core-renderer.js';
+import { dialNavSelect } from '../../../../apps/main/src/rendering/dashboard-nav.js';
+import { modulesBlocks } from '../src/blocks/modules.blocks.js';
 
 /**
  * /modules reported MODULE_ERROR in production. This walks the whole path the router takes for it —
@@ -53,7 +56,10 @@ describe('the /modules render path is whole', () => {
     const block = dialNavSelect({
       invokerId: 'u1',
       command: 'modules',
-      entries: pageData.navigation.map((e) => ({ ...e, icon: { name: 'dumby_modules', id: '1' } })),
+      entries: pageData.navigation.map((e) => ({
+        ...e,
+        icon: { name: 'dumby_modules', id: '1' },
+      })),
       currentPage: 0,
       homeIcon: { name: 'dumby_home', id: '2' },
       fallbackIcon: { name: 'dumby_module', id: '3' },

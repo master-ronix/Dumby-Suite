@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { personaPage } from '@module-persona-page';
+import { personaPage } from '../src/pages/persona.page.js';
 import type { ModulePageReadModel, ModuleSummary, PersonaRecord } from '@workspace/swastik';
 
 /**
@@ -54,7 +54,11 @@ function readModel(over: Over = {}): ModulePageReadModel {
     markerIcon: async () => 'MARKER',
     moduleIcon: async (iconName) => (iconName === undefined ? 'FALLBACK' : `[${iconName}]`),
     probe: async () => ({ database: 'connected', redis: 'connected' }),
-    actingProfile: async () => ({ profileId: 'main', gatewayReady: true, loadedModules: [] }),
+    actingProfile: async () => ({
+      profileId: 'main',
+      gatewayReady: true,
+      loadedModules: [],
+    }),
     heldModules: async () => [],
     shardCount: async () => 2,
     guilds: async () => ({ total: 0, source: 'cache' }),
@@ -72,7 +76,11 @@ function readModel(over: Over = {}): ModulePageReadModel {
     personaBindings: async () => over.bindings ?? [],
     registeredPersonas: async () => over.registered ?? [],
     residentProfileId: async () => over.resident ?? '',
-    botIdentity: async () => ({ name: 'Dumby', applicationId: 'app-1', online: true }),
+    botIdentity: async () => ({
+      name: 'Dumby',
+      applicationId: 'app-1',
+      online: true,
+    }),
     isMember: async () => over.member ?? true,
     inviteUrl: async (applicationId, withOAuth) =>
       `https://discord.test/${applicationId}${withOAuth ? '?oauth=1' : ''}`,
@@ -96,7 +104,9 @@ async function renderData(
   context: ReturnType<typeof ctx>,
   read: ModulePageReadModel,
 ): Promise<Record<string, unknown>> {
-  const result = (await personaPage.render(context, read)) as { data: Record<string, unknown> };
+  const result = (await personaPage.render(context, read)) as {
+    data: Record<string, unknown>;
+  };
   return result.data;
 }
 
@@ -202,7 +212,11 @@ describe('persona module page — the composition that moved out of page-data.ts
   test('an offline bot makes the page offline', async () => {
     const read = {
       ...readModel(),
-      botIdentity: async () => ({ name: 'Dumby', applicationId: 'app-1', online: false }),
+      botIdentity: async () => ({
+        name: 'Dumby',
+        applicationId: 'app-1',
+        online: false,
+      }),
     };
     const data = await renderData(ctx(), read);
     expect(data.status).toBe('offline');

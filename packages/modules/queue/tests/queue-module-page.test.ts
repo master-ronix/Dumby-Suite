@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { queuePage } from '@module-queue-page';
+import { queuePage } from '../src/pages/queue.page.js';
 import type { ModulePageReadModel, ModuleSummary } from '@workspace/swastik';
 
 /**
@@ -20,7 +20,11 @@ function readModel(
     markerIcon: async () => 'MARKER',
     moduleIcon: async () => 'ICON',
     probe: async () => ({ database: 'connected', redis: 'connected' }),
-    actingProfile: async () => ({ profileId: 'main', gatewayReady: true, loadedModules: [] }),
+    actingProfile: async () => ({
+      profileId: 'main',
+      gatewayReady: true,
+      loadedModules: [],
+    }),
     heldModules: async () => [],
     shardCount: async () => 1,
     guilds: async () => ({ total: 0, source: 'cache' }),
@@ -34,7 +38,12 @@ function readModel(
   };
 }
 
-const ctx = { guildId: 'g1', applicationId: 'app-1', profileId: 'main', page: 0 };
+const ctx = {
+  guildId: 'g1',
+  applicationId: 'app-1',
+  profileId: 'main',
+  page: 0,
+};
 
 describe('queue module page — the composition that moved out of page-data.ts', () => {
   test('an empty queue says so in one line, and still reports the window', async () => {

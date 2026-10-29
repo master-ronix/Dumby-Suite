@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { permitPage } from '@module-permit-page';
+import { permitPage } from '../src/pages/permit.page.js';
 import type { ModulePageReadModel, ModuleSummary } from '@workspace/swastik';
 
 /**
@@ -37,7 +37,11 @@ function readModel(over: Partial<ModulePageReadModel> = {}): ModulePageReadModel
     markerIcon: async () => 'MARKER',
     moduleIcon: async (iconName) => (iconName === undefined ? 'FALLBACK' : `[${iconName}]`),
     probe: async () => ({ database: 'connected', redis: 'connected' }),
-    actingProfile: async () => ({ profileId: 'main', gatewayReady: true, loadedModules: [] }),
+    actingProfile: async () => ({
+      profileId: 'main',
+      gatewayReady: true,
+      loadedModules: [],
+    }),
     heldModules: async () => [],
     shardCount: async () => 1,
     guilds: async () => ({ total: 0, source: 'cache' }),
@@ -51,7 +55,12 @@ function readModel(over: Partial<ModulePageReadModel> = {}): ModulePageReadModel
   };
 }
 
-const ctx = { guildId: 'g1', applicationId: 'app-1', profileId: 'main', page: 0 };
+const ctx = {
+  guildId: 'g1',
+  applicationId: 'app-1',
+  profileId: 'main',
+  page: 0,
+};
 
 describe('permit module page — the composition that moved out of page-data.ts', () => {
   test('every module command is offered, with its own module icon and description', async () => {

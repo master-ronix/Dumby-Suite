@@ -42,7 +42,10 @@ export default defineConfig({
   },
   server: { fs: { allow: ['..'] } },
   test: {
-    include: ['tests/unit/**/*.test.ts'],
+    // UR-20261029-117 — a module's tests live in the module. They are collected here because this is
+    // the harness that resolves the workspace and measures coverage, but the files belong to the
+    // packages that own them.
+    include: ['tests/unit/**/*.test.ts', '../../packages/modules/*/tests/**/*.test.ts'],
     exclude: [
       'tests/integration/**',
       'tests/e2e/**',
