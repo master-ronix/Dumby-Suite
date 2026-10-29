@@ -222,8 +222,8 @@ describe('emoji ids are per-application (UR-20261012-057)', () => {
       { ...data, selectedProfileId: 'p-2' },
       'u1',
       false,
-      (name) => customEmojiRef(name, 'main-app'),
-      (name) => customEmojiParts(name, 'main-app'),
+      (name) => customEmojiRef(name, ''),
+      (name) => customEmojiParts(name, ''),
     );
     const persona = personaBlocks(
       { ...data, selectedProfileId: 'p-2' },
@@ -243,9 +243,13 @@ describe('emoji ids are per-application (UR-20261012-057)', () => {
   test('an application with no emojis falls back to unicode, never to another app\u2019s id', () => {
     resetModuleEmojis();
     registerModuleEmoji('dumby_status_online', '111'); // main bot only
-    const other = personaBlocks({ ...data, selectedProfileId: 'p-2' }, 'u1', {
-      applicationId: 'unknown-app',
-    });
+    const other = personaBlocks(
+      { ...data, selectedProfileId: 'p-2' },
+      'u1',
+      false,
+      (name) => customEmojiRef(name, 'unknown-app'),
+      (name) => customEmojiParts(name, 'unknown-app'),
+    );
     expect(JSON.stringify(other)).not.toContain('<:dumby_status_online:111>');
     resetModuleEmojis();
   });
