@@ -1305,6 +1305,8 @@ export class CommandRouter {
         query,
         scope,
         this.options.residentPersonaId ?? 'main',
+        // UR-20261029-116 — the browse surface offers no admin control, so the standing is absent.
+        {},
       )) ?? {};
     return this.renderer.render({
       surface: this.pageTitle('browse'),
