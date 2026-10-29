@@ -137,7 +137,7 @@ export const healthPage = definePage({
     const statusLabel =
       status === 'operational' ? 'Operational' : status === 'degraded' ? 'Degraded' : 'Down';
 
-    const data = {
+    const data: HealthPageData = {
       title: 'System Health',
       status,
       statusLabel,
