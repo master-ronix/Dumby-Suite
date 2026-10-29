@@ -162,7 +162,15 @@ export function personaBlocks(
   // there is nothing to switch to, so the control teaches its own affordance without dead-ending.
   if (profiles.length > 0) {
     const profileIcon = emojiParts('dumby_profile');
-    const options: NavigationOption[] = profiles.map((p) => ({
+    // The shape the renderer reads for a select option: a label, a value, a description and an
+    // optional emoji. Declared here because the module does not import the framework's types.
+    interface Option {
+      readonly label: string;
+      readonly value: string;
+      readonly description: string;
+      readonly emoji: { readonly id: string; readonly name: string } | { readonly name: string };
+    }
+    const options: Option[] = profiles.map((p) => ({
       label: p.name.length > 0 ? p.name : p.id,
       value: p.id,
       description:
