@@ -118,11 +118,10 @@ describe('knex bccm store', () => {
     );
   });
 
-  test('commit inserts a rename when none exists and skips non-rename entries', async () => {
+  test('commit inserts a rename when none exists', async () => {
     const { knex, calls } = fakeKnex({ updateResult: 0 });
     await createKnexBccmStore(knex).commit('g1', '', [
       { commandKey: 'ban', action: 'rename', newName: 'timeout' },
-      { commandKey: 'kick', action: 'disable' },
     ]);
     expect(calls.some((c) => c.table === 'guild_command_renames' && c.method === 'insert')).toBe(
       true,
@@ -130,6 +129,46 @@ describe('knex bccm store', () => {
     expect(calls.some((c) => c.table === 'guild_command_queue' && c.method === 'update')).toBe(
       true,
     );
+  });
+
+  // OI-10 — the batch applies rename, alias, disable, enable and reset to Discord; every one of them
+  // has to survive the next boot, which re-registers from these tables. This loop used to persist the
+  // rename alone, so an alias or a disable was applied live and then silently lost.
+  test('commit persists a queued ALIAS onto the rename row', async () => {
+    const { knex, calls } = fakeKnex({ updateResult: 1 });
+    await createKnexBccmStore(knex).commit('g1', '', [
+      { commandKey: 'ban', action: 'alias', alias: 'hammer' },
+    ]);
+    const write = calls.find((c) => c.table === 'guild_command_renames' && c.method === 'update');
+    expect(write).toBeDefined();
+    // Appended through `aliases || ?::jsonb`, never replaced.
+    expect(JSON.stringify(write?.args[0])).toContain('aliases ||');
+  });
+
+  test('commit records a disable in the overrides table, not nowhere', async () => {
+    const { knex, calls } = fakeKnex();
+    await createKnexBccmStore(knex).commit('g1', 'appA', [
+      { commandKey: 'kick', action: 'disable' },
+    ]);
+    const insert = calls.find(
+      (c) => c.table === 'guild_command_overrides' && c.method === 'insert',
+    );
+    expect(insert?.args[0]).toEqual(
+      expect.objectContaining({
+        guildId: 'g1',
+        applicationId: 'appA',
+        commandKey: 'kick',
+        overrideType: 'disabled',
+      }),
+    );
+  });
+
+  test('commit clears the rename AND the override on a reset', async () => {
+    const { knex, calls } = fakeKnex();
+    await createKnexBccmStore(knex).commit('g1', '', [{ commandKey: 'ban', action: 'reset' }]);
+    const tables = calls.filter((c) => c.method === 'update').map((c) => c.table);
+    expect(tables).toContain('guild_command_renames');
+    expect(tables).toContain('guild_command_overrides');
   });
 });
 

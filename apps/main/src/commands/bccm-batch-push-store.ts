@@ -104,18 +104,63 @@ export function createKnexBccmStore(knex: Knex): BccmBatchStore {
       entries: readonly BccmQueueEntry[],
     ): Promise<void> {
       await knex.transaction(async (trx) => {
+        /**
+         * OI-10 — every action the batch APPLIED is persisted, not only the rename.
+         *
+         * `applyBatch` applies rename, alias, disable, enable and reset to Discord, and this loop used
+         * to persist the rename alone: `if (entry.action !== 'rename') continue`. A queued alias or
+         * disable therefore reached Discord and vanished at the next boot, because boot re-registers
+         * from these tables. The `aliases` jsonb column and the `guild_command_overrides` table both
+         * existed and neither was ever written.
+         */
         for (const entry of entries) {
-          if (entry.action !== 'rename' || entry.newName === undefined) continue;
+          if (entry.action === 'reset') {
+            // A reset returns the command to its registered form: no rename, no alias, no override.
+            await trx('guild_command_renames')
+              .where({ guildId, applicationId, commandKey: entry.commandKey })
+              .whereNull('deletedAt')
+              .update({ deletedAt: trx.fn.now(), updatedAt: trx.fn.now() });
+            await trx('guild_command_overrides')
+              .where({ guildId, applicationId, commandKey: entry.commandKey })
+              .whereNull('deletedAt')
+              .update({ deletedAt: trx.fn.now(), updatedAt: trx.fn.now() });
+            continue;
+          }
+          if (entry.action === 'disable' || entry.action === 'enable') {
+            // Status lives in its own table; `resolveCommandStatuses` reads it oldest-first, so an
+            // append is the override rather than a mutation of the previous row.
+            await trx('guild_command_overrides').insert({
+              guildId,
+              applicationId,
+              commandKey: entry.commandKey,
+              overrideType: entry.action === 'disable' ? 'disabled' : 'enabled',
+            });
+            continue;
+          }
+          if (entry.action !== 'rename' && entry.action !== 'alias') continue;
+
+          // A rename sets the new name; an alias appends to the same row. An alias with no rename is
+          // still recorded — the row's `newName` is the command's own key, which means "not renamed".
+          const newName = entry.action === 'rename' ? entry.newName : undefined;
           const updated = await trx('guild_command_renames')
             .where({ guildId, applicationId, commandKey: entry.commandKey })
             .whereNull('deletedAt')
-            .update({ newName: entry.newName, updatedAt: trx.fn.now() });
+            .update({
+              ...(newName !== undefined ? { newName } : {}),
+              // Appended, not replaced: a command may carry several aliases, and a second push must
+              // not erase the first one's.
+              ...(entry.alias !== undefined
+                ? { aliases: trx.raw('aliases || ?::jsonb', [JSON.stringify([entry.alias])]) }
+                : {}),
+              updatedAt: trx.fn.now(),
+            });
           if (updated === 0) {
             await trx('guild_command_renames').insert({
               guildId,
               applicationId,
               commandKey: entry.commandKey,
-              newName: entry.newName,
+              newName: newName ?? entry.commandKey,
+              aliases: JSON.stringify(entry.alias !== undefined ? [entry.alias] : []),
             });
           }
         }
