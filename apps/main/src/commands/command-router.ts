@@ -215,6 +215,12 @@ export interface CommandRouterOptions {
      * report the main bot's modules.
      */
     actingProfileId: string,
+    /**
+     * UR-20261029-116 — the caller's standing, so a page can offer an admin-only control without the
+     * router assembling that page's blocks. Optional: a caller that omits it renders the page without
+     * admin controls rather than failing to compile.
+     */
+    caller?: { readonly isAdmin?: boolean } | undefined,
   ) => Promise<Readonly<Record<string, unknown>>>;
   /**
    * §6.7 — performs the side effects a handler declares. Keyed by effect kind; an undeclared kind
