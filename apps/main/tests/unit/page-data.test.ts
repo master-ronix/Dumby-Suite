@@ -484,6 +484,31 @@ describe('page-data provider', () => {
     expect(typeof (seen.ctx as Dict)['emojiParts']).toBe('function');
   });
 
+  // UR-20261029-113 — a page that composes its own blocks hands them back beside its data, and the
+  // dispatch passes them through. The framework renders what it is given.
+  test('a page that brings its own blocks is passed through with its data', async () => {
+    const provider = createPageDataProvider(
+      makeDeps({
+        pages: {
+          get: (id: string) =>
+            id === 'dashboard'
+              ? {
+                  id,
+                  moduleId: 'dashboard',
+                  page: pageReturning({
+                    data: { lines: ['from the module'] },
+                    blocks: [{ kind: 'text', content: 'composed by the module' }],
+                  }),
+                }
+              : undefined,
+        },
+      }),
+    );
+    const data = await provider('dashboard', 'guild-1', 0, undefined, 'app-1', 'main');
+    expect(data['lines']).toEqual(['from the module']);
+    expect(data['blocks']).toEqual([{ kind: 'text', content: 'composed by the module' }]);
+  });
+
   test('the page receives a read-model answering from the registry', async () => {
     let modules: unknown;
     const provider = createPageDataProvider(
