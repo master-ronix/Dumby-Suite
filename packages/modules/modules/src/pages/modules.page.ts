@@ -50,7 +50,10 @@ function titleCaseId(id: string): string {
 export const modulesPage = definePage({
   id: 'modules',
 
-  async render(context: ModulePageContext, read: ModulePageReadModel): Promise<ModulesPageData> {
+  async render(
+    context: ModulePageContext,
+    read: ModulePageReadModel,
+  ): Promise<{ data: ModulesPageData; blocks: readonly Record<string, unknown>[] }> {
     const all = await read.list();
 
     // Resolved before filtering: the predicate needs ownership and the guild's own state, and a
@@ -91,7 +94,7 @@ export const modulesPage = definePage({
       })),
     );
 
-    const data = {
+    const data: ModulesPageData = {
       title: 'Installed Modules',
       lines: modules.map(
         (module) => `${module.icon} ${module.name} (${module.tier}) — ${module.description}`,
