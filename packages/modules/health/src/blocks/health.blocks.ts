@@ -14,11 +14,11 @@
  * the primary.
  */
 const STATUS_MARK: Readonly<Record<string, string>> = {
-  ok: STATUS_ONLINE_ICON_NAME,
-  operational: STATUS_ONLINE_ICON_NAME,
-  warn: STATUS_DEGRADED_ICON_NAME,
-  degraded: STATUS_DEGRADED_ICON_NAME,
-  down: STATUS_OFFLINE_ICON_NAME,
+  ok: 'dumby_status_online',
+  operational: 'dumby_status_online',
+  warn: 'dumby_status_degraded',
+  degraded: 'dumby_status_degraded',
+  down: 'dumby_status_offline',
 };
 
 const STATUS_GLYPH: Readonly<Record<string, string>> = {
@@ -37,25 +37,25 @@ const STATUS_GLYPH: Readonly<Record<string, string>> = {
  */
 const METRIC_MARK: Readonly<Record<string, string>> = {
   // One mark per FIELD, not one per shape: two rows that carry the same mark read as the same row.
-  'Gateway Ping': METRIC_PING_ICON_NAME,
-  'Gateway Status': METRIC_STATUS_ICON_NAME,
-  'Shard Count': METRIC_SHARD_ICON_NAME,
-  Uptime: METRIC_UPTIME_ICON_NAME,
-  'Host Uptime': METRIC_UPTIME_ICON_NAME,
-  'Node.js Version': METRIC_NODE_ICON_NAME,
-  'Memory Usage': METRIC_MEMORY_ICON_NAME,
-  'Heap Used': METRIC_HEAP_USED_ICON_NAME,
-  'Heap Total': METRIC_HEAP_TOTAL_ICON_NAME,
-  'Total Guilds': METRIC_GUILD_ICON_NAME,
-  'Total Users': METRIC_USERS_ICON_NAME,
-  'Total Loaded': METRIC_LOADED_ICON_NAME,
-  Source: METRIC_SOURCE_ICON_NAME,
-  'PostgreSQL Status': METRIC_DATABASE_ICON_NAME,
-  'Redis Status': METRIC_CACHE_ICON_NAME,
-  'Core-tier': TIER_CORE_ICON_NAME,
-  'Admin-tier': TIER_ADMIN_ICON_NAME,
-  'Standard-tier': TIER_STANDARD_ICON_NAME,
-  'Marketplace-tier': TIER_MARKETPLACE_ICON_NAME,
+  'Gateway Ping': 'dumby_metric_ping',
+  'Gateway Status': 'dumby_metric_status',
+  'Shard Count': 'dumby_metric_shard',
+  Uptime: 'dumby_metric_uptime',
+  'Host Uptime': 'dumby_metric_uptime',
+  'Node.js Version': 'dumby_metric_node',
+  'Memory Usage': 'dumby_metric_memory',
+  'Heap Used': 'dumby_metric_heap_used',
+  'Heap Total': 'dumby_metric_heap_total',
+  'Total Guilds': 'dumby_metric_guild',
+  'Total Users': 'dumby_metric_users',
+  'Total Loaded': 'dumby_metric_loaded',
+  Source: 'dumby_metric_source',
+  'PostgreSQL Status': 'dumby_metric_database',
+  'Redis Status': 'dumby_metric_cache',
+  'Core-tier': 'dumby_tier_core',
+  'Admin-tier': 'dumby_tier_admin',
+  'Standard-tier': 'dumby_tier_standard',
+  'Marketplace-tier': 'dumby_tier_marketplace',
 };
 
 /** The mark for one row. Empty when the label has none — a row without a mark is not an error. */
@@ -67,9 +67,7 @@ function metricMark(
   // The Profile Runtime group's uptime is the PROFILE's; the Host Process group's is the host's. The
   // label is the same word, so the GROUP is what tells them apart.
   const name =
-    group === 'Profile Runtime' && label === 'Uptime'
-      ? METRIC_PROFILE_ICON_NAME
-      : METRIC_MARK[label];
+    group === 'Profile Runtime' && label === 'Uptime' ? 'dumby_metric_profile' : METRIC_MARK[label];
   if (name === undefined) return '';
   const ref = emoji(name);
   return ref !== undefined ? `${ref} ` : '';
