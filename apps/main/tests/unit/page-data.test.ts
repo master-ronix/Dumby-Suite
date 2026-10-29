@@ -472,13 +472,16 @@ describe('page-data provider', () => {
     );
     const data = await provider('dashboard', 'guild-1', 2, undefined, 'app-1', 'persona-7');
     expect(data['lines']).toEqual(['from the module']);
-    // The context carries the request's own guild, application, profile and page — nothing else.
-    expect(seen.ctx).toEqual({
+    // The context carries the request's own guild, application, profile and page — plus the two
+    // emoji resolvers (UR-20261029-113), which are functions and are asserted as such.
+    expect(seen.ctx).toMatchObject({
       guildId: 'guild-1',
       applicationId: 'app-1',
       profileId: 'persona-7',
       page: 2,
     });
+    expect(typeof (seen.ctx as Dict)['emoji']).toBe('function');
+    expect(typeof (seen.ctx as Dict)['emojiParts']).toBe('function');
   });
 
   test('the page receives a read-model answering from the registry', async () => {
