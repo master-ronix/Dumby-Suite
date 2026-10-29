@@ -56,23 +56,40 @@ function readModel(states: Record<string, State> = {}): ModulePageReadModel {
   };
 }
 
-const ctx = (page = 0) => ({ guildId: 'g1', applicationId: 'app-1', profileId: 'main', page });
+const ctx = (page = 0) => ({
+  guildId: 'g1',
+  applicationId: 'app-1',
+  profileId: 'main',
+  page,
+  // UR-20261029-113 — the page names its emoji and the framework resolves them.
+  emoji: (): string | undefined => undefined,
+  emojiParts: (): { id: string; name: string } | undefined => undefined,
+});
+
+/** The page returns { data, blocks }; these cases assert the DATA it composes. */
+async function renderData(
+  context: ReturnType<typeof ctx>,
+  read: ModulePageReadModel,
+): Promise<Record<string, unknown>> {
+  const result = (await modulesPage.render(context, read)) as { data: Record<string, unknown> };
+  return result.data;
+}
 
 describe('modules module page — the composition that moved out of page-data.ts', () => {
   test('core is always listed, admin never is', async () => {
-    const data = await modulesPage.render(ctx(), readModel());
+    const data = await renderData(ctx(), readModel());
     // shop is marketplace: never enabled by default, so it is not listed until the guild enables it.
     expect(data.modules.map((module) => module.id)).toEqual(['health', 'dashboard', 'hello-world']);
     expect(data.total).toBe(3);
   });
 
   test('a module this profile does not hold is absent', async () => {
-    const data = await modulesPage.render(ctx(), readModel({ 'hello-world': { mine: false } }));
+    const data = await renderData(ctx(), readModel({ 'hello-world': { mine: false } }));
     expect(data.modules.map((module) => module.id)).not.toContain('hello-world');
   });
 
   test('a standard module the guild disabled is absent, a core one is not', async () => {
-    const data = await modulesPage.render(
+    const data = await renderData(
       ctx(),
       readModel({ 'hello-world': { guildRow: false }, health: { guildRow: false } }),
     );
@@ -80,14 +97,14 @@ describe('modules module page — the composition that moved out of page-data.ts
   });
 
   test('the display name is the declared one, else the title-cased id', async () => {
-    const data = await modulesPage.render(ctx(), readModel());
+    const data = await renderData(ctx(), readModel());
     const names = data.modules.map((module) => module.name);
     expect(names).toContain('Hello World');
     expect(names).toContain('Health');
   });
 
   test('the line carries the icon, the name, the tier and the description', async () => {
-    const data = await modulesPage.render(ctx(), readModel());
+    const data = await renderData(ctx(), readModel());
     expect(data.lines[0]).toBe('FALLBACK Health (core) — h');
   });
 
@@ -99,7 +116,7 @@ describe('modules module page — the composition that moved out of page-data.ts
       commands: [],
     }));
     const read = { ...readModel(), list: async () => many };
-    const first = await modulesPage.render(ctx(0), read);
+    const first = await renderData(ctx(0), read);
     expect(first.total).toBe(8);
     expect(first.pageTotal).toBe(2);
     expect(first.modules).toHaveLength(6);
@@ -107,13 +124,13 @@ describe('modules module page — the composition that moved out of page-data.ts
     expect(first.navigation).toEqual([
       { id: 'page-2', name: 'Slide I', description: 'Modules 7–8', page: 1 },
     ]);
-    const second = await modulesPage.render(ctx(1), read);
+    const second = await renderData(ctx(1), read);
     expect(second.modules.map((module) => module.id)).toEqual(['mod-7', 'mod-8']);
     expect(second.page).toBe(1);
   });
 
   test('a page past the end clamps to the last slide', async () => {
-    const data = await modulesPage.render(ctx(99), readModel());
+    const data = await renderData(ctx(99), readModel());
     expect(data.page).toBe(0);
     expect(data.pageTotal).toBe(1);
     expect(data.navigation).toEqual([]);
