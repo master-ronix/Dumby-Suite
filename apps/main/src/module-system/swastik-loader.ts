@@ -401,6 +401,10 @@ export async function loadModulesFromTierVolumes(
         if (pkg.jobs) loadedModule.jobs = pkg.jobs;
         if (pkg.events) loadedModule.events = pkg.events;
         if (pkg.tasks) loadedModule.tasks = pkg.tasks;
+        // UR-20261027-106 — the pages the module OWNS. Without this line the export is dropped here,
+        // the page registry stays empty, and a page the host no longer serves renders as an empty
+        // embed: the module declares its page, ships it, and nothing ever asks for it.
+        if (pkg.pages) loadedModule.pages = pkg.pages;
         if (pkg.onLoad) loadedModule.onLoad = pkg.onLoad;
         if (pkg.onReady) loadedModule.onReady = pkg.onReady;
         if (pkg.onUnload) loadedModule.onUnload = pkg.onUnload;

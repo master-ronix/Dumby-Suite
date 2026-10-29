@@ -144,6 +144,30 @@ const fatal = failures.filter((failure) => {
 failures.length = 0;
 failures.push(...fatal);
 
+// 7. THE LOADER MUST CARRY EVERY SURFACE A MODULE EXPORTS.
+//
+// This is the check that was missing. A module can declare and export `pages`, ship it in its bundle,
+// and have the volume loader drop it on the floor — the page registry then stays empty and the page the
+// host no longer serves renders as an empty embed. That shipped. The loader copies fields one by one,
+// so a new surface is one forgotten line away from being invisible.
+const SURFACES = ['commands', 'jobs', 'events', 'tasks', 'pages'];
+const loaderSource = readFileSync(
+  join(process.cwd(), 'apps', 'main', 'src', 'module-system', 'swastik-loader.ts'),
+  'utf8',
+);
+for (const surface of SURFACES) {
+  const exportedBy = modules.filter((slug) =>
+    exportsName(read(join(MODULES_ROOT, slug, 'src', 'index.ts')), surface),
+  );
+  if (exportedBy.length === 0) continue;
+  const carried = new RegExp(`pkg\\.${surface}\\b`).test(loaderSource);
+  if (!carried) {
+    failures.push(
+      `loader: ${exportedBy.length} module(s) export \`${surface}\` but swastik-loader.ts never copies pkg.${surface} — the surface is dropped at load time`,
+    );
+  }
+}
+
 for (const warning of warnings) console.warn(`warn: ${warning}`);
 if (failures.length > 0) {
   for (const failure of failures) console.error(`FAIL: ${failure}`);
