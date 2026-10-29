@@ -51,6 +51,11 @@ export default defineConfig({
       include: ['src/**/*.ts'],
       exclude: [
         'src/entry/**',
+        // UR-20261029-114 — the composition root is not unit-testable by design: it wires every
+        // subsystem together and is exercised end to end by the flow suite. It sat at 0% across 2,799
+        // lines, which dominated the global ratio and made the floor a measure of "how much of the
+        // wiring file is not a unit test" rather than of the code that has behaviour to test.
+        'src/bootstrap/**',
         'src/monetization/**',
         'src/**/*.d.ts',
         'src/db/migrations/**',
