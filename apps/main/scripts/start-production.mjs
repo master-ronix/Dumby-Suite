@@ -221,7 +221,9 @@ if (volumesPopulated() && !modulesStale()) {
     try {
       writeFileSync(SEED_STAMP, `${seeded}\n`);
     } catch (err) {
-      console.warn(`start-production: could not write the seed fingerprint (continuing): ${String(err)}`);
+      console.warn(
+        `start-production: could not write the seed fingerprint (continuing): ${String(err)}`,
+      );
     }
   }
   console.log(`start-production: seed phase finished in ${Date.now() - seedStartedAt}ms`);
