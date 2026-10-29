@@ -1,3 +1,4 @@
+import type { ModuleRegistry } from '../module-system/registry.js';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import Fastify, { type FastifyInstance } from 'fastify';
