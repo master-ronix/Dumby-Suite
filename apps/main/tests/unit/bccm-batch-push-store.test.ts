@@ -38,10 +38,17 @@ function fakeKnex(opts: { rows?: unknown[]; updateResult?: number } = {}): {
       Promise.resolve(opts.rows ?? []).then(resolve);
     return b;
   };
+  // knex.raw is real API and the store uses it to APPEND to the aliases jsonb rather than replace it,
+  // so the double answers it the way knex does: a fragment, recorded so a test can inspect it.
+  const raw = (sql: string, bindings?: unknown[]): Record<string, unknown> => {
+    calls.push({ table: '__raw', method: 'raw', args: [sql, bindings] });
+    return { sql, bindings };
+  };
   const knex = ((table: string) => {
     calls.push({ table, method: '__call', args: [] });
     return make(table);
   }) as unknown as Record<string, unknown>;
+  knex['raw'] = raw;
   knex['transaction'] = async (fn: (trx: unknown) => Promise<void>) => {
     calls.push({ table: '__tx', method: 'transaction', args: [] });
     const trx = ((table: string) => {
@@ -49,6 +56,7 @@ function fakeKnex(opts: { rows?: unknown[]; updateResult?: number } = {}): {
       return make(table);
     }) as unknown as Record<string, unknown>;
     trx['fn'] = { now: () => new Date() };
+    trx['raw'] = raw;
     await fn(trx);
   };
   knex['fn'] = { now: () => new Date() };
