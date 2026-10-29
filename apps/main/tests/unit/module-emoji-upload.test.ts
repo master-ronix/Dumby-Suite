@@ -31,9 +31,9 @@ describe('the emoji upload and the render must use the SAME application key', ()
     resetModuleEmojis();
     await ensureDefaultModuleEmoji(fakeClient() as never, makeLogger(), 'app-9');
 
-    expect(customEmojiRef('dumby_status_online', 'app-9')).toContain('555');
+    expect(customEmojiRef('dumby_info', 'app-9')).toContain('555');
     // And another application must NOT borrow them.
-    expect(customEmojiRef('dumby_status_online', 'some-other-app')).toBeUndefined();
+    expect(customEmojiRef('dumby_info', 'some-other-app')).toBeUndefined();
     resetModuleEmojis();
   });
 });
@@ -62,8 +62,10 @@ describe('a module supplies its OWN logo (UR-20261012-066)', () => {
     ]);
 
     expect(customEmojiRef('dumby_browse', 'app-9')).toContain('555');
-    // The framework chrome still registers from the core's own list.
-    expect(customEmojiRef('dumby_status_online', 'app-9')).toContain('555');
+    // The framework chrome still registers from the core's own list — and a MODULE indicator is
+    // no longer in it: `dumby_status_online` moved to the persona module (UR-20261029-112).
+    expect(customEmojiRef('dumby_info', 'app-9')).toContain('555');
+    expect(customEmojiRef('dumby_status_online', 'app-9')).toBeUndefined();
     // And another application still borrows nothing.
     expect(customEmojiRef('dumby_browse', 'other-app')).toBeUndefined();
     resetModuleEmojis();
