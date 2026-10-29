@@ -571,8 +571,8 @@ export class CommandRouter {
         // UR-20261029-113 — a module that composed its OWN blocks is rendered from them: the
         // framework adds its chrome and nothing else. The shape dispatch below is the fallback for a
         // page that returns data alone.
-        ...(Array.isArray(declaredPageData['blocks'])
-          ? { blocks: declaredPageData['blocks'] as readonly RenderBlock[] }
+        ...(Array.isArray(declaredPageData?.['blocks'])
+          ? { blocks: declaredPageData?.['blocks'] as readonly RenderBlock[] }
           : this.pageShape(declaredPageData) === 'browse'
             ? {
                 blocks: this.browseBlocks(
