@@ -150,7 +150,7 @@ export const healthPage = definePage({
     return {
       data,
       blocks: healthBlocks(
-        data as Readonly<Record<string, unknown>>,
+        data as unknown as Readonly<Record<string, unknown>>,
         context.profileId,
         context.emoji,
         context.emojiParts,
