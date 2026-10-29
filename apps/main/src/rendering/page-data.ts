@@ -136,7 +136,7 @@ export function createPageDataProvider(deps: PageDataDeps): (
   actingProfileId: string,
   // UR-20261029-116 — the caller's standing, resolved by the router from the interaction. The
   // provider builds the page context and a module may not ask Discord for its own permissions.
-  caller: { readonly isAdmin?: boolean } = {},
+  caller: { readonly isAdmin?: boolean },
 ) => Promise<PageData> {
   const {
     getClient,
@@ -340,6 +340,9 @@ export function createPageDataProvider(deps: PageDataDeps): (
     // it, so a persona's FIRST page reported the main bot's modules, while the same page after an
     // effect (which did pass it) reported correctly. Two renders of one page disagreed.
     actingProfileId: string,
+    // UR-20261029-116 — the caller's standing. Defaulted HERE, in the implementation, so an existing
+    // call site that omits it renders a page without admin controls rather than failing to compile.
+    caller: { readonly isAdmin?: boolean } = {},
   ): Promise<PageData> => {
     // UR-20261027-106 — a module that owns its page answers first. The read-model is built from the
     // closures below, scoped to this request's guild and profile, so a module asks for a fact and
