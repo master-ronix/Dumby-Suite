@@ -46,7 +46,25 @@ function readModel(over: Partial<ModulePageReadModel> = {}): ModulePageReadModel
   };
 }
 
-const ctx = { guildId: 'g1', applicationId: 'app-1', profileId: 'main', page: 0 };
+const ctx = {
+  guildId: 'g1',
+  applicationId: 'app-1',
+  profileId: 'main',
+  page: 0,
+  // UR-20261029-113 — the page names its emoji and the framework resolves them; a fixture that
+  // resolves nothing exercises the unicode fallbacks the page carries.
+  emoji: (): string | undefined => undefined,
+  emojiParts: (): { id: string; name: string } | undefined => undefined,
+};
+
+/** The page returns { data, blocks }; these cases assert the DATA it composes. */
+async function renderData(
+  context: typeof ctx,
+  read: ModulePageReadModel,
+): Promise<Record<string, unknown>> {
+  const result = (await healthPage.render(context, read)) as { data: Record<string, unknown> };
+  return result.data;
+}
 
 const group = (data: { groups: { name: string }[] }, name: string) =>
   data.groups.find((entry) => entry.name === name);
