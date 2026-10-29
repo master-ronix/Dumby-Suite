@@ -29,7 +29,6 @@ import {
   TIER_MARKETPLACE_ICON_NAME,
   TIER_STANDARD_ICON_NAME,
 } from '../rendering/module-icons.js';
-import { healthBlocks } from '../rendering/health-blocks.js';
 import { dialNavSelect, type DialEntry } from '../rendering/dashboard-nav.js';
 import { modulesBlocks } from '../rendering/modules-blocks.js';
 import { personaBlocks } from '../rendering/persona-blocks.js';
@@ -569,19 +568,18 @@ export class CommandRouter {
         // install dropdown, the /modules listing, the persona control-plane board); the dashboard's
         // nav is Home/Next/Prev. Each block set attaches only when the page data carries its shape,
         // so a command that returns a plain render is left untouched.
-        ...(this.pageShape(declaredPageData) === 'browse'
-          ? {
-              blocks: this.browseBlocks(
-                declaredPageData,
-                interaction.user.id,
-                this.emojiScope(interaction),
-              ),
-            }
-          : this.pageShape(declaredPageData) === 'health'
+        // UR-20261029-113 — a module that composed its OWN blocks is rendered from them: the
+        // framework adds its chrome and nothing else. The shape dispatch below is the fallback for a
+        // page that returns data alone.
+        ...(Array.isArray(declaredPageData['blocks'])
+          ? { blocks: declaredPageData['blocks'] as readonly RenderBlock[] }
+          : this.pageShape(declaredPageData) === 'browse'
             ? {
-                blocks: healthBlocks(declaredPageData, interaction.user.id, {
-                  applicationId: this.emojiScope(interaction),
-                }),
+                blocks: this.browseBlocks(
+                  declaredPageData,
+                  interaction.user.id,
+                  this.emojiScope(interaction),
+                ),
               }
             : this.pageShape(declaredPageData) === 'modules'
               ? {

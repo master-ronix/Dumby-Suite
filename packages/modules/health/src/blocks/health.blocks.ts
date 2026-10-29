@@ -4,34 +4,6 @@
  * line per subsystem. Every data point the page gathers stays visible; the overall state leads, and
  * a degraded subsystem is marked in place.
  */
-import type { RenderBlock } from './core-renderer.js';
-import {
-  customEmojiParts,
-  customEmojiRef,
-  DEFAULT_EMOJI_SCOPE,
-  METRIC_CACHE_ICON_NAME,
-  METRIC_DATABASE_ICON_NAME,
-  METRIC_GUILD_ICON_NAME,
-  METRIC_HEAP_TOTAL_ICON_NAME,
-  METRIC_HEAP_USED_ICON_NAME,
-  METRIC_LOADED_ICON_NAME,
-  METRIC_MEMORY_ICON_NAME,
-  METRIC_NODE_ICON_NAME,
-  METRIC_PING_ICON_NAME,
-  METRIC_SOURCE_ICON_NAME,
-  METRIC_USERS_ICON_NAME,
-  METRIC_PROFILE_ICON_NAME,
-  METRIC_SHARD_ICON_NAME,
-  METRIC_STATUS_ICON_NAME,
-  METRIC_UPTIME_ICON_NAME,
-  STATUS_DEGRADED_ICON_NAME,
-  STATUS_OFFLINE_ICON_NAME,
-  STATUS_ONLINE_ICON_NAME,
-  TIER_ADMIN_ICON_NAME,
-  TIER_CORE_ICON_NAME,
-  TIER_MARKETPLACE_ICON_NAME,
-  TIER_STANDARD_ICON_NAME,
-} from './module-icons.js';
 
 /**
  * The registered status MARK for a subsystem's state.
@@ -87,7 +59,11 @@ const METRIC_MARK: Readonly<Record<string, string>> = {
 };
 
 /** The mark for one row. Empty when the label has none — a row without a mark is not an error. */
-function metricMark(label: string, group: string, scope: string): string {
+function metricMark(
+  label: string,
+  group: string,
+  emoji: (name: string) => string | undefined,
+): string {
   // The Profile Runtime group's uptime is the PROFILE's; the Host Process group's is the host's. The
   // label is the same word, so the GROUP is what tells them apart.
   const name =
@@ -95,15 +71,15 @@ function metricMark(label: string, group: string, scope: string): string {
       ? METRIC_PROFILE_ICON_NAME
       : METRIC_MARK[label];
   if (name === undefined) return '';
-  const ref = customEmojiRef(name, scope);
+  const ref = emoji(name);
   return ref !== undefined ? `${ref} ` : '';
 }
 
-function dot(status: unknown, scope: string): string {
+function dot(status: unknown, emoji: (name: string) => string | undefined): string {
   if (typeof status !== 'string') return '⚪';
   const name = STATUS_MARK[status];
   if (name === undefined) return '⚪';
-  return customEmojiRef(name, scope) ?? STATUS_GLYPH[status] ?? '⚪';
+  return emoji(name) ?? STATUS_GLYPH[status] ?? '⚪';
 }
 
 interface GroupShape {
@@ -139,20 +115,19 @@ function asGroups(value: unknown): readonly GroupShape[] {
 export function healthBlocks(
   data: Readonly<Record<string, unknown>> | undefined,
   invokerId: string,
-  options: { readonly applicationId?: string } = {},
-): readonly RenderBlock[] {
-  // UR-20261012-057 — the emoji scope for the rendering application.
-  const emojiScope = options.applicationId ?? DEFAULT_EMOJI_SCOPE;
+  emoji: (name: string) => string | undefined,
+  emojiParts: (name: string) => { readonly id: string; readonly name: string } | undefined,
+): readonly Record<string, unknown>[] {
   const status = typeof data?.['status'] === 'string' ? (data['status'] as string) : 'operational';
   const statusLabel =
     typeof data?.['statusLabel'] === 'string' ? (data['statusLabel'] as string) : 'Operational';
   const summary = typeof data?.['summary'] === 'string' ? (data['summary'] as string) : '';
   const groups = asGroups(data?.['groups']);
 
-  const blocks: RenderBlock[] = [];
+  const blocks: Record<string, unknown>[] = [];
   // The status headline, with the Refresh control in-line — a Section renders its single accessory
   // on the right of the text line.
-  const headline = `${dot(status, emojiScope)} **${statusLabel}**`;
+  const headline = `${dot(status, emoji)} **${statusLabel}**`;
   // The headline IS the outcome. The summary is the same fact in the same words — the page-data
   // sets it from the status label so M and C have an outcome line — so rendering it here as well
   // printed "Operational" twice. A page that says everything twice reads as a mess.
@@ -162,7 +137,8 @@ export function healthBlocks(
     accessory: {
       customId: `dumby:act:${invokerId}:refresh:health`,
       label: 'Refresh',
-      emoji: customEmojiParts('dumby_refresh', emojiScope) ?? { name: '🔄' },
+      // The Refresh mark is the framework's own control, so its emoji is resolved the same way.
+      emoji: emojiParts('dumby_refresh') ?? { name: '🔄' },
       style: 2,
     },
   });
@@ -171,11 +147,11 @@ export function healthBlocks(
     // One field per LINE. A ` · ` run of five metrics wraps mid-value and reads as a paragraph; a
     // column of them reads as a board.
     const metrics = group.rows
-      .map(([label, value]) => `${metricMark(label, group.name, emojiScope)}${label}: ${value}`)
+      .map(([label, value]) => `${metricMark(label, group.name, emoji)}${label}: ${value}`)
       .join('\n');
     blocks.push({
       kind: 'text',
-      content: `${dot(group.status, emojiScope)} **${group.name}**${metrics === '' ? '' : `\n-# ${metrics}`}`,
+      content: `${dot(group.status, emoji)} **${group.name}**${metrics === '' ? '' : `\n-# ${metrics}`}`,
     });
   }
   return blocks;

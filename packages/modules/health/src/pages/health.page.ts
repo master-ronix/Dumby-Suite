@@ -1,4 +1,5 @@
 import { definePage, type ModulePageContext, type ModulePageReadModel } from '@workspace/swastik';
+import { healthBlocks } from '../blocks/health.blocks.js';
 
 /**
  * UR-20261027-106 — the health module owns its page.
@@ -133,12 +134,24 @@ export const healthPage = definePage({
     const statusLabel =
       status === 'operational' ? 'Operational' : status === 'degraded' ? 'Degraded' : 'Down';
 
-    return {
+    const data = {
       title: 'System Health',
       status,
       statusLabel,
       summary: statusLabel,
       groups,
+    };
+
+    // UR-20261029-113 — the module composes its OWN content blocks. The framework renders them and
+    // contributes only its chrome, which is what keeps the zone grammar enforceable.
+    return {
+      data,
+      blocks: healthBlocks(
+        data as Readonly<Record<string, unknown>>,
+        context.profileId,
+        context.emoji,
+        context.emojiParts,
+      ),
     };
   },
 });

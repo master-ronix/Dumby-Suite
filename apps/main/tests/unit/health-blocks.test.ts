@@ -1,6 +1,17 @@
 import { describe, expect, test } from 'vitest';
-import { healthBlocks } from '../../src/rendering/health-blocks.js';
-import { registerModuleEmoji } from '../../src/rendering/module-icons.js';
+import { healthBlocks } from '@module-health-blocks';
+import {
+  customEmojiParts,
+  customEmojiRef,
+  registerModuleEmoji,
+} from '../../src/rendering/module-icons.js';
+
+// UR-20261029-113 — the builder no longer reaches into the framework for emoji ids: the page hands it
+// the resolvers. These are the same two functions the page receives at dispatch.
+const SCOPE = 'app-9';
+const emoji = (name: string): string | undefined => customEmojiRef(name, SCOPE);
+const emojiParts = (name: string): { id: string; name: string } | undefined =>
+  customEmojiParts(name, SCOPE);
 
 type Any = Record<string, unknown>;
 
@@ -23,7 +34,7 @@ const data = {
 
 describe('healthBlocks', () => {
   test('leads with a status headline carrying the Refresh accessory', () => {
-    const blocks = healthBlocks(data, 'u1');
+    const blocks = healthBlocks(data, 'u1', emoji, emojiParts);
     const head = blocks[0] as Any;
     expect(head['kind']).toBe('section');
     expect(String(head['content'])).toContain('🟢');
@@ -35,7 +46,7 @@ describe('healthBlocks', () => {
   });
 
   test('renders one line per subsystem with a status dot and its metrics', () => {
-    const blocks = healthBlocks(data, 'u1');
+    const blocks = healthBlocks(data, 'u1', emoji, emojiParts);
     const texts = blocks.filter((block) => block.kind === 'text') as unknown as Any[];
     expect(texts.length).toBe(2);
     expect(String(texts[0]?.['content'])).toContain('🟢');
@@ -56,6 +67,8 @@ describe('healthBlocks', () => {
           groups: [{ name: 'Cache', status, rows: [] }],
         },
         'u1',
+        emoji,
+        emojiParts,
       );
       const line = String((blocks[1] as Any)['content']);
       expect(line).toContain('Cache');
@@ -71,6 +84,8 @@ describe('healthBlocks', () => {
         groups: [{ name: 'Mystery', rows: [] }],
       },
       'u1',
+      emoji,
+      emojiParts,
     );
     // The headline and the group line both render; an unrecognised state is a white circle.
     expect(String((blocks[0] as Any)['content'])).toContain('Unknown');
@@ -78,7 +93,7 @@ describe('healthBlocks', () => {
   });
 
   test('tolerates missing data (defaults to operational with no groups)', () => {
-    const blocks = healthBlocks(undefined, 'u2');
+    const blocks = healthBlocks(undefined, 'u2', emoji, emojiParts);
     expect(blocks.length).toBe(1);
     const head = blocks[0] as Any;
     expect(head['kind']).toBe('section');
@@ -90,7 +105,12 @@ describe('healthBlocks tolerates malformed group data', () => {
   // The page data crosses a module boundary, so the shape is not guaranteed. Every guard here is a
   // branch, and an unguarded one would throw inside a render.
   test('a non-array groups value yields no group lines', () => {
-    const blocks = healthBlocks({ status: 'operational', groups: 'nonsense' }, 'u1');
+    const blocks = healthBlocks(
+      { status: 'operational', groups: 'nonsense' },
+      'u1',
+      emoji,
+      emojiParts,
+    );
     expect(blocks).toHaveLength(1);
   });
 
@@ -107,6 +127,8 @@ describe('healthBlocks tolerates malformed group data', () => {
         ],
       },
       'u1',
+      emoji,
+      emojiParts,
     );
     // Only the well-formed group renders.
     const lines = blocks.slice(1).map((b) => String((b as Any)['content']));
@@ -118,6 +140,8 @@ describe('healthBlocks tolerates malformed group data', () => {
     const blocks = healthBlocks(
       { status: 'ok', groups: [{ name: 'G', rows: [['only-one'], ['a', 'b']] }] },
       'u1',
+      emoji,
+      emojiParts,
     );
     const line = String((blocks[1] as Any)['content']);
     expect(line).toContain('a: b');
@@ -149,6 +173,8 @@ describe('every health column carries its own mark', () => {
         ],
       },
       'u1',
+      emoji,
+      emojiParts,
     );
     const lines = blocks.slice(1).map((b) => String((b as Any)['content']));
 
@@ -164,6 +190,8 @@ describe('every health column carries its own mark', () => {
     const blocks = healthBlocks(
       { status: 'ok', groups: [{ name: 'Mystery', rows: [['Something New', '1']] }] },
       'u1',
+      emoji,
+      emojiParts,
     );
     expect(String((blocks[1] as Any)['content'])).toContain('Something New: 1');
   });

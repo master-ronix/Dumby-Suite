@@ -12,7 +12,7 @@ import { makePageReadModel } from './page-read-model.js';
 export { modulePageNavigation, romanNumeral } from '@workspace/swastik';
 import { defaultEnabledForTier } from '../module-system/tier-rules.js';
 import { MAIN_PROFILE_ID, profileLabel } from '../personas/profile-label.js';
-import { commandMarkerIcon, moduleIcon } from './module-icons.js';
+import { commandMarkerIcon, customEmojiParts, customEmojiRef, moduleIcon } from './module-icons.js';
 import {
   resolveCommandStatuses,
   resolveEffectiveCommandNames,
@@ -626,9 +626,20 @@ export function createPageDataProvider(deps: PageDataDeps): (
           profileId: actingProfileId,
           page,
           ...(query !== undefined ? { query } : {}),
+          // UR-20261029-113 — the module names an emoji; the framework resolves the id the rendering
+          // application owns. Without it a module would import the framework's emoji table, which is
+          // how its schema came to live in the host.
+          emoji: (name) => customEmojiRef(name, applicationId),
+          emojiParts: (name) => customEmojiParts(name, applicationId),
         },
         read,
       );
+      // A page that composes its own content blocks carries them beside its data; the framework
+      // renders them and contributes only its chrome.
+      if (typeof rendered === 'object' && rendered !== null && 'blocks' in rendered) {
+        const { data, blocks } = rendered as { data: unknown; blocks?: unknown };
+        return { ...(data as PageData), ...(blocks !== undefined ? { blocks } : {}) };
+      }
       return rendered as PageData;
     }
     switch (moduleId) {

@@ -29,6 +29,21 @@ export interface ModulePageContext {
   readonly page: number;
   /** The member's search text, when the surface has one — /browse's Discover query. */
   readonly query?: string;
+  /**
+   * UR-20261029-113 — resolve an emoji NAME to the reference the rendering application owns, or
+   * `undefined` when that application has not uploaded it (the caller falls back to its own glyph).
+   *
+   * A module composes its own blocks, so it needs the marks it puts in them. Without this it would
+   * have to import the framework's emoji table — which is how a module's schema ended up living in the
+   * host in the first place. The module names the emoji; the framework owns the id.
+   */
+  readonly emoji: (name: string) => string | undefined;
+  /**
+   * The same emoji as PARTS, for a component that needs the object rather than the inline ref — a
+   * button's icon is `{ id, name }`, not `<:name:id>`. Both shapes are honest needs, so both are here
+   * rather than one being reconstructed from the other by string surgery in every module.
+   */
+  readonly emojiParts: (name: string) => { readonly id: string; readonly name: string } | undefined;
 }
 
 /** A module as the read-model reports it — manifest facts only, no database row. */
@@ -231,10 +246,24 @@ export interface ActingProfileFacts {
   readonly loadedModules: readonly string[];
 }
 
+/**
+ * UR-20261029-113 — what a page hands back.
+ *
+ * `data` is the shape the framework's own consumers read; `blocks` is the module's OWN renderer
+ * schema for its content. A module that returns blocks owns its surface end to end: the framework
+ * renders what it is given and contributes only its chrome — the navigation, the footer, the dial —
+ * which is what keeps the zone grammar enforceable. A module that returns data alone is shaped by the
+ * framework as before, so no existing page had to change.
+ */
+export interface ModulePageResult {
+  readonly data: unknown;
+  readonly blocks?: readonly Record<string, unknown>[];
+}
+
 export interface ModulePage {
   /** The page id the command returns. */
   readonly id: string;
-  /** Build the page. The shape is the renderer's page data; the SDK keeps it opaque. */
+  /** Build the page: its data, and optionally its own content blocks. */
   render(context: ModulePageContext, read: ModulePageReadModel): Promise<unknown>;
 }
 
