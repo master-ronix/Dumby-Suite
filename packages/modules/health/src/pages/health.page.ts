@@ -41,7 +41,10 @@ const formatUptime = (seconds: number): string => {
 export const healthPage = definePage({
   id: 'health',
 
-  async render(_context: ModulePageContext, read: ModulePageReadModel): Promise<HealthPageData> {
+  async render(
+    context: ModulePageContext,
+    read: ModulePageReadModel,
+  ): Promise<{ data: HealthPageData; blocks: readonly Record<string, unknown>[] }> {
     const acting = await read.actingProfile();
     const reach = await read.probe();
     const held = new Set(await read.heldModules());
