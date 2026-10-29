@@ -53,7 +53,7 @@ const group = (data: { groups: { name: string }[] }, name: string) =>
 
 describe('health module page — the composition that moved out of page-data.ts', () => {
   test('every subsystem group is present and operational when nothing is down', async () => {
-    const data = await healthPage.render(ctx, readModel());
+    const data = await renderData(ctx, readModel());
     expect(data.groups.map((entry) => entry.name)).toEqual([
       'Discord API',
       'Host Process (shared)',
@@ -68,7 +68,7 @@ describe('health module page — the composition that moved out of page-data.ts'
   });
 
   test('the host metrics are labelled SHARED, and formatted', async () => {
-    const data = await healthPage.render(ctx, readModel());
+    const data = await renderData(ctx, readModel());
     const host = group(data, 'Host Process (shared)');
     expect(host?.rows).toEqual([
       ['Host Uptime', '1d 1h 1m'],
@@ -80,7 +80,7 @@ describe('health module page — the composition that moved out of page-data.ts'
   });
 
   test('a critical subsystem down makes the page Down, not Degraded', async () => {
-    const data = await healthPage.render(
+    const data = await renderData(
       ctx,
       readModel({ probe: async () => ({ database: 'unavailable', redis: 'connected' }) }),
     );
@@ -89,7 +89,7 @@ describe('health module page — the composition that moved out of page-data.ts'
   });
 
   test('a non-critical subsystem down degrades the page', async () => {
-    const data = await healthPage.render(
+    const data = await renderData(
       ctx,
       readModel({ probe: async () => ({ database: 'connected', redis: 'unavailable' }) }),
     );
@@ -98,7 +98,7 @@ describe('health module page — the composition that moved out of page-data.ts'
   });
 
   test('a disconnected gateway is down, and the shard count still reports', async () => {
-    const data = await healthPage.render(
+    const data = await renderData(
       ctx,
       readModel({
         actingProfile: async () => ({
@@ -120,10 +120,7 @@ describe('health module page — the composition that moved out of page-data.ts'
   });
 
   test('the module count is core + admin + what the profile HOLDS', async () => {
-    const data = await healthPage.render(
-      ctx,
-      readModel({ heldModules: async () => ['hello-world'] }),
-    );
+    const data = await renderData(ctx, readModel({ heldModules: async () => ['hello-world'] }));
     const counts = group(data, 'Modules');
     expect(counts?.rows).toEqual([
       ['Total Loaded', '4'],
@@ -135,19 +132,19 @@ describe('health module page — the composition that moved out of page-data.ts'
   });
 
   test('an unheld standard module is not counted', async () => {
-    const data = await healthPage.render(ctx, readModel({ heldModules: async () => [] }));
+    const data = await renderData(ctx, readModel({ heldModules: async () => [] }));
     expect(group(data, 'Modules')?.rows?.[0]).toEqual(['Total Loaded', '3']);
   });
 
   test('the guild group says which source answered, and never prints a zero for an empty cache', async () => {
-    const live = await healthPage.render(ctx, readModel());
+    const live = await renderData(ctx, readModel());
     expect(group(live, 'Guilds & Users')?.rows).toEqual([
       ['Total Guilds', '2'],
       ['Total Users', '7'],
       ['Source', 'Discord API'],
     ]);
 
-    const cached = await healthPage.render(
+    const cached = await renderData(
       ctx,
       readModel({ guilds: async () => ({ total: 2, source: 'cache' }) }),
     );
@@ -159,8 +156,8 @@ describe('health module page — the composition that moved out of page-data.ts'
   });
 
   test('a profile runtime row appears only when her runtime has started', async () => {
-    expect(group(await healthPage.render(ctx, readModel()), 'Profile Runtime')).toBeUndefined();
-    const started = await healthPage.render(
+    expect(group(await renderData(ctx, readModel()), 'Profile Runtime')).toBeUndefined();
+    const started = await renderData(
       ctx,
       readModel({
         actingProfile: async () => ({

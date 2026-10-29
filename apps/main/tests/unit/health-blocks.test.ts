@@ -8,7 +8,8 @@ import {
 
 // UR-20261029-113 — the builder no longer reaches into the framework for emoji ids: the page hands it
 // the resolvers. These are the same two functions the page receives at dispatch.
-const SCOPE = 'app-9';
+// The builder used to default to the DEFAULT scope; these registrations are there.
+const SCOPE = '';
 const emoji = (name: string): string | undefined => customEmojiRef(name, SCOPE);
 const emojiParts = (name: string): { id: string; name: string } | undefined =>
   customEmojiParts(name, SCOPE);
