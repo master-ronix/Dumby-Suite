@@ -39,7 +39,7 @@ Bring an existing codebase — or an existing corpus — up to the current speci
 
 - **State of record:** State C — Enforcement. Work order **INACTIVE** (the migration ledger holds no open code item; request records are read from the live glob).
 - **Current item:** none open in the code work order (M82 closed as superseded by M83; M74's model confirmed — its implementation is a code-track item).
-- **Reconciliation:** re-triaged against the tree at `feature/dev` @ `831cb1a7` (2026-10-27).
+- **Reconciliation:** re-triaged against the tree at `feature/dev` @ `30403972` (2026-10-27).
 - **Blocker:** the application toolchain (`tsc` / `vitest`) and a live Discord run are required to verify any landed slice; resume from the live `migration-ledger.md`, never from this snapshot.
 
 **Relationship to the Master Build Prompt:** this prompt is a scoped *predecessor* to it. When every item in the Migration Work Order (§3) is marked DONE in the ledger, the master prompt's audit protocol and enforcement pass become the governing protocol again — not before.
