@@ -96,7 +96,7 @@ async function renderData(
   context: ReturnType<typeof ctx>,
   read: ModulePageReadModel,
 ): Promise<Record<string, unknown>> {
-  const result = (await renderData(context, read)) as { data: Record<string, unknown> };
+  const result = (await personaPage.render(context, read)) as { data: Record<string, unknown> };
   return result.data;
 }
 
