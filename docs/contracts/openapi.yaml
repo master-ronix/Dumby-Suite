@@ -110,8 +110,6 @@ paths:
     post: { tags:[admin], summary: "read/write maintenance mode" }
   /api/info:
     get: { tags:[info], summary: "build/version info (aggregate only)" }
-  /assets/dashboard-banner.png:
-    get: { tags:[info], summary: "dashboard banner asset" }
   /assets/dumby-banner.png:
     get: { tags:[info], summary: "default banner asset" }
   /auth/authorize:
@@ -120,6 +118,8 @@ paths:
     get: { tags:[auth], summary: "Discord OAuth2 callback" }
   /dashboard:
     get: { tags:[auth], summary: "dashboard entry" }
+  /modules/{slug}/{asset}:
+    get: { tags:[info], summary: "a module's own declared asset, served from the module's directory" }
   /health/liveness:
     get: { tags:[health], summary: "liveness probe" }
   /health/readiness:
