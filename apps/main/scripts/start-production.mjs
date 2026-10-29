@@ -22,7 +22,8 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { join, resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { main as seedDeployer } from './seed-first-party-deployer.mjs';
@@ -127,36 +128,39 @@ let swastik;
  * copy — the volume's dashboard predated `pages`, so /dashboard resolved to nothing and rendered an
  * empty embed.
  *
- * So the seed also runs when a BUILT module is absent from the volumes or carries a different version.
- * The seed stays idempotent: an unchanged bundle is not re-pushed.
+ * The first version of this check compared `manifest.version`, which is `1.0.0` for every module and
+ * does not change when the code does — so it could never fire. A version is a claim about the package;
+ * what has to match is the CONTENT. The fingerprint below is a hash of every built manifest and bundle,
+ * stamped onto the volume after a successful seed, so a rebuild is detected even when nobody remembered
+ * to bump a version.
  */
-function modulesStale() {
+const SEED_STAMP = join(modulesDir, '.seed-fingerprint');
+
+function builtFingerprint() {
   const buildRoot = resolve('dist-modules');
-  if (!existsSync(buildRoot)) return false;
-  for (const slug of readdirSync(buildRoot)) {
-    const builtManifest = join(buildRoot, slug, 'manifest.json');
-    if (!existsSync(builtManifest)) continue;
-    let builtVersion;
-    try {
-      builtVersion = JSON.parse(readFileSync(builtManifest, 'utf8')).version;
-    } catch {
-      continue;
+  if (!existsSync(buildRoot)) return undefined;
+  const hash = createHash('sha256');
+  for (const slug of readdirSync(buildRoot).sort()) {
+    for (const file of ['manifest.json', 'index.js']) {
+      const path = join(buildRoot, slug, file);
+      if (!existsSync(path)) continue;
+      hash.update(slug).update(file).update(readFileSync(path));
     }
-    const deployed = TIER_VOLUMES.map((volume) =>
-      join(modulesDir, volume, slug, 'manifest.json'),
-    ).find((path) => existsSync(path));
-    if (deployed === undefined) {
-      console.log(`start-production: ${slug} is built but not on any volume; seeding`);
-      return true;
-    }
-    try {
-      if (JSON.parse(readFileSync(deployed, 'utf8')).version !== builtVersion) {
-        console.log(`start-production: ${slug} on the volume is stale; seeding`);
-        return true;
-      }
-    } catch {
-      return true;
-    }
+  }
+  return hash.digest('hex');
+}
+
+function modulesStale() {
+  const built = builtFingerprint();
+  if (built === undefined) return false;
+  const stamped = existsSync(SEED_STAMP) ? readFileSync(SEED_STAMP, 'utf8').trim() : '';
+  if (stamped !== built) {
+    console.log(
+      stamped === ''
+        ? 'start-production: the volume carries no seed fingerprint; seeding'
+        : 'start-production: the built modules differ from the seeded ones; seeding',
+    );
+    return true;
   }
   return false;
 }
@@ -208,6 +212,16 @@ if (volumesPopulated() && !modulesStale()) {
       await withTimeout('in-process seed', seedModulesInline(), remainingBudget());
     } catch (err) {
       console.error(`start-production: in-process seed failed (continuing): ${String(err)}`);
+    }
+  }
+  // Record WHAT was seeded, so the next boot can tell whether the bundles still match. Only written
+  // after the seed ran: a stamp on a failed seed would claim a currency the volume does not have.
+  const seeded = builtFingerprint();
+  if (seeded !== undefined) {
+    try {
+      writeFileSync(SEED_STAMP, `${seeded}\n`);
+    } catch (err) {
+      console.warn(`start-production: could not write the seed fingerprint (continuing): ${String(err)}`);
     }
   }
   console.log(`start-production: seed phase finished in ${Date.now() - seedStartedAt}ms`);
