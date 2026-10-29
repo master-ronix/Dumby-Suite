@@ -629,7 +629,7 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
           // otherwise stick. A module page (hello-world) uses the grayscale default below; only the
           // dashboard carries its own banner.
           bannerUrl: `https://${publicDomain}/assets/dumby-banner.png?v=2`,
-          bannersByModule: { dashboard: `https://${publicDomain}/assets/dashboard-banner.png?v=2` },
+          ...(Object.keys(bannersByModule).length > 0 ? { bannersByModule } : {}),
         }
       : {}),
   });
@@ -2545,11 +2545,23 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   );
   const powerEngineCatalog = createPowerEngineCatalog({ guildSuspensions, logger });
 
+  // UR-20261029-111 — a module's banner is the module's own asset, resolved through the registry.
+  // The host hardcoded `bannersByModule: { dashboard: .../dashboard-banner.png }` and served that file
+  // from its own directory; the dashboard now declares `ui.banner` and the host only builds the URL.
+  const bannersByModule: Record<string, string> = {};
+  for (const entry of moduleRegistry.all()) {
+    const banner = entry.manifest.ui?.banner;
+    if (banner === undefined) continue;
+    bannersByModule[entry.manifest.name] =
+      `https://${config.get('PUBLIC_DOMAIN')}/modules/${entry.manifest.name}/${banner}`;
+  }
+
   const apiServer = buildApiServer({
     logger,
     progress,
     metrics,
     config,
+    moduleRegistry,
     // UR-20261012-073 — a completed OAuth leg is the only honest proof a persona's redirect URI is
     // registered; record it so the persona page can report the state instead of guessing.
     oauthDeps: oauth2Client.isConfigured()

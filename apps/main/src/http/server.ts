@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import Fastify, { type FastifyInstance } from 'fastify';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
@@ -33,6 +34,12 @@ export interface BuildServerOptions {
   adminDeps: AdminRoutesDeps;
   /** §19.7 — present only when the Discord OAuth2 dashboard credentials are configured. */
   oauthDeps?: OAuthRoutesDeps | undefined;
+  /**
+   * UR-20261029-111 — the module registry, so a module's DECLARED asset is served from the module's own
+   * directory. The host holds no copy of a module's artwork: it resolves `ui.banner` / `ui.iconAsset`
+   * against the root the loader recorded.
+   */
+  moduleRegistry?: ModuleRegistry | undefined;
   /** Appendix C #18 — the MDIS module-delivery surface. */
   mdisDeps?: MdisRoutesDeps;
   /** Appendix C #18 — the operational tooling surface. */
@@ -60,7 +67,6 @@ const ADMIN_PATH_PREFIX = '/admin/';
  */
 const BANNER_ASSET = new URL('../../assets/dumby-banner.png', import.meta.url);
 /** item 6 — the dashboard's own banner; every other module uses the default above. */
-const DASHBOARD_BANNER_ASSET = new URL('../../assets/dashboard-banner.png', import.meta.url);
 
 export function buildApiServer(options: BuildServerOptions): FastifyInstance {
   const app = Fastify({ logger: false });
@@ -128,15 +134,31 @@ export function buildApiServer(options: BuildServerOptions): FastifyInstance {
     }
   });
 
-  app.get('/assets/dashboard-banner.png', async (_req, reply) => {
+  /**
+   * UR-20261029-111 — a module's own assets, served from the module's own directory.
+   *
+   * `/modules/:slug/:asset` resolves the slug through the registry and reads the file beneath the root
+   * the loader recorded, refusing anything that escapes it. The host serves the bytes; it does not own
+   * them, and it holds no copy of a module's banner or logo.
+   */
+  app.get('/modules/:slug/:asset', async (req, reply) => {
+    const { slug, asset } = req.params as { slug: string; asset: string };
+    const entry = options.moduleRegistry?.all().find((module) => module.manifest.name === slug);
+    const root = entry?.root;
+    if (root === undefined) return reply.code(404).send({ error: 'module asset not found' });
+    const path = resolve(root, asset);
+    // A module may not reach outside its own directory, however it spells the path.
+    if (!path.startsWith(resolve(root))) {
+      return reply.code(400).send({ error: 'module asset outside the module' });
+    }
     try {
-      const bytes = await readFile(DASHBOARD_BANNER_ASSET);
+      const bytes = await readFile(path);
       return reply
         .header('content-type', 'image/png')
         .header('cache-control', 'public, max-age=86400')
         .send(bytes);
     } catch {
-      return reply.code(404).send({ error: 'dashboard banner asset not found' });
+      return reply.code(404).send({ error: 'module asset not found' });
     }
   });
 

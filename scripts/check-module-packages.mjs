@@ -44,7 +44,10 @@ function tsFiles(dir) {
 
 /** `export const x = [` or `export { x }` — either form satisfies the loader. */
 function exportsName(source, name) {
-  return new RegExp(`export\\s+const\\s+${name}\\b`).test(source) || new RegExp(`export\\s*\\{[^}]*\\b${name}\\b`).test(source);
+  return (
+    new RegExp(`export\\s+const\\s+${name}\\b`).test(source) ||
+    new RegExp(`export\\s*\\{[^}]*\\b${name}\\b`).test(source)
+  );
 }
 
 const modules = readdirSync(MODULES_ROOT, { withFileTypes: true })
@@ -78,13 +81,16 @@ for (const slug of modules) {
     failures.push(`${slug}: src/index.ts is missing or empty`);
     continue;
   }
-  if (index.length < 120) failures.push(`${slug}: src/index.ts is a placeholder (${index.length} chars)`);
+  if (index.length < 120)
+    failures.push(`${slug}: src/index.ts is a placeholder (${index.length} chars)`);
 
   // 2
   for (const surface of ['commands', 'jobs', 'events', 'tasks']) {
     const declared = Array.isArray(manifest[surface]) ? manifest[surface].length : 0;
     if (declared > 0 && !exportsName(index, surface)) {
-      failures.push(`${slug}: manifest declares ${declared} ${surface} but src/index.ts does not export \`${surface}\``);
+      failures.push(
+        `${slug}: manifest declares ${declared} ${surface} but src/index.ts does not export \`${surface}\``,
+      );
     }
   }
 
@@ -92,13 +98,18 @@ for (const slug of modules) {
   const sources = tsFiles(join(dir, 'src'));
   const usesDefinePage = sources.some((file) => read(file).includes('definePage('));
   if (usesDefinePage && !exportsName(index, 'pages')) {
-    failures.push(`${slug}: declares a page with definePage but src/index.ts does not export \`pages\``);
+    failures.push(
+      `${slug}: declares a page with definePage but src/index.ts does not export \`pages\``,
+    );
   }
 
   // 4
   for (const file of sources) {
     for (const match of read(file).matchAll(/\bpages:\s*\[([^\]]*)\]/g)) {
-      for (const id of match[1].split(',').map((part) => part.trim().replace(/['"]/g, '')).filter(Boolean)) {
+      for (const id of match[1]
+        .split(',')
+        .map((part) => part.trim().replace(/['"]/g, ''))
+        .filter(Boolean)) {
         if (!exportedPageIds.has(id)) {
           failures.push(
             `${slug}: ${basename(file)} declares pages: ['${id}'] but no module exports a page with id '${id}'`,
@@ -108,12 +119,39 @@ for (const slug of modules) {
     }
   }
 
-  // 5
+  // 5 — every declared asset exists, banner included
+  for (const [field, label] of [
+    ['iconAsset', 'ui.iconAsset'],
+    ['banner', 'ui.banner'],
+  ]) {
+    const declared = manifest?.ui?.[field];
+    if (typeof declared !== 'string') continue;
+    const assetPath = join(dir, declared);
+    if (!existsSync(assetPath)) failures.push(`${slug}: ${label} '${declared}' does not exist`);
+    else if (statSync(assetPath).size === 0)
+      failures.push(`${slug}: ${label} '${declared}' is empty`);
+  }
+
+  // 5b — and the host may not hold a copy. A module's artwork lives in the module.
+  const hostAssets = join(process.cwd(), 'apps', 'main', 'assets');
+  if (existsSync(hostAssets)) {
+    for (const file of readdirSync(hostAssets)) {
+      if (file.startsWith(`${slug}-`)) {
+        failures.push(
+          `${slug}: the host holds a copy of this module's artwork (apps/main/assets/${file}) — module assets live in the module`,
+        );
+      }
+    }
+  }
+
+  // 5 (icon asset)
   const iconAsset = manifest?.ui?.iconAsset;
   if (typeof iconAsset === 'string') {
     const assetPath = join(dir, iconAsset);
-    if (!existsSync(assetPath)) failures.push(`${slug}: ui.iconAsset '${iconAsset}' does not exist`);
-    else if (statSync(assetPath).size === 0) failures.push(`${slug}: ui.iconAsset '${iconAsset}' is empty`);
+    if (!existsSync(assetPath))
+      failures.push(`${slug}: ui.iconAsset '${iconAsset}' does not exist`);
+    else if (statSync(assetPath).size === 0)
+      failures.push(`${slug}: ui.iconAsset '${iconAsset}' is empty`);
   }
 
   // 6
@@ -125,7 +163,9 @@ for (const slug of modules) {
 // Ratchet: a gap recorded in the baseline is reported, never fatal. A gap NOT in the baseline fails.
 let baseline = { gaps: [] };
 try {
-  baseline = JSON.parse(readFileSync(join(process.cwd(), 'docs', 'status', 'module-package-baseline.json'), 'utf8'));
+  baseline = JSON.parse(
+    readFileSync(join(process.cwd(), 'docs', 'status', 'module-package-baseline.json'), 'utf8'),
+  );
 } catch {
   console.warn('warn: no module-package baseline; every gap is fatal');
 }
@@ -174,4 +214,6 @@ if (failures.length > 0) {
   console.error(`\n${failures.length} module-package failure(s) across ${modules.length} modules`);
   process.exit(1);
 }
-console.log(`OK: ${modules.length} module packages declare what they export (${warnings.length} warning(s))`);
+console.log(
+  `OK: ${modules.length} module packages declare what they export (${warnings.length} warning(s))`,
+);
