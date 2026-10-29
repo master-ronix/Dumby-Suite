@@ -620,6 +620,15 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   // §1.3 — the zone grammar is enforced inside the renderer; the logger is what makes a relocated
   // block visible, so a module that declares a select among its content blocks is told rather than
   // silently moved.
+  /**
+   * UR-20261029-111 — the banner each module declares, filled once the registry exists.
+   *
+   * The renderer is constructed before the module registry, so the map is created here and populated
+   * later: one object, passed by reference, so the renderer reads whatever the registry declared by
+   * the time it renders. The host holds no banner path of its own.
+   */
+  const bannersByModule: Record<string, string> = {};
+
   const renderer = new CoreRenderer({
     logger,
     ...(publicDomain !== ''
@@ -629,7 +638,8 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
           // otherwise stick. A module page (hello-world) uses the grayscale default below; only the
           // dashboard carries its own banner.
           bannerUrl: `https://${publicDomain}/assets/dumby-banner.png?v=2`,
-          ...(Object.keys(bannersByModule).length > 0 ? { bannersByModule } : {}),
+          // Passed by reference: it is empty here and filled once the registry exists.
+          bannersByModule,
         }
       : {}),
   });
@@ -2545,10 +2555,7 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   );
   const powerEngineCatalog = createPowerEngineCatalog({ guildSuspensions, logger });
 
-  // UR-20261029-111 — a module's banner is the module's own asset, resolved through the registry.
-  // The host hardcoded `bannersByModule: { dashboard: .../dashboard-banner.png }` and served that file
-  // from its own directory; the dashboard now declares `ui.banner` and the host only builds the URL.
-  const bannersByModule: Record<string, string> = {};
+  // UR-20261029-111 — fill the map declared above from what the modules declare.
   for (const entry of moduleRegistry.all()) {
     const banner = entry.manifest.ui?.banner;
     if (banner === undefined) continue;
