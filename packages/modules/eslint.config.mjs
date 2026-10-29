@@ -112,7 +112,10 @@ const perModuleBlocks = moduleDirs.flatMap((dir) => {
 });
 
 export default [
-  { ignores: ['**/node_modules/**', '**/dist/**', '**/*.d.ts'] },
+  // UR-20261029-117 — the architecture rules govern SHIPPED code. A module's tests live in the
+  // module now, and a test legitimately reaches the harness: it needs `vitest`, and it builds the
+  // emoji resolvers the page is handed from the framework's registry. A module's src/ still may not.
+  { ignores: ['**/node_modules/**', '**/dist/**', '**/*.d.ts', 'packages/modules/*/tests/**'] },
   {
     files: ['packages/modules/**/*.ts'],
     languageOptions: {
