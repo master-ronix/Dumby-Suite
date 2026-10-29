@@ -1,5 +1,10 @@
 import { describe, expect, test } from 'vitest';
 import { personaBlocks } from '@module-persona-blocks';
+import {
+  customEmojiParts,
+  customEmojiRef,
+  registerModuleEmoji,
+} from '../../src/rendering/module-icons.js';
 import { registerModuleEmoji, resetModuleEmojis } from '../../src/rendering/module-icons.js';
 
 type Any = Record<string, unknown>;
@@ -149,21 +154,21 @@ describe('personaBlocks', () => {
       selectedProfileId: 'p-2',
       currentProfileId: 'p-2',
     };
-    const head = personaBlocks(away, 'u1')[0] as Any;
+    const head = personaBlocks(away, 'u1', false, emoji, emojiParts)[0] as Any;
     expect(String(head['content'])).toContain('Online');
     expect(String(head['content'])).toContain('Not in this guild yet');
   });
 
   test('disables the switcher when only one profile is active', () => {
     const single = { ...data, profiles: [data.profiles[0]] };
-    const switcher = personaBlocks(single, 'u1').find(
+    const switcher = personaBlocks(single, 'u1', false, emoji, emojiParts).find(
       (b) => (b as Any)['kind'] === 'select',
     ) as Any;
     expect(switcher['disabled']).toBe(true);
   });
 
   test('tolerates missing data', () => {
-    const blocks = personaBlocks(undefined, 'u1');
+    const blocks = personaBlocks(undefined, 'u1', false, emoji, emojiParts);
     expect(blocks.length).toBeGreaterThanOrEqual(1);
     expect(String((blocks[0] as Any)['content'])).toContain('Unavailable');
   });
@@ -193,6 +198,9 @@ describe('personaBlocks', () => {
         tiers: [],
       },
       'u1',
+      false,
+      emoji,
+      emojiParts,
     );
     const all = blocks.map((b) => String((b as Any)['content'] ?? '')).join('\n');
     expect(all).toContain('No claimed modules');
@@ -208,10 +216,22 @@ describe('emoji ids are per-application (UR-20261012-057)', () => {
     registerModuleEmoji('dumby_status_online', '111'); // the default (main bot) scope
     registerModuleEmoji('dumby_status_online', '999', 'persona-app');
 
-    const main = personaBlocks({ ...data, selectedProfileId: 'p-2' }, 'u1');
-    const persona = personaBlocks({ ...data, selectedProfileId: 'p-2' }, 'u1', {
-      applicationId: 'persona-app',
-    });
+    // UR-20261029-116 — the scope is no longer an option: the resolvers are bound to an application,
+    // and that binding is what the page receives at dispatch.
+    const main = personaBlocks(
+      { ...data, selectedProfileId: 'p-2' },
+      'u1',
+      false,
+      (name) => customEmojiRef(name, 'main-app'),
+      (name) => customEmojiParts(name, 'main-app'),
+    );
+    const persona = personaBlocks(
+      { ...data, selectedProfileId: 'p-2' },
+      'u1',
+      false,
+      (name) => customEmojiRef(name, 'persona-app'),
+      (name) => customEmojiParts(name, 'persona-app'),
+    );
 
     expect(JSON.stringify(main)).toContain('<:dumby_status_online:111>');
     expect(JSON.stringify(persona)).toContain('<:dumby_status_online:999>');
