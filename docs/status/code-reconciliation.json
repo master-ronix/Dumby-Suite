@@ -387,14 +387,14 @@
       "doc_claim": "A module that declares a page owns that page: definePage in its package, exported as `pages`, registered by the loader, dispatched by the host (UR-20261027-106).",
       "code_truth": "apps/main/src/module-system/swastik-loader.ts built the LoadedModule field by field - commands, jobs, events, tasks, onLoad, onReady, onUnload - and never copied `pages`. Seven modules exported a page, built it and shipped it in a correct bundle, and the loader discarded it: the PageRegistry stayed empty, the host (whose own dashboard() had been deleted) resolved the page to nothing, and /dashboard rendered as a bare module name. The deploy was healthy by every measure available - port bound, eight modules pushed, degradedModules=[] - because the fault was between the bundle and the registry, where no gate looked.",
       "code_ref": "apps/main/src/module-system/swastik-loader.ts ; apps/main/src/module-system/loader.ts ; apps/main/src/rendering/page-data.ts",
-      "verdict": "code-gap",
+      "verdict": "match",
       "resolution": "Fixed 2026-10-28: the loader copies `pages`, and scripts/check-module-packages.mjs (Gate 3d) now requires that every surface any module exports - commands, jobs, events, tasks, pages - is copied by the volume loader. Confirmed on the live instance: /dashboard renders its seven commands."
     }
   ],
   "counts": {
     "match": 40,
     "doc-incomplete": 1,
-    "code-gap": 0,
+    "code-gap": 1,
     "code-anchor-broken": 0,
     "total": 42
   }
