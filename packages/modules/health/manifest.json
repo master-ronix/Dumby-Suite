@@ -3,7 +3,28 @@
   "version": "1.0.0",
   "ui": {
     "icon": "dumby_health",
-    "iconAsset": "assets/icon.png"
+    "iconAsset": "assets/icon.png",
+    "icons": {
+      "dumby_metric_ping": "assets/metric-ping.png",
+      "dumby_metric_status": "assets/metric-status.png",
+      "dumby_metric_shard": "assets/metric-shard.png",
+      "dumby_metric_uptime": "assets/metric-uptime.png",
+      "dumby_metric_node": "assets/metric-node.png",
+      "dumby_metric_memory": "assets/metric-memory.png",
+      "dumby_metric_heap": "assets/metric-heap.png",
+      "dumby_metric_total": "assets/metric-total.png",
+      "dumby_metric_profile": "assets/metric-profile.png",
+      "dumby_metric_loaded": "assets/metric-loaded.png",
+      "dumby_metric_heap_used": "assets/metric-heap-used.png",
+      "dumby_metric_heap_total": "assets/metric-heap-total.png",
+      "dumby_metric_guild": "assets/metric-guild.png",
+      "dumby_metric_users": "assets/metric-users.png",
+      "dumby_metric_source": "assets/metric-source.png",
+      "dumby_metric_database": "assets/metric-database.png",
+      "dumby_metric_cache": "assets/metric-cache.png",
+      "dumby_tier_core": "assets/metric-tier-core.png",
+      "dumby_tier_admin": "assets/metric-tier-admin.png"
+    }
   },
   "description": "Displays comprehensive system health and diagnostic information.",
   "tier": "core",

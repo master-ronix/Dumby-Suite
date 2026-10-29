@@ -1313,8 +1313,12 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
       const name = entry.manifest.ui?.icon;
       const asset = entry.manifest.ui?.iconAsset;
       const root = entry.root;
-      if (name === undefined || asset === undefined || root === undefined) continue;
-      icons.push({ name, path: join(root, asset) });
+      if (root === undefined) continue;
+      if (name !== undefined && asset !== undefined) icons.push({ name, path: join(root, asset) });
+      // UR-20261029-112 — the module's own indicator set, keyed by the emoji name it needs.
+      for (const [emojiName, relative] of Object.entries(entry.manifest.ui?.icons ?? {})) {
+        icons.push({ name: emojiName, path: join(root, relative) });
+      }
     }
     return icons;
   };

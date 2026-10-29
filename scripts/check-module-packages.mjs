@@ -144,6 +144,15 @@ for (const slug of modules) {
     }
   }
 
+  // 5c — a declared indicator set must exist, file by file
+  for (const [emojiName, relative] of Object.entries(manifest?.ui?.icons ?? {})) {
+    const path = join(dir, String(relative));
+    if (!existsSync(path))
+      failures.push(`${slug}: ui.icons['${emojiName}'] '${relative}' does not exist`);
+    else if (statSync(path).size === 0)
+      failures.push(`${slug}: ui.icons['${emojiName}'] '${relative}' is empty`);
+  }
+
   // 5 (icon asset)
   const iconAsset = manifest?.ui?.iconAsset;
   if (typeof iconAsset === 'string') {

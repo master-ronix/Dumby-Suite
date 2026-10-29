@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 /**
  * The module manifest — the specified contract.
@@ -14,31 +14,22 @@ import { z } from "zod";
  * fails with a single error naming the conflicting fields together rather than three independent
  * ones.
  */
-export const moduleTierSchema = z.enum([
-  "admin",
-  "core",
-  "standard",
-  "marketplace",
-]);
+export const moduleTierSchema = z.enum(['admin', 'core', 'standard', 'marketplace']);
 
-export const moduleVisibilitySchema = z.enum(["public", "unlisted", "private"]);
+export const moduleVisibilitySchema = z.enum(['public', 'unlisted', 'private']);
 
-export const moduleReleaseStatusSchema = z.enum(["private", "public"]);
+export const moduleReleaseStatusSchema = z.enum(['private', 'public']);
 
 export const marketplaceCategorySchema = z.enum([
-  "audio",
-  "community",
-  "security",
-  "integrations",
-  "utility",
+  'audio',
+  'community',
+  'security',
+  'integrations',
+  'utility',
 ]);
 
 /** Mirrors the DI container's `Lifetime` (src/di/container.ts). */
-export const serviceLifetimeSchema = z.enum([
-  "singleton",
-  "transient",
-  "scoped",
-]);
+export const serviceLifetimeSchema = z.enum(['singleton', 'transient', 'scoped']);
 
 export const commandManifestSchema = z.object({
   name: z.string().min(1),
@@ -54,7 +45,7 @@ export const commandManifestSchema = z.object({
     .default({ discord: [] }),
   defaultMemberPermissions: z.string().nullable().optional(),
   rbacRequirement: z
-    .enum(["RESTRICTED", "MEMBER", "HELPER", "MOD", "ADMIN", "OWNER"])
+    .enum(['RESTRICTED', 'MEMBER', 'HELPER', 'MOD', 'ADMIN', 'OWNER'])
     .nullable()
     .optional(),
 });
@@ -64,7 +55,7 @@ export const eventCatalogEntrySchema = z.object({
     .string()
     .regex(
       /^[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*){2}$/,
-      "event name must be {domain}.{entity}.{action}",
+      'event name must be {domain}.{entity}.{action}',
     ),
   description: z.string().min(1),
   // §18 — every catalog entry declares a payload schema; a change to it is a breaking change.
@@ -75,10 +66,7 @@ export const crossModuleReadSchema = z.object({
   targetModule: z.string().min(1),
   accessor: z
     .string()
-    .regex(
-      /ForCrossModuleRead$/,
-      'accessor name must end with "ForCrossModuleRead"',
-    ),
+    .regex(/ForCrossModuleRead$/, 'accessor name must end with "ForCrossModuleRead"'),
 });
 
 /**
@@ -116,7 +104,7 @@ export const moduleUiSchema = z
     banner: z.string().min(1).optional(),
     accent: z
       .string()
-      .regex(/^#[0-9a-fA-F]{6}$/, "accent must be a #RRGGBB hex colour")
+      .regex(/^#[0-9a-fA-F]{6}$/, 'accent must be a #RRGGBB hex colour')
       .optional(),
     icon: z.string().min(1).optional(),
     /**
@@ -124,6 +112,14 @@ export const moduleUiSchema = z
      * named by `icon`. Mirrors `banner`: a module-supplied asset, declared by the module that owns it.
      */
     iconAsset: z.string().min(1).optional(),
+    /**
+     * UR-20261029-112 — a module's OWN indicator set: emoji name -> module-relative image.
+     *
+     * The framework uploaded these from its own `assets/` before, so a module's indicator artwork
+     * lived in the host. The module now names each emoji it needs and points at its own file; the
+     * core resolves and registers them, and holds no copy.
+     */
+    icons: z.record(z.string().min(1), z.string().min(1)).optional(),
     displayName: z.string().min(1).optional(),
     devUsername: z.string().min(1).optional(),
   })
@@ -133,10 +129,8 @@ const commonManifestFields = {
   name: z
     .string()
     .min(1)
-    .regex(/^[a-z][a-z0-9-]*$/, "module name must be lowercase-kebab-case"),
-  version: z
-    .string()
-    .regex(/^\d+\.\d+\.\d+$/, 'version must be semver, e.g. "1.0.0"'),
+    .regex(/^[a-z][a-z0-9-]*$/, 'module name must be lowercase-kebab-case'),
+  version: z.string().regex(/^\d+\.\d+\.\d+$/, 'version must be semver, e.g. "1.0.0"'),
   description: z.string().min(1).max(120),
   tier: moduleTierSchema,
   devGuildOnly: z.boolean().optional(),
@@ -160,7 +154,7 @@ const commonManifestFields = {
   routes: z.array(z.string()).default([]),
   middleware: z.array(z.string()).default([]),
   migrations: z.array(z.string()).default([]),
-  locales: z.array(z.string()).default(["en-US"]),
+  locales: z.array(z.string()).default(['en-US']),
   config: z.record(z.string(), z.unknown()).default({}),
   eventsCatalog: z.array(eventCatalogEntrySchema).default([]),
   dashboardSchema: z.record(z.string(), z.unknown()).optional(),
@@ -191,66 +185,53 @@ const softManifestSchema = z
  * conflicting field together — not three times.
  */
 export const moduleManifestSchema = z
-  .discriminatedUnion("hardcoded", [
-    hardcodedManifestSchema,
-    softManifestSchema,
-  ])
+  .discriminatedUnion('hardcoded', [hardcodedManifestSchema, softManifestSchema])
   .superRefine((manifest, ctx) => {
     const conflicts: string[] = [];
 
     if (manifest.hardcoded === true) {
-      if (manifest.releaseStatus !== "private") {
+      if (manifest.releaseStatus !== 'private') {
         conflicts.push(
           `hardcoded: true requires releaseStatus 'private' (got '${manifest.releaseStatus}')`,
         );
       }
-      if (manifest.visibility !== "private") {
+      if (manifest.visibility !== 'private') {
         conflicts.push(
           `hardcoded: true requires visibility 'private' (got '${manifest.visibility}')`,
         );
       }
     } else if (manifest.hardcodeGuildId !== undefined) {
-      conflicts.push("hardcoded: false forbids hardcodeGuildId");
+      conflicts.push('hardcoded: false forbids hardcodeGuildId');
     }
 
-    if (manifest.releaseStatus === "public") {
+    if (manifest.releaseStatus === 'public') {
       if (manifest.hardcoded !== false) {
         conflicts.push("releaseStatus 'public' requires hardcoded: false");
       }
-      if (manifest.visibility !== "public") {
+      if (manifest.visibility !== 'public') {
         conflicts.push(
           `releaseStatus 'public' requires visibility 'public' (got '${manifest.visibility}')`,
         );
       }
     }
 
-    if (manifest.tier === "admin" && manifest.devGuildOnly !== true) {
+    if (manifest.tier === 'admin' && manifest.devGuildOnly !== true) {
       conflicts.push("tier 'admin' requires devGuildOnly: true");
     }
-    if (manifest.tier !== "admin" && manifest.devGuildOnly === true) {
-      conflicts.push(
-        `only tier 'admin' may set devGuildOnly: true (tier is '${manifest.tier}')`,
-      );
+    if (manifest.tier !== 'admin' && manifest.devGuildOnly === true) {
+      conflicts.push(`only tier 'admin' may set devGuildOnly: true (tier is '${manifest.tier}')`);
     }
-    if (
-      manifest.tier === "marketplace" &&
-      manifest.marketplaceCategory === undefined
-    ) {
+    if (manifest.tier === 'marketplace' && manifest.marketplaceCategory === undefined) {
       conflicts.push("tier 'marketplace' requires a marketplaceCategory");
     }
-    if (
-      manifest.tier !== "marketplace" &&
-      manifest.marketplaceCategory !== undefined
-    ) {
-      conflicts.push(
-        `marketplaceCategory is forbidden for tier '${manifest.tier}'`,
-      );
+    if (manifest.tier !== 'marketplace' && manifest.marketplaceCategory !== undefined) {
+      conflicts.push(`marketplaceCategory is forbidden for tier '${manifest.tier}'`);
     }
 
     if (conflicts.length > 0) {
       ctx.addIssue({
-        code: "custom",
-        message: `manifest "${manifest.name}" violates the hardcoded/visibility/releaseStatus triad: ${conflicts.join("; ")}`,
+        code: 'custom',
+        message: `manifest "${manifest.name}" violates the hardcoded/visibility/releaseStatus triad: ${conflicts.join('; ')}`,
       });
     }
   });

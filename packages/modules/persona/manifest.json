@@ -3,7 +3,12 @@
   "version": "1.0.0",
   "ui": {
     "icon": "dumby_persona",
-    "iconAsset": "assets/icon.png"
+    "iconAsset": "assets/icon.png",
+    "icons": {
+      "dumby_status_online": "assets/status-online.png",
+      "dumby_status_offline": "assets/status-offline.png",
+      "dumby_status_degraded": "assets/status-degraded.png"
+    }
   },
   "description": "View activated personas and their command inventory.",
   "tier": "core",
