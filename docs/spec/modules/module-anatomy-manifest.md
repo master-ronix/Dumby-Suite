@@ -141,7 +141,9 @@ developer's relationship to it.
 ### 11.4 Module Internal Structure — The Canonical Layout
 
 Every module follows the canonical structure; an absent folder means no deliverable in
-that category — the framework never requires empty directories. The `guild_module_states`
+that category — the framework never requires empty directories. `scripts/check-module-packages.mjs`
+enforces this: a module folder that holds no file fails the build, so the layout cannot claim a
+deliverable the module does not have. The `guild_module_states`
 table is the **sole authority** for module enabled/disabled state (P13, one source of
 truth): no code path may write module state to any other table.
 

@@ -144,6 +144,22 @@ for (const slug of modules) {
     }
   }
 
+  // 4c — §11.4: the framework never requires empty directories. A folder that holds nothing promises
+  // a deliverable the module does not have: eight modules each carried services/, jobs/, events/,
+  // repositories/, migrations/, ui/, config/ and tests/ with only a .gitkeep in them, which reads as
+  // a layout that exists while nothing lives in it.
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const nested = readdirSync(join(dir, entry.name), { recursive: true, withFileTypes: true }).filter(
+      (child) => child.isFile() && child.name !== '.gitkeep',
+    );
+    if (nested.length === 0) {
+      failures.push(
+        `${slug}: ${entry.name}/ is empty — §11.4 says an absent folder means no deliverable, so delete it`,
+      );
+    }
+  }
+
   // 5c — a declared indicator set must exist, file by file
   for (const [emojiName, relative] of Object.entries(manifest?.ui?.icons ?? {})) {
     const path = join(dir, String(relative));
