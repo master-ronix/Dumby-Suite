@@ -4,6 +4,7 @@ import {
   type ModulePageContext,
   type ModulePageReadModel,
 } from '@workspace/swastik';
+import { modulesBlocks } from '../blocks/modules.blocks.js';
 
 /**
  * UR-20261027-106 — the modules module owns its page.
@@ -90,7 +91,7 @@ export const modulesPage = definePage({
       })),
     );
 
-    return {
+    const data = {
       title: 'Installed Modules',
       lines: modules.map(
         (module) => `${module.icon} ${module.name} (${module.tier}) — ${module.description}`,
@@ -102,6 +103,15 @@ export const modulesPage = definePage({
       // item 6 / item 17 — the DIAL's entries are the PAGES, not the modules: this surface pages the
       // modules directly, so an option per module would offer targets that do not exist.
       navigation: modulePageNavigation(pageTotal, total, MODULES_PAGE_SIZE),
+    };
+
+    // UR-20261029-115 — the module composes its own content blocks; the framework keeps the dial.
+    return {
+      data,
+      blocks: modulesBlocks(
+        data as unknown as Readonly<Record<string, unknown>>,
+        context.profileId,
+      ),
     };
   },
 });

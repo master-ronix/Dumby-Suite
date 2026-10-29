@@ -17,6 +17,9 @@ export default defineConfig({
       '@module-health-blocks': fileURLToPath(
         new URL('../../packages/modules/health/src/blocks/health.blocks.ts', import.meta.url),
       ),
+      '@module-modules-blocks': fileURLToPath(
+        new URL('../../packages/modules/modules/src/blocks/modules.blocks.ts', import.meta.url),
+      ),
       '@module-queue-page': fileURLToPath(
         new URL('../../packages/modules/queue/src/pages/queue.page.ts', import.meta.url),
       ),

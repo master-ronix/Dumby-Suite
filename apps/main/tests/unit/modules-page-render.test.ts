@@ -1,7 +1,7 @@
 import { test, expect, describe } from 'vitest';
 import { CoreRenderer, derivePageSections } from '../../src/rendering/core-renderer.js';
 import { dialNavSelect } from '../../src/rendering/dashboard-nav.js';
-import { modulesBlocks } from '../../src/rendering/modules-blocks.js';
+import { modulesBlocks } from '@module-modules-blocks';
 
 /**
  * /modules reported MODULE_ERROR in production. This walks the whole path the router takes for it —

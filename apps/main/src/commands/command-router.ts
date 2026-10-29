@@ -30,7 +30,6 @@ import {
   TIER_STANDARD_ICON_NAME,
 } from '../rendering/module-icons.js';
 import { dialNavSelect, type DialEntry } from '../rendering/dashboard-nav.js';
-import { modulesBlocks } from '../rendering/modules-blocks.js';
 import { personaBlocks } from '../rendering/persona-blocks.js';
 import {
   HOME_SELECT_VALUE,
@@ -583,28 +582,8 @@ export class CommandRouter {
               }
             : this.pageShape(declaredPageData) === 'modules'
               ? {
-                  blocks: modulesBlocks(declaredPageData, interaction.user.id),
-                  // item 6 / item 17 — /modules carries the SAME dial as the dashboard, below the
-                  // footer, over the installed modules rather than over module pages.
-                  interactive: [
-                    dialNavSelect({
-                      invokerId: interaction.user.id,
-                      command: 'modules',
-                      // Home is restored as the FIRST option, ahead of the page options. It was removed
-                      // on the reasoning that this surface's first page is its main view — but Home is
-                      // the navigation's own first page, and the pages follow it.
-                      homeDescription: 'Return to the first page of the module list.',
-                      // The entries are pages and declare no icon, so every option takes this one —
-                      // the page stack — giving the dial a single consistent label.
-                      fallbackIcon: customEmojiParts(PAGE_ICON_NAME, this.emojiScope(interaction)),
-                      entries: this.dashboardNavEntries(
-                        declaredPageData,
-                        this.emojiScope(interaction),
-                      ),
-                      currentPage: options.page ?? 0,
-                      homeIcon: customEmojiParts('dumby_home', this.emojiScope(interaction)),
-                    }),
-                  ],
+                  // The blocks are the MODULE's; the dial below is chrome and is emitted for this
+                  // surface whether or not the page brought blocks.
                 }
               : this.pageShape(declaredPageData) === 'persona'
                 ? {
@@ -638,6 +617,28 @@ export class CommandRouter {
                       ],
                     }
                   : {}),
+        // item 6 / item 17 — the dial is CHROME, not content: /modules carries the same dial as the
+        // dashboard, and it is emitted for this surface whether or not the module brought its blocks.
+        ...(this.pageShape(declaredPageData) === 'modules'
+          ? {
+              interactive: [
+                dialNavSelect({
+                  invokerId: interaction.user.id,
+                  command: 'modules',
+                  // Home is restored as the FIRST option, ahead of the page options. It was removed
+                  // on the reasoning that this surface's first page is its main view — but Home is
+                  // the navigation's own first page, and the pages follow it.
+                  homeDescription: 'Return to the first page of the module list.',
+                  // The entries are pages and declare no icon, so every option takes this one —
+                  // the page stack — giving the dial a single consistent label.
+                  fallbackIcon: customEmojiParts(PAGE_ICON_NAME, this.emojiScope(interaction)),
+                  entries: this.dashboardNavEntries(declaredPageData, this.emojiScope(interaction)),
+                  currentPage: options.page ?? 0,
+                  homeIcon: customEmojiParts('dumby_home', this.emojiScope(interaction)),
+                }),
+              ],
+            }
+          : {}),
       });
       // A page whose data the effects just changed is re-derived, so the render shows the result
       // of the action rather than the state it was gathered in.
