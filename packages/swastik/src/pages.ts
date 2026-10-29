@@ -39,6 +39,14 @@ export interface ModulePageContext {
    */
   readonly emoji: (name: string) => string | undefined;
   /**
+   * UR-20261029-116 — whether the member who invoked the command administers this guild.
+   *
+   * A page that offers a control only an admin may use must know this, and the module cannot ask
+   * Discord. Without it the /persona setup control had to be assembled by the router, which is how
+   * that page's whole schema ended up in the framework.
+   */
+  readonly isAdmin: boolean;
+  /**
    * The same emoji as PARTS, for a component that needs the object rather than the inline ref — a
    * button's icon is `{ id, name }`, not `<:name:id>`. Both shapes are honest needs, so both are here
    * rather than one being reconstructed from the other by string surgery in every module.

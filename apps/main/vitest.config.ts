@@ -20,6 +20,9 @@ export default defineConfig({
       '@module-modules-blocks': fileURLToPath(
         new URL('../../packages/modules/modules/src/blocks/modules.blocks.ts', import.meta.url),
       ),
+      '@module-persona-blocks': fileURLToPath(
+        new URL('../../packages/modules/persona/src/blocks/persona.blocks.ts', import.meta.url),
+      ),
       '@module-queue-page': fileURLToPath(
         new URL('../../packages/modules/queue/src/pages/queue.page.ts', import.meta.url),
       ),

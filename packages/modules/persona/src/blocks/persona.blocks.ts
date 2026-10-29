@@ -10,22 +10,6 @@
  * Every indicator is a custom application emoji (UR-20261012-026); a unicode fallback applies until
  * the emoji upload lands, so the board never renders without an indicator.
  */
-import type { NavigationOption, RenderBlock } from './core-renderer.js';
-import {
-  customEmojiParts,
-  customEmojiRef,
-  IDENTITY_FALLBACK,
-  IDENTITY_ICON_NAME,
-  INFO_FALLBACK,
-  INFO_ICON_NAME,
-  PROFILE_FALLBACK,
-  PROFILE_ICON_NAME,
-  STATUS_OFFLINE_FALLBACK,
-  STATUS_OFFLINE_ICON_NAME,
-  STATUS_ONLINE_FALLBACK,
-  STATUS_ONLINE_ICON_NAME,
-  DEFAULT_EMOJI_SCOPE,
-} from './module-icons.js';
 
 const TIER_LABEL: Readonly<Record<string, string>> = {
   core: 'Core',
@@ -59,17 +43,17 @@ interface TierShape {
 }
 
 /** The status indicator for a profile: the custom emoji when uploaded, else its unicode fallback. */
-function statusIcon(kind: string, emojiScope: string): string {
+function statusIcon(kind: string, emoji: (n: string) => string | undefined): string {
   const online = kind === 'online' || kind === 'active';
   return online
-    ? (customEmojiRef(STATUS_ONLINE_ICON_NAME, emojiScope) ?? STATUS_ONLINE_FALLBACK)
-    : (customEmojiRef(STATUS_OFFLINE_ICON_NAME, emojiScope) ?? STATUS_OFFLINE_FALLBACK);
+    ? (emoji('dumby_status_online') ?? '\u{1F7E2}')
+    : (emoji('dumby_status_offline') ?? '\u26AB');
 }
 
-const identityIcon = (emojiScope: string): string =>
-  customEmojiRef(IDENTITY_ICON_NAME, emojiScope) ?? IDENTITY_FALLBACK;
-const infoIcon = (emojiScope: string): string =>
-  customEmojiRef(INFO_ICON_NAME, emojiScope) ?? INFO_FALLBACK;
+const identityIcon = (emoji: (n: string) => string | undefined): string =>
+  emoji('dumby_identity') ?? '\u{1FAAA}';
+const infoIcon = (emoji: (n: string) => string | undefined): string =>
+  emoji('dumby_info') ?? '\u2139\uFE0F';
 
 function asProfiles(value: unknown): readonly ProfileShape[] {
   if (!Array.isArray(value)) return [];
@@ -127,11 +111,12 @@ function asTiers(value: unknown): readonly TierShape[] {
 export function personaBlocks(
   data: Readonly<Record<string, unknown>> | undefined,
   invokerId: string,
-  options: { readonly isAdmin?: boolean; readonly applicationId?: string } = {},
-): readonly RenderBlock[] {
+  isAdmin: boolean,
+  emoji: (name: string) => string | undefined,
+  emojiParts: (name: string) => { readonly id: string; readonly name: string } | undefined,
+): readonly Record<string, unknown>[] {
   // UR-20261012-057 — the emoji scope: the application this page is rendered for. Its ids are the
   // only ones the message may reference.
-  const emojiScope = options.applicationId ?? DEFAULT_EMOJI_SCOPE;
   const profiles = asProfiles(data?.['profiles']);
   const tiers = asTiers(data?.['tiers']);
   const note = typeof data?.['note'] === 'string' ? (data['note'] as string) : '';
@@ -140,14 +125,14 @@ export function personaBlocks(
     typeof data?.['selectedProfileId'] === 'string' ? data['selectedProfileId'] : currentId;
 
   const selected = profiles.find((p) => p.id === selectedId) ?? profiles[0];
-  const blocks: RenderBlock[] = [];
+  const blocks: Record<string, unknown>[] = [];
 
   // The headline, with the Refresh control in-line (a Section renders its single accessory on the
   // right of the text line). `refresh` re-dispatches the page, re-gathering the live state.
   const headline =
     selected === undefined
-      ? `${statusIcon('offline', emojiScope)} **No profile** · Unavailable`
-      : `${statusIcon(selected.statusKind, emojiScope)} **${selected.name}** · ${selected.statusLabel}`;
+      ? `${statusIcon('offline', emoji)} **No profile** · Unavailable`
+      : `${statusIcon(selected.statusKind, emoji)} **${selected.name}** · ${selected.statusLabel}`;
   const subtext =
     selected === undefined
       ? ''
@@ -168,7 +153,7 @@ export function personaBlocks(
       // member back to the running persona.
       customId: `dumby:act:${invokerId}:refresh:persona:${selected?.id ?? ''}`,
       label: 'Refresh',
-      emoji: customEmojiParts('dumby_refresh', emojiScope) ?? { name: '\u{1F504}' },
+      emoji: emojiParts('dumby_refresh') ?? { name: '\u{1F504}' },
       style: 2,
     },
   });
@@ -176,7 +161,7 @@ export function personaBlocks(
   // The profile switcher — present whenever the guild has at least one profile, and disabled while
   // there is nothing to switch to, so the control teaches its own affordance without dead-ending.
   if (profiles.length > 0) {
-    const profileIcon = customEmojiParts(PROFILE_ICON_NAME, emojiScope);
+    const profileIcon = emojiParts('dumby_profile');
     const options: NavigationOption[] = profiles.map((p) => ({
       label: p.name.length > 0 ? p.name : p.id,
       value: p.id,
@@ -184,7 +169,7 @@ export function personaBlocks(
         p.id === currentId
           ? `Running this command · ${p.moduleCount} claimed`
           : `${p.moduleCount} claimed`,
-      ...(profileIcon !== undefined ? { emoji: profileIcon } : { emoji: PROFILE_FALLBACK }),
+      ...(profileIcon !== undefined ? { emoji: profileIcon } : { emoji: '\u{1F464}' }),
       ...(p.id === selectedId ? { default: true } : {}),
     }));
     blocks.push({
@@ -212,7 +197,7 @@ export function personaBlocks(
     if (fields.length > 0) {
       blocks.push({
         kind: 'text',
-        content: `${identityIcon(emojiScope)} **Identity**\n-# ${fields.join(' · ')}`,
+        content: `${identityIcon(emoji)} **Identity**\n-# ${fields.join(' · ')}`,
       });
     }
   }
@@ -240,7 +225,7 @@ export function personaBlocks(
     });
   }
 
-  if (note !== '') blocks.push({ kind: 'text', content: `${infoIcon(emojiScope)} ${note}` });
+  if (note !== '') blocks.push({ kind: 'text', content: `${infoIcon(emoji)} ${note}` });
 
   // UR-20261012-054 — the Info control, and ONLY on a registered persona.
   //
@@ -248,7 +233,7 @@ export function personaBlocks(
   //     register, and nothing to invite. Showing a setup control there was meaningless.
   //   * Admin-only, and it OPENS A CARD carrying the OAuth redirect callback guide and nothing else.
   //     The install guide and the invite link were rejected, so neither is rendered.
-  if (options.isAdmin === true && selected !== undefined && selected.isMain !== true) {
+  if (isAdmin && selected !== undefined && selected.isMain !== true) {
     const controls: Array<{
       customId?: string;
       url?: string;
@@ -260,7 +245,7 @@ export function personaBlocks(
       customId: `dumby:persona-setup:${invokerId}:${selected.applicationId}`,
       label: '',
       style: 2,
-      emoji: customEmojiParts(INFO_ICON_NAME, emojiScope) ?? { name: INFO_FALLBACK },
+      emoji: emojiParts('dumby_info') ?? { name: '\u2139\uFE0F' },
     });
     blocks.push({ kind: 'row', buttons: controls });
   }

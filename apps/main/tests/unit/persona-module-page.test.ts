@@ -85,11 +85,24 @@ const ctx = (query?: string) => ({
   profileId: 'main',
   page: 0,
   ...(query !== undefined ? { query } : {}),
+  // UR-20261029-116 — the standing and the emoji resolvers the page is handed at dispatch.
+  isAdmin: true,
+  emoji: (): string | undefined => undefined,
+  emojiParts: (): { id: string; name: string } | undefined => undefined,
 });
+
+/** The page returns { data, blocks }; these cases assert the DATA it composes. */
+async function renderData(
+  context: ReturnType<typeof ctx>,
+  read: ModulePageReadModel,
+): Promise<Record<string, unknown>> {
+  const result = (await renderData(context, read)) as { data: Record<string, unknown> };
+  return result.data;
+}
 
 describe('persona module page — the composition that moved out of page-data.ts', () => {
   test('the main profile is always first, named, and carries no invite', async () => {
-    const data = await personaPage.render(ctx(), readModel());
+    const data = await renderData(ctx(), readModel());
     expect(data.title).toBe('Active Personas');
     expect(data.status).toBe('online');
     expect(data.profiles[0]).toMatchObject({
@@ -104,7 +117,7 @@ describe('persona module page — the composition that moved out of page-data.ts
   });
 
   test('a registered persona reads Online, with its invite and its DM behaviour', async () => {
-    const data = await personaPage.render(ctx(), readModel({ registered: [magma] }));
+    const data = await renderData(ctx(), readModel({ registered: [magma] }));
     const profile = data.profiles.find((entry) => entry.id === 'p-1');
     expect(profile).toMatchObject({
       name: 'Magma',
@@ -118,10 +131,7 @@ describe('persona module page — the composition that moved out of page-data.ts
 
   test('a retired persona reads Retired, and an absent bot is reported absent', async () => {
     const retired: PersonaRecord = { ...magma, status: 'retired' };
-    const data = await personaPage.render(
-      ctx(),
-      readModel({ registered: [retired], member: false }),
-    );
+    const data = await renderData(ctx(), readModel({ registered: [retired], member: false }));
     const profile = data.profiles.find((entry) => entry.id === 'p-1');
     expect(profile?.statusLabel).toBe('Retired');
     expect(profile?.statusKind).toBe('retired');
@@ -130,46 +140,37 @@ describe('persona module page — the composition that moved out of page-data.ts
 
   test('the default profile is the identity RUNNING the command, not the guild registration', async () => {
     // A resident persona process opens on herself.
-    const asPersona = await personaPage.render(
-      ctx(),
-      readModel({ resident: 'p-1', registered: [magma] }),
-    );
+    const asPersona = await renderData(ctx(), readModel({ resident: 'p-1', registered: [magma] }));
     expect(asPersona.currentProfileId).toBe('p-1');
     expect(asPersona.selectedProfileId).toBe('p-1');
 
     // The main bot opens on the main bot, even with a persona registered for the guild (051).
-    const asMain = await personaPage.render(
-      ctx(),
-      readModel({ resident: '', registered: [magma] }),
-    );
+    const asMain = await renderData(ctx(), readModel({ resident: '', registered: [magma] }));
     expect(asMain.currentProfileId).toBe('main');
     expect(asMain.selectedProfileId).toBe('main');
   });
 
   test('an explicit selection wins when it names a real profile', async () => {
-    const data = await personaPage.render(ctx('p-1'), readModel({ registered: [magma] }));
+    const data = await renderData(ctx('p-1'), readModel({ registered: [magma] }));
     expect(data.selectedProfileId).toBe('p-1');
-    const bogus = await personaPage.render(ctx('nobody'), readModel({ registered: [magma] }));
+    const bogus = await renderData(ctx('nobody'), readModel({ registered: [magma] }));
     expect(bogus.selectedProfileId).toBe('main');
   });
 
   test('core and admin are never listed as anyone’s claim', async () => {
-    const data = await personaPage.render(ctx(), readModel());
+    const data = await renderData(ctx(), readModel());
     const names = data.tiers.flatMap((group) => group.modules.map((module) => module.name));
     expect(names).not.toContain('health');
     expect(names).not.toContain('permit');
   });
 
   test('the main bot claims a guild-enabled module no persona has bound, and loses it when one does', async () => {
-    const free = await personaPage.render(
-      ctx(),
-      readModel({ guildState: { 'hello-world': true } }),
-    );
+    const free = await renderData(ctx(), readModel({ guildState: { 'hello-world': true } }));
     expect(free.tiers.flatMap((group) => group.modules.map((module) => module.name))).toContain(
       'hello-world',
     );
 
-    const bound = await personaPage.render(
+    const bound = await renderData(
       ctx(),
       readModel({
         guildState: { 'hello-world': true },
@@ -183,7 +184,7 @@ describe('persona module page — the composition that moved out of page-data.ts
   });
 
   test('a persona claims her binding and only her binding', async () => {
-    const data = await personaPage.render(
+    const data = await renderData(
       ctx('p-1'),
       readModel({
         registered: [magma],
@@ -203,7 +204,7 @@ describe('persona module page — the composition that moved out of page-data.ts
       ...readModel(),
       botIdentity: async () => ({ name: 'Dumby', applicationId: 'app-1', online: false }),
     };
-    const data = await personaPage.render(ctx(), read);
+    const data = await renderData(ctx(), read);
     expect(data.status).toBe('offline');
     expect(data.profiles[0]?.statusLabel).toBe('Offline');
   });

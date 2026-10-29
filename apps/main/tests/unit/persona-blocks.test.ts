@@ -1,8 +1,13 @@
 import { describe, expect, test } from 'vitest';
-import { personaBlocks } from '../../src/rendering/persona-blocks.js';
+import { personaBlocks } from '@module-persona-blocks';
 import { registerModuleEmoji, resetModuleEmojis } from '../../src/rendering/module-icons.js';
 
 type Any = Record<string, unknown>;
+
+// UR-20261029-116 — the builder no longer reaches into the framework: the page hands it the
+// resolvers. These resolve nothing, so every mark falls back to its unicode glyph.
+const emoji = (): string | undefined => undefined;
+const emojiParts = (): { id: string; name: string } | undefined => undefined;
 
 const data = {
   status: 'online',
@@ -55,7 +60,7 @@ const data = {
 
 describe('personaBlocks', () => {
   test('leads with the selected profile headline carrying the Refresh accessory', () => {
-    const blocks = personaBlocks(data, 'u1');
+    const blocks = personaBlocks(data, 'u1', false, emoji, emojiParts);
     const head = blocks[0] as Any;
     expect(head['kind']).toBe('section');
     // No emoji is registered in this test, so the unicode fallback applies.
@@ -71,7 +76,9 @@ describe('personaBlocks', () => {
   });
 
   test('carries the profile switcher, marking the profile that is running the command', () => {
-    const switcher = personaBlocks(data, 'u1').find((b) => (b as Any)['kind'] === 'select') as Any;
+    const switcher = personaBlocks(data, 'u1', false, emoji, emojiParts).find(
+      (b) => (b as Any)['kind'] === 'select',
+    ) as Any;
     expect(switcher['customId']).toBe('dumby:act:u1:profile:persona');
     const options = switcher['options'] as Array<Any>;
     expect(options.map((o) => o['value'])).toEqual(['main', 'p-2']);
@@ -80,7 +87,7 @@ describe('personaBlocks', () => {
   });
 
   test('renders the identity as one field line and never restates the guild', () => {
-    const identity = personaBlocks(data, 'u1').find((b) =>
+    const identity = personaBlocks(data, 'u1', false, emoji, emojiParts).find((b) =>
       String((b as Any)['content']).includes('Identity'),
     ) as Any;
     expect(String(identity['content'])).toContain('1422973358818988155');
@@ -91,7 +98,7 @@ describe('personaBlocks', () => {
   test('lists each tier with its CLAIM count and NO command inventory (UR-20261012-054)', () => {
     // The command inventory was removed by request: a profile's commands are the framework's, not a
     // property of the profile, and listing them buried the one thing this section is for.
-    const blocks = personaBlocks(data, 'u1');
+    const blocks = personaBlocks(data, 'u1', false, emoji, emojiParts);
     const standard = blocks.find((b) =>
       String((b as Any)['content']).startsWith('**Standard**'),
     ) as Any;
@@ -102,12 +109,14 @@ describe('personaBlocks', () => {
   });
 
   test('the profile switcher is TRAILING, so it renders below the footer', () => {
-    const switcher = personaBlocks(data, 'u1').find((b) => (b as Any)['kind'] === 'select') as Any;
+    const switcher = personaBlocks(data, 'u1', false, emoji, emojiParts).find(
+      (b) => (b as Any)['kind'] === 'select',
+    ) as Any;
     expect(switcher['placement']).toBe('trailing');
   });
 
   test('ends with the Twill note', () => {
-    const blocks = personaBlocks(data, 'u1');
+    const blocks = personaBlocks(data, 'u1', false, emoji, emojiParts);
     expect(String((blocks[blocks.length - 1] as Any)['content'])).toContain(
       'Twill registration API',
     );
@@ -116,14 +125,14 @@ describe('personaBlocks', () => {
   test('offers the Info control ONLY on a persona profile, and only to an admin (UR-20261012-054)', () => {
     // The main bot is not a persona: no OAuth redirect to register, nothing to invite. A setup control
     // there was meaningless, so it is not rendered.
-    const onMain = personaBlocks(data, 'u1', { isAdmin: true });
+    const onMain = personaBlocks(data, 'u1', true, emoji, emojiParts);
     expect(onMain.some((b) => (b as Any)['kind'] === 'row')).toBe(false);
 
     const personaView = { ...data, selectedProfileId: 'p-2' };
-    const asMember = personaBlocks(personaView, 'u1', { isAdmin: false });
+    const asMember = personaBlocks(personaView, 'u1', false, emoji, emojiParts);
     expect(asMember.some((b) => (b as Any)['kind'] === 'row')).toBe(false);
 
-    const asAdmin = personaBlocks(personaView, 'u1', { isAdmin: true });
+    const asAdmin = personaBlocks(personaView, 'u1', true, emoji, emojiParts);
     const row = asAdmin.find((b) => (b as Any)['kind'] === 'row') as Any;
     const buttons = row['buttons'] as Array<Any>;
     expect(buttons).toHaveLength(1);

@@ -1,4 +1,5 @@
 import { definePage, type ModulePageContext, type ModulePageReadModel } from '@workspace/swastik';
+import { personaBlocks } from '../blocks/persona.blocks.js';
 
 /**
  * UR-20261027-106 — the persona module owns its page.
@@ -56,7 +57,10 @@ export interface PersonaPageData {
 export const personaPage = definePage({
   id: 'persona',
 
-  async render(context: ModulePageContext, read: ModulePageReadModel): Promise<PersonaPageData> {
+  async render(
+    context: ModulePageContext,
+    read: ModulePageReadModel,
+  ): Promise<{ data: PersonaPageData; blocks: readonly Record<string, unknown>[] }> {
     const bot = await read.botIdentity();
     const shards = String(await read.shardCount());
     const bindings = await read.personaBindings();
@@ -180,7 +184,7 @@ export const personaPage = definePage({
       if (modules.length > 0) tiers.push({ tier, modules });
     }
 
-    return {
+    const data: PersonaPageData = {
       title: 'Active Personas',
       status: bot.online ? 'online' : 'offline',
       currentProfileId,
@@ -188,6 +192,19 @@ export const personaPage = definePage({
       profiles,
       tiers,
       note: 'Persona creation and configuration are handled through the Twill registration API.',
+    };
+
+    // UR-20261029-116 — the module composes its own content blocks, including the admin-only setup
+    // control, which it offers from the standing the framework resolved for this invocation.
+    return {
+      data,
+      blocks: personaBlocks(
+        data as unknown as Readonly<Record<string, unknown>>,
+        context.profileId,
+        context.isAdmin,
+        context.emoji,
+        context.emojiParts,
+      ),
     };
   },
 });

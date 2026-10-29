@@ -134,6 +134,9 @@ export function createPageDataProvider(deps: PageDataDeps): (
   // post-effect render passed it. Both are required now, in both places.
   applicationId: string,
   actingProfileId: string,
+  // UR-20261029-116 — the caller's standing, resolved by the router from the interaction. The
+  // provider builds the page context and a module may not ask Discord for its own permissions.
+  caller: { readonly isAdmin?: boolean } = {},
 ) => Promise<PageData> {
   const {
     getClient,
@@ -631,6 +634,7 @@ export function createPageDataProvider(deps: PageDataDeps): (
           // how its schema came to live in the host.
           emoji: (name) => customEmojiRef(name, applicationId),
           emojiParts: (name) => customEmojiParts(name, applicationId),
+          isAdmin: caller.isAdmin === true,
         },
         read,
       );

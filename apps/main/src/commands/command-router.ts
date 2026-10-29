@@ -30,7 +30,6 @@ import {
   TIER_STANDARD_ICON_NAME,
 } from '../rendering/module-icons.js';
 import { dialNavSelect, type DialEntry } from '../rendering/dashboard-nav.js';
-import { personaBlocks } from '../rendering/persona-blocks.js';
 import {
   HOME_SELECT_VALUE,
   INSTALL_DROPDOWN_CAP,
@@ -461,6 +460,8 @@ export class CommandRouter {
                   // 'main', so a persona's first render showed the main bot's modules while the
                   // post-effect render showed its own.
                   this.options.residentPersonaId ?? 'main',
+                  // UR-20261029-116 — the caller's standing, for a page that offers an admin-only control.
+                  { isAdmin: isGuildAdmin(interaction) },
                 )) ?? {},
             },
           );
@@ -585,38 +586,29 @@ export class CommandRouter {
                   // The blocks are the MODULE's; the dial below is chrome and is emitted for this
                   // surface whether or not the page brought blocks.
                 }
-              : this.pageShape(declaredPageData) === 'persona'
+              : this.pageShape(declaredPageData) === 'dashboard'
                 ? {
-                    // UR-20261012-029 — the persona setup control is offered ONLY to a guild admin.
-                    blocks: personaBlocks(declaredPageData, interaction.user.id, {
-                      isAdmin: isGuildAdmin(interaction),
-                      // UR-20261012-064 — a persona's page uses the persona's own emoji ids.
-                      applicationId: this.emojiScope(interaction),
-                    }),
+                    // item 6 — the dashboard's navigation sits BELOW the footer, as a DIAL, not above
+                    // it as buttons: it is a page-wide control, and the footer closes the content
+                    // above it. The zone grammar puts a select there regardless.
+                    interactive: [
+                      dialNavSelect({
+                        invokerId: interaction.user.id,
+                        command: 'dashboard',
+                        entries: this.dashboardNavEntries(
+                          declaredPageData,
+                          this.emojiScope(interaction),
+                        ),
+                        currentPage: options.page ?? 0,
+                        homeIcon: customEmojiParts('dumby_home', this.emojiScope(interaction)),
+                        fallbackIcon: customEmojiParts(
+                          MODULE_ICON_NAME,
+                          this.emojiScope(interaction),
+                        ),
+                      }),
+                    ],
                   }
-                : this.pageShape(declaredPageData) === 'dashboard'
-                  ? {
-                      // item 6 — the dashboard's navigation sits BELOW the footer, as a DIAL, not above
-                      // it as buttons: it is a page-wide control, and the footer closes the content
-                      // above it. The zone grammar puts a select there regardless.
-                      interactive: [
-                        dialNavSelect({
-                          invokerId: interaction.user.id,
-                          command: 'dashboard',
-                          entries: this.dashboardNavEntries(
-                            declaredPageData,
-                            this.emojiScope(interaction),
-                          ),
-                          currentPage: options.page ?? 0,
-                          homeIcon: customEmojiParts('dumby_home', this.emojiScope(interaction)),
-                          fallbackIcon: customEmojiParts(
-                            MODULE_ICON_NAME,
-                            this.emojiScope(interaction),
-                          ),
-                        }),
-                      ],
-                    }
-                  : {}),
+                : {}),
         // item 6 / item 17 — the dial is CHROME, not content: /modules carries the same dial as the
         // dashboard, and it is emitted for this surface whether or not the module brought its blocks.
         ...(this.pageShape(declaredPageData) === 'modules'
@@ -653,6 +645,7 @@ export class CommandRouter {
               undefined,
               this.emojiScope(interaction),
               this.options.residentPersonaId ?? 'main',
+              { isAdmin: isGuildAdmin(interaction) },
             )) ?? {};
           render.sections = derivePageSections(pageName, fresh);
         }
