@@ -19,7 +19,7 @@
  * Exit 1 on any hard failure. Warnings never fail the build.
  */
 import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
-import { join, basename, dirname } from 'node:path';
+import { join, basename, dirname, resolve } from 'node:path';
 
 const MODULES_ROOT = join(process.cwd(), 'packages', 'modules');
 const failures = [];
@@ -144,15 +144,50 @@ for (const slug of modules) {
     }
   }
 
+  // 4d — UR-20261030-118 R4: the import direction, BOTH ways.
+  //
+  // A module's src/ may not import the core, and the core may not import a module package. Either one
+  // inverts the dependency: a module reaching into the base is a module that cannot be deployed alone,
+  // and a core importing a module is a core that knows a module exists. The check reads IMPORT
+  // statements, not mentions — a comment that explains where a composition came from is history, and a
+  // path string the CLI scans for the registry is not an import.
+  const importSpecs = (file) => {
+    const source = readFileSync(file, 'utf8');
+    const specs = [];
+    const pattern = /(?:^|\n)\s*(?:import|export)[^;\n]*?from\s*['"]([^'"]+)['"]/g;
+    let match;
+    while ((match = pattern.exec(source)) !== null) specs.push(match[1]);
+    return specs;
+  };
+  const walkTs = (dir) => {
+    if (!existsSync(dir)) return [];
+    return readdirSync(dir, { recursive: true, withFileTypes: true })
+      .filter((entry) => entry.isFile() && entry.name.endsWith('.ts'))
+      .map((entry) => join(entry.parentPath ?? entry.path, entry.name));
+  };
+  for (const file of walkTs(join(dir, 'src'))) {
+    for (const spec of importSpecs(file)) {
+      if (!spec.startsWith('.')) continue;
+      const target = resolve(dirname(file), spec);
+      // Inside the package is fine; anywhere outside it is the core, or another module.
+      if (!target.startsWith(resolve(dir) + '/')) {
+        failures.push(
+          `${slug}: ${file.slice(dir.length + 1)} imports outside the module ('${spec}') — a module may not reach into the core`,
+        );
+      }
+    }
+  }
+
   // 4c — §11.4: the framework never requires empty directories. A folder that holds nothing promises
   // a deliverable the module does not have: eight modules each carried services/, jobs/, events/,
   // repositories/, migrations/, ui/, config/ and tests/ with only a .gitkeep in them, which reads as
   // a layout that exists while nothing lives in it.
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
-    const nested = readdirSync(join(dir, entry.name), { recursive: true, withFileTypes: true }).filter(
-      (child) => child.isFile() && child.name !== '.gitkeep',
-    );
+    const nested = readdirSync(join(dir, entry.name), {
+      recursive: true,
+      withFileTypes: true,
+    }).filter((child) => child.isFile() && child.name !== '.gitkeep');
     if (nested.length === 0) {
       failures.push(
         `${slug}: ${entry.name}/ is empty — §11.4 says an absent folder means no deliverable, so delete it`,
@@ -234,6 +269,35 @@ for (const surface of SURFACES) {
 }
 
 for (const warning of warnings) console.warn(`warn: ${warning}`);
+const walkTsCore = (dir) => {
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir, { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith('.ts'))
+    .map((entry) => join(entry.parentPath ?? entry.path, entry.name));
+};
+const importSpecsCore = (file) => {
+  const source = readFileSync(file, 'utf8');
+  const specs = [];
+  const pattern = /(?:^|\n)\s*(?:import|export)[^;\n]*?from\s*['"]([^'"]+)['"]/g;
+  let match;
+  while ((match = pattern.exec(source)) !== null) specs.push(match[1]);
+  return specs;
+};
+
+// 4e — and the other direction: the core may not import a module package.
+{
+  const coreSrc = join(process.cwd(), 'apps', 'main', 'src');
+  for (const file of walkTsCore(coreSrc)) {
+    for (const spec of importSpecsCore(file)) {
+      if (spec.includes('packages/modules') || spec.startsWith('@workspace/module-')) {
+        failures.push(
+          `the core imports a module package (${file.slice(process.cwd().length + 1)} -> '${spec}') — the core may not know a module exists`,
+        );
+      }
+    }
+  }
+}
+
 if (failures.length > 0) {
   for (const failure of failures) console.error(`FAIL: ${failure}`);
   console.error(`\n${failures.length} module-package failure(s) across ${modules.length} modules`);
