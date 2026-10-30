@@ -57,7 +57,7 @@ export interface PageDataDeps {
    * UR-20261030-118 — the services modules provide. The persona module answers what a profile is
    * called; without it the page degrades to the id rather than to a role name.
    */
-  moduleServices?: ModuleServiceRegistry | undefined;
+  moduleServices?: (() => ModuleServiceRegistry | undefined) | undefined;
   getClient: () => Client | undefined;
   /**
    * Q1-Q4 — the runtime serving an application: her client, her registry, her start time.
@@ -564,7 +564,8 @@ export function createPageDataProvider(deps: PageDataDeps): (
         // UR-20261030-118 — the label is the PERSONA module's knowledge, resolved through the seam.
         // The resident id is a framework constant; what a profile is CALLED is not.
         profileLabel: async (profileId) =>
-          deps.moduleServices
+          deps
+            .moduleServices?.()
             ?.tryResolve<PersonaDirectoryService>(MODULE_SERVICE_TOKENS.PersonaDirectory)
             ?.label(
               profileId,

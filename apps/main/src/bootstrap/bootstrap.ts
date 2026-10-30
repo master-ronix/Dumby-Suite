@@ -108,6 +108,11 @@ import { makeModuleChain } from '../module-system/module-chain.js';
 import { registerKnownGuilds } from '../discord/guild-registry.js';
 import { createBccmEffectHandlers } from '../commands/bccm-effects.js';
 import {
+  MODULE_SERVICE_TOKENS,
+  ModuleServiceRegistry,
+  type PersonaDirectoryService,
+} from '../module-system/module-services.js';
+import {
   effectiveCommandName,
   resolveCommandAliases,
   resolveCommandStatuses,
@@ -898,9 +903,11 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   // further down (it needs the module registry), so the registry is late-bound like every other gate
   // in this function rather than reordering the boot.
   let pageRegistryRef: PageRegistry | undefined;
+  // UR-20261030-118 — the module-service registry, armed when the loader exists (same reason as pages).
+  let serviceRegistryRef: ModuleServiceRegistry | undefined;
   const pageDataProvider = createPageDataProvider({
     // UR-20261030-118 — the persona module answers what a profile is called; the boot supplies the seam.
-    moduleServices: moduleLoader.serviceRegistry,
+    moduleServices: () => serviceRegistryRef,
     pages: {
       get: (pageId: string) => pageRegistryRef?.get(pageId),
     } as unknown as PageRegistry,
@@ -1228,8 +1235,8 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
         () => ownerName,
         // UR-20261030-118 — the persona module names the holder; the core supplies the seam.
         (personaId, personaName) =>
-          moduleLoader.serviceRegistry
-            .tryResolve<PersonaDirectoryService>(MODULE_SERVICE_TOKENS.PersonaDirectory)
+          serviceRegistryRef
+            ?.tryResolve<PersonaDirectoryService>(MODULE_SERVICE_TOKENS.PersonaDirectory)
             ?.label(personaId, personaName) ?? personaId,
       ),
       reason: 'FORBIDDEN',
@@ -1707,6 +1714,8 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   );
   // UR-20261027-106 — arm the page registry now that the loader exists.
   pageRegistryRef = moduleLoader.pages;
+  // UR-20261030-118 — the seam a module's domain crosses, armed once the loader exists.
+  serviceRegistryRef = moduleLoader.serviceRegistry;
   moduleLoader.setModuleContextResolver(moduleContextResolver);
   // UR-20261012-072 — the config service is built before the loader, so the notifier is attached
   // here. A per-guild module config write now reaches the module's `onConfigChange` (§11.7).
