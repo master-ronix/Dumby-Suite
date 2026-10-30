@@ -188,7 +188,8 @@ describe('a module registers only the services its manifest declares', () => {
       globalData,
       provides: ['core.PersonaService'],
     });
-    const token = { name: 'core.PersonaService', __type: undefined } as never;
+    // Tokens are SYMBOLS and the guard reads the description, so the declared name is the key.
+    const token = Symbol.for('core.PersonaService') as never;
     expect(() => runtime.register(token, () => ({ ok: true }) as never)).not.toThrow();
     expect(container.resolve(token)).toEqual({ ok: true });
   });
