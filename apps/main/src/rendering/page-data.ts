@@ -11,7 +11,12 @@ import { makePageReadModel } from './page-read-model.js';
 // interaction handlers import them from this module.
 export { modulePageNavigation, romanNumeral } from '@workspace/swastik';
 import { defaultEnabledForTier } from '../module-system/tier-rules.js';
-import { MAIN_PROFILE_ID, profileLabel } from '../personas/profile-label.js';
+import { MAIN_PROFILE_ID } from '../personas/profile-label.js';
+import {
+  MODULE_SERVICE_TOKENS,
+  type ModuleServiceRegistry,
+  type PersonaDirectoryService,
+} from '../module-system/module-services.js';
 import { commandMarkerIcon, customEmojiParts, customEmojiRef, moduleIcon } from './module-icons.js';
 import {
   resolveCommandStatuses,
@@ -48,6 +53,11 @@ export interface ActingProfile {
 }
 
 export interface PageDataDeps {
+  /**
+   * UR-20261030-118 — the services modules provide. The persona module answers what a profile is
+   * called; without it the page degrades to the id rather than to a role name.
+   */
+  moduleServices?: ModuleServiceRegistry | undefined;
   getClient: () => Client | undefined;
   /**
    * Q1-Q4 — the runtime serving an application: her client, her registry, her start time.
@@ -551,11 +561,18 @@ export function createPageDataProvider(deps: PageDataDeps): (
           const entry = moduleRegistry.all().find((candidate) => candidate.manifest.name === slug);
           return entry === undefined ? false : defaultEnabledForTier(entry.manifest.tier);
         },
+        // UR-20261030-118 — the label is the PERSONA module's knowledge, resolved through the seam.
+        // The resident id is a framework constant; what a profile is CALLED is not.
         profileLabel: async (profileId) =>
-          profileLabel(
-            profileId,
-            profileId === MAIN_PROFILE_ID ? undefined : await personaNameOf(profileId),
-          ),
+          deps.moduleServices
+            ?.tryResolve<PersonaDirectoryService>(MODULE_SERVICE_TOKENS.PersonaDirectory)
+            ?.label(
+              profileId,
+              profileId === MAIN_PROFILE_ID ? undefined : await personaNameOf(profileId),
+            ) ??
+          // Degraded, never wrong-by-role: without the persona module there is no name to show, so the
+          // id stands in rather than the words "main bot" this whole seam exists to remove.
+          (profileId === MAIN_PROFILE_ID ? 'Dumby Profile' : profileId),
         enabledByDefault: async (slug) => {
           const entry = moduleRegistry.all().find((candidate) => candidate.manifest.name === slug);
           if (entry === undefined) return false;

@@ -899,6 +899,8 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   // in this function rather than reordering the boot.
   let pageRegistryRef: PageRegistry | undefined;
   const pageDataProvider = createPageDataProvider({
+    // UR-20261030-118 — the persona module answers what a profile is called; the boot supplies the seam.
+    moduleServices: moduleLoader.serviceRegistry,
     pages: {
       get: (pageId: string) => pageRegistryRef?.get(pageId),
     } as unknown as PageRegistry,
@@ -1219,7 +1221,17 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     // publicly acknowledged interaction, so the card carried the private grammar while the whole
     // channel could read it.
     return renderer.renderNotice({
-      ...moduleRefusalDescriptor(moduleId, moduleRegistry.get(moduleId), error, () => ownerName),
+      ...moduleRefusalDescriptor(
+        moduleId,
+        moduleRegistry.get(moduleId),
+        error,
+        () => ownerName,
+        // UR-20261030-118 — the persona module names the holder; the core supplies the seam.
+        (personaId, personaName) =>
+          moduleLoader.serviceRegistry
+            .tryResolve<PersonaDirectoryService>(MODULE_SERVICE_TOKENS.PersonaDirectory)
+            ?.label(personaId, personaName) ?? personaId,
+      ),
       reason: 'FORBIDDEN',
       traceId: renderer.createTraceId(),
       ephemeral: true,
