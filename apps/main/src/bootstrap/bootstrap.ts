@@ -109,7 +109,7 @@ import { registerKnownGuilds } from '../discord/guild-registry.js';
 import { createBccmEffectHandlers } from '../commands/bccm-effects.js';
 import {
   MODULE_SERVICE_TOKENS,
-  ModuleServiceRegistry,
+  type ModuleServiceRegistry,
   type PersonaDirectoryService,
 } from '../module-system/module-services.js';
 import {
