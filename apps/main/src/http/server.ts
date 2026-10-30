@@ -142,8 +142,12 @@ export function buildApiServer(options: BuildServerOptions): FastifyInstance {
    * the loader recorded, refusing anything that escapes it. The host serves the bytes; it does not own
    * them, and it holds no copy of a module's banner or logo.
    */
-  app.get('/modules/:slug/:asset', async (req, reply) => {
-    const { slug, asset } = req.params as { slug: string; asset: string };
+  // The asset is a WILDCARD, not a single segment: a module declares its banner as `assets/banner.png`,
+  // and a `:asset` param does not match a slash — the request 404s and the banner renders broken. The
+  // wildcard is also why the escape check below exists.
+  app.get('/modules/:slug/*', async (req, reply) => {
+    const { slug } = req.params as { slug: string };
+    const asset = (req.params as { '*': string })['*'];
     const entry = options.moduleRegistry?.all().find((module) => module.manifest.name === slug);
     const root = entry?.root;
     if (root === undefined) return reply.code(404).send({ error: 'module asset not found' });

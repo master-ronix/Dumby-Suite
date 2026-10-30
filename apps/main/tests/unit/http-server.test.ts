@@ -88,11 +88,12 @@ test('buildMetricsServer exposes /metrics', async () => {
 // UR-20261029-111 — a module's own asset, served from the module's directory. The three branches
 // matter: an unknown module, a path that escapes the module, and the file that exists.
 test('buildApiServer serves a module asset from the module, and refuses to escape it', async () => {
-  const { mkdtempSync, writeFileSync } = await import('node:fs');
+  const { mkdirSync, mkdtempSync, writeFileSync } = await import('node:fs');
   const { tmpdir } = await import('node:os');
   const { join } = await import('node:path');
   const root = mkdtempSync(join(tmpdir(), 'module-asset-'));
-  writeFileSync(join(root, 'banner.png'), Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+  mkdirSync(join(root, 'assets'), { recursive: true });
+  writeFileSync(join(root, 'assets', 'banner.png'), Buffer.from([0x89, 0x50, 0x4e, 0x47]));
 
   const app = buildApiServer({
     logger: logger as never,
@@ -117,7 +118,9 @@ test('buildApiServer serves a module asset from the module, and refuses to escap
   await app.ready();
 
   // The module's own file is served.
-  const served = await app.inject({ method: 'GET', url: '/modules/dashboard/banner.png' });
+  // A NESTED path, because a module declares its banner as `assets/banner.png` and a single-segment
+  // param does not match a slash — the exact bug that made the dashboard banner render broken.
+  const served = await app.inject({ method: 'GET', url: '/modules/dashboard/assets/banner.png' });
   expect(served.statusCode).toBe(200);
   expect(served.headers['content-type']).toBe('image/png');
 
