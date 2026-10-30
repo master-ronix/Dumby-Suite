@@ -563,17 +563,18 @@ export function createPageDataProvider(deps: PageDataDeps): (
         },
         // UR-20261030-118 — the label is the PERSONA module's knowledge, resolved through the seam.
         // The resident id is a framework constant; what a profile is CALLED is not.
-        profileLabel: async (profileId) =>
-          deps
+        profileLabel: async (profileId) => {
+          // The NAME is the caller's to read; the POLICY of what to show is the persona module's.
+          const personaName =
+            profileId === MAIN_PROFILE_ID ? undefined : await personaNameOf(profileId);
+          const provided = deps
             .moduleServices?.()
-            ?.tryResolve<PersonaDirectoryService>(MODULE_SERVICE_TOKENS.PersonaDirectory)
-            ?.label(
-              profileId,
-              profileId === MAIN_PROFILE_ID ? undefined : await personaNameOf(profileId),
-            ) ??
-          // Degraded, never wrong-by-role: without the persona module there is no name to show, so the
-          // id stands in rather than the words "main bot" this whole seam exists to remove.
-          (profileId === MAIN_PROFILE_ID ? 'Dumby Profile' : profileId),
+            ?.tryResolve<PersonaDirectoryService>(MODULE_SERVICE_TOKENS.PersonaDirectory);
+          if (provided !== undefined) return provided.label(profileId, personaName);
+          // Degraded, never wrong-by-role: without the persona module the registered name still stands
+          // in, and only an unnamed persona falls back to its id — never to "a persona" or "main bot".
+          return profileId === MAIN_PROFILE_ID ? 'Dumby Profile' : (personaName ?? profileId);
+        },
         enabledByDefault: async (slug) => {
           const entry = moduleRegistry.all().find((candidate) => candidate.manifest.name === slug);
           if (entry === undefined) return false;
