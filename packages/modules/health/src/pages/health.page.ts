@@ -152,8 +152,12 @@ export const healthPage = definePage({
       blocks: healthBlocks(
         data as unknown as Readonly<Record<string, unknown>>,
         context.profileId,
-        context.emoji,
-        context.emojiParts,
+        // UR-20261030-118 — these are ADDITIVE capabilities on the context. A module and the host can be
+        // different versions (the module bundle is seeded on a volume, the host is the image), so a
+        // module must never assume the host knows them: unguarded, `context.emoji(...)` on an older host
+        // is a TypeError that surfaces to a member as MODULE_ERROR.
+        context.emoji ?? (() => undefined),
+        context.emojiParts ?? (() => undefined),
       ),
     };
   },

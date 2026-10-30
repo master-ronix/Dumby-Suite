@@ -201,9 +201,10 @@ export const personaPage = definePage({
       blocks: personaBlocks(
         data as unknown as Readonly<Record<string, unknown>>,
         context.profileId,
-        context.isAdmin,
-        context.emoji,
-        context.emojiParts,
+        // UR-20261030-118 — additive capabilities, guarded: an older host is a degraded page, not a crash.
+        context.isAdmin === true,
+        context.emoji ?? (() => undefined),
+        context.emojiParts ?? (() => undefined),
       ),
     };
   },
