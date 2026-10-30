@@ -18,7 +18,12 @@
   "devId": "dev_first_party",
   "required": false,
   "depends": [],
-  "provides": [],
+  "provides": [
+    {
+      "token": "core.PersonaDirectory",
+      "contract": "PersonaDirectoryService"
+    }
+  ],
   "intents": [],
   "partials": [],
   "commands": [

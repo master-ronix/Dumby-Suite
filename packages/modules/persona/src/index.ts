@@ -1,4 +1,5 @@
 import { personaCommand } from './commands/persona.command.js';
+import { personaDirectory, RESIDENT_PROFILE_ID } from './services/persona-directory.js';
 
 export const MODULE_SLUG = 'persona';
 
@@ -20,9 +21,23 @@ export function currentState(): ModuleState {
   return state;
 }
 
-export async function onLoad(): Promise<void> {
+/**
+ * UR-20261030-118 — the module PROVIDES its domain to the core.
+ *
+ * The container handed to `onLoad` is guarded: `register` succeeds only for a token this module's
+ * manifest declares in `provides`, so the grant and the code agree by construction.
+ */
+export async function onLoad(container?: {
+  register?: (token: symbol, factory: () => unknown) => unknown;
+}): Promise<void> {
   loads += 1;
+  container?.register?.(Symbol.for('core.PersonaDirectory'), () => personaDirectory);
 }
+
+/** The service tokens this module provides; the manifest declares the same list. */
+export const provides = [{ token: 'core.PersonaDirectory', contract: 'PersonaDirectoryService' }];
+
+export { personaDirectory, RESIDENT_PROFILE_ID };
 
 export async function onReady(): Promise<void> {
   state = 'ready';

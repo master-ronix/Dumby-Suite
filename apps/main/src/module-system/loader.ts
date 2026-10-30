@@ -20,6 +20,7 @@ import { runWithModuleContext } from '@workspace/swastik';
 import type { ModuleContextResolver } from './execution-context.js';
 import { withModuleCapabilities } from './module-capabilities.js';
 import { PageRegistry } from './page-registry.js';
+import { ModuleServiceRegistry } from './module-services.js';
 import { makeGlobalDataEmit, makeUnavailableGlobalData } from './global-data-emit.js';
 import type { InternalEventBus } from '../events/event-bus.js';
 
@@ -87,6 +88,11 @@ export class ModuleLoader {
    * switch, so a module that declares a page takes over its own surface.
    */
   readonly pages = new PageRegistry();
+  /**
+   * UR-20261030-118 — the services modules provide. The core resolves a token from here AFTER the load
+   * loop, so a module's domain can leave the base without the core importing it.
+   */
+  readonly serviceRegistry = new ModuleServiceRegistry();
   constructor(
     private readonly registry: ModuleRegistry,
     private readonly container: Container,
@@ -306,6 +312,16 @@ export class ModuleLoader {
           provides: (mod.manifest.provides ?? []).map((entry) => entry.token),
         });
         await mod.onLoad?.(runtime);
+        // UR-20261030-118 — record what the module PROVIDED. It registered into the container during
+        // onLoad; the registry is what the core resolves after the loop, so a service exists only if
+        // the module declared it (the guard refused anything else) and actually registered it.
+        for (const provided of mod.manifest.provides ?? []) {
+          const token = Symbol.for(provided.token);
+          const implementation = this.container.tryResolve<unknown>(token);
+          if (implementation !== undefined) {
+            this.serviceRegistry.provide({ token, moduleId: name, implementation });
+          }
+        }
       } catch (err) {
         this.logger.error('module-load-failed', { module: name, error: String(err) });
         // UR-20261012-072 — §11.7: cleanup on an unrecoverable error. The framework is giving up on
