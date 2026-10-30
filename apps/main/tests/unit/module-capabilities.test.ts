@@ -181,7 +181,7 @@ describe('a module registers only the services its manifest declares', () => {
   });
 
   test('a declared token is registrable, and resolvable afterwards', () => {
-    const container = makeContainer();
+    const container = buildContainer();
     const runtime = withModuleCapabilities(container, {
       moduleId: 'persona',
       tier: 'core',
