@@ -3,12 +3,12 @@
   "note": "Records when the corpus was last independently audited and against which commit, so audit staleness is visible the same way provenance staleness is. Read by check-side-docs (provenance rule) against the reconciliation ledger.",
   "last_audit": {
     "date": "2026-10-27",
-    "commit": "c848333dc6447ab536abf0907783b85040fe0875",
+    "commit": "a1d6cf96683a0e9f906417a04bb701c7d7b1ddea",
     "branch": "feature/dev",
     "scope": "full-scope docs/ corpus enforcement audit at HEAD c6c2c82 (343 files inventoried, all 29 gates run, the shipped HTTP surface compared against contracts/openapi.yaml) + trigger-chain run, State C - Enforcement",
     "findings": "DOC-017 … DOC-024 (UR-20261027-104); the citation-integrity audit earlier the same day closed DOC-001 … DOC-013 under UR-20261027-103",
     "request": "upgradation/UR-20261027-104.md",
-    "re_anchored": "2026-10-27 — re-anchored 9c67e2cc → 7cc721a6 → be0d123c (dependency merges) → c848333d (the module-boundary code change, UR-20261027-105). Every hop was reviewed against the ledger; no row's subject changed except by REC-039, which is new."
+    "re_anchored": "2026-10-27 — re-anchored 9c67e2cc → 7cc721a6 → be0d123c (dependency merges) → a1d6cf96 (the module-boundary code change, UR-20261027-105). Every hop was reviewed against the ledger; no row's subject changed except by REC-039, which is new."
   },
   "ci_enforcement": {
     "verified": "2026-10-27",
