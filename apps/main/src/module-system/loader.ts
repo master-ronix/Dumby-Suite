@@ -301,6 +301,9 @@ export class ModuleLoader {
           moduleId: name,
           tier: mod.manifest.tier,
           globalData,
+          // UR-20261030-118 — the services this module DECLARES it provides. Registration is a grant:
+          // the guard refuses a token the manifest did not name.
+          provides: (mod.manifest.provides ?? []).map((entry) => entry.token),
         });
         await mod.onLoad?.(runtime);
       } catch (err) {

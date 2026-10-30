@@ -107,6 +107,8 @@ export interface ModuleGuardOptions {
   readonly moduleId: string;
   readonly tier: ModuleTier;
   readonly globalData: GlobalDataEmit;
+  /** UR-20261030-118 — the service tokens this module's manifest declares it provides. */
+  provides?: readonly string[];
 }
 
 /**
@@ -120,7 +122,16 @@ export function withModuleCapabilities(
   container: Container,
   options: ModuleGuardOptions,
 ): ModuleRuntime<Container> {
-  const { moduleId, tier, globalData } = options;
+  const { moduleId, tier, globalData, provides = [] } = options;
+  /**
+   * UR-20261030-118 — the services this module's manifest DECLARES it provides.
+   *
+   * `provides` has been in the manifest schema since the beginning and was never wired (REC-039): a
+   * module could register into any token its tier happened to allow, and nothing recorded that it was
+   * the provider of that contract. Registration is a grant, not a reach: a module registers only what
+   * it declared.
+   */
+  const providedTokens = new Set(provides);
   const granted = new Set<ModuleCapability>(capabilitiesForTier(tier));
   const privileged = isPrivilegedTier(tier);
 
@@ -167,10 +178,18 @@ export function withModuleCapabilities(
       return allowed(token) && container.has(token);
     },
     register<T>(token: Token<T>, factory: Parameters<Container['register']>[1]): Container {
-      if (privileged || allowed(token as Token<unknown>)) {
+      // A module's OWN namespace is its own to register into; a shared token is a contract it must
+      // have declared in `provides`. Being able to RESOLVE a token is not permission to PROVIDE it.
+      const own = MODULE_TOKEN_PATTERN.exec(tokenName(token))?.[1] === moduleId;
+      if (own || providedTokens.has(tokenName(token))) {
         return container.register(token, factory);
       }
-      return deny(token as Token<unknown>);
+      throw new ModuleCapabilityDeniedError(
+        moduleId,
+        tier,
+        tokenName(token),
+        capabilityOfToken(token as Token<unknown>),
+      );
     },
   };
 

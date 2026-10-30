@@ -166,6 +166,34 @@ describe('the guarded container refuses what the tier does not hold', () => {
   });
 });
 
+// UR-20261030-118 — registration is a GRANT, not a reach. `provides` has been in the manifest schema
+// since the beginning and was never wired: a module could register into any token its tier allowed,
+// and nothing recorded that it was the provider of that contract.
+describe('a module registers only the services its manifest declares', () => {
+  test('an undeclared shared token is refused, even when the tier may resolve it', () => {
+    const runtime = withModuleCapabilities(buildContainer(), {
+      moduleId: 'health',
+      tier: 'core',
+      globalData,
+    });
+    // Core tier can RESOLVE everything; that is not permission to PROVIDE.
+    expect(() => runtime.register(CORE_TOKENS.Db, () => ({}) as never)).toThrow();
+  });
+
+  test('a declared token is registrable, and resolvable afterwards', () => {
+    const container = makeContainer();
+    const runtime = withModuleCapabilities(container, {
+      moduleId: 'persona',
+      tier: 'core',
+      globalData,
+      provides: ['core.PersonaService'],
+    });
+    const token = { name: 'core.PersonaService', __type: undefined } as never;
+    expect(() => runtime.register(token, () => ({ ok: true }) as never)).not.toThrow();
+    expect(container.resolve(token)).toEqual({ ok: true });
+  });
+});
+
 describe('the global data emit channel is the only way modules share', () => {
   test('a delivery is stamped with its source and carries the payload', async () => {
     const bus = new InternalEventBus();
