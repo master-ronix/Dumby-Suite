@@ -50,4 +50,84 @@ describe('the deployer registers the RENAMED set (UR-20261012-063)', () => {
     expect(body).not.toContain('"name":"hello"');
     expect(body).toContain('Says hello');
   });
+
+  // OI-10 — the read side. The write side stores an alias and a disabled status; a boot that does not
+  // read them re-registers the registry's set, so the alias never becomes invocable and a disabled
+  // command comes back to life on the next deploy.
+  test('a stored ALIAS is registered as an invocable name for its command', async () => {
+    const registry = new CommandRegistry();
+    registry.registerModule('hello-world', 'standard');
+    registry.register({
+      data: { name: 'hello', description: 'Says hello' },
+      moduleId: 'hello-world',
+      execute: async () => {},
+    } as never);
+
+    const puts: Array<{ route: string; body: unknown[] }> = [];
+    const rest = {
+      put: async (route: string, options: { body: unknown[] }) => {
+        puts.push({ route, body: options.body });
+        return undefined;
+      },
+      get: async () => [],
+    };
+
+    const deployer = new CommandDeployer({
+      registry,
+      logger: logger(),
+      config: { applicationId: 'app-1', devGuildId: '', nodeEnv: 'production' } as never,
+      rest: rest as never,
+      enabledGuildResolver: async () => ['g1'],
+      commandAliases: async () => new Map([['hello', ['hi', 'hey']]]),
+    });
+
+    await deployer.deploy();
+
+    const body = JSON.stringify(
+      puts.filter((p) => p.route.includes('/guilds/g1/commands')).at(-1)?.body ?? [],
+    );
+    expect(body).toContain('"name":"hello"');
+    expect(body).toContain('"name":"hi"');
+    expect(body).toContain('"name":"hey"');
+    // The alias carries its command's real definition, not a stub.
+    expect(body).toContain('Says hello');
+  });
+
+  test('a DISABLED command is not re-registered by a boot', async () => {
+    const registry = new CommandRegistry();
+    registry.registerModule('hello-world', 'standard');
+    for (const name of ['hello', 'wave']) {
+      registry.register({
+        data: { name, description: `Says ${name}` },
+        moduleId: 'hello-world',
+        execute: async () => {},
+      } as never);
+    }
+
+    const puts: Array<{ route: string; body: unknown[] }> = [];
+    const rest = {
+      put: async (route: string, options: { body: unknown[] }) => {
+        puts.push({ route, body: options.body });
+        return undefined;
+      },
+      get: async () => [],
+    };
+
+    const deployer = new CommandDeployer({
+      registry,
+      logger: logger(),
+      config: { applicationId: 'app-1', devGuildId: '', nodeEnv: 'production' } as never,
+      rest: rest as never,
+      enabledGuildResolver: async () => ['g1'],
+      commandStatuses: async () => new Map([['wave', 'disabled'] as const]),
+    });
+
+    await deployer.deploy();
+
+    const body = JSON.stringify(
+      puts.filter((p) => p.route.includes('/guilds/g1/commands')).at(-1)?.body ?? [],
+    );
+    expect(body).toContain('"name":"hello"');
+    expect(body).not.toContain('"name":"wave"');
+  });
 });

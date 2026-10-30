@@ -45,6 +45,18 @@ export interface CommandDeployerDeps {
    */
   commandRenames?: (guildId: string) => Promise<ReadonlyMap<string, string>>;
   /**
+   * OI-10 — the aliases a guild's commands carry. A BCCM alias adds an invocable NAME for a command
+   * that already exists, and it is stored in `guild_command_renames.aliases`. Until this reader
+   * existed the alias was applied on the push and lost at the next boot, which re-registers here.
+   */
+  commandAliases?: (guildId: string) => Promise<ReadonlyMap<string, readonly string[]>>;
+  /**
+   * OI-10 — the commands a guild has DISABLED. `guild_command_overrides` holds the status and
+   * `resolveCommandStatuses` reads it for display; a boot that ignores it re-registers a disabled
+   * command as available, so the disable survived only until the next deploy.
+   */
+  commandStatuses?: (guildId: string) => Promise<ReadonlyMap<string, 'enabled' | 'disabled'>>;
+  /**
    * The guilds the bot is currently in. The boot deploy clears and re-registers EVERY one of them, so a
    * stale registration — left by an earlier deploy, or by a module that has since been disabled — is
    * REMOVED rather than lingering beside the current set. Without it, only the guilds the scope
@@ -155,16 +167,33 @@ export class CommandDeployer {
           // live in `guild_command_renames`; reusing `resolveCommandPayloads` with a source map means a
           // renamed command keeps its real definition here exactly as it does on the BCCM push.
           const renamed = await (this.deps.commandRenames?.(guildId) ?? new Map<string, string>());
+          // OI-10 — a disabled command is NOT re-registered: the status is stored, and a boot that
+          // ignored it silently re-enabled the command the guild had turned off.
+          const statuses = await (this.deps.commandStatuses?.(guildId) ??
+            new Map<string, 'enabled' | 'disabled'>());
+          const aliases = await (this.deps.commandAliases?.(guildId) ??
+            new Map<string, readonly string[]>());
+          const enabledCommands = guildCommands.filter((command) => {
+            const key = (command as { name?: string }).name ?? '';
+            return statuses.get(key) !== 'disabled';
+          });
+          // The names to register: each enabled command's current name, then its aliases. The source
+          // map gives every alias the command key it belongs to, so it registers with that command's
+          // own definition rather than a stub.
+          const sources = new Map<string, string>();
+          for (const command of enabledCommands) {
+            const key = (command as { name?: string }).name ?? '';
+            const current = renamed.get(key) ?? key;
+            sources.set(current, key);
+            for (const alias of aliases.get(key) ?? []) sources.set(alias, key);
+          }
+          const names = [...sources.keys()];
           const payloads =
-            renamed.size === 0
-              ? guildCommands
+            names.length === enabledCommands.length &&
+            names.every((name, i) => name === (enabledCommands[i] as { name?: string }).name)
+              ? enabledCommands
               : resolveCommandPayloads(
-                  guildCommands.map(
-                    (command) =>
-                      renamed.get((command as { name?: string }).name ?? '') ??
-                      (command as { name?: string }).name ??
-                      '',
-                  ),
+                  names,
                   registry,
                   (name, reason) =>
                     logger.warn(`command-deployer-command-skipped: ${name} (${reason})`, {
@@ -172,7 +201,7 @@ export class CommandDeployer {
                       name,
                       reason,
                     }),
-                  new Map([...renamed].map(([key, next]) => [next, key])),
+                  sources,
                 );
           await rest.put(Routes.applicationGuildCommands(config.applicationId, guildId), {
             body: [],

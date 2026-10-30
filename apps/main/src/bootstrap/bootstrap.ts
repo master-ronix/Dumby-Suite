@@ -107,7 +107,12 @@ import { createPageDataProvider } from '../rendering/page-data.js';
 import { makeModuleChain } from '../module-system/module-chain.js';
 import { registerKnownGuilds } from '../discord/guild-registry.js';
 import { createBccmEffectHandlers } from '../commands/bccm-effects.js';
-import { effectiveCommandName, resolveEffectiveCommandNames } from '../commands/command-renames.js';
+import {
+  effectiveCommandName,
+  resolveCommandAliases,
+  resolveCommandStatuses,
+  resolveEffectiveCommandNames,
+} from '../commands/command-renames.js';
 import { setGuildCommandPermissions } from '../commands/command-access.js';
 import {
   disableConfirmationDescriptor,
@@ -2419,6 +2424,33 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
           logger.warn(`command-renames-read-failed guild=${guildId} reason=${String(err)}`);
         }
         return map;
+      },
+      // OI-10 — the aliases and the disabled statuses, so a boot re-registers what the guild actually
+      // has rather than the registry's names: an alias becomes an invocable name, and a disabled
+      // command is left out instead of being silently re-enabled by the deploy.
+      commandAliases: async (guildId: string) => {
+        try {
+          return await resolveCommandAliases(
+            db.knex,
+            guildId,
+            commandRegistry.profile.applicationId,
+          );
+        } catch (err) {
+          logger.warn(`command-aliases-read-failed guild=${guildId} reason=${String(err)}`);
+          return new Map<string, readonly string[]>();
+        }
+      },
+      commandStatuses: async (guildId: string) => {
+        try {
+          return await resolveCommandStatuses(
+            db.knex,
+            guildId,
+            commandRegistry.profile.applicationId,
+          );
+        } catch (err) {
+          logger.warn(`command-statuses-read-failed guild=${guildId} reason=${String(err)}`);
+          return new Map<string, 'enabled' | 'disabled'>();
+        }
       },
       registry: commandRegistry,
       logger,

@@ -29,6 +29,34 @@ export async function resolveEffectiveCommandNames(
 }
 
 /**
+ * OI-10 — the aliases a guild's commands carry, keyed by the registered command key.
+ *
+ * An alias is an extra invocable NAME for a command that already exists; it is stored in
+ * `guild_command_renames.aliases` and, until this reader existed, was written by the push and never
+ * read, so a boot re-registered the renamed set without it.
+ */
+export async function resolveCommandAliases(
+  knex: Knex,
+  guildId: string | null,
+  /** item 2 — the acting APPLICATION; '' is the main bot's scope. BCCM is profile-scoped. */
+  applicationId = '',
+): Promise<ReadonlyMap<string, readonly string[]>> {
+  if (guildId === null) return new Map();
+  const rows = (await knex('guild_command_renames')
+    .where({ guildId, applicationId })
+    .whereNull('deletedAt')
+    .select('commandKey', 'aliases')) as Array<{ commandKey?: unknown; aliases?: unknown }>;
+  const aliases = new Map<string, string[]>();
+  for (const row of rows) {
+    if (typeof row.commandKey !== 'string') continue;
+    const value = Array.isArray(row.aliases) ? row.aliases : [];
+    const names = value.filter((alias): alias is string => typeof alias === 'string');
+    if (names.length > 0) aliases.set(row.commandKey, names);
+  }
+  return aliases;
+}
+
+/**
  * The current display name for a command key: the applied rename when one exists, otherwise the
  * key unchanged. The submitted value stays the command key — a rename changes what a command is
  * called, never how it is invoked.
