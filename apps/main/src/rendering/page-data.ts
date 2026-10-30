@@ -571,9 +571,12 @@ export function createPageDataProvider(deps: PageDataDeps): (
             .moduleServices?.()
             ?.tryResolve<PersonaDirectoryService>(MODULE_SERVICE_TOKENS.PersonaDirectory);
           if (provided !== undefined) return provided.label(profileId, personaName);
-          // Degraded, never wrong-by-role: without the persona module the registered name still stands
-          // in, and only an unnamed persona falls back to its id — never to "a persona" or "main bot".
-          return profileId === MAIN_PROFILE_ID ? 'Dumby Profile' : (personaName ?? profileId);
+          // Degraded: without the persona module the core mirrors the module's own policy rather than
+          // inventing one — the resident bot by name, a persona by her registered name, and an unnamed
+          // persona as "another profile", never as her raw id and never as "a persona".
+          return profileId === MAIN_PROFILE_ID
+            ? 'Dumby Profile'
+            : (personaName ?? 'another profile');
         },
         enabledByDefault: async (slug) => {
           const entry = moduleRegistry.all().find((candidate) => candidate.manifest.name === slug);
