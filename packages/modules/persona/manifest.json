@@ -26,6 +26,10 @@
     {
       "token": "core.PersonaPresence",
       "contract": "PersonaPresenceFactory"
+    },
+    {
+      "token": "core.PersonaInvite",
+      "contract": "PersonaInviteBuilder"
     }
   ],
   "intents": [],

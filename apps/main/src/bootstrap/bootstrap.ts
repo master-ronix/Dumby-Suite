@@ -144,7 +144,6 @@ import { buildPersonaInteractionHandler } from '../personas/persona-interaction-
 import { createPersonaOAuthService } from '../personas/persona-oauth.js';
 import { openSealedText } from '../personas/persona-credentials.js';
 import { personaSetupCard } from '../rendering/persona-setup.js';
-import { personaInviteUrl, publicBaseFrom } from '../personas/persona-invite.js';
 import {
   PostgresPersonaBindingStore,
   PostgresPersonaIdentityStore,
@@ -978,11 +977,23 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     },
     // UR-20261012-031 — the persona invite URL: the combined install+authorize link when the persona
     // has an OAuth2 secret, else the plain bot install.
-    personaInvite: (input) =>
-      personaInviteUrl(input, {
-        publicBaseUrl: publicBaseFrom(config.get('OAUTH_REDIRECT_URI')),
+    // UR-20261031-121 — the invite link is the PERSONA MODULE's program now, resolved here at call
+    // time (this dep is an arrow, so the first call is long after the load loop). Absent, the dep
+    // returns undefined rather than throwing: a page that cannot offer an invite still renders.
+    personaInvite: (input) => {
+      const builder = serviceRegistryRef?.tryResolve<{
+        personaInviteUrl: (
+          input: { applicationId: string; guildId: string; withOAuth: boolean },
+          options: { publicBaseUrl: string; permissions: string },
+        ) => string;
+        publicBaseFrom: (redirectUri: string) => string;
+      }>(Symbol.for('core.PersonaInvite'));
+      if (builder === undefined) return undefined;
+      return builder.personaInviteUrl(input, {
+        publicBaseUrl: builder.publicBaseFrom(config.get('OAUTH_REDIRECT_URI')),
         permissions: config.get('BOT_INSTALL_PERMISSIONS'),
-      }),
+      });
+    },
   });
   // UR-20261012-030 (Route A) — one OAuth2 client per persona application, built from the client
   // secret the Twill registration sealed. An application without one resolves to undefined, which is

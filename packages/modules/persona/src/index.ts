@@ -1,6 +1,7 @@
 import { personaCommand } from './commands/persona.command.js';
 import { personaDirectory, RESIDENT_PROFILE_ID } from './services/persona-directory.js';
 import { personaPresenceFromClient } from './domain/persona-presence.js';
+import { personaInviteUrl, publicBaseFrom } from './domain/persona-invite.js';
 
 export const MODULE_SLUG = 'persona';
 
@@ -36,15 +37,28 @@ export async function onLoad(container?: {
   // UR-20261031-121 — persona presence is the module's program: whether a persona's bot is actually
   // in its guild is a fact about a persona, and it now lives here rather than in the core.
   container?.register?.(Symbol.for('core.PersonaPresence'), () => personaPresenceFromClient);
+  // UR-20261031-121 — the invite link a persona is installed with is the persona module's knowledge:
+  // which URL, and whether it carries an authorize step, follows from how a persona is registered.
+  container?.register?.(Symbol.for('core.PersonaInvite'), () => ({
+    personaInviteUrl,
+    publicBaseFrom,
+  }));
 }
 
 /** The service tokens this module provides; the manifest declares the same list. */
 export const provides = [
   { token: 'core.PersonaDirectory', contract: 'PersonaDirectoryService' },
   { token: 'core.PersonaPresence', contract: 'PersonaPresenceFactory' },
+  { token: 'core.PersonaInvite', contract: 'PersonaInviteBuilder' },
 ];
 
-export { personaDirectory, RESIDENT_PROFILE_ID, personaPresenceFromClient };
+export {
+  personaDirectory,
+  RESIDENT_PROFILE_ID,
+  personaPresenceFromClient,
+  personaInviteUrl,
+  publicBaseFrom,
+};
 
 export async function onReady(): Promise<void> {
   state = 'ready';
