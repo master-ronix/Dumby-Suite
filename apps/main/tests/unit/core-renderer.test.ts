@@ -10,7 +10,7 @@ import {
   type ContainerComponent,
   type ComponentsV2Message,
   type TextDisplayComponent,
-} from '../../src/shared/utils/components-v2.js';
+} from '@workspace/swastik';
 
 function textContents(message: ComponentsV2Message): string[] {
   const out: string[] = [];

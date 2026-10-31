@@ -4,7 +4,7 @@ import {
   ComponentType,
   EPHEMERAL,
   IS_COMPONENTS_V2,
-} from '../../src/shared/utils/components-v2.js';
+} from '@workspace/swastik';
 
 /**
  * §1.2 / item 4-5 — the EPHEMERAL grammar.

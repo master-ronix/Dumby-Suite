@@ -2,7 +2,7 @@ import { test, expect, vi, describe } from 'vitest';
 import type { Logger } from '../../src/logging/logger.js';
 import { CoreRenderer, blockZone } from '../../src/rendering/core-renderer.js';
 import type { RenderBlock } from '../../src/rendering/core-renderer.js';
-import { ComponentType } from '../../src/shared/utils/components-v2.js';
+import { ComponentType } from '@workspace/swastik';
 
 /**
  * §1.3 — the zone grammar for a Mode D page.

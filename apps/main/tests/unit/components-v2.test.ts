@@ -17,7 +17,7 @@ import {
   createMarketplaceTitleBlock,
   createSectionHeader,
   createKeyValueDisplay,
-} from '../../src/shared/utils/components-v2.js';
+} from '@workspace/swastik';
 
 describe('components-v2 builders', () => {
   test('textDisplay creates a TEXT_DISPLAY component', () => {

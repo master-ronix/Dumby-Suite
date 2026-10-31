@@ -13,7 +13,7 @@ import {
   isSnowflake,
   shardIdFromSnowflake,
 } from '../../src/shared/utils/snowflake.js';
-import { DEFAULT_ACCENT_COLOR } from '../../src/shared/utils/components-v2.js';
+import { DEFAULT_ACCENT_COLOR } from '@workspace/swastik';
 import { DURATIONS, BOOTSTRAP_TIMEOUTS } from '../../src/shared/constants/durations.js';
 import { RATE_LIMIT_DEFAULTS } from '../../src/shared/constants/limits.js';
 
