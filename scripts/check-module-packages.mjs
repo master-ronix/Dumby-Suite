@@ -275,12 +275,24 @@ const walkTsCore = (dir) => {
     .filter((entry) => entry.isFile() && entry.name.endsWith('.ts'))
     .map((entry) => join(entry.parentPath ?? entry.path, entry.name));
 };
+/**
+ * UR-20261031-121 — every import of a module package, and whether it is TYPE-ONLY.
+ *
+ * A type import is erased before the program exists: it creates no runtime edge, so the core may use a
+ * module's types without the core depending on the module. A value import does create that edge, and
+ * is still refused. The distinction is what lets the persona domain move — the core keeps its type
+ * safety and takes the implementations through the service seam.
+ */
 const importSpecsCore = (file) => {
   const source = readFileSync(file, 'utf8');
   const specs = [];
-  const pattern = /(?:^|\n)\s*(?:import|export)[^;\n]*?from\s*['"]([^'"]+)['"]/g;
+  const pattern = /(?:^|\n)\s*(?:import|export)([^;\n]*?)from\s*['"]([^'"]+)['"]/g;
   let match;
-  while ((match = pattern.exec(source)) !== null) specs.push(match[1]);
+  while ((match = pattern.exec(source)) !== null) {
+    // `import type { X } from` / `export type { X } from` are erased; anything else is a value edge.
+    const isTypeOnly = /^\s*type\b/.test(match[1]);
+    specs.push({ spec: match[2], isTypeOnly });
+  }
   return specs;
 };
 
@@ -288,12 +300,14 @@ const importSpecsCore = (file) => {
 {
   const coreSrc = join(process.cwd(), 'apps', 'main', 'src');
   for (const file of walkTsCore(coreSrc)) {
-    for (const spec of importSpecsCore(file)) {
-      if (spec.includes('packages/modules') || spec.startsWith('@workspace/module-')) {
-        failures.push(
-          `the core imports a module package (${file.slice(process.cwd().length + 1)} -> '${spec}') — the core may not know a module exists`,
-        );
-      }
+    for (const { spec, isTypeOnly } of importSpecsCore(file)) {
+      const isModulePackage =
+        spec.includes('packages/modules') || spec.startsWith('@workspace/module-');
+      if (!isModulePackage) continue;
+      if (isTypeOnly) continue;
+      failures.push(
+        `the core imports a module package (${file.slice(process.cwd().length + 1)} -> '${spec}') — the core may not know a module exists; use 'import type' for types and take implementations through the service seam`,
+      );
     }
   }
 }
