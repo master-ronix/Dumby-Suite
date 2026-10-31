@@ -58,3 +58,61 @@ export {
 } from './pages.js';
 
 export { modulePageNavigation, romanNumeral, type PageSlide } from './paging.js';
+
+/**
+ * UR-20261031-120 — the Components V2 primitive vocabulary.
+ *
+ * A module returns DATA and BLOCKS, and the framework renders them. That left one surface unable to
+ * leave the core: a module-specific card that builds a message directly (`persona-setup`) could not
+ * move into its module without importing the core, and the import gate refuses exactly that.
+ *
+ * The operator's decision: the SDK owns the vocabulary, and rendering stays in the core as a library
+ * modules call. So the primitives live here, a module imports them from `@workspace/swastik`, and the
+ * core imports the same file — one definition, no duplication, no core dependency for a module.
+ */
+export {
+  textDisplay,
+  mediaGallery,
+  separator,
+  container,
+  stringSelect,
+  userSelect,
+  roleSelect,
+  mentionableSelect,
+  channelSelect,
+  button,
+  linkButton,
+  actionRow,
+  thumbnail,
+  section,
+  textInputModal,
+  multiInputModal,
+  buildComponentsV2,
+  createBannerMediaGallery,
+  getDefaultBannerUrl,
+  createTitleBlock,
+  createMarketplaceTitleBlock,
+  createSectionHeader,
+  createKeyValueDisplay,
+  IS_COMPONENTS_V2,
+  EPHEMERAL,
+  ComponentType,
+  DEFAULT_ACCENT_COLOR,
+  DEFAULT_PERSONA_ACCENT,
+  type ComponentTypeValue,
+  type ComponentBase,
+  type TextDisplayComponent,
+  type MediaGalleryComponent,
+  type SeparatorComponent,
+  type ContainerComponent,
+  type StringSelectComponent,
+  type EntitySelectComponent,
+  type ButtonComponent,
+  type ActionRowComponent,
+  type ThumbnailComponent,
+  type SectionComponent,
+  type Component,
+  type ComponentsV2Message,
+  type ModalTextInput,
+  type ModalPayload,
+} from './components-v2.js';

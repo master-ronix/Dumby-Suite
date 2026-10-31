@@ -22,7 +22,7 @@ import {
   type ComponentsV2Message,
   type EntitySelectComponent,
   userSelect,
-} from '../shared/utils/components-v2.js';
+} from '@workspace/swastik';
 import { pageSections } from './page-layouts.js';
 import type { Logger } from '../logging/logger.js';
 

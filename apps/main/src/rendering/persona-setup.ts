@@ -11,7 +11,7 @@ import {
   separator,
   textDisplay,
   type ComponentsV2Message,
-} from '../shared/utils/components-v2.js';
+} from '@workspace/swastik';
 
 export interface PersonaSetupCardDeps {
   /** The URL the persona application must list under OAuth2 → Redirects. */

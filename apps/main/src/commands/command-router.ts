@@ -35,7 +35,7 @@ import {
   INSTALL_DROPDOWN_CAP,
   MARKETPLACE_MODULE_CAP,
 } from '../shared/constants/index.js';
-import type { ComponentsV2Message } from '../shared/utils/components-v2.js';
+import type { ComponentsV2Message } from '@workspace/swastik';
 import type { ExecutionIdentity, ModuleStanding } from '@workspace/swastik';
 
 /** Manage Guild (0x20) and Administrator (0x8), as the decimal strings Discord sends. */

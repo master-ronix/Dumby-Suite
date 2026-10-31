@@ -1,11 +1,6 @@
 import { describe, expect, test, vi } from 'vitest';
 import { MessageFlags } from 'discord.js';
-import {
-  button,
-  section,
-  stringSelect,
-  textInputModal,
-} from '../../src/shared/utils/components-v2.js';
+import { button, section, stringSelect, textInputModal } from '@workspace/swastik';
 import { CoreRenderer } from '../../src/rendering/core-renderer.js';
 import { InteractionRegistry } from '../../src/interactions/interaction-registry.js';
 import { registerCoreFrameHandlers } from '../../src/interactions/core-frame.handlers.js';

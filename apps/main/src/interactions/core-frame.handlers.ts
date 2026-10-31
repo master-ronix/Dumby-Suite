@@ -1,7 +1,7 @@
 import type { CommandInteraction, CommandRouter } from '../commands/command-router.js';
 import type { RenderMode } from '../rendering/core-renderer.js';
 import type { ComponentInteraction, InteractionRegistry } from './interaction-registry.js';
-import { textInputModal } from '../shared/utils/components-v2.js';
+import { textInputModal } from '@workspace/swastik';
 import { HOME_SELECT_VALUE } from '../shared/constants/index.js';
 
 const MODE_PREFIX = 'dumby:mode:';

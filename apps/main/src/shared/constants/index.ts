@@ -1,6 +1,6 @@
 // Appendix C #22 — the Components v2 constants have a single source of truth
-// (`shared/utils/components-v2.ts`); this module re-exports rather than duplicating them.
-export { IS_COMPONENTS_V2, ComponentType } from '../utils/components-v2.js';
+// (`@workspace/swastik`); this module re-exports rather than duplicating them.
+export { IS_COMPONENTS_V2, ComponentType } from '@workspace/swastik';
 
 export const RBAC_ROLES = ['OWNER', 'ADMIN', 'MOD', 'HELPER', 'MEMBER', 'RESTRICTED'] as const;
 

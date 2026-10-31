@@ -5,7 +5,7 @@ import { CommandRouter } from '../../src/commands/command-router.js';
 import { MiddlewarePipeline } from '../../src/middleware/middleware-pipeline.js';
 import { MiddlewareRejectError, type Middleware } from '../../src/middleware/base-middleware.js';
 import { PermissionResolver } from '../../src/permissions/resolver.js';
-import { IS_COMPONENTS_V2 } from '../../src/shared/utils/components-v2.js';
+import { IS_COMPONENTS_V2 } from '@workspace/swastik';
 import { registerModuleEmoji } from '../../src/rendering/module-icons.js';
 
 function textContents(payload: unknown): string[] {

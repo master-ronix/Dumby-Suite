@@ -34,7 +34,7 @@ import {
   type PersonaRegistrationInput,
 } from './persona.js';
 import type { PersonaCommandBindingService } from './persona-command-binding.service.js';
-import { DEFAULT_PERSONA_ACCENT } from '../shared/utils/components-v2.js';
+import { DEFAULT_PERSONA_ACCENT } from '@workspace/swastik';
 
 const str = (value: unknown): string | undefined =>
   typeof value === 'string' && value.trim() !== '' ? value.trim() : undefined;
