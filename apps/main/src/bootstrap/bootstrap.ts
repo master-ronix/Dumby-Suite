@@ -627,6 +627,22 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   // Without a domain - a local run - the banner slot is simply omitted rather than pointed at a URL
   // nothing serves.
   const publicDomain = resolvePublicDomain(process.env, config.get('PUBLIC_DOMAIN'));
+  // UR-20261031-119 — say out loud what the banner host resolved to. Without this the only way to
+  // learn that no banner can render was to read the code: an empty domain silently omits the slot,
+  // and a wrong one produces a URL Discord refuses. One line at boot answers it either way.
+  if (publicDomain === '') {
+    logger.warn('public-domain-unresolved', {
+      effect: 'no banner can be rendered: the default and every module banner need an absolute url',
+      checked: [
+        'PUBLIC_DOMAIN',
+        'RAILWAY_PUBLIC_DOMAIN',
+        'RENDER_EXTERNAL_HOSTNAME',
+        'RENDER_EXTERNAL_URL',
+      ],
+    });
+  } else {
+    logger.info('public-domain-resolved', { host: publicDomain });
+  }
   // §1.3 — the zone grammar is enforced inside the renderer; the logger is what makes a relocated
   // block visible, so a module that declares a select among its content blocks is told rather than
   // silently moved.
