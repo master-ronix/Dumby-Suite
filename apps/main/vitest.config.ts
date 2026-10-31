@@ -57,12 +57,12 @@ export default defineConfig({
     globals: false,
     coverage: {
       provider: 'v8',
-      // UR-20261030-118 — module code is measured too. A move out of the core used to LOWER the ratio
-      // because the covered host file vanished while its replacement sat outside the population: the
-      // gate punished the migration it should reward. v8 reports files that were LOADED during the run,
-      // and module pages and blocks are loaded through the vitest aliases, so including them measures
-      // real code rather than declaring a floor over nothing.
-      include: ['src/**/*.ts', '../../packages/modules/*/src/**/*.ts'],
+      // OI-15 — module code is NOT in this population, and a glob cannot put it there: v8 resolves
+      //  against this project's root and ignores a pattern that escapes it. Attempted
+      // 2026-10-31 with '../../packages/modules/*/src/**/*.ts' and the coverage table listed no module
+      // file at all, so the change was reverted rather than left as config that does nothing. The
+      // honest fix is a second vitest project rooted at packages/modules, which is still open.
+      include: ['src/**/*.ts'],
       exclude: [
         'src/entry/**',
         // UR-20261029-114 — the composition root is not unit-testable by design: it wires every
