@@ -22,6 +22,10 @@
     {
       "token": "core.PersonaDirectory",
       "contract": "PersonaDirectoryService"
+    },
+    {
+      "token": "core.PersonaPresence",
+      "contract": "PersonaPresenceFactory"
     }
   ],
   "intents": [],

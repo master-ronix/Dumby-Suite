@@ -140,7 +140,6 @@ import {
   deployPersonaCommands,
   splitPersonaPayloads,
 } from '../personas/persona-runtime.js';
-import { personaPresenceFromClient } from '../personas/persona-presence.js';
 import { buildPersonaInteractionHandler } from '../personas/persona-interaction-handler.js';
 import { createPersonaOAuthService } from '../personas/persona-oauth.js';
 import { openSealedText } from '../personas/persona-credentials.js';
@@ -959,11 +958,24 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
     redis,
     config,
     logger,
-    // UR-20261012-029 — a persona's active state is whether its bot is present in its bound guild.
-    isMember: personaPresenceFromClient(
-      () => discordClient,
-      (message) => logger.warn(message),
-    ),
+    // UR-20261012-029 / UR-20261031-121 — a persona's active state is whether its bot is present in its
+    // bound guild. That is the PERSONA MODULE's program now: it provides `core.PersonaPresence` at load
+    // and the core resolves it here, at call time, because this dep is used long after the load loop.
+    // Absent, the answer is "not present" rather than a thrown page — the same degrade the helper itself
+    // applies for a missing guild or member.
+    isMember: (guildId: string, applicationId: string) => {
+      const factory = serviceRegistryRef?.tryResolve<
+        (
+          getClient: () => Client | undefined,
+          warn: (message: string) => void,
+        ) => (guildId: string, applicationId: string) => Promise<boolean>
+      >(Symbol.for('core.PersonaPresence'));
+      if (factory === undefined) return Promise.resolve(false);
+      return factory(
+        () => discordClient,
+        (message) => logger.warn(message),
+      )(guildId, applicationId);
+    },
     // UR-20261012-031 — the persona invite URL: the combined install+authorize link when the persona
     // has an OAuth2 secret, else the plain bot install.
     personaInvite: (input) =>
