@@ -384,14 +384,14 @@ describe('a banner url Discord would reject', () => {
 
   test('is dropped, and the frame still renders', () => {
     const renderer = build('https:///modules/dashboard/assets/banner.png');
-    const message = renderer.render({ surface: 'Dashboard' });
+    const message = renderer.render({ surface: 'Health', mode: 'D', summary: 'ok' });
     // The page renders; only the banner slot is absent.
     expect(JSON.stringify(message)).not.toContain('https:///modules');
   });
 
   test('a well formed url is still rendered', () => {
     const renderer = build('https://example.test/assets/banner.png');
-    const message = renderer.render({ surface: 'Dashboard' });
+    const message = renderer.render({ surface: 'Health', mode: 'D', summary: 'ok' });
     expect(JSON.stringify(message)).toContain('https://example.test/assets/banner.png');
   });
 });
