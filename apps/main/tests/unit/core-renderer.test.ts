@@ -369,3 +369,29 @@ describe('UR-20261026-098 — createReadOnlyInteraction', () => {
     await expect(guarded.editReply()).resolves.toBe('editReply');
   });
 });
+
+// UR-20261031-119 — a malformed banner url must not take the message down with it.
+//
+// The live failure: `https://${publicDomain}/modules/dashboard/assets/banner.png` with an empty
+// publicDomain is `https:///modules/...`, Discord answers 50035 URL_TYPE_INVALID_URL, and it rejects
+// the WHOLE message — a member saw "Module error" for /dashboard on both profiles.
+describe('a banner url Discord would reject', () => {
+  const build = (bannerUrl: string | undefined) =>
+    new CoreRenderer({
+      logger: { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} } as never,
+      ...(bannerUrl !== undefined ? { bannerUrl } : {}),
+    });
+
+  test('is dropped, and the frame still renders', () => {
+    const renderer = build('https:///modules/dashboard/assets/banner.png');
+    const message = renderer.render({ surface: 'Dashboard' });
+    // The page renders; only the banner slot is absent.
+    expect(JSON.stringify(message)).not.toContain('https:///modules');
+  });
+
+  test('a well formed url is still rendered', () => {
+    const renderer = build('https://example.test/assets/banner.png');
+    const message = renderer.render({ surface: 'Dashboard' });
+    expect(JSON.stringify(message)).toContain('https://example.test/assets/banner.png');
+  });
+});

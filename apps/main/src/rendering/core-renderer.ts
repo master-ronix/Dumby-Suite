@@ -409,6 +409,21 @@ export function blockZone(block: RenderBlock): 'above' | 'below' | 'both' {
   }
 }
 
+/**
+ * UR-20261031-119 — a media url Discord will accept: absolute, http(s), with a host.
+ *
+ * `new URL('https:///x')` parses and yields an empty host, so parsing alone is not enough — the host
+ * is the thing Discord checks.
+ */
+function isAbsoluteHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return (url.protocol === 'https:' || url.protocol === 'http:') && url.host !== '';
+  } catch {
+    return false;
+  }
+}
+
 export class CoreRenderer {
   private readonly bannerUrl: string | undefined;
   private readonly bannersByModule: Readonly<Record<string, string>>;
@@ -577,9 +592,18 @@ export class CoreRenderer {
     const moduleBanner =
       input.moduleId !== undefined ? this.bannersByModule[input.moduleId] : undefined;
     const bannerUrl = input.banner ?? moduleBanner ?? this.bannerUrl;
-    if (mode === 'D' && bannerUrl !== undefined) {
+    // A media item's url must be absolute http(s). Discord validates it and rejects the ENTIRE message
+    // with 50035 when it is not, so a bad banner is dropped and the frame renders without one — a page
+    // missing its banner is a page; a page that cannot be sent is an outage.
+    if (mode === 'D' && bannerUrl !== undefined && isAbsoluteHttpUrl(bannerUrl)) {
       components.push(createBannerMediaGallery(bannerUrl));
       components.push(separator());
+    } else if (mode === 'D' && bannerUrl !== undefined) {
+      this.logger.warn('banner-url-dropped', {
+        reason: 'not an absolute http(s) url',
+        // The VALUE is not logged: it is a configuration defect, and the shape is enough to find it.
+        length: bannerUrl.length,
+      });
     }
 
     // items 6/7/8 - the identity band: a bold "Dumby Suite | <page>" title, then the developer.

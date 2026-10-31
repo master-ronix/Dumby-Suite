@@ -2613,11 +2613,26 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   const powerEngineCatalog = createPowerEngineCatalog({ guildSuspensions, logger });
 
   // UR-20261029-111 — fill the map declared above from what the modules declare.
+  //
+  // The host in the URL must be the RESOLVED public domain, and there must be one: Discord rejects a
+  // media item whose url is not well formed, and it rejects the WHOLE MESSAGE with it
+  // (50035 URL_TYPE_INVALID_URL). Building `https://${''}/modules/...` is exactly that, and it took
+  // /dashboard down on a host where PUBLIC_DOMAIN is unset and the domain is injected by the platform.
+  // Without a domain the map stays empty and the frame falls back to the default banner, which the
+  // renderer already guards the same way.
   for (const entry of moduleRegistry.all()) {
     const banner = entry.manifest.ui?.banner;
     if (banner === undefined) continue;
+    if (publicDomain === '') {
+      logger.warn('module-banner-skipped', {
+        module: entry.manifest.name,
+        reason:
+          'no public domain resolved; a relative banner url is rejected by Discord as malformed',
+      });
+      continue;
+    }
     bannersByModule[entry.manifest.name] =
-      `https://${config.get('PUBLIC_DOMAIN')}/modules/${entry.manifest.name}/${banner}`;
+      `https://${publicDomain}/modules/${entry.manifest.name}/${banner}`;
   }
 
   const apiServer = buildApiServer({
