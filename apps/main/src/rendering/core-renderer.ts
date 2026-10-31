@@ -601,7 +601,7 @@ export class CoreRenderer {
         components.push(createBannerMediaGallery(bannerUrl));
         components.push(separator());
       } else if (bannerUrl !== undefined) {
-        this.logger.warn('banner-url-dropped', {
+        this.logger?.warn('banner-url-dropped', {
           reason: 'not an absolute http(s) url',
           // The VALUE is not logged: it is a configuration defect, and its shape is enough to find it.
           length: bannerUrl.length,
