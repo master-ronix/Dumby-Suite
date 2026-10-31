@@ -30,10 +30,6 @@
     {
       "token": "core.PersonaInvite",
       "contract": "PersonaInviteBuilder"
-    },
-    {
-      "token": "core.PersonaCredentials",
-      "contract": "PersonaCredentialReader"
     }
   ],
   "intents": [],
