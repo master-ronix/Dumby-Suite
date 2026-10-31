@@ -42,27 +42,52 @@ export default defineConfig({
   },
   server: { fs: { allow: ['..'] } },
   test: {
-    // UR-20261029-117 — a module's tests live in the module. They are collected here because this is
-    // the harness that resolves the workspace and measures coverage, but the files belong to the
-    // packages that own them.
-    include: ['tests/unit/**/*.test.ts', '../../packages/modules/*/tests/**/*.test.ts'],
-    exclude: [
-      'tests/integration/**',
-      'tests/e2e/**',
-      'tests/smoke/**',
-      'tests/load/**',
-      'tests/chaos/**',
+    /**
+     * OI-15 — TWO projects, because coverage cannot reach module code from here.
+     *
+     * v8 resolves `coverage.include` against this project's root and ignores a pattern that escapes
+     * it: an attempt with a relative glob pointing at the module sources produced a green run whose
+     * coverage table listed no module file at all. A second project rooted at the packages is the only
+     * honest fix.
+     *
+     * The two projects run under one command, and coverage is collected across both, so a module file
+     * that a module test exercises is measured in the same report as the core.
+     */
+    projects: [
+      {
+        test: {
+          name: 'core',
+          root: '.',
+          include: ['tests/unit/**/*.test.ts'],
+          exclude: [
+            'tests/integration/**',
+            'tests/e2e/**',
+            'tests/smoke/**',
+            'tests/load/**',
+            'tests/chaos/**',
+          ],
+          environment: 'node',
+          globals: false,
+        },
+      },
+      {
+        test: {
+          name: 'modules',
+          // A module's tests live with the module and are run from the module tree, so a module file
+          // under this root is measured against the module that owns it.
+          root: '../../packages/modules',
+          include: ['*/tests/**/*.test.ts'],
+          environment: 'node',
+          globals: false,
+        },
+      },
     ],
-    environment: 'node',
-    globals: false,
     coverage: {
       provider: 'v8',
-      // OI-15 — module code is NOT in this population, and a glob cannot put it there: v8 resolves
-      //  against this project's root and ignores a pattern that escapes it. Attempted
-      // 2026-10-31 with '../../packages/modules/*/src/**/*.ts' and the coverage table listed no module
-      // file at all, so the change was reverted rather than left as config that does nothing. The
-      // honest fix is a second vitest project rooted at packages/modules, which is still open.
-      include: ['src/**/*.ts'],
+      // OI-15 — both populations, now that the module project is rooted where they live. The core
+      // pattern is resolved against the core project's root and the module pattern against the module
+      // project's, which is exactly why one glob could never cover both.
+      include: ['src/**/*.ts', '*/src/**/*.ts'],
       exclude: [
         'src/entry/**',
         // UR-20261029-114 — the composition root is not unit-testable by design: it wires every
