@@ -2,7 +2,7 @@ import { describe, expect, test, vi } from 'vitest';
 import {
   createPersonaPresence,
   personaPresenceFromClient,
-} from '../../src/personas/persona-presence.js';
+} from '../../../../apps/main/src/personas/persona-presence.js';
 
 describe('createPersonaPresence', () => {
   test('reports present when the persona bot is a guild member', async () => {

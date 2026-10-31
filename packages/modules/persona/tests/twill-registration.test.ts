@@ -1,16 +1,16 @@
 import { describe, expect, test, vi } from 'vitest';
 import Fastify from 'fastify';
-import { randomRootKey } from '../../src/crypto/envelope.js';
-import { openSealedText } from '../../src/personas/persona-credentials.js';
+import { randomRootKey } from '../../../../apps/main/src/crypto/envelope.js';
+import { openSealedText } from '../../../../apps/main/src/personas/persona-credentials.js';
 import {
   parsePersonaRegistration,
   publicPersonaView,
   registerTwillPersonaRoutes,
-} from '../../src/personas/twill-registration.js';
+} from '../../../../apps/main/src/personas/twill-registration.js';
 import {
   ApplicationAlreadyRegisteredError,
   type PersonaIdentity,
-} from '../../src/personas/persona.js';
+} from '../../../../apps/main/src/personas/persona.js';
 
 const rootKey = randomRootKey('local');
 

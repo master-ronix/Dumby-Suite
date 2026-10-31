@@ -2,8 +2,8 @@ import { describe, expect, test, vi } from 'vitest';
 import {
   buildComponentInteractionHandler,
   buildPersonaInteractionHandler,
-} from '../../src/personas/persona-interaction-handler.js';
-import type { InteractionRegistry } from '../../src/interactions/interaction-registry.js';
+} from '../../../../apps/main/src/personas/persona-interaction-handler.js';
+import type { InteractionRegistry } from '../../../../apps/main/src/interactions/interaction-registry.js';
 
 function deps(dispatchImpl: (i: unknown) => Promise<boolean>) {
   const warn = vi.fn();

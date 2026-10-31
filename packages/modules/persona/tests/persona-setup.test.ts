@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { personaSetupCard } from '../../src/rendering/persona-setup.js';
+import { personaSetupCard } from '../../../../apps/main/src/rendering/persona-setup.js';
 
 const flatten = (value: unknown): string => JSON.stringify(value);
 

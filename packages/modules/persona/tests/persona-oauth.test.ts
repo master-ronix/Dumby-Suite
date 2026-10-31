@@ -1,7 +1,7 @@
 import { describe, expect, test, vi } from 'vitest';
-import { randomRootKey, seal } from '../../src/crypto/envelope.js';
-import { openSealedText } from '../../src/personas/persona-credentials.js';
-import { createPersonaOAuthService } from '../../src/personas/persona-oauth.js';
+import { randomRootKey, seal } from '../../../../apps/main/src/crypto/envelope.js';
+import { openSealedText } from '../../../../apps/main/src/personas/persona-credentials.js';
+import { createPersonaOAuthService } from '../../../../apps/main/src/personas/persona-oauth.js';
 
 type Any = Record<string, unknown>;
 

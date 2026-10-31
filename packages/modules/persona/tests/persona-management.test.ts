@@ -3,9 +3,9 @@ import {
   toPersonaUpdateColumns,
   accentToInt,
   InvalidPersonaFieldError,
-} from '../../src/personas/persona.js';
-import { PersonaCommandBindingService } from '../../src/personas/persona-command-binding.service.js';
-import { InMemoryPersonaStores } from '../../src/personas/persona.repository.js';
+} from '../../../../apps/main/src/personas/persona.js';
+import { PersonaCommandBindingService } from '../../../../apps/main/src/personas/persona-command-binding.service.js';
+import { InMemoryPersonaStores } from '../../../../apps/main/src/personas/persona.repository.js';
 
 /**
  * UR-20261012-081 — the persona MANAGEMENT surface: update, revoke, rotate credentials. Registration

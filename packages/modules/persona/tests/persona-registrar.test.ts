@@ -1,16 +1,16 @@
 import { describe, expect, test, vi } from 'vitest';
-import { PersonaCommandBindingService } from '../../src/personas/persona-command-binding.service.js';
+import { PersonaCommandBindingService } from '../../../../apps/main/src/personas/persona-command-binding.service.js';
 import {
   parseRegistrarSeed,
   seedRegistrars,
   seedRegistrarsSafely,
   type PersonaRegistrarStore,
-} from '../../src/personas/persona-registrar.repository.js';
+} from '../../../../apps/main/src/personas/persona-registrar.repository.js';
 import {
   ApplicationAlreadyRegisteredError,
   RegistrarNotAuthorisedError,
   type PersonaRegistrationInput,
-} from '../../src/personas/persona.js';
+} from '../../../../apps/main/src/personas/persona.js';
 
 const input = (over: Partial<PersonaRegistrationInput> = {}): PersonaRegistrationInput =>
   ({

@@ -1,5 +1,8 @@
 import { describe, expect, test } from 'vitest';
-import { buildPersonaIdentity, type PersonaRegistrationInput } from '../../src/personas/persona.js';
+import {
+  buildPersonaIdentity,
+  type PersonaRegistrationInput,
+} from '../../../../apps/main/src/personas/persona.js';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 

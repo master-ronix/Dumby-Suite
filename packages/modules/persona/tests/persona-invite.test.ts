@@ -1,5 +1,8 @@
 import { describe, expect, test } from 'vitest';
-import { personaInviteUrl, publicBaseFrom } from '../../src/personas/persona-invite.js';
+import {
+  personaInviteUrl,
+  publicBaseFrom,
+} from '../../../../apps/main/src/personas/persona-invite.js';
 
 const deps = { publicBaseUrl: 'https://dumby.example', permissions: '84992' };
 

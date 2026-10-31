@@ -1,6 +1,9 @@
 import { describe, expect, test } from 'vitest';
-import { randomRootKey, seal } from '../../src/crypto/envelope.js';
-import { openBotTokenOrEmpty, openSealedText } from '../../src/personas/persona-credentials.js';
+import { randomRootKey, seal } from '../../../../apps/main/src/crypto/envelope.js';
+import {
+  openBotTokenOrEmpty,
+  openSealedText,
+} from '../../../../apps/main/src/personas/persona-credentials.js';
 
 describe('openSealedText', () => {
   test('round-trips a sealed secret through the root key', () => {

@@ -1,12 +1,15 @@
 import { describe, expect, test, vi } from 'vitest';
-import { CommandRegistry, type CommandDefinition } from '../../src/commands/command-registry.js';
+import {
+  CommandRegistry,
+  type CommandDefinition,
+} from '../../../../apps/main/src/commands/command-registry.js';
 import {
   filterRegistryForModules,
   personaRegistryModules,
   PersonaRuntime,
   type RuntimePersona,
   deployPersonaCommands,
-} from '../../src/personas/persona-runtime.js';
+} from '../../../../apps/main/src/personas/persona-runtime.js';
 
 const def = (name: string, moduleId: string): CommandDefinition =>
   ({

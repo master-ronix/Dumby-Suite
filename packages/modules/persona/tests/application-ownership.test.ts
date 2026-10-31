@@ -1,5 +1,5 @@
 import { describe, expect, test, vi } from 'vitest';
-import { verifyApplicationOwnership } from '../../src/personas/application-ownership.js';
+import { verifyApplicationOwnership } from '../../../../apps/main/src/personas/application-ownership.js';
 
 const ok = (id: string): typeof fetch =>
   vi.fn(async () => ({
