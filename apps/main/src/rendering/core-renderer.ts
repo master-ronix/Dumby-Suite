@@ -418,7 +418,11 @@ export function blockZone(block: RenderBlock): 'above' | 'below' | 'both' {
 function isAbsoluteHttpUrl(value: string): boolean {
   try {
     const url = new URL(value);
-    return (url.protocol === 'https:' || url.protocol === 'http:') && url.host !== '';
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') return false;
+    // A host is not enough. `new URL('https:///modules/x')` does NOT throw — it normalises to the
+    // single-label host `modules`, which is exactly the url an empty public domain produced, and
+    // Discord rejects it. A public host has at least one dot; a single label never does.
+    return url.hostname.includes('.');
   } catch {
     return false;
   }
