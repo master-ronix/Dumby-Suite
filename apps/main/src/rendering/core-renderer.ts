@@ -595,15 +595,18 @@ export class CoreRenderer {
     // A media item's url must be absolute http(s). Discord validates it and rejects the ENTIRE message
     // with 50035 when it is not, so a bad banner is dropped and the frame renders without one — a page
     // missing its banner is a page; a page that cannot be sent is an outage.
-    if (mode === 'D' && bannerUrl !== undefined && isAbsoluteHttpUrl(bannerUrl)) {
-      components.push(createBannerMediaGallery(bannerUrl));
-      components.push(separator());
-    } else if (mode === 'D' && bannerUrl !== undefined) {
-      this.logger.warn('banner-url-dropped', {
-        reason: 'not an absolute http(s) url',
-        // The VALUE is not logged: it is a configuration defect, and the shape is enough to find it.
-        length: bannerUrl.length,
-      });
+    if (mode === 'D') {
+      const usable = bannerUrl !== undefined && isAbsoluteHttpUrl(bannerUrl);
+      if (usable && bannerUrl !== undefined) {
+        components.push(createBannerMediaGallery(bannerUrl));
+        components.push(separator());
+      } else if (bannerUrl !== undefined) {
+        this.logger.warn('banner-url-dropped', {
+          reason: 'not an absolute http(s) url',
+          // The VALUE is not logged: it is a configuration defect, and its shape is enough to find it.
+          length: bannerUrl.length,
+        });
+      }
     }
 
     // items 6/7/8 - the identity band: a bold "Dumby Suite | <page>" title, then the developer.
