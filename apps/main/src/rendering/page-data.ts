@@ -87,8 +87,18 @@ export interface PageDataDeps {
    * UR-20261012-031 — builds a persona's invite URL. Kept as a dependency so the page layer never
    * has to know the service's public origin or the install permission bitfield.
    */
+  /**
+   * UR-20261031-121 — the invite link, when one can be built. `undefined` is a real answer: the builder
+   * is the persona module's program and is resolved through the seam, so an absent module means no link
+   * rather than a thrown page. The caller already collapses both to an empty string.
+   */
   personaInvite?:
-    ((input: { applicationId: string; guildId: string; withOAuth: boolean }) => string) | undefined;
+    | ((input: {
+        applicationId: string;
+        guildId: string;
+        withOAuth: boolean;
+      }) => string | undefined)
+    | undefined;
   /**
    * UR-20261012-061 — WHICH PROFILE OWNS A MODULE in a guild. A standard/marketplace module belongs
    * to one profile per guild (first come); core belongs to nobody. Kept as a dependency so the page
@@ -527,7 +537,7 @@ export function createPageDataProvider(deps: PageDataDeps): (
         },
         inviteUrl: async (applicationId, withOAuth) => {
           if (guildId === null || personaInvite === undefined) return '';
-          return personaInvite({ applicationId, guildId, withOAuth });
+          return personaInvite({ applicationId, guildId, withOAuth }) ?? '';
         },
         personaBindings: async () => {
           if (guildId === null) return [];
