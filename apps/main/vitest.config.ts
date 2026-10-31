@@ -57,7 +57,12 @@ export default defineConfig({
     globals: false,
     coverage: {
       provider: 'v8',
-      include: ['src/**/*.ts'],
+      // UR-20261030-118 — module code is measured too. A move out of the core used to LOWER the ratio
+      // because the covered host file vanished while its replacement sat outside the population: the
+      // gate punished the migration it should reward. v8 reports files that were LOADED during the run,
+      // and module pages and blocks are loaded through the vitest aliases, so including them measures
+      // real code rather than declaring a floor over nothing.
+      include: ['src/**/*.ts', '../../packages/modules/*/src/**/*.ts'],
       exclude: [
         'src/entry/**',
         // UR-20261029-114 — the composition root is not unit-testable by design: it wires every
