@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { open, seal, type EnvelopeRootKey, type SealedEnvelope } from '../crypto/envelope.js';
+import { open, seal, type EnvelopeRootKey, type SealedEnvelope } from '@workspace/swastik';
 
 export const DM_BEHAVIORS = ['prohibited', 'allowed'] as const;
 export type PersonaDmBehavior = (typeof DM_BEHAVIORS)[number];

@@ -5,7 +5,7 @@ import { parseEnv, pickEnvKeys } from '../config/env.schema.js';
 import { createLogger } from '../logging/logger.js';
 import { DbClient } from '../db/client.js';
 import { registerInternalAuth } from '../http/internal-auth.js';
-import { rootKeyFromBase64 } from '../crypto/envelope.js';
+import { rootKeyFromBase64 } from '@workspace/swastik';
 import { PostgresSealedCredentialStore } from '../db/repositories/sealed-credential.repository.js';
 import {
   generateCredentialValue,

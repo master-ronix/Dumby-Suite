@@ -10,7 +10,7 @@
  * This resolves the right client for an application id, or nothing at all — a persona registered
  * without a secret simply has no Route A authorization, and the caller falls back to Route B.
  */
-import type { SealedEnvelope } from '../crypto/envelope.js';
+import type { SealedEnvelope } from '@workspace/swastik';
 import type { DiscordOAuth2Client, OAuth2Config } from '../http/oauth/oauth2-client.js';
 
 /** The slice of the persona identity store this needs. */

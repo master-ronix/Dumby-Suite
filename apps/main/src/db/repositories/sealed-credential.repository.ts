@@ -1,5 +1,5 @@
 import type { Knex } from 'knex';
-import type { SealedEnvelope } from '../../crypto/envelope.js';
+import type { SealedEnvelope } from '@workspace/swastik';
 
 export interface SealedCredentialRecord {
   readonly id: string;

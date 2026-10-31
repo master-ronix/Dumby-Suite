@@ -1,5 +1,5 @@
 import type { Knex } from 'knex';
-import type { SealedEnvelope } from '../crypto/envelope.js';
+import type { SealedEnvelope } from '@workspace/swastik';
 import { type PersonaBinding, type PersonaIdentity } from './persona.js';
 
 export interface PersonaIdentityStore {

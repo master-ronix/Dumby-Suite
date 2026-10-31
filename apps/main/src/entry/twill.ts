@@ -4,7 +4,7 @@ import { isMainEntry } from './is-main-entry.js';
 import { parseEnv, pickEnvKeys } from '../config/env.schema.js';
 import { createLogger } from '../logging/logger.js';
 import { registerInternalAuth } from '../http/internal-auth.js';
-import { rootKeyFromBase64 } from '../crypto/envelope.js';
+import { rootKeyFromBase64 } from '@workspace/swastik';
 import knexConfig from '../db/knexfile.js';
 import { PersonaCommandBindingService } from '../personas/persona-command-binding.service.js';
 import {
