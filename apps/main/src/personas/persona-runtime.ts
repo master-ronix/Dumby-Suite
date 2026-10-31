@@ -17,7 +17,7 @@
  */
 import { CommandRegistry, type CommandProfile } from '../commands/command-registry.js';
 import type { Logger } from '../logging/logger.js';
-import type { SealedEnvelope } from '@workspace/swastik';
+import type { SealedEnvelope } from '../crypto/envelope.js';
 
 /** One persona as the runtime needs it. */
 export interface RuntimePersona {

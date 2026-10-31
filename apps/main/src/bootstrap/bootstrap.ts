@@ -85,7 +85,7 @@ import { loadModulesFromTierVolumes } from '../module-system/swastik-loader.js';
 import { PostgresDeveloperRegistry } from '../module-system/developer-registry.js';
 import { PostgresBuildStore } from '../db/repositories/build.repository.js';
 import { armBuildProvenance, BuildSignatureVerifier } from '../module-system/build-signing.js';
-import { rootKeyFromBase64 } from '@workspace/swastik';
+import { rootKeyFromBase64 } from '../crypto/envelope.js';
 import { PostgresSealedCredentialStore } from '../db/repositories/sealed-credential.repository.js';
 import { SealedCredentialService } from '../credentials/sealed-credential.service.js';
 import { PostgresCommandPermissionTokenStore } from '../db/repositories/command-permission-token.repository.js';

@@ -9,7 +9,7 @@ import {
   fromBase64,
   keyIdsEqual,
   ENVELOPE_ALGORITHM,
-} from '@workspace/swastik';
+} from '../../src/crypto/envelope.js';
 
 const enc = (s: string) => new TextEncoder().encode(s);
 

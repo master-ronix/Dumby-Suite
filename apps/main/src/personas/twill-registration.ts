@@ -10,7 +10,7 @@
  * the response shapes stay unit-testable without a process.
  */
 import type { FastifyInstance } from 'fastify';
-import type { EnvelopeRootKey } from '@workspace/swastik';
+import type { EnvelopeRootKey } from '../crypto/envelope.js';
 import type { Logger } from '../logging/logger.js';
 import type { ModuleChain } from '../module-system/module-chain.js';
 import type { PersonaBindingStore, PersonaIdentityStore } from './persona.repository.js';

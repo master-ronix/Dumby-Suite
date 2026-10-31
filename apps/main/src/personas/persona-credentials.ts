@@ -5,7 +5,7 @@
  * guild command with it) and its OAuth2 client secret (Route A mints a user token with it). Both are
  * envelope-encrypted, and both open the same way — through the shared envelope root key.
  */
-import { open, type EnvelopeRootKey, type SealedEnvelope } from '@workspace/swastik';
+import { open, type EnvelopeRootKey, type SealedEnvelope } from '../crypto/envelope.js';
 
 const decoder = new TextDecoder();
 

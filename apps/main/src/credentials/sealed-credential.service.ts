@@ -1,5 +1,11 @@
 import { randomBytes, randomUUID } from 'node:crypto';
-import { open, rotate, seal, type EnvelopeRootKey, type SealedEnvelope } from '@workspace/swastik';
+import {
+  open,
+  rotate,
+  seal,
+  type EnvelopeRootKey,
+  type SealedEnvelope,
+} from '../crypto/envelope.js';
 import { assertStorageTreatment, CREDENTIAL_TREATMENTS } from '../crypto/envelope-scope.js';
 import type { SealedCredentialStore } from '../db/repositories/sealed-credential.repository.js';
 

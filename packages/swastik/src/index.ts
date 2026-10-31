@@ -116,27 +116,3 @@ export {
   type ModalTextInput,
   type ModalPayload,
 } from './components-v2.js';
-/**
- * UR-20261031-122 — the sealed-envelope helper.
- *
- * Six of the persona domain's imports were this one file: a persona's bot token and client secret are
- * stored sealed, and a module that owns its own credentials has to be able to open them. It lives in
- * the SDK for the same reason the Components V2 vocabulary does — one definition, imported by the core
- * and by a module, with no core dependency for the module.
- */
-export {
-  toBase64,
-  fromBase64,
-  rootKeyFromBase64,
-  randomRootKey,
-  seal,
-  open,
-  rotate,
-  keyIdsEqual,
-  ENVELOPE_ALGORITHM,
-  ROOT_KEY_BYTE_LENGTH,
-  DEK_BYTE_LENGTH,
-  IV_BYTE_LENGTH,
-  type SealedEnvelope,
-  type EnvelopeRootKey,
-} from './envelope.js';

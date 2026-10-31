@@ -8,6 +8,6 @@ describe('ACC-OPS-0032-3 — security controls', () => {
       /hmac/i,
     );
     expect(srcText()).toMatch(/argon2/i);
-    expect(existsRepo('packages/swastik/src/envelope.ts')).toBe(true);
+    expect(existsRepo('apps/main/src/crypto/envelope.ts')).toBe(true);
   });
 });

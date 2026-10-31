@@ -6,7 +6,7 @@ import {
   applicationIdFromBotToken,
 } from '../../src/personas/persona.js';
 import { parsePersonaRegistration } from '../../src/personas/twill-registration.js';
-import { randomRootKey } from '@workspace/swastik';
+import { randomRootKey } from '../../src/crypto/envelope.js';
 
 /**
  * UR-20261012-089 — Twill accepts only well-formed Discord identifiers. Every value here is a format
