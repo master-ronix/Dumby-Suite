@@ -1,10 +1,6 @@
 import { test, expect, describe } from 'vitest';
 import { CoreRenderer } from '../../src/rendering/core-renderer.js';
-import {
-  ComponentType,
-  EPHEMERAL,
-  IS_COMPONENTS_V2,
-} from '@workspace/swastik';
+import { ComponentType, EPHEMERAL, IS_COMPONENTS_V2 } from '@workspace/swastik';
 
 /**
  * §1.2 / item 4-5 — the EPHEMERAL grammar.
