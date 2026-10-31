@@ -142,7 +142,6 @@ import {
 } from '../personas/persona-runtime.js';
 import { buildPersonaInteractionHandler } from '../personas/persona-interaction-handler.js';
 import { createPersonaOAuthService } from '../personas/persona-oauth.js';
-import { openSealedText } from '../personas/persona-credentials.js';
 import { personaSetupCard } from '../rendering/persona-setup.js';
 import {
   PostgresPersonaBindingStore,
@@ -998,9 +997,27 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
   // UR-20261012-030 (Route A) — one OAuth2 client per persona application, built from the client
   // secret the Twill registration sealed. An application without one resolves to undefined, which is
   // exactly when Route B applies.
+  /**
+   * UR-20261031-121 — opening a sealed secret is the persona module's program, resolved through the
+   * seam. Both call sites below are arrows, so the first call is long after the load loop. Absent, it
+   * throws with a message that names the reason rather than returning a half-decrypted value: a secret
+   * that cannot be opened must never be used as if it had been.
+   */
+  const openSealed = (sealed: string): string => {
+    const reader = serviceRegistryRef?.tryResolve<{
+      openSealedText: (s: string, k: string) => string;
+    }>(Symbol.for('core.PersonaCredentials'));
+    if (reader === undefined) {
+      throw new Error(
+        'persona-credentials-unavailable — the persona module did not provide core.PersonaCredentials',
+      );
+    }
+    return reader.openSealedText(sealed, personaRootKey);
+  };
+
   const personaOAuth = createPersonaOAuthService({
     identities: personaIdentities,
-    openSecret: (sealed) => openSealedText(sealed, personaRootKey),
+    openSecret: (sealed) => openSealed(sealed),
     redirectUri: config.get('OAUTH_REDIRECT_URI'),
     createClient: (oauthConfig) => new DiscordOAuth2Client({ config: oauthConfig, logger }),
     warn: (message, meta) => logger.warn(message, meta),
@@ -2014,7 +2031,7 @@ export async function bootstrap(overrides: BootstrapOverrides = {}): Promise<Boo
         .map((m) => m.manifest.name);
       const personaRuntime = new PersonaRuntime({
         listPersonas: () => personaIdentities.list(),
-        openBotToken: (sealed) => openSealedText(sealed, personaRootKey),
+        openBotToken: (sealed) => openSealed(sealed),
         // ONE READ, ONE ANSWER. This used to read the RAW BINDINGS, while the deployer, /browse, the
         // install and the ownership read all used `resolveCommandOwner`. Two sources for one fact is
         // how a persona came to register a module the ownership read had already given to the main —

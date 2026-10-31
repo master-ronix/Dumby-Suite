@@ -2,6 +2,7 @@ import { personaCommand } from './commands/persona.command.js';
 import { personaDirectory, RESIDENT_PROFILE_ID } from './services/persona-directory.js';
 import { personaPresenceFromClient } from './domain/persona-presence.js';
 import { personaInviteUrl, publicBaseFrom } from './domain/persona-invite.js';
+import { openSealedText } from './domain/persona-credentials.js';
 
 export const MODULE_SLUG = 'persona';
 
@@ -43,6 +44,10 @@ export async function onLoad(container?: {
     personaInviteUrl,
     publicBaseFrom,
   }));
+  // UR-20261031-121 — opening a sealed secret is the persona module's program: the envelope format is
+  // how a persona's bot token and client secret are stored, and nothing outside this module should
+  // need to know its shape.
+  container?.register?.(Symbol.for('core.PersonaCredentials'), () => ({ openSealedText }));
 }
 
 /** The service tokens this module provides; the manifest declares the same list. */
@@ -50,6 +55,7 @@ export const provides = [
   { token: 'core.PersonaDirectory', contract: 'PersonaDirectoryService' },
   { token: 'core.PersonaPresence', contract: 'PersonaPresenceFactory' },
   { token: 'core.PersonaInvite', contract: 'PersonaInviteBuilder' },
+  { token: 'core.PersonaCredentials', contract: 'PersonaCredentialReader' },
 ];
 
 export {
@@ -58,6 +64,7 @@ export {
   personaPresenceFromClient,
   personaInviteUrl,
   publicBaseFrom,
+  openSealedText,
 };
 
 export async function onReady(): Promise<void> {
